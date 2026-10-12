@@ -3790,6 +3790,18 @@
         }
       }
     },
+    "Choose": {
+      "comment": "Short Learn action label (compact Record / Choose buttons).",
+      "extractionState": "manual",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir"
+          }
+        }
+      }
+    },
     "Choose a calendar or city to prepare your first recap.": {
       "localizations": {
         "fr": {
@@ -7454,6 +7466,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reconnaissance des écrans échantillonnés…"
+          }
+        }
+      }
+    },
+    "Record": {
+      "comment": "Short Learn action label (compact Record / Choose buttons).",
+      "extractionState": "manual",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer"
           }
         }
       }
