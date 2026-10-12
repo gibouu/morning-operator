@@ -88,6 +88,59 @@ struct CoreInvariantTests {
         expectThrows(PersistenceError.unsupportedSchema(999)) { _ = try file.load() }
     }
 
+    @Test("Replacing a saved document commits the complete private replacement")
+    func testPersistenceReplacementIsPrivateAndReadable() throws {
+        let url = location("workspace.json")
+        let directory = url.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = AtomicJSONFile<[String]>(url: url)
+        try file.save(["Previously approved morning"])
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+
+        let replacement = ["Reviewed update", "Exact source quotation", "Previous routine retained"]
+        try file.save(replacement)
+        #expect(try file.load() == replacement)
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["workspace.json"])
+    }
+
+    @Test("A rejected commit preserves the destination and removes staged content")
+    func testPersistenceRejectedRenameLeavesDestinationIntact() throws {
+        let url = location("workspace.json")
+        let directory = url.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let sentinel = url.appendingPathComponent("keep.txt")
+        let existing = Data("Existing destination contents".utf8)
+        try existing.write(to: sentinel)
+
+        do {
+            try AtomicJSONFile<[String]>(url: url).save(["Must not replace a directory"])
+            Issue.record("Replacing a destination directory unexpectedly succeeded")
+        } catch { #expect(error is POSIXError) }
+        #expect(try Data(contentsOf: sentinel) == existing)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: url.path) == ["keep.txt"])
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["workspace.json"])
+    }
+
+    @Test("Encoding failure leaves the previously saved document readable and unchanged")
+    func testPersistenceEncodingFailurePreservesPreviousBytes() throws {
+        let url = location("workspace.json")
+        let directory = url.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = AtomicJSONFile<Double>(url: url)
+        try file.save(42)
+        let previous = try Data(contentsOf: url)
+        do {
+            try file.save(.nan)
+            Issue.record("JSON unexpectedly accepted a non-finite value")
+        } catch { #expect(error is EncodingError) }
+        #expect(try Data(contentsOf: url) == previous)
+        #expect(try file.load() == 42)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["workspace.json"])
+    }
+
     @Test
     func testApprovalCannotDrift() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)

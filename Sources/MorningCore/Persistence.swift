@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 public enum PersistenceError: Error, LocalizedError, Sendable, Equatable {
     case fileURLRequired
@@ -17,6 +22,8 @@ private struct JSONEnvelope<Value: Codable & Sendable>: Codable, Sendable {
 }
 
 /// Small local documents, atomically replaced after complete encoding.
+/// A thrown save leaves the destination unchanged. All staging work finishes
+/// before the rename commits; no throwing operation follows that boundary.
 /// Use one authoritative writer; this does not coordinate multiple processes.
 /// Store secrets in Keychain, never in these exported documents.
 public struct AtomicJSONFile<Value: Codable & Sendable>: Sendable {
@@ -37,10 +44,39 @@ public struct AtomicJSONFile<Value: Codable & Sendable>: Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(JSONEnvelope(schemaVersion: 1, value: value))
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // mkstemp exclusively creates a sibling file with owner-only permissions.
+        // A same-directory rename replaces an existing file atomically.
+        var template = directory.appendingPathComponent(".morning-save-XXXXXX").path.utf8CString
+        let descriptor = template.withUnsafeMutableBufferPointer { mkstemp($0.baseAddress!) }
+        guard descriptor >= 0 else { throw currentPOSIXError() }
+        let stagedPath = template.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+        let stagedURL = URL(fileURLWithPath: stagedPath)
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        var closed = false
+        var committed = false
+        defer {
+            if !closed { try? handle.close() }
+            if !committed { try? FileManager.default.removeItem(at: stagedURL) }
+        }
+        // Establish the exact final mode before any content or commit, independent
+        // of the process umask. Failure cannot affect the old destination.
+        guard fchmod(descriptor, mode_t(0o600)) == 0 else { throw currentPOSIXError() }
+        try handle.write(contentsOf: data)
+        try handle.synchronize()
+        try handle.close()
+        closed = true
+        let result = stagedURL.path.withCString { stagedPath in
+            url.path.withCString { destinationPath in rename(stagedPath, destinationPath) }
+        }
+        guard result == 0 else { throw currentPOSIXError() }
+        committed = true
     }
+}
+
+private func currentPOSIXError() -> POSIXError {
+    POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
 }
 
 private struct SchemaHeader: Decodable { let schemaVersion: Int }

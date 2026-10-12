@@ -24,11 +24,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources/MorningOperator
+      - path: Resources/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Configuration/iOS-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Configuration/MorningOperator.entitlements
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     dependencies:
@@ -36,11 +39,33 @@ targets:
         product: MorningCore
       - package: MorningOperatorShared
         product: MorningApple
+      - target: MorningActivityWidget
+        embed: true
+        link: false
+  MorningActivityWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Sources/MorningActivityWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.activity
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Configuration/ActivityWidget-Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    dependencies:
+      - package: MorningOperatorShared
+        product: MorningCore
   MorningOperatorUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
       - path: UITests
+        excludes:
+          - ObservationBenchmarkTests.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.uitests
@@ -48,6 +73,55 @@ targets:
         TEST_TARGET_NAME: MorningOperator
     dependencies:
       - target: MorningOperator
+  MorningBenchmarkInbox:
+    type: application
+    platform: iOS
+    sources:
+      - path: Benchmarks/FixtureApps
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.fixture.inbox
+        PRODUCT_NAME: MorningBenchmarkInbox
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) FIXTURE_INBOX"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Cedar Mail
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+  MorningBenchmarkCalendar:
+    type: application
+    platform: iOS
+    sources:
+      - path: Benchmarks/FixtureApps
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.fixture.calendar
+        PRODUCT_NAME: MorningBenchmarkCalendar
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) FIXTURE_CALENDAR"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Lumen Calendar
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+  MorningObservationBenchmarkUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests/ObservationBenchmarkTests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.observation-benchmark-tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MorningBenchmarkInbox
+    dependencies:
+      - target: MorningBenchmarkInbox
+        link: false
+        embed: false
+      - target: MorningBenchmarkCalendar
+        link: false
+        embed: false
 schemes:
   MorningOperator:
     build:
@@ -65,3 +139,19 @@ schemes:
           randomExecutionOrder: false
     archive:
       config: Release
+  MorningObservationBenchmark:
+    build:
+      targets:
+        MorningBenchmarkInbox: all
+        MorningBenchmarkCalendar: all
+        MorningObservationBenchmarkUITests: [test]
+    run:
+      config: Debug
+      executable: MorningBenchmarkInbox
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: MorningObservationBenchmarkUITests
+          parallelizable: false
+          randomExecutionOrder: false

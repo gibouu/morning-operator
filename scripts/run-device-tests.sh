@@ -16,7 +16,11 @@ usage() {
     cat <<'USAGE'
 Usage: scripts/run-device-tests.sh --device DEVICE_ID --team TEAM_ID [options]
 
-  --suite fixture|settings|external   Default: fixture (synthetic app data only).
+  --suite fixture|learning|recording|clock|settings|external
+                                     Default: fixture (synthetic app data only).
+                                     learning: local model with synthetic notes.
+                                     recording: owner confirms Apple's capture picker.
+                                     clock: read-only Clock tabs and list scroll.
   --external-bundle BUNDLE_ID         Required for the external capture suite.
   --navigate-label LABEL              Optional single read-only navigation step.
   --expect-label LABEL                Required new-screen postcondition for that step.
@@ -26,7 +30,7 @@ Usage: scripts/run-device-tests.sh --device DEVICE_ID --team TEAM_ID [options]
   --help                             Show this message without accessing a device.
 
 External navigation labels: Inbox, All Inboxes, Mailboxes, Chats, Messages, Settings, About.
-There is no typing, sending, deleting, coordinate replay or automatic retry.
+External-app checks do not type, send, delete, replay coordinates or retry automatically.
 DEVELOPMENT_TEAM can supply the team instead of --team. No team is stored in the repo.
 Screenshots/test results remain under work/device-runs and can contain personal content.
 USAGE
@@ -56,6 +60,9 @@ done
 [[ "$team_id" =~ ^[A-Z0-9]{10}$ ]] || { printf 'Supply your 10-character team identifier with --team or DEVELOPMENT_TEAM.\n' >&2; exit 2; }
 case "$suite" in
     fixture) test_filters=("-only-testing:MorningOperatorUITests/FixtureJourneyTests") ;;
+    learning) test_filters=("-only-testing:MorningOperatorUITests/OnDeviceLearningTests") ;;
+    recording) test_filters=("-only-testing:MorningOperatorUITests/RecordingLearningTests") ;;
+    clock) test_filters=("-only-testing:MorningOperatorUITests/ClockObservationTests/testClockTabsAndReadOnlyAlarmScroll") ;;
     settings) test_filters=(
         "-only-testing:MorningOperatorUITests/DeviceObservationTests/testSettingsReadOnlyNavigation"
         "-only-testing:MorningOperatorUITests/DeviceObservationTests/testMissingTargetDoesNotTriggerGesture"
@@ -78,7 +85,8 @@ command -v python3 >/dev/null 2>&1 || { printf 'Python 3 is required for the loc
 xcodebuild -version >/dev/null 2>&1 || { printf 'Full Xcode is required; run scripts/check-environment.sh.\n' >&2; exit 2; }
 "$repo_dir/scripts/generate-project.sh"
 run_dir="$repo_dir/work/device-runs/$(date -u +%Y%m%dT%H%M%SZ)-$$"
-derived_dir="$run_dir/DerivedData"
+# Reuse the project's existing phone build products across suites and runs.
+derived_dir="$repo_dir/.build/iphone"
 mkdir -p "$run_dir"
 printf 'Selected physical device: %s\nSuite: %s\nPrivate evidence: %s\n' "$device_id" "$suite" "$run_dir"
 
@@ -98,13 +106,16 @@ xcodebuild build-for-testing \
 xctestrun_path="$(python3 - "$derived_dir/Build/Products" "$suite" "$external_bundle" "$navigation_label" "$expected_label" "$capture_tree" "$general_label" "$about_label" <<'PY'
 import pathlib, plistlib, sys
 products = pathlib.Path(sys.argv[1])
-candidates = list(products.glob('*.xctestrun'))
+candidates = sorted(path for path in products.glob('MorningOperator_*.xctestrun')
+                    if 'configured' not in path.stem)
 if len(candidates) != 1:
     raise SystemExit(f'Expected one xctestrun, found {len(candidates)}')
 with candidates[0].open('rb') as stream:
     plan = plistlib.load(stream)
 env = {
-    'MO_DEVICE_TESTS_ENABLED': '0' if sys.argv[2] == 'fixture' else '1',
+    'MO_DEVICE_TESTS_ENABLED': '1' if sys.argv[2] in ('settings', 'external') else '0',
+    'MO_RECORDING_TEST_ENABLED': '1' if sys.argv[2] == 'recording' else '0',
+    'MO_CLOCK_TEST_ENABLED': '1' if sys.argv[2] == 'clock' else '0',
     'MO_EXTERNAL_APP_BUNDLE_ID': sys.argv[3],
     'MO_EXTERNAL_NAVIGATION_LABEL': sys.argv[4],
     'MO_EXTERNAL_EXPECTED_LABEL': sys.argv[5],

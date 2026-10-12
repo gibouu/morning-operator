@@ -1,50 +1,26 @@
 import SwiftUI
 import MorningCore
 import MorningApple
-#if os(macOS)
-import AppKit
-#endif
 
 @main
 struct MorningOperatorApp: App {
+    @UIApplicationDelegateAdaptor(MorningNotificationDelegate.self) private var notificationDelegate
     @ViewState<MorningStore> private var store = MorningStore()
-    #if os(macOS)
-    @NSApplicationDelegateAdaptor(MorningAppDelegate.self) private var appDelegate
-    #endif
+
+    init() { MorningAppShortcuts.updateAppShortcutParameters() }
+
+    private var testAppearance: ColorScheme? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("--ui-testing") else { return nil }
+        if arguments.contains("--light-preview") { return .light }
+        if arguments.contains("--dark-preview") { return .dark }
+        return nil
+    }
 
     var body: some Scene {
         WindowGroup {
             MorningRootView(store: store)
-                .preferredColorScheme(.light)
-                #if os(macOS)
-                .frame(minWidth: 840, minHeight: 680)
-                #endif
+                .preferredColorScheme(testAppearance)
         }
-        #if os(macOS)
-        .defaultSize(width: 1140, height: 820)
-        .windowStyle(.hiddenTitleBar)
-        .commands {
-            CommandGroup(after: .newItem) {
-                Button("Start morning") { store.start() }
-                    .keyboardShortcut("r", modifiers: [.command])
-                    .disabled(store.routine?.isApproved != true || store.busy)
-                Button("Next step") { store.advance() }
-                    .keyboardShortcut(.rightArrow, modifiers: [.command])
-                    .disabled(store.session?.status != .running)
-                Button("Stop morning") { store.stop() }
-                    .keyboardShortcut(".", modifiers: [.command])
-            }
-        }
-        #endif
     }
 }
-
-#if os(macOS)
-@MainActor
-final class MorningAppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApplication.shared.setActivationPolicy(.regular)
-        NSApplication.shared.activate(ignoringOtherApps: true)
-    }
-}
-#endif

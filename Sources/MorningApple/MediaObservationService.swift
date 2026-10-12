@@ -1,16 +1,22 @@
 import AVFoundation
 import Foundation
 import ImageIO
+import MorningCore
 import UniformTypeIdentifiers
 import Vision
 
 public struct MediaObservation: Sendable, Equatable {
-    public enum Kind: String, Sendable, Equatable { case image, video, text }
+    public enum Kind: String, Codable, Sendable, Equatable { case image, video, text }
     public let kind: Kind
     public let text: String
     public let sampledFrameCount: Int
     public let durationSeconds: Double?
     public let warnings: [String]
+    /// Present only for videos. Every requested frame survives here before notes deduplication.
+    public let videoEvidence: ObservationVideoEvidence?
+    public var hasRecognizedText: Bool {
+        videoEvidence?.hasRecognizedText ?? !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }
 
 public enum MediaObservationError: LocalizedError, Sendable, Equatable {
@@ -37,17 +43,28 @@ public enum MediaObservationError: LocalizedError, Sendable, Equatable {
     }
 }
 
-/// Reads only the explicitly supplied file. Frames and OCR remain in memory; nothing is uploaded.
+/// One Vision pass returns the unchanged flattened text and optional layout for its exact spans.
+/// Bounds are approximate Vision guidance, not proof of a physical line or an app/title role.
+struct RecognizedFrameText: Sendable {
+    let text: String
+    let lines: [ObservationOCRLine]
+    let warnings: [String]
+}
+
+/// Reads only the explicitly supplied file. Nothing is uploaded. The caller owns returned evidence.
 public actor MediaObservationService {
     public typealias ProgressHandler = @MainActor @Sendable (Double) -> Void
     public static let maximumFileBytes = 512 * 1_024 * 1_024
-    public static let maximumVideoSeconds: Double = 30 * 60
-    public static let maximumFrames = 24
+    // Allow a minute of writer/stop finalization around the longest 30-minute recording preset.
+    public static let maximumVideoSeconds = ObservationVideoEvidence.maximumDurationSeconds
+    public static let maximumFrames = ObservationVideoEvidence.maximumFrames
 
     public init() {}
 
     public func extractText(from url: URL, progress: ProgressHandler? = nil) async throws -> String {
-        try await extract(from: url, progress: progress).text
+        let observation = try await extract(from: url, progress: progress)
+        guard observation.hasRecognizedText else { throw MediaObservationError.noRecognizableText }
+        return observation.text
     }
 
     public func extract(from url: URL, progress: ProgressHandler? = nil) async throws -> MediaObservation {
@@ -66,13 +83,13 @@ public actor MediaObservationService {
         let extensionName = url.pathExtension.lowercased()
 
         if type?.conforms(to: .image) == true || ["png", "jpg", "jpeg", "heic", "heif", "tif", "tiff", "gif", "bmp"].contains(extensionName) {
-            let text = try await recognizeText(in: Self.thumbnail(from: url))
-            guard !text.isEmpty else { throw MediaObservationError.noRecognizableText }
+            let recognized = try await recognizeFrame(in: Self.thumbnail(from: url))
+            guard !recognized.text.isEmpty else { throw MediaObservationError.noRecognizableText }
             await progress?(1)
             return MediaObservation(
                 kind: .image,
-                text: "[User-selected screenshot; one moment, not a confirmed habit]\n\(text)",
-                sampledFrameCount: 1, durationSeconds: nil, warnings: []
+                text: "[User-selected screenshot; one moment, not a confirmed habit]\n\(recognized.text)",
+                sampledFrameCount: 1, durationSeconds: nil, warnings: recognized.warnings, videoEvidence: nil
             )
         }
         if type?.conforms(to: .movie) == true || type?.conforms(to: .video) == true || ["mp4", "mov", "m4v"].contains(extensionName) {
@@ -89,7 +106,7 @@ public actor MediaObservationService {
             }
             try Task.checkCancellation()
             await progress?(1)
-            return MediaObservation(kind: .text, text: text, sampledFrameCount: 0, durationSeconds: nil, warnings: [])
+            return MediaObservation(kind: .text, text: text, sampledFrameCount: 0, durationSeconds: nil, warnings: [], videoEvidence: nil)
         }
         throw MediaObservationError.unsupportedFormat
     }
@@ -109,46 +126,58 @@ public actor MediaObservationService {
         defer { generator.cancelAllCGImageGeneration() }
 
         let times = FrameSampling.timestamps(duration: duration, maximumFrames: Self.maximumFrames)
-        var segments: [String] = []
-        var previousText: String?
-        var failedFrames = 0
-        var decodedFrames = 0
+        var builder = try VideoObservationBuilder(durationSeconds: duration)
         for (index, seconds) in times.enumerated() {
             try Task.checkCancellation()
+            let sampleID = UUID()
+            let decoded: (image: CGImage, actualTime: CMTime)
             do {
                 let frame = try await generator.image(at: CMTime(seconds: seconds, preferredTimescale: 600))
-                decodedFrames += 1
-                let text = try await recognizeText(in: frame.image)
-                let normalized = ObservationText.normalized(text)
-                // Deduplicate only consecutive identical OCR; a later return to a screen is evidence.
-                if !normalized.isEmpty, normalized != previousText {
-                    let actualSeconds = frame.actualTime.seconds.isFinite ? frame.actualTime.seconds : seconds
-                    segments.append("[Observed frame at \(FrameSampling.timestampLabel(actualSeconds))]\n\(text)")
-                    previousText = normalized
-                }
+                decoded = (frame.image, frame.actualTime)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
                 try Task.checkCancellation()
-                failedFrames += 1
+                try builder.append(id: sampleID, requestedTimeSeconds: seconds, actualTimeSeconds: nil, outcome: .decodeFailed)
+                await progress?(Double(index + 1) / Double(times.count))
+                continue
             }
+            // Convert metadata outside the image-decode catch. Unsupported native timing
+            // cannot relabel a successfully decoded image as a decode failure.
+            let timing = DecodedFrameTiming(decoded.actualTime)
+            let recognized: RecognizedFrameText
+            do {
+                recognized = try await recognizeFrame(in: decoded.image)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                try Task.checkCancellation()
+                try builder.append(id: sampleID, requestedTimeSeconds: seconds,
+                                   actualTimeSeconds: timing.seconds, outcome: .ocrFailed,
+                                   ocrWarnings: timing.warnings, originalPresentationTime: timing.original)
+                await progress?(Double(index + 1) / Double(times.count))
+                continue
+            }
+            try builder.append(id: sampleID, requestedTimeSeconds: seconds, actualTimeSeconds: timing.seconds,
+                               outcome: recognized.text.isEmpty ? .blank : .observed, text: recognized.text,
+                               ocrLines: recognized.lines, ocrWarnings: recognized.warnings + timing.warnings,
+                               originalPresentationTime: timing.original)
             await progress?(Double(index + 1) / Double(times.count))
         }
         try Task.checkCancellation()
-        guard !segments.isEmpty else { throw MediaObservationError.noRecognizableText }
-        var warnings = ["Sparse sampling may miss fast transitions and does not reveal exact taps or the user's intent."]
-        if failedFrames > 0 { warnings.append("\(failedFrames) of \(times.count) sampled frames could not be analyzed.") }
-        let header = "[User-selected video: \(FrameSampling.timestampLabel(duration)); \(decodedFrames) frames sampled. This is partial visual evidence, not a complete interaction log.]"
+        let evidence = try builder.finish()
         return MediaObservation(
             kind: .video,
-            text: ([header] + segments).joined(separator: "\n\n"),
-            sampledFrameCount: decodedFrames,
+            text: evidence.renderedText,
+            sampledFrameCount: evidence.decodedFrameCount,
             durationSeconds: duration,
-            warnings: warnings
+            warnings: evidence.warnings,
+            videoEvidence: evidence
         )
     }
 
-    private func recognizeText(in image: CGImage) async throws -> String {
+    /// Internal so a synthetic-image test can inspect the exact native result used by video extraction.
+    func recognizeFrame(in image: CGImage) async throws -> RecognizedFrameText {
         try Task.checkCancellation()
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
@@ -156,17 +185,75 @@ public actor MediaObservationService {
         request.usesLanguageCorrection = true
         let observations = try await request.perform(on: image)
         try Task.checkCancellation()
-        return observations.sorted { left, right in
+        let ordered = observations.sorted { left, right in
             let leftRow = Int((left.topLeft.y * 80).rounded())
             let rightRow = Int((right.topLeft.y * 80).rounded())
             if leftRow != rightRow { return leftRow > rightRow }
             return left.topLeft.x < right.topLeft.x
-        }.compactMap { observation -> String? in
-            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.25 else { return nil }
-            let text = candidate.string.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return nil }
-            return text
-        }.joined(separator: "\n")
+        }
+        var parts: [String] = []
+        var lines: [ObservationOCRLine] = []
+        var characterOffset = 0
+        var unavailableLayoutCount = 0
+        var cappedLayoutCount = 0
+        for observation in ordered {
+            try Task.checkCancellation()
+            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.25 else { continue }
+            let original = candidate.string
+            // Preserve the pre-existing flattened OCR contract, including its trimming and order.
+            let text = original.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            if !parts.isEmpty { characterOffset += 1 }
+            let start = characterOffset
+            parts.append(text)
+            characterOffset += text.count
+            guard lines.count < ObservationFrameEvidence.maximumOCRLines else {
+                cappedLayoutCount += 1
+                continue
+            }
+            let range = Self.trimmedRange(in: original)
+            // Do not search for or normalize a different occurrence of the candidate text.
+            guard String(original[range]).utf8.elementsEqual(text.utf8),
+                  let rectangle = candidate.boundingBox(for: range) else {
+                unavailableLayoutCount += 1
+                continue
+            }
+            // This is the candidate-range box, not observation confidence/region. The
+            // axis-aligned enclosing box is approximate character-position guidance.
+            let rect = rectangle.boundingBox.cgRect
+            do {
+                // Vision coordinates remain lower-left normalized in the oriented decoded image.
+                // Never clamp invalid geometry or substitute a guessed full-image rectangle.
+                let bounds = try ObservationNormalizedBounds(x: Double(rect.origin.x), y: Double(rect.origin.y),
+                    width: Double(rect.width), height: Double(rect.height))
+                lines.append(try ObservationOCRLine(text: text, startCharacterOffset: start,
+                    endCharacterOffset: characterOffset, bounds: bounds, confidence: Double(candidate.confidence)))
+            } catch {
+                unavailableLayoutCount += 1
+            }
+        }
+        var warnings: [String] = []
+        if unavailableLayoutCount > 0 {
+            warnings.append("Layout metadata was unavailable or invalid for \(unavailableLayoutCount) OCR regions; their text was preserved.")
+        }
+        if cappedLayoutCount > 0 {
+            warnings.append("Layout metadata for \(cappedLayoutCount) OCR regions was omitted at the line limit; their text was preserved.")
+        }
+        return RecognizedFrameText(text: parts.joined(separator: "\n"), lines: lines, warnings: warnings)
+    }
+
+    private static func trimmedRange(in text: String) -> Range<String.Index> {
+        let scalars = text.unicodeScalars
+        let whitespace = CharacterSet.whitespacesAndNewlines
+        var start = scalars.startIndex
+        var end = scalars.endIndex
+        while start < end, whitespace.contains(scalars[start]) { start = scalars.index(after: start) }
+        while start < end {
+            let previous = scalars.index(before: end)
+            guard whitespace.contains(scalars[previous]) else { break }
+            end = previous
+        }
+        return start..<end
     }
 
     private static func thumbnail(from url: URL) throws -> CGImage {
@@ -194,5 +281,21 @@ enum FrameSampling {
     static func timestampLabel(_ seconds: Double) -> String {
         let value = max(0, min(seconds.isFinite ? seconds : 0, 86_400))
         return String(format: "%02d:%04.1f", Int(value) / 60, value.truncatingRemainder(dividingBy: 60))
+    }
+}
+
+/// Native source-field transfer only. It does not seek, rescale, round, or derive intervals.
+struct DecodedFrameTiming: Sendable {
+    let seconds: Double
+    let original: ObservationMediaTime?
+    let warnings: [String]
+
+    init(_ time: CMTime) {
+        seconds = time.seconds
+        original = try? ObservationMediaTime(value: time.value, timescale: time.timescale,
+                                              epoch: time.epoch, flags: time.flags.rawValue)
+        warnings = original == nil ? [
+            "Original media timing could not be preserved; the decoded image and available decimal sample time were retained."
+        ] : []
     }
 }
