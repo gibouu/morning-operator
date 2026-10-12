@@ -30,13 +30,13 @@ public enum LocalDataControlError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .fileURLRequired: "Local privacy controls require a file location."
-        case .unsafePath: "The local privacy files could not be opened safely. Nothing was replaced."
-        case .invalidControl: "Local privacy status is unreadable. Ordinary access is paused until it is explicitly reset."
-        case .unsupportedSchema: "Local privacy status uses an unsupported format. Ordinary access is paused."
-        case .forgetInProgress: "Forgetting local data is still in progress."
-        case .forgetNotPending: "There is no pending local-data removal."
-        case .staleGeneration: "This removal request no longer matches the current privacy state."
+        case .fileURLRequired: String(localized: "Local privacy controls require a file location.", bundle: .module)
+        case .unsafePath: String(localized: "The local privacy files could not be opened safely. Nothing was replaced.", bundle: .module)
+        case .invalidControl: String(localized: "Local privacy status is unreadable. Ordinary access is paused until it is explicitly reset.", bundle: .module)
+        case .unsupportedSchema: String(localized: "Local privacy status uses an unsupported format. Ordinary access is paused.", bundle: .module)
+        case .forgetInProgress: String(localized: "Forgetting local data is still in progress.", bundle: .module)
+        case .forgetNotPending: String(localized: "There is no pending local-data removal.", bundle: .module)
+        case .staleGeneration: String(localized: "This removal request no longer matches the current privacy state.", bundle: .module)
         }
     }
 }

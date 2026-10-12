@@ -10,13 +10,13 @@ public enum PortableRoutineDocumentError: Error, LocalizedError, Sendable, Equat
 
     public var errorDescription: String? {
         switch self {
-        case .invalidFormat: "Choose a supported portable routine document. Workspace snapshots and older raw routine files cannot be imported here."
-        case .unsupportedVersion: "This routine document uses an unsupported version. The current routine is unchanged."
-        case .unexpectedFields: "This routine document contains unsupported fields. No actions or settings were imported."
-        case .invalidRoutine: "A portable routine needs 1–10 moments with unique identities, valid names and 1–120 planned minutes each. Its text and metadata must fit the supported limits."
-        case .invalidDocument: "This routine document could not be read. The current routine is unchanged."
-        case .documentTooLarge: "This routine document exceeds the 1 MiB limit."
-        case .invalidLocalVersion: "The current routine version cannot be safely updated. No routine was replaced."
+        case .invalidFormat: String(localized: "Choose a supported portable routine document. Workspace snapshots and older raw routine files cannot be imported here.", bundle: .module)
+        case .unsupportedVersion: String(localized: "This routine document uses an unsupported version. The current routine is unchanged.", bundle: .module)
+        case .unexpectedFields: String(localized: "This routine document contains unsupported fields. No actions or settings were imported.", bundle: .module)
+        case .invalidRoutine: String(localized: "A portable routine needs 1–10 moments with unique identities, valid names and 1–120 planned minutes each. Its text and metadata must fit the supported limits.", bundle: .module)
+        case .invalidDocument: String(localized: "This routine document could not be read. The current routine is unchanged.", bundle: .module)
+        case .documentTooLarge: String(localized: "This routine document exceeds the 1 MiB limit.", bundle: .module)
+        case .invalidLocalVersion: String(localized: "The current routine version cannot be safely updated. No routine was replaced.", bundle: .module)
         }
     }
 }
@@ -141,7 +141,7 @@ public struct PortableRoutineDocument: Codable, Sendable, Equatable {
         guard localNumber >= 0, localNumber < Int.max,
               current == nil || localNumber >= 1 else { throw PortableRoutineDocumentError.invalidLocalVersion }
         return RoutineVersion(number: localNumber + 1, createdAt: date,
-            sourceLabel: sourceIsSynthetic ? "Demo fixture — imported synthetic plan" : "Imported routine — review before approval",
+            sourceLabel: sourceIsSynthetic ? "Demo fixture — imported synthetic plan" : String(localized: "Imported routine — review before approval", bundle: .module),
             steps: steps.map {
                 RoutineStep(id: $0.id, title: $0.title, detail: $0.detail ?? "", kind: $0.kind,
                     durationMinutes: $0.durationMinutes, isRequired: $0.isRequired, automation: nil)

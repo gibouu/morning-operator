@@ -4,10 +4,10 @@ public enum QuickCaptureKind: String, Codable, Sendable, CaseIterable {
     case dream, thought, reminder, calendarIdea
     public var displayName: String {
         switch self {
-        case .dream: "Dream"
-        case .thought: "Thought"
-        case .reminder: "Reminder"
-        case .calendarIdea: "Calendar idea"
+        case .dream: String(localized: "Dream", bundle: .module)
+        case .thought: String(localized: "Thought", bundle: .module)
+        case .reminder: String(localized: "Reminder", bundle: .module)
+        case .calendarIdea: String(localized: "Calendar idea", bundle: .module)
         }
     }
 }
@@ -18,9 +18,9 @@ public enum QuickCaptureError: Error, LocalizedError, Sendable, Equatable {
     case emptyText, invalidTimeZone, invalidDate
     public var errorDescription: String? {
         switch self {
-        case .emptyText: "Add a few words before saving this capture."
-        case .invalidTimeZone: "Choose a valid time zone for this request."
-        case .invalidDate: "The requested date could not be understood."
+        case .emptyText: String(localized: "Add a few words before saving this capture.", bundle: .module)
+        case .invalidTimeZone: String(localized: "Choose a valid time zone for this request.", bundle: .module)
+        case .invalidDate: String(localized: "The requested date could not be understood.", bundle: .module)
         }
     }
 }

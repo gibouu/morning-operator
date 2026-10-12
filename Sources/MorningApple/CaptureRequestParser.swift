@@ -49,10 +49,10 @@ public enum CaptureRequestParser {
             else { return unresolved(original, classification: classification) }
             proposed = calendar.date(bySettingHour: morningHour, minute: 0, second: 0, of: tomorrow,
                 matchingPolicy: .nextTime, repeatedTimePolicy: .first, direction: .forward)
-            explanation = "Suggested \(String(format: "%02d:00", morningHour)) on the next calendar day in \(calendar.timeZone.identifier). Review the time before saving."
+            explanation = String(localized: "Suggested \(String(format: "%02d:00", morningHour)) on the next calendar day in \(calendar.timeZone.identifier). Review the time before saving.", bundle: .module)
         case .relative(let seconds):
             proposed = now.addingTimeInterval(seconds)
-            explanation = "Calculated from capture time using \(Int(seconds / 60)) elapsed minutes. Review the date and time before saving."
+            explanation = String(localized: "Calculated from capture time using \(Int(seconds / 60)) elapsed minutes. Review the date and time before saving.", bundle: .module)
         }
         guard let proposed, proposed.timeIntervalSinceReferenceDate.isFinite else {
             return unresolved(original, classification: classification)
@@ -128,7 +128,7 @@ public enum CaptureRequestParser {
     private static func unresolved(_ original: String, classification: Classification) -> ParsedCaptureRequest {
         ParsedCaptureRequest(originalText: original, content: classification.content,
             destination: classification.destination, suggestedDate: nil, matchedDatePhrase: nil,
-            dateExplanation: "No single supported date was resolved. Choose a date and time, or save a reminder without a date.",
+            dateExplanation: String(localized: "No single supported date was resolved. Choose a date and time, or save a reminder without a date.", bundle: .module),
             needsDateReview: true)
     }
 }

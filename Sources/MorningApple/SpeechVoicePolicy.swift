@@ -5,9 +5,9 @@ public enum SpeechVoiceQuality: Int, Sendable, Equatable {
 
     public var displayName: String {
         switch self {
-        case .standard: "Standard"
-        case .enhanced: "Enhanced"
-        case .premium: "Premium"
+        case .standard: String(localized: "Standard", bundle: .module)
+        case .enhanced: String(localized: "Enhanced", bundle: .module)
+        case .premium: String(localized: "Premium", bundle: .module)
         }
     }
 }

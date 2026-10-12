@@ -19,9 +19,9 @@ public enum AppTransitionError: LocalizedError, Sendable, Equatable {
     case invalidDate, invalidTimeZone, conflictingEventID
     public var errorDescription: String? {
         switch self {
-        case .invalidDate: "The app transition has an invalid timestamp."
-        case .invalidTimeZone: "The app transition has an invalid time zone."
-        case .conflictingEventID: "That event identifier already belongs to a different app transition."
+        case .invalidDate: String(localized: "The app transition has an invalid timestamp.", bundle: .module)
+        case .invalidTimeZone: String(localized: "The app transition has an invalid time zone.", bundle: .module)
+        case .conflictingEventID: String(localized: "That event identifier already belongs to a different app transition.", bundle: .module)
         }
     }
 }

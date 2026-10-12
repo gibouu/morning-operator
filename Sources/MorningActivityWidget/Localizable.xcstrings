@@ -1,0 +1,188 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%lld of %lld moments passed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld of %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment passed"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments passed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sur %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment passé"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments passés"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Last update": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernière mise à jour"
+          }
+        }
+      }
+    },
+    "Last update %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernière mise à jour %@"
+          }
+        }
+      }
+    },
+    "MORE": {
+      "localizations": {},
+      "shouldTranslate": false
+    },
+    "MORE. %@. %@. %@. %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MORE. %1$@. %2$@. %3$@. %4$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE. %1$@. %2$@. %3$@. %4$@."
+          }
+        }
+      }
+    },
+    "MORE. Update needed. Last saved progress: %@. %@. Open MORE to update.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "MORE. Update needed. Last saved progress: %1$@. %2$@. Open MORE to update."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE. Mise à jour nécessaire. Dernière progression enregistrée : %1$@. %2$@. Ouvrez MORE pour mettre à jour."
+          }
+        }
+      }
+    },
+    "Open MORE": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir MORE"
+          }
+        }
+      }
+    },
+    "Open MORE to update.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez MORE pour mettre à jour."
+          }
+        }
+      }
+    },
+    "Opens MORE's Morning screen.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre l’écran Matinée de MORE."
+          }
+        }
+      }
+    },
+    "Update needed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mise à jour nécessaire"
+          }
+        }
+      }
+    },
+    "Update needed. Open MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mise à jour nécessaire. Ouvrez MORE."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

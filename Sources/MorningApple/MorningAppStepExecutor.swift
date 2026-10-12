@@ -48,7 +48,7 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
         if pinnedExecutionID != context.executionID {
             pinnedBriefing = nil; pinnedExecutionID = nil
         }
-        guard spokenEnabled else { return .needsUser("Read at your pace, then tap Next.") }
+        guard spokenEnabled else { return .needsUser(String(localized: "Read at your pace, then tap Next.", bundle: .module)) }
         switch step.automation {
         case .spokenNote:
             try await speak("\(step.title). \(step.detail)")
@@ -57,7 +57,7 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
             // Never turn deleted or changed evidence into an ordinary static note.
             guard step.observationReference != nil, let text = resolveObservation(step),
                   !text.isEmpty, text.utf8.elementsEqual(step.detail.utf8) else {
-                return .unavailable("This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.")
+                return .unavailable(String(localized: "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.", bundle: .module))
             }
             try checkAttempt(token)
             try await speak(text)
@@ -68,10 +68,10 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
                 try checkAttempt(token)
                 guard configurationID() == configuration else { throw CancellationError() }
                 guard let document, document.isCurrent(at: now(), timeZoneIdentifier: timeZone()) else {
-                    return .unavailable("Your day isn't ready. Check Your day in Settings, or tap Next to continue.")
+                    return .unavailable(String(localized: "Your day isn't ready. Check Your day in Settings, or tap Next to continue.", bundle: .module))
                 }
                 if step.automation == .todayCalendar && document.calendar.status != .fresh {
-                    return .unavailable("Your selected calendars aren't ready. Check Your day in Settings, or tap Next.")
+                    return .unavailable(String(localized: "Your selected calendars aren't ready. Check Your day in Settings, or tap Next.", bundle: .module))
                 }
                 pinnedBriefing = document
                 pinnedExecutionID = context.executionID
@@ -79,20 +79,20 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
             }
             guard let document = pinnedBriefing else { throw CancellationError() }
             guard document.isCurrent(at: now(), timeZoneIdentifier: timeZone()) else {
-                return .unavailable("This recap needs an update. Open this moment to prepare it again, or tap Next.")
+                return .unavailable(String(localized: "This recap needs an update. Open this moment to prepare it again, or tap Next.", bundle: .module))
             }
             guard pinnedConfigurationID == configurationID(), permitsPlayback(document) else {
-                return .unavailable("Your sources have changed. Update this recap before playing it again.")
+                return .unavailable(String(localized: "Your sources have changed. Update this recap before playing it again.", bundle: .module))
             }
             if step.automation == .todayCalendar && document.calendar.status != .fresh {
-                return .unavailable("Your selected calendars aren't ready. Check Your day in Settings, or tap Next.")
+                return .unavailable(String(localized: "Your selected calendars aren't ready. Check Your day in Settings, or tap Next.", bundle: .module))
             }
             let text = Self.text(for: step.automation, in: document)
-            guard !text.isEmpty else { return .unavailable("There's no current briefing to read yet.") }
+            guard !text.isEmpty else { return .unavailable(String(localized: "There's no current briefing to read yet.", bundle: .module)) }
             try checkAttempt(token)
             try await speak(text)
         case nil:
-            return .needsUser("Enjoy this moment. Tap Next when you're ready.")
+            return .needsUser(String(localized: "Enjoy this moment. Tap Next when you're ready.", bundle: .module))
         }
         try checkAttempt(token)
         return .completed

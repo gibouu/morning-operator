@@ -1,0 +1,114 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCalendarsFullAccessUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE reads your schedule for spoken briefings and saves calendar events only when you confirm them."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE lit votre agenda pour les récaps lus à voix haute et n’enregistre des événements que lorsque vous les confirmez."
+          }
+        }
+      }
+    },
+    "NSCalendarsWriteOnlyAccessUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE adds the calendar event you review and choose to save."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE ajoute l’événement que vous avez relu et choisi d’enregistrer."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE listens during the voice turns you start on this device."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE écoute uniquement pendant les échanges vocaux que vous lancez sur cet appareil."
+          }
+        }
+      }
+    },
+    "NSRemindersFullAccessUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE saves the reminders you confirm and can read reminders for your morning briefing."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE enregistre les rappels que vous confirmez et peut lire vos rappels pour le récap du matin."
+          }
+        }
+      }
+    },
+    "NSScreenCaptureUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you start a recording, MORE captures the screen content you explicitly share to help understand your morning routine."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quand vous lancez un enregistrement, MORE capture le contenu de l’écran que vous partagez explicitement pour mieux comprendre votre routine du matin."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE transcribes your requested voice commands and drafts."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE transcrit les commandes vocales et les notes que vous dictez."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

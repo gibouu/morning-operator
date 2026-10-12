@@ -102,7 +102,7 @@ struct WeeklyReviewView: View {
                     Image(systemName: showingDays ? "chevron.up" : "chevron.down").font(.caption2.weight(.semibold))
                 }.frame(maxWidth: .infinity, minHeight: 44)
             }
-            .accessibilityLabel("\(periodTitle), \(showingDays ? "hide" : "show") days")
+            .accessibilityLabel(showingDays ? "\(periodTitle), hide days" : "\(periodTitle), show days")
             .accessibilityIdentifier("review.period")
             Button { changeWeek(by: 1) } label: {
                 Image(systemName: "chevron.right").frame(width: 44, height: 44)
@@ -133,7 +133,7 @@ struct WeeklyReviewView: View {
                 Text(MorningStyle.duration(average))
                     .font(.system(size: 44, weight: .regular, design: .serif))
                     .accessibilityIdentifier("review.average")
-                Text("Across \(week.timedRunCount) timed \(week.timedRunCount == 1 ? "run" : "runs")")
+                Text("Across \(week.timedRunCount) timed runs")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Text("Time in your routine, excluding pauses. Other app use isn't measured here.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -144,7 +144,7 @@ struct WeeklyReviewView: View {
                      ? (hasObservationsInPeriod
                         ? "Explore the screens you saved below. Routine time begins with a completed run."
                         : "Finish a morning to begin your history. Days without a saved run stay empty.")
-                     : "\(week.runCount) saved \(week.runCount == 1 ? "run has" : "runs have") no complete timing. They stay out of the average.")
+                     : "\(week.runCount) saved runs have no complete timing. They stay out of the average.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             if week.runCount > week.timedRunCount, week.timedRunCount > 0 {
@@ -198,15 +198,15 @@ struct WeeklyReviewView: View {
 
     private func daySummaryText(_ day: MorningDaySummary) -> String {
         let observations = store.observationArchive.entries.filter { $0.observedDate?.dayKey == day.dayKey }.count
-        let observationSummary = "\(observations) \(observations == 1 ? "observation" : "observations")"
+        let observationSummary = String(localized: "\(observations) observations")
         guard day.runCount > 0 else {
             if observations > 0 { return observationSummary }
-            return day.hasEvidence ? "App observations" : "Nothing saved"
+            return day.hasEvidence ? String(localized: "App observations") : String(localized: "Nothing saved")
         }
-        if observations > 0 { return "\(day.runCount) \(day.runCount == 1 ? "run" : "runs") · \(observationSummary)" }
+        if observations > 0 { return String(localized: "\(day.runCount) runs · \(observations) observations") }
         let time = day.timedRunCount == day.runCount
-            ? MorningStyle.duration(day.totalActiveDurationSeconds) : "incomplete timing"
-        return "\(day.runCount) \(day.runCount == 1 ? "run" : "runs") · \(time)"
+            ? MorningStyle.duration(day.totalActiveDurationSeconds) : String(localized: "incomplete timing")
+        return String(localized: "\(day.runCount) runs · \(time)")
     }
 
     private var observationArchiveLinks: some View {
@@ -216,15 +216,15 @@ struct WeeklyReviewView: View {
                 NavigationLink {
                     ObservationHistoryView(store: store, onlyUndated: true, onLearn: onLearn)
                 } label: {
-                    actionRow("Date needed", detail: "\(undatedCount) \(undatedCount == 1 ? "observation needs" : "observations need") an observed day", symbol: "calendar.badge.questionmark")
+                    actionRow(String(localized: "Date needed"), detail: String(localized: "\(undatedCount) observations need an observed day"), symbol: "calendar.badge.questionmark")
                 }.accessibilityIdentifier("review.undatedObservations")
                 Divider()
             }
             NavigationLink {
                 ObservationHistoryView(store: store, onLearn: onLearn)
             } label: {
-                actionRow("Saved observations", detail: store.observationArchive.entries.isEmpty
-                          ? "Original evidence and your corrections" : "\(store.observationArchive.entries.count) saved · separate from routine runs",
+                actionRow(String(localized: "Saved observations"), detail: store.observationArchive.entries.isEmpty
+                          ? String(localized: "Original evidence and your corrections") : String(localized: "\(store.observationArchive.entries.count) saved · separate from routine runs"),
                           symbol: "doc.text.image")
             }.accessibilityIdentifier("review.observations")
         }.buttonStyle(.plain)
@@ -233,36 +233,36 @@ struct WeeklyReviewView: View {
     private var reviewActions: some View {
         VStack(spacing: 0) {
             Button { showingRoutineEditor = true } label: {
-                actionRow("Your routine", detail: routineDetail, symbol: "list.bullet")
+                actionRow(String(localized: "Your routine"), detail: routineDetail, symbol: "list.bullet")
             }.accessibilityIdentifier("review.routine")
             Divider()
             Button(action: onLearn) {
-                actionRow(store.hasImportedObservation ? "Review your observation" : "Learn from a morning",
-                          detail: store.hasPendingRecording ? "A saved recording needs attention" : "Record, describe or refine", symbol: "sparkles")
+                actionRow(store.hasImportedObservation ? String(localized: "Review your observation") : String(localized: "Learn from a morning"),
+                          detail: store.hasPendingRecording ? String(localized: "A saved recording needs attention") : String(localized: "Record, describe or refine"), symbol: "sparkles")
             }.accessibilityIdentifier("review.learn")
             Divider()
             NavigationLink {
                 CapturesView(store: store).navigationTitle("Saved thoughts").background(MorningStyle.background)
             } label: {
-                actionRow("Saved thoughts", detail: store.captures.isEmpty ? "A place for what comes to mind" : "\(store.captures.count) saved", symbol: "text.bubble")
+                actionRow(String(localized: "Saved thoughts"), detail: store.captures.isEmpty ? String(localized: "A place for what comes to mind") : "\(store.captures.count) saved", symbol: "text.bubble")
             }.accessibilityIdentifier("review.thoughts")
             Divider()
             NavigationLink {
                 ScrollView { AppActivityView().padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity) }
                     .background(MorningStyle.background).navigationTitle("App activity")
             } label: {
-                actionRow("App activity", detail: "Today's connected app entries", symbol: "arrow.triangle.2.circlepath")
+                actionRow(String(localized: "App activity"), detail: String(localized: "Today's connected app entries"), symbol: "arrow.triangle.2.circlepath")
             }.accessibilityIdentifier("review.appActivity")
             Divider()
             Button(action: onSettings) {
-                actionRow("Settings & connections", detail: "Voice, calendar and preferences", symbol: "slider.horizontal.3")
+                actionRow(String(localized: "Settings & connections"), detail: String(localized: "Voice, calendar and preferences"), symbol: "slider.horizontal.3")
             }.accessibilityIdentifier("navigation.setup")
         }.buttonStyle(.plain)
     }
 
     private var routineDetail: String {
-        guard let routine = store.routine else { return "Build a routine that feels like you" }
-        return "\(routine.steps.count) moments · \(routine.isApproved ? "approved" : "ready for your review")"
+        guard let routine = store.routine else { return String(localized: "Build a routine that feels like you") }
+        return routine.isApproved ? String(localized: "\(routine.steps.count) moments · approved") : String(localized: "\(routine.steps.count) moments · ready for your review")
     }
 
     private func actionRow(_ title: String, detail: String, symbol: String) -> some View {
@@ -420,7 +420,7 @@ private struct RoutineReviewEditor: View {
                     store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing)
                 }, onDelete: { exclude in
                     store.removeStep(step, excludeFromSuggestions: exclude)
-                }, failureMessage: { store.notice ?? "Your change couldn't be saved. Try again." })
+                }, failureMessage: { store.notice ?? String(localized: "Your change couldn't be saved. Try again.") })
             }
             .sheet(item: $exportSnapshot) { routine in RoutineExportView(routine: routine) }
             .sheet(item: $importPreview) { preview in
@@ -482,7 +482,7 @@ private struct RoutineReviewEditor: View {
             } catch {
                 guard !Task.isCancelled, importAttempt == attempt, store.dataGeneration == generation, !store.privacyBlocksWork else { return }
                 importLoading = false
-                importError = "This file couldn't be opened: \(error.localizedDescription) Your current routine is unchanged."
+                importError = String(localized: "This file couldn't be opened: \(error.localizedDescription) Your current routine is unchanged.")
             }
             importTask = nil
         }
@@ -515,7 +515,7 @@ private struct RoutineReviewEditor: View {
                 .background(MorningStyle.color(for: step.kind), in: RoundedRectangle(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 4) {
                 Text(step.title).font(.subheadline.weight(.medium))
-                Text("\(step.durationMinutes) min planned · \(step.automation == nil ? "Your own pace" : "Spoken guidance")")
+                Text(step.automation == nil ? "\(step.durationMinutes) min planned · Your own pace" : "\(step.durationMinutes) min planned · Spoken guidance")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
@@ -640,7 +640,7 @@ private struct ReviewDayDetail: View {
                         }.padding(.vertical, 4)
                     }
                 } header: {
-                    Text("Routine run \(index + 1) · \(run.outcome == .completed ? "completed" : "ended early")")
+                    Text(run.outcome == .completed ? "Routine run \(index + 1) · completed" : "Routine run \(index + 1) · ended early")
                 } footer: {
                     Text("Saved routine version \(run.routineVersionNumber). Active time excludes pauses and doesn't measure activity in other apps.")
                 }

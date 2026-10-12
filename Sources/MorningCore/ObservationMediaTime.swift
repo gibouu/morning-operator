@@ -2,7 +2,7 @@ import Foundation
 
 public enum ObservationMediaTimeError: Error, LocalizedError, Sendable, Equatable {
     case invalidTime
-    public var errorDescription: String? { "The original media timestamp is invalid or unsupported." }
+    public var errorDescription: String? { String(localized: "The original media timestamp is invalid or unsupported.", bundle: .module) }
 }
 
 /// The original finite, nonnegative CMTime fields returned for a decoded image. Retaining

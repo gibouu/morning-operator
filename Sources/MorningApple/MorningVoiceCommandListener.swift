@@ -18,19 +18,19 @@ public enum MorningVoiceListeningError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .alreadyListening: "Finish or cancel the current listening turn first."
-        case .microphoneDenied: "Microphone access is off. Use the routine buttons, or enable access in Settings."
-        case .speechDenied: "Speech recognition is unavailable or not allowed. You can still use the routine buttons."
-        case .onDeviceUnavailable: "On-device recognition is not available for this language. Use the routine buttons; audio will not be sent to a server."
-        case .unavailable: "Voice commands are not available here right now. Use the routine buttons."
-        case .unrecognized: "That was not one clear command. Try next, pause, resume, skip, repeat or stop."
-        case .timedOut: "No final command was received. Nothing was changed. Try again or use the routine buttons."
-        case .audio(let reason): "Listening could not finish safely: \(reason)"
-        case .captureMicrophoneDenied: "Microphone access is off. Type your thought, or enable access in Settings."
-        case .captureSpeechDenied: "Speech recognition is unavailable or not allowed. You can still type your thought."
-        case .captureOnDeviceUnavailable: "On-device dictation is not available for this language. Type your thought; audio will not be sent to a server."
-        case .captureUnavailable: "Spoken capture is not available here right now. You can still type your thought."
-        case .captureTimedOut: "No final capture was received. Nothing was saved. Try again or type your thought."
+        case .alreadyListening: String(localized: "Finish or cancel the current listening turn first.", bundle: .module)
+        case .microphoneDenied: String(localized: "Microphone access is off. Use the routine buttons, or enable access in Settings.", bundle: .module)
+        case .speechDenied: String(localized: "Speech recognition is unavailable or not allowed. You can still use the routine buttons.", bundle: .module)
+        case .onDeviceUnavailable: String(localized: "On-device recognition is not available for this language. Use the routine buttons; audio will not be sent to a server.", bundle: .module)
+        case .unavailable: String(localized: "Voice commands are not available here right now. Use the routine buttons.", bundle: .module)
+        case .unrecognized: String(localized: "That was not one clear command. Try next, pause, resume, skip, repeat or stop.", bundle: .module)
+        case .timedOut: String(localized: "No final command was received. Nothing was changed. Try again or use the routine buttons.", bundle: .module)
+        case .audio(let reason): String(localized: "Listening could not finish safely: \(reason)", bundle: .module)
+        case .captureMicrophoneDenied: String(localized: "Microphone access is off. Type your thought, or enable access in Settings.", bundle: .module)
+        case .captureSpeechDenied: String(localized: "Speech recognition is unavailable or not allowed. You can still type your thought.", bundle: .module)
+        case .captureOnDeviceUnavailable: String(localized: "On-device dictation is not available for this language. Type your thought; audio will not be sent to a server.", bundle: .module)
+        case .captureUnavailable: String(localized: "Spoken capture is not available here right now. You can still type your thought.", bundle: .module)
+        case .captureTimedOut: String(localized: "No final capture was received. Nothing was saved. Try again or type your thought.", bundle: .module)
         }
     }
 }
@@ -54,7 +54,7 @@ public final class MorningVoiceCommandListener {
 
     public private(set) var state: MorningVoiceListeningState = .idle
     public private(set) var transcript = ""
-    public private(set) var message = "Tap to say one command."
+    public private(set) var message = String(localized: "Tap to say one command.", bundle: .module)
     public private(set) var inputRouteName: String?
     /// Playback must remain blocked until microphone ownership has been released.
     public private(set) var needsAudioRelease = false
@@ -153,7 +153,7 @@ public final class MorningVoiceCommandListener {
     private func performTurn(purpose: TurnPurpose, language: MorningVoiceCommandLanguage) async throws -> TurnResult {
         guard !isBusy else { throw MorningVoiceListeningError.alreadyListening }
         guard !needsAudioRelease else {
-            throw MorningVoiceListeningError.audio("Microphone release is still unconfirmed. Retry stopping listening before starting another turn.")
+            throw MorningVoiceListeningError.audio(String(localized: "Microphone release is still unconfirmed. Retry stopping listening before starting another turn.", bundle: .module))
         }
         #if os(iOS)
         guard awaitingResultTurnID == nil else { throw MorningVoiceListeningError.alreadyListening }
@@ -173,12 +173,12 @@ public final class MorningVoiceCommandListener {
         }
         cancelledTurnID = nil
         transcript = ""; inputRouteName = nil
-        state = .requestingPermission; message = "Checking microphone and speech access…"
+        state = .requestingPermission; message = String(localized: "Checking microphone and speech access…", bundle: .module)
         return try await withTaskCancellationHandler {
             do {
                 try await requestPermissionsAndRecognizer(language: language, id: id)
                 try checkCurrent(id)
-                state = .preparing; message = "Preparing the microphone…"
+                state = .preparing; message = String(localized: "Preparing the microphone…", bundle: .module)
                 needsAudioRelease = true
                 let prepared = try await audioSession.prepare(for: id).value
                 try checkCurrent(id)
@@ -226,7 +226,7 @@ public final class MorningVoiceCommandListener {
         captureDeadline?.cancel(); captureDeadline = nil
         stopAudioInput()
         let isCapture = purpose?.isCapture == true
-        state = .finishing; message = isCapture ? "Finishing your capture…" : "Understanding your command…"
+        state = .finishing; message = isCapture ? String(localized: "Finishing your capture…", bundle: .module) : String(localized: "Understanding your command…", bundle: .module)
         recognitionTask?.finish()
         finalDeadline = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(3)) } catch { return }
@@ -251,7 +251,7 @@ public final class MorningVoiceCommandListener {
         } else if needsAudioRelease, state != .finishing {
             // A previous release failure remains a real ownership problem. Retrying
             // cleanup never activates the microphone or starts a recognition turn.
-            state = .finishing; message = "Releasing the microphone…"
+            state = .finishing; message = String(localized: "Releasing the microphone…", bundle: .module)
             let retryID = UUID()
             shutdownTaskID = retryID
             let retry = Task { @MainActor [self] in
@@ -259,7 +259,7 @@ public final class MorningVoiceCommandListener {
                 do {
                     try await audioSession.cancelAndWait()
                     needsAudioRelease = false
-                    state = .idle; message = "Microphone released."
+                    state = .idle; message = String(localized: "Microphone released.", bundle: .module)
                 } catch {
                     state = .failed
                     message = MorningVoiceListeningError.audio(error.localizedDescription).localizedDescription
@@ -339,7 +339,7 @@ public final class MorningVoiceCommandListener {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.channelCount > 0, format.sampleRate > 0 else {
-            throw MorningVoiceListeningError.audio("No microphone input is available.")
+            throw MorningVoiceListeningError.audio(String(localized: "No microphone input is available.", bundle: .module))
         }
         input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in sink.append(buffer) }
         hasTap = true
@@ -349,7 +349,7 @@ public final class MorningVoiceCommandListener {
         inputRouteIDs = route.inputs.map(\.uid)
         inputRouteName = route.inputs.map(\.portName).joined(separator: ", ")
         state = .listening
-        message = isCapture ? "Listening to your thought… Tap Done when you finish." : "Listening for one command…"
+        message = isCapture ? String(localized: "Listening to your thought… Tap Done when you finish.", bundle: .module) : String(localized: "Listening for one command…", bundle: .module)
         captureDeadline = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(isCapture ? 30 : 8)) } catch { return }
             guard let self, self.activeTurnID == id else { return }
@@ -429,10 +429,10 @@ public final class MorningVoiceCommandListener {
             case .success(.command(let command)):
                 state = .idle; message = "Heard: \(command.transcript)"
             case .success(.capture):
-                state = .idle; message = "Your words are ready to review. Nothing has been saved."
+                state = .idle; message = String(localized: "Your words are ready to review. Nothing has been saved.", bundle: .module)
             case .failure(let error):
                 if completedPurpose?.isCapture == true || error is CancellationError { transcript = "" }
-                if error is CancellationError { state = .idle; message = "Listening stopped." }
+                if error is CancellationError { state = .idle; message = String(localized: "Listening stopped.", bundle: .module) }
                 else {
                     switch error as? MorningVoiceListeningError {
                     case .microphoneDenied, .speechDenied, .onDeviceUnavailable, .unavailable,
@@ -474,7 +474,7 @@ public final class MorningVoiceCommandListener {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: [])
         if #available(iOS 27.0, *) {
-            guard try await session.activate(options: []) else { throw MorningVoiceListeningError.audio("The microphone session did not activate.") }
+            guard try await session.activate(options: []) else { throw MorningVoiceListeningError.audio(String(localized: "The microphone session did not activate.", bundle: .module)) }
         } else { try session.setActive(true) }
     }
 
@@ -482,7 +482,7 @@ public final class MorningVoiceCommandListener {
         let session = AVAudioSession.sharedInstance()
         if #available(iOS 27.0, *) {
             guard try await session.deactivate(options: .notifyOthersOnDeactivation) else {
-                throw MorningVoiceListeningError.audio("Microphone audio release was not confirmed.")
+                throw MorningVoiceListeningError.audio(String(localized: "Microphone audio release was not confirmed.", bundle: .module))
             }
         } else { try session.setActive(false, options: .notifyOthersOnDeactivation) }
     }

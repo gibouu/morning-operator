@@ -182,7 +182,7 @@ struct MorningBriefingView: View {
             if store.routine != nil {
                 let exists = store.routine?.steps.contains { $0.automation == .morningBriefing } == true
                 Button(exists ? "Already in your morning" : "Add to my morning") {
-                    savedMessage = store.addBriefingToRoutine() ? "Added as a draft. Review and approve your morning when you're ready." : store.notice
+                    savedMessage = store.addBriefingToRoutine() ? String(localized: "Added as a draft. Review and approve your morning when you're ready.") : store.notice
                 }.disabled(exists || store.sessionActive || !controller.hasConfiguredSources)
                     .accessibilityIdentifier("briefing.addToRoutine")
             } else {
@@ -248,9 +248,9 @@ struct MorningBriefingDocumentView: View {
             if !document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier) {
                 Text("This recap needs an update before playback.").font(.caption).foregroundStyle(.secondary)
             }
-            if document.calendar.status != .notConfigured { source("Calendar", section: document.calendar) }
+            if document.calendar.status != .notConfigured { source(String(localized: "Calendar"), section: document.calendar, isCalendar: true) }
             if operation != .todayCalendar, document.weather.status != .notConfigured {
-                source("Weather", section: document.weather)
+                source(String(localized: "Weather"), section: document.weather, isCalendar: false)
                 if let attribution = document.weatherAttribution {
                     VStack(alignment: .leading, spacing: 6) {
                         if synthetic {
@@ -273,12 +273,12 @@ struct MorningBriefingDocumentView: View {
         }
     }
 
-    private func source(_ name: String, section: MorningBriefingSection) -> some View {
+    private func source(_ name: String, section: MorningBriefingSection, isCalendar: Bool) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("\(name) · \(section.statusText)").font(.caption)
             if !section.sourceLabels.isEmpty { Text(section.sourceLabels.joined(separator: " · ")).font(.caption2) }
             if let retrievedAt = section.retrievedAt {
-                Text("\(name == "Calendar" ? "Local read" : "Retrieved") at \(retrievedAt.formatted(date: .omitted, time: .standard))").font(.caption2)
+                Text(isCalendar ? "Local read at \(retrievedAt.formatted(date: .omitted, time: .standard))" : "Retrieved at \(retrievedAt.formatted(date: .omitted, time: .standard))").font(.caption2)
             }
             if let observedAt = section.observationAt {
                 Text("Conditions at \(observedAt.formatted(date: .omitted, time: .standard))").font(.caption2)

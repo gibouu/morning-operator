@@ -66,7 +66,7 @@ public enum ScreenRecordingDuration: Int, CaseIterable, Identifiable, Sendable, 
     case thirtyMinutes = 1_800
 
     public var id: Int { rawValue }
-    public var displayName: String { "\(rawValue / 60) minutes" }
+    public var displayName: String { String(localized: "\(rawValue / 60) minutes", bundle: .module) }
 }
 
 /// The writer's deadline is a waiting state, not a terminal error. This is the
@@ -174,7 +174,7 @@ public final class ScreenRecordingService {
     // has taken ownership; its cleanup must never deactivate the new request's picker.
     private static var pickerOwnerID: UUID?
     public private(set) var state: ScreenRecordingState = .idle
-    public private(set) var message = "Choose what to share using Apple's screen-recording picker."
+    public private(set) var message = String(localized: "Choose what to share using Apple's screen-recording picker.", bundle: .module)
     public private(set) var elapsedSeconds = 0
     public private(set) var recordedURL: URL?
     public private(set) var recordingInterruption: String?
@@ -234,19 +234,19 @@ public final class ScreenRecordingService {
     public func presentPicker(duration: ScreenRecordingDuration = .tenMinutes) {
         guard !isBusy, state != .ready else { return }
         guard temporaryURL == nil else {
-            message = "Discard the remaining recording before starting another one."
+            message = String(localized: "Discard the remaining recording before starting another one.", bundle: .module)
             return
         }
         if let issue = recordingAdmissionIssue() {
             state = .failed; message = issue; return
         }
         guard isAvailable else {
-            fail("Screen recording isn't available on this device or is restricted by its settings.")
+            fail(String(localized: "Screen recording isn't available on this device or is restricted by its settings.", bundle: .module))
             return
         }
         let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? []
         guard modes.contains("screen-capture") else {
-            fail("This build needs the screen-capture background mode before it can record across apps.")
+            fail(String(localized: "This build needs the screen-capture background mode before it can record across apps.", bundle: .module))
             return
         }
         let token = UUID()
@@ -276,14 +276,14 @@ public final class ScreenRecordingService {
         picker.add(delegate)
         picker.isActive = true
         state = .choosing
-        message = "Confirm screen sharing in the system picker to begin."
+        message = String(localized: "Confirm screen sharing in the system picker to begin.", bundle: .module)
         picker.present()
     }
 
     /// Also retries a stop after a recoverable stop error or timeout.
     public func stopRecording() {
         guard state == .starting || state == .recording || state == .stopping else { return }
-        requestShutdown(reason: "Your recording is ready to review.")
+        requestShutdown(reason: String(localized: "Your recording is ready to review.", bundle: .module))
     }
 
     public func discard() {
@@ -294,7 +294,7 @@ public final class ScreenRecordingService {
             recordingProvenance.clear()
             state = .idle
         } else if isBusy {
-            requestShutdown(reason: "Recording discarded.")
+            requestShutdown(reason: String(localized: "Recording discarded.", bundle: .module))
         } else {
             if removeTemporaryFile() {
                 state = .idle
@@ -328,7 +328,7 @@ public final class ScreenRecordingService {
             recordingProvenance.clear()
             elapsedSeconds = 0
             state = .idle
-            message = "App-owned recordings removed."
+            message = String(localized: "App-owned recordings removed.", bundle: .module)
             isDiscardingForForget = false
         }
         forgetCleanupTask = task
@@ -356,11 +356,11 @@ public final class ScreenRecordingService {
             return
         }
         guard !selection.filter.isMicrophoneEnabled, !selection.filter.isCameraEnabled else {
-            fail("This recording needs a screen-only selection with microphone and camera turned off.")
+            fail(String(localized: "This recording needs a screen-only selection with microphone and camera turned off.", bundle: .module))
             return
         }
         state = .starting
-        message = "Starting your screen recording…"
+        message = String(localized: "Starting your screen recording…", bundle: .module)
         do {
             try FileManager.default.createDirectory(at: ScreenRecordingFiles.directory, withIntermediateDirectories: true)
             let url = ScreenRecordingFiles.directory.appendingPathComponent("morning-\(UUID().uuidString).mp4")
@@ -423,7 +423,7 @@ public final class ScreenRecordingService {
             streamStopped = false
         }
         if finalization.discardRequested || finalization.failureDetail != nil || state == .stopping {
-            requestShutdown(reason: stopReason ?? "Stopping the cancelled recording request…")
+            requestShutdown(reason: stopReason ?? String(localized: "Stopping the cancelled recording request…", bundle: .module))
         } else if state == .starting {
             armDeadline(seconds: 20, token: token, kind: .start)
         }
@@ -435,7 +435,7 @@ public final class ScreenRecordingService {
         releaseStoppedResources()
         recordingProvenance.clear()
         state = .idle
-        message = "Recording wasn't started."
+        message = String(localized: "Recording wasn't started.", bundle: .module)
     }
 
     fileprivate func pickerFailed(_ detail: String, sessionID token: UUID) {
@@ -447,14 +447,14 @@ public final class ScreenRecordingService {
         guard sessionID == token, let output, ObjectIdentifier(output) == outputID,
               reconcileOutputStart() else { return }
         if finalization.discardRequested || finalization.failureDetail != nil || state == .stopping {
-            requestShutdown(reason: stopReason ?? "Stopping the cancelled recording request…")
+            requestShutdown(reason: stopReason ?? String(localized: "Stopping the cancelled recording request…", bundle: .module))
             return
         }
         guard state == .starting else { return }
         deadline?.cancel()
         deadline = nil
         state = .recording
-        message = "Go through your morning. Recording stops after \(selectedDuration.displayName), or you can stop it sooner."
+        message = String(localized: "Go through your morning. Recording stops after \(selectedDuration.displayName), or you can stop it sooner.", bundle: .module)
         let started = ContinuousClock.now
         monitoring = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -462,11 +462,11 @@ public final class ScreenRecordingService {
                 guard let self, self.sessionID == token, self.state == .recording else { return }
                 self.elapsedSeconds = max(0, Int(started.duration(to: ContinuousClock.now).components.seconds))
                 if self.elapsedSeconds >= self.maximumDurationSeconds {
-                    self.requestShutdown(reason: "Stopped at your \(self.maximumDurationSeconds / 60)-minute limit. Your recording is ready to review.")
+                    self.requestShutdown(reason: String(localized: "Stopped at your \(self.maximumDurationSeconds / 60)-minute limit. Your recording is ready to review.", bundle: .module))
                     return
                 }
                 if (self.output?.recordedFileSize ?? 0) >= 256 * 1_024 * 1_024 {
-                    self.requestShutdown(reason: "Stopped at the recording size limit. Your recording is ready to review.")
+                    self.requestShutdown(reason: String(localized: "Stopped at the recording size limit. Your recording is ready to review.", bundle: .module))
                     return
                 }
             }
@@ -477,7 +477,7 @@ public final class ScreenRecordingService {
         guard sessionID == token, let output, ObjectIdentifier(output) == outputID else { return }
         finalization.writerDidFinish(error: error)
         if !streamStopped {
-            requestShutdown(reason: stopReason ?? "Your recording finished and is ready to review.")
+            requestShutdown(reason: stopReason ?? String(localized: "Your recording finished and is ready to review.", bundle: .module))
         }
         finishIfReady()
     }
@@ -495,12 +495,12 @@ public final class ScreenRecordingService {
         if !wasUserStopped {
             // A system interruption does not itself mean the writer's saved portion failed.
             // Keep it if didFinishRecording succeeds; didFail/timeout still discard it.
-            recordingInterruption = "The system interrupted this recording. It may cover only part of your morning."
+            recordingInterruption = String(localized: "The system interrupted this recording. It may cover only part of your morning.", bundle: .module)
         }
         stopReason = wasUserStopped
-            ? "Stopped using the system controls. Your recording is ready to review."
-            : "Recording was interrupted. The saved portion is ready to review. \(detail)"
-        message = "Screen capture has stopped. Finishing the recording…"
+            ? String(localized: "Stopped using the system controls. Your recording is ready to review.", bundle: .module)
+            : String(localized: "Recording was interrupted. The saved portion is ready to review. \(detail)", bundle: .module)
+        message = String(localized: "Screen capture has stopped. Finishing the recording…", bundle: .module)
         armDeadline(seconds: 30, token: token, kind: .finalization)
         finishIfReady()
     }
@@ -523,7 +523,7 @@ public final class ScreenRecordingService {
         reconcileOutputStart()
         state = .stopping
         if startPending && !stream.isCapturing {
-            message = "Waiting for the system recording request to finish. Any late start will be stopped."
+            message = String(localized: "Waiting for the system recording request to finish. Any late start will be stopped.", bundle: .module)
             // Do not fire stop while start is unresolved. The start completion is retained
             // and performs shutdown even if the user closes this cancelled request.
             return
@@ -535,7 +535,7 @@ public final class ScreenRecordingService {
             return
         }
         if streamStopped {
-            message = "Screen capture has stopped. Finishing the recording…"
+            message = String(localized: "Screen capture has stopped. Finishing the recording…", bundle: .module)
             // The previous finalization deadline may have elapsed while start was still
             // pending. A late start completion must establish a fresh bounded writer wait.
             if !startPending && !finalization.writerFinished {
@@ -549,7 +549,7 @@ public final class ScreenRecordingService {
         activeLifetime = self
         stopPending = true
         needsStopRetry = false
-        message = "Stopping and saving your recording…"
+        message = String(localized: "Stopping and saving your recording…", bundle: .module)
         let attempt = UUID()
         stopAttemptID = attempt
         armDeadline(seconds: 30, token: token, kind: .stop)
@@ -566,7 +566,7 @@ public final class ScreenRecordingService {
             streamStopped = true
             stopPending = false
             needsStopRetry = false
-            message = "Screen capture has stopped. Finishing the recording…"
+            message = String(localized: "Screen capture has stopped. Finishing the recording…", bundle: .module)
             armDeadline(seconds: 30, token: token, kind: .finalization)
             finishIfReady()
         } else if stopAttemptID == attempt && !streamStopped {
@@ -575,7 +575,7 @@ public final class ScreenRecordingService {
             deadline?.cancel()
             deadline = nil
             // Keep the stream, output, delegates and active lease. No file is published/deleted.
-            message = "Screen recording may still be active. Retry Stop or use the system screen-recording controls. \(error ?? "")"
+            message = String(localized: "Screen recording may still be active. Retry Stop or use the system screen-recording controls. \(error ?? "")", bundle: .module)
         }
     }
 
@@ -592,14 +592,14 @@ public final class ScreenRecordingService {
         if disposition == .discard {
             if removeTemporaryFile() {
                 state = detail == nil ? .idle : .failed
-                message = detail ?? "Recording discarded."
+                message = detail ?? String(localized: "Recording discarded.", bundle: .module)
             }
             return
         }
         guard let url = temporaryURL else {
             recordingProvenance.clear()
             state = .failed
-            message = "The recording finished without a file to import."
+            message = String(localized: "The recording finished without a file to import.", bundle: .module)
             return
         }
         do {
@@ -607,12 +607,12 @@ public final class ScreenRecordingService {
             guard values.isRegularFile == true, (values.fileSize ?? 0) > 0 else {
                 removeTemporaryFile()
                 state = .failed
-                message = "The recording contains no readable video. Please try a short recording again."
+                message = String(localized: "The recording contains no readable video. Please try a short recording again.", bundle: .module)
                 return
             }
             recordedURL = url
             state = .ready
-            message = finishedMessage ?? "Your recording is ready to review."
+            message = finishedMessage ?? String(localized: "Your recording is ready to review.", bundle: .module)
             if recordingAdmissionIssue() == nil,
                onRecordingFinalized?(url, recordingInterruption) == true {
                 _ = takeRecording()
@@ -643,7 +643,7 @@ public final class ScreenRecordingService {
             guard let self, self.sessionID == token else { return }
             switch kind {
             case .start:
-                self.fail("The system recording request took too long. It is being cancelled; no file will be imported.")
+                self.fail(String(localized: "The system recording request took too long. It is being cancelled; no file will be imported.", bundle: .module))
             case .stop:
                 if !self.startPending && self.stream?.isCapturing == false {
                     self.streamStopped = true
@@ -653,7 +653,7 @@ public final class ScreenRecordingService {
                 } else {
                     self.stopPending = false
                     self.needsStopRetry = true
-                    self.message = "Stop hasn't been confirmed. Retry Stop or stop recording using the system controls."
+                    self.message = String(localized: "Stop hasn't been confirmed. Retry Stop or stop recording using the system controls.", bundle: .module)
                 }
             case .finalization:
                 guard self.streamStopped, !self.startPending else { return }
@@ -662,8 +662,8 @@ public final class ScreenRecordingService {
                 self.finalization.finalizationTimedOut()
                 self.needsStopRetry = true
                 self.message = self.finalization.failureDetail ?? (self.finalization.discardRequested
-                    ? "Screen capture stopped. Waiting for the recording to finish closing before it can be removed. Retry cleanup after it closes."
-                    : "Screen capture stopped. The recording is still closing and is being kept. Wait or retry Stop; it will be available after it finishes closing.")
+                    ? String(localized: "Screen capture stopped. Waiting for the recording to finish closing before it can be removed. Retry cleanup after it closes.", bundle: .module)
+                    : String(localized: "Screen capture stopped. The recording is still closing and is being kept. Wait or retry Stop; it will be available after it finishes closing.", bundle: .module))
             }
         }
     }
@@ -716,7 +716,7 @@ public final class ScreenRecordingService {
         } catch {
             // Keep the URL and provenance: a failed delete must remain retryable.
             state = .failed
-            message = "The app-owned recording couldn't be removed. Retry discarding it. \(error.localizedDescription)"
+            message = String(localized: "The app-owned recording couldn't be removed. Retry discarding it. \(error.localizedDescription)", bundle: .module)
             return false
         }
     }
@@ -728,7 +728,7 @@ public final class ScreenRecordingService {
             let control = try LocalDataControl(directory: LocalDataControl.defaultDirectory).status()
             return control.forgetPending ? RecordingCleanupError.forgettingInProgress.localizedDescription : nil
         } catch {
-            return "Local privacy cleanup needs attention before recording can continue. \(error.localizedDescription)"
+            return String(localized: "Local privacy cleanup needs attention before recording can continue. \(error.localizedDescription)", bundle: .module)
         }
     }
 }

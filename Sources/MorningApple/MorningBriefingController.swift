@@ -38,10 +38,10 @@ public enum MorningBriefingControllerError: Error, LocalizedError, Sendable, Equ
 
     public var errorDescription: String? {
         switch self {
-        case .invalidSettings: "Choose valid calendars and a city for the briefing."
-        case .unreadableSettings: "Saved briefing settings couldn't be read. Reset them to choose sources again."
-        case .staleGeneration: "Local data changed. Reopen briefing settings before continuing."
-        case .timedOut: "The source took too long to respond. Your morning can continue without it."
+        case .invalidSettings: String(localized: "Choose valid calendars and a city for the briefing.", bundle: .module)
+        case .unreadableSettings: String(localized: "Saved briefing settings couldn't be read. Reset them to choose sources again.", bundle: .module)
+        case .staleGeneration: String(localized: "Local data changed. Reopen briefing settings before continuing.", bundle: .module)
+        case .timedOut: String(localized: "The source took too long to respond. Your morning can continue without it.", bundle: .module)
         }
     }
 }
@@ -115,7 +115,7 @@ public final class MorningBriefingController {
                 calendar: CalendarObservationService = .init(), weather: WeatherObservationService = .init(),
                 now: @escaping @Sendable () -> Date = { Date() },
                 timeZone: @escaping @Sendable () -> TimeZone = { .current },
-                localeIdentifier: String = "en_US", policy: MorningBriefingFreshnessPolicy = .standard,
+                localeIdentifier: String = AppLanguage.localeIdentifier, policy: MorningBriefingFreshnessPolicy = .standard,
                 sourceTimeout: Duration = .seconds(10)) {
         self.calendar = calendar; self.weather = weather
         control = LocalDataControl(directory: directory)
@@ -321,7 +321,7 @@ public final class MorningBriefingController {
                 let completedAt = max(instant, now())
                 let document = try compose(calendar: nextCalendar, weather: nextWeather, at: completedAt, zone: zone)
                 calendarInput = nextCalendar; weatherInput = nextWeather; prepared = document
-                if !document.hasUsableFacts { errorMessage = "No current briefing facts are available. Review your sources or try refreshing." }
+                if !document.hasUsableFacts { errorMessage = String(localized: "No current briefing facts are available. Review your sources or try refreshing.", bundle: .module) }
                 return document
             } catch {
                 guard revision == expectedRevision, refreshAttempt == attempt else { return nil }
@@ -389,7 +389,7 @@ public final class MorningBriefingController {
         if let error = error as? MorningBriefingError { return error.localizedDescription }
         if let error = error as? CalendarObservationError { return error.localizedDescription }
         if let error = error as? WeatherObservationError { return error.localizedDescription }
-        return "Briefing data is unavailable. Check your sources and local privacy settings."
+        return String(localized: "Briefing data is unavailable. Check your sources and local privacy settings.", bundle: .module)
     }
 
     private struct PreparationKey: Equatable {

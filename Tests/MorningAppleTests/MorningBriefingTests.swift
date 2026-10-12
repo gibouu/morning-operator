@@ -127,15 +127,25 @@ struct MorningBriefingTests {
         #expect(!document.isCurrent(at: bounds.end, timeZoneIdentifier: "Europe/Paris"))
     }
 
-    @Test func EnglishVariantsWorkAndUnsupportedLocaleOrInvalidPolicyFailExplicitly() throws {
-        for locale in ["en_US", "en_GB", "en_AU"] {
+    @Test func EnglishAndFrenchVariantsWorkAndUnsupportedLocaleOrInvalidPolicyFailExplicitly() throws {
+        for locale in ["en_US", "en_GB", "en_AU", "fr_FR", "fr_CA"] {
             let document = try prepare(calendar: .snapshot(calendar()), locale: locale)
             #expect(document.hasUsableFacts && document.localeIdentifier == locale)
         }
-        #expect(throws: MorningBriefingError.unsupportedLocale) { try prepare(calendar: .snapshot(calendar()), locale: "fr_FR") }
+        #expect(throws: MorningBriefingError.unsupportedLocale) { try prepare(calendar: .snapshot(calendar()), locale: "de_DE") }
         #expect(throws: MorningBriefingError.invalidPolicy) {
             try MorningBriefingComposer.prepare(calendar: .notConfigured, weather: .notConfigured,
                 for: now, at: now, timeZoneIdentifier: "UTC", policy: .init(maximumCalendarEvents: 6))
+        }
+    }
+
+    @Test func frenchLocaleSpeaksFrenchProseWithoutEnglishFragments() throws {
+        let document = try prepare(calendar: .snapshot(calendar()), locale: "fr_FR")
+        #expect(document.spokenText.hasPrefix("Voici votre récap pour "))
+        #expect(document.calendar.statusText == "Lu depuis les calendriers sélectionnés.")
+        #expect(document.weather.statusText == "La météo n’est pas configurée.")
+        for english in ["Here is", "briefing", "Calendar", "Weather", "today"] {
+            #expect(!document.spokenText.contains(english))
         }
     }
 

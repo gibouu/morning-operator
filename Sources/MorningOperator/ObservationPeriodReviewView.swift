@@ -69,10 +69,10 @@ private struct ObservationPeriodReviewView: View {
                 }
                 ForEach(report.partitions) { partition in
                     Section {
-                        Text("\(partition.recognizedDayCount) \(partition.recognizedDayCount == 1 ? "day" : "days") with labeled samples · \(partition.observedDayCount) \(partition.observedDayCount == 1 ? "day" : "days") with observations")
+                        Text("\(partition.recognizedDayCount) days with labeled samples · \(partition.observedDayCount) days with observations")
                             .font(.subheadline)
                             .accessibilityIdentifier("review.recordings.\(partition.id).coverage")
-                        Text("\(partition.unclassifiedDayKeys.count) \(partition.unclassifiedDayKeys.count == 1 ? "observed day has" : "observed days have") no labeled samples. \(partition.missingDayKeys.count) \(partition.missingDayKeys.count == 1 ? "day has" : "days have") no observation.")
+                        Text("\(partition.unclassifiedDayKeys.count) observed days have no labeled samples. \(partition.missingDayKeys.count) days have no observation.")
                             .font(.caption).foregroundStyle(.secondary)
                         if !partition.daysWithUnknownMoments.isEmpty {
                             Text("\(partition.daysWithUnknownMoments.count) observed days also contain unresolved samples.")
@@ -90,7 +90,7 @@ private struct ObservationPeriodReviewView: View {
                                     if context.citations.contains(where: { $0.provenance == .userReviewed }) {
                                         Text("Your label").font(.caption2).foregroundStyle(.secondary)
                                     }
-                                    Text("Seen on \(context.seenDayCount) of \(partition.recognizedDayCount) \(partition.recognizedDayCount == 1 ? "day" : "days") with labeled samples")
+                                    Text("Seen on \(context.seenDayCount) of \(partition.recognizedDayCount) days with labeled samples")
                                         .font(.caption).foregroundStyle(.secondary)
                                 }.padding(.vertical, 4)
                             }.accessibilityIdentifier(contextAccessibilityID(partition.id, context.id))
@@ -150,10 +150,10 @@ private struct ObservationPeriodReviewView: View {
 
     private func originTitle(_ origin: ObservationAcquisitionOrigin) -> String {
         switch origin {
-        case .human: "My mornings"
-        case .synthetic: "Samples & tests"
-        case .automated: "Automated activity"
-        case .unknown: "Origin unsure"
+        case .human: String(localized: "My mornings")
+        case .synthetic: String(localized: "Samples & tests")
+        case .automated: String(localized: "Automated activity")
+        case .unknown: String(localized: "Origin unsure")
         }
     }
 }
@@ -178,7 +178,7 @@ private struct ObservationRecurrenceSources: View {
             if let context {
                 Section {
                     Text(context.context.displayName).font(.system(.title2, design: .serif, weight: .medium))
-                    Text("Seen on \(context.seenDayCount) distinct \(context.seenDayCount == 1 ? "day" : "days"). Open a quote to inspect the original sampled screen.")
+                    Text("Seen on \(context.seenDayCount) distinct days. Open a quote to inspect the original sampled screen.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text(context.citations.contains(where: { $0.provenance == .userReviewed })
                          ? "You supplied this label. It stays separate from model labels and doesn't establish an action you took."

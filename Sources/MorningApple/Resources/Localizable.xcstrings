@@ -1,0 +1,2903 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld frames contain truncated or omitted OCR and cannot support app identification.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg frame contains truncated or omitted OCR and cannot support app identification."
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg frames contain truncated or omitted OCR and cannot support app identification."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg image contient du texte tronqué ou omis et ne permet pas d’identifier l’app."
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg images contiennent du texte tronqué ou omis et ne permettent pas d’identifier l’app."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld requested frames could not be analyzed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld of %#@n@ could not be analyzed."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg requested frame"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg requested frames"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld des %#@n@ n’ont pas pu être analysées."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg image demandée"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg images demandées"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A proposed step could not be tied to the exact supplied evidence. Your current routine is unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une étape proposée n’a pas pu être reliée aux éléments exacts fournis. Votre routine actuelle n’a pas changé."
+          }
+        }
+      }
+    },
+    "A reminder alert needs a due date and time.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une alerte de rappel nécessite une date et une heure d’échéance."
+          }
+        }
+      }
+    },
+    "A selected calendar is no longer available. Review your calendar selection before refreshing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un calendrier sélectionné n’est plus disponible. Vérifiez votre sélection avant d’actualiser."
+          }
+        }
+      }
+    },
+    "A visible-context analysis is already running.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une analyse du contexte visible est déjà en cours."
+          }
+        }
+      }
+    },
+    "Actual presentation time was unavailable; the requested sample time is retained as a fallback.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’heure réelle d’affichage était indisponible ; l’heure d’échantillon demandée est conservée par défaut."
+          }
+        }
+      }
+    },
+    "Add observations or import a readable screen recording before analyzing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez des observations ou importez un enregistrement d’écran lisible avant l’analyse."
+          }
+        }
+      }
+    },
+    "Allow notifications to schedule this invitation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorisez les notifications pour programmer cette invitation."
+          }
+        }
+      }
+    },
+    "An analysis is already running. Wait for it to finish or cancel it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une analyse est déjà en cours. Attendez qu’elle se termine ou annulez-la."
+          }
+        }
+      }
+    },
+    "An observation contains invalid or inconsistent source evidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une observation contient des éléments sources invalides ou incohérents."
+          }
+        }
+      }
+    },
+    "An unexpected item remains in the recording folder. It hasn't been removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un élément inattendu reste dans le dossier d’enregistrement. Il n’a pas été supprimé."
+          }
+        }
+      }
+    },
+    "An unsupported saved interpretation was removed. The original observation is still available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une interprétation enregistrée non étayée a été supprimée. L’observation d’origine est toujours disponible."
+          }
+        }
+      }
+    },
+    "App-owned recordings removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrements de l’app supprimés."
+          }
+        }
+      }
+    },
+    "Apple Foundation Models is available for local visible-context analysis.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Foundation Models est disponible pour l’analyse locale du contexte visible."
+          }
+        }
+      }
+    },
+    "Apple Foundation Models is available. Analysis runs locally on this device.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Foundation Models est disponible. L’analyse s’exécute localement sur cet appareil."
+          }
+        }
+      }
+    },
+    "Apple Intelligence is not enabled on this device.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence n’est pas activé sur cet appareil."
+          }
+        }
+      }
+    },
+    "Apple Maps couldn't search for cities right now. Try again later.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plans d’Apple n’a pas pu rechercher de villes pour le moment. Réessayez plus tard."
+          }
+        }
+      }
+    },
+    "Apple Weather denied access. This build's WeatherKit capability and developer setup need checking.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Météo Apple a refusé l’accès. La capacité WeatherKit de cette version et la configuration développeur doivent être vérifiées."
+          }
+        }
+      }
+    },
+    "Apple Weather is unavailable right now. Your morning can continue without it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Météo Apple est indisponible pour le moment. Votre matinée peut continuer sans elle."
+          }
+        }
+      }
+    },
+    "Apple Weather returned incomplete current conditions. Try refreshing the weather.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Météo Apple a renvoyé des conditions actuelles incomplètes. Essayez d’actualiser la météo."
+          }
+        }
+      }
+    },
+    "Apple Weather's required source information couldn't be loaded. Try refreshing the weather.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les informations de source requises par Météo Apple n’ont pas pu être chargées. Essayez d’actualiser la météo."
+          }
+        }
+      }
+    },
+    "Apple's local model is currently unavailable.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple est actuellement indisponible."
+          }
+        }
+      }
+    },
+    "Apple's local model is not ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple n’est pas prêt."
+          }
+        }
+      }
+    },
+    "Apple's local model is not ready. It may still be downloading.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple n’est pas prêt. Il est peut-être encore en cours de téléchargement."
+          }
+        }
+      }
+    },
+    "Apple's local model is unavailable.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple est indisponible."
+          }
+        }
+      }
+    },
+    "Apple's local model is unavailable. %@ You can still write and edit your routine manually.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple est indisponible. %@ Vous pouvez toujours écrire et modifier votre routine vous-même."
+          }
+        }
+      }
+    },
+    "Assign an observed day to every selected observation first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attribuez d’abord un jour observé à chaque observation sélectionnée."
+          }
+        }
+      }
+    },
+    "Audio output changed. Play the voice again when ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sortie audio a changé. Relancez la voix quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "Audio output changed. Resume when you are ready to listen.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sortie audio a changé. Reprenez quand vous voulez écouter."
+          }
+        }
+      }
+    },
+    "Audio output is unavailable: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sortie audio est indisponible : %@"
+          }
+        }
+      }
+    },
+    "Automatic progression is stopped. Your current step is preserved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La progression automatique est arrêtée. Votre étape actuelle est conservée."
+          }
+        }
+      }
+    },
+    "Briefing data is unavailable. Check your sources and local privacy settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données du récap sont indisponibles. Vérifiez vos sources et vos réglages de confidentialité."
+          }
+        }
+      }
+    },
+    "Calculated from capture time using %lld elapsed minutes. Review the date and time before saving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculé à partir de l’heure de la note, avec %lld minutes écoulées. Vérifiez la date et l’heure avant d’enregistrer."
+          }
+        }
+      }
+    },
+    "Calendar reading is not authorized. You can continue without a calendar snapshot.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture du calendrier n’est pas autorisée. Vous pouvez continuer sans calendrier."
+          }
+        }
+      }
+    },
+    "Calendar source": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source du calendrier"
+          }
+        }
+      }
+    },
+    "Calendar writing is not authorized. Connect Calendar before saving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’écriture dans le calendrier n’est pas autorisée. Connectez Calendrier avant d’enregistrer."
+          }
+        }
+      }
+    },
+    "Checking Apple's local model…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification du modèle local d’Apple…"
+          }
+        }
+      }
+    },
+    "Checking microphone and speech access…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification de l’accès au micro et à la reconnaissance vocale…"
+          }
+        }
+      }
+    },
+    "Choose a local file using the import picker.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fichier local avec le sélecteur d’import."
+          }
+        }
+      }
+    },
+    "Choose a local regular file to identify.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fichier local standard à identifier."
+          }
+        }
+      }
+    },
+    "Choose a recording shorter than %lld minutes for this prototype.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un enregistrement de moins de %lld minutes pour ce prototype."
+          }
+        }
+      }
+    },
+    "Choose a reminder date range of at most 90 days and a result limit from 1 to 200.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une période de rappels de 90 jours au maximum et une limite de 1 à 200 résultats."
+          }
+        }
+      }
+    },
+    "Choose a saved routine file.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fichier de routine enregistré."
+          }
+        }
+      }
+    },
+    "Choose a screenshot, a video, or a UTF-8 text/Markdown file.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une capture d’écran, une vidéo ou un fichier texte/Markdown UTF-8."
+          }
+        }
+      }
+    },
+    "Choose a valid city for the weather.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une ville valide pour la météo."
+          }
+        }
+      }
+    },
+    "Choose a valid observed date and time zone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une date observée et un fuseau horaire valides."
+          }
+        }
+      }
+    },
+    "Choose a valid time zone for this briefing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fuseau horaire valide pour ce récap."
+          }
+        }
+      }
+    },
+    "Choose a valid time zone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fuseau horaire valide."
+          }
+        }
+      }
+    },
+    "Choose at least one calendar before preparing a calendar briefing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez au moins un calendrier avant de préparer un récap d’agenda."
+          }
+        }
+      }
+    },
+    "Choose the observed day before adding this saved text to your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez le jour observé avant d’ajouter ce texte enregistré à votre matinée."
+          }
+        }
+      }
+    },
+    "Choose valid calendars and a city for the briefing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez des calendriers et une ville valides pour le récap."
+          }
+        }
+      }
+    },
+    "Choose valid dates with an event end after its start, lasting at most 31 days.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez des dates valides, avec une fin d’événement après le début et une durée de 31 jours au maximum."
+          }
+        }
+      }
+    },
+    "Choose what to share using Apple's screen-recording picker.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez ce que vous partagez avec le sélecteur d’enregistrement d’écran d’Apple."
+          }
+        }
+      }
+    },
+    "Choose your own observation or a separate synthetic sample.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez votre propre observation ou un exemple synthétique séparé."
+          }
+        }
+      }
+    },
+    "Confirm screen sharing in the system picker to begin.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmez le partage d’écran dans le sélecteur du système pour commencer."
+          }
+        }
+      }
+    },
+    "Conflicting or duplicate proposals were rejected.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les propositions contradictoires ou en double ont été rejetées."
+          }
+        }
+      }
+    },
+    "Context remains unknown.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le contexte reste inconnu."
+          }
+        }
+      }
+    },
+    "Corrected notes cannot retain an interpretation of the original recording.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des notes corrigées ne peuvent pas conserver une interprétation de l’enregistrement d’origine."
+          }
+        }
+      }
+    },
+    "Device language": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue de l’appareil"
+          }
+        }
+      }
+    },
+    "Discard the remaining recording before starting another one.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimez l’enregistrement restant avant d’en commencer un autre."
+          }
+        }
+      }
+    },
+    "Each selected observation needs usable activity evidence. Review its notes or choose another observation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque observation sélectionnée doit contenir des éléments d’activité exploitables. Relisez ses notes ou choisissez une autre observation."
+          }
+        }
+      }
+    },
+    "Enable Apple Intelligence in system settings to use local analysis.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activez Apple Intelligence dans les réglages du système pour utiliser l’analyse locale."
+          }
+        }
+      }
+    },
+    "Enhanced": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Améliorée"
+          }
+        }
+      }
+    },
+    "Enjoy this moment. Tap Next when you're ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profitez de ce moment. Touchez Suivant quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "Enter a city name of up to 200 characters.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez un nom de ville de 200 caractères au maximum."
+          }
+        }
+      }
+    },
+    "Enter a title between 1 and 300 characters.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez un titre de 1 à 300 caractères."
+          }
+        }
+      }
+    },
+    "Evidence:": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source :"
+          }
+        }
+      }
+    },
+    "Excluded by the encoded model-context limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exclu par la limite de contexte du modèle."
+          }
+        }
+      }
+    },
+    "Excluded by the model frame limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exclu par la limite d’images du modèle."
+          }
+        }
+      }
+    },
+    "Excluded by the total text limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exclu par la limite de texte totale."
+          }
+        }
+      }
+    },
+    "File duration and sample times do not establish wall-clock recording start or continuous capture coverage.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La durée du fichier et les heures d’échantillons n’établissent ni l’heure réelle de début de l’enregistrement, ni une capture continue."
+          }
+        }
+      }
+    },
+    "Finish forgetting local data before starting another recording.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez l’oubli des données locales avant de commencer un autre enregistrement."
+          }
+        }
+      }
+    },
+    "Finish or cancel the current listening turn first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez ou annulez d’abord l’écoute en cours."
+          }
+        }
+      }
+    },
+    "Finishing your capture…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalisation de votre note…"
+          }
+        }
+      }
+    },
+    "Go through your morning. Recording stops after %@, or you can stop it sooner.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vivez votre matinée. L’enregistrement s’arrête après %@, ou vous pouvez l’arrêter plus tôt."
+          }
+        }
+      }
+    },
+    "Invitation cleanup is already in progress.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nettoyage de l’invitation est déjà en cours."
+          }
+        }
+      }
+    },
+    "Invitation used. Open Morning to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation utilisée. Ouvrez Matinée pour continuer."
+          }
+        }
+      }
+    },
+    "Keep the notes within 10,000 characters.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limitez les notes à 10 000 caractères."
+          }
+        }
+      }
+    },
+    "Layout metadata for %lld OCR regions was omitted at the line limit; their text was preserved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées de mise en page de %lld zones de texte ont été omises à la limite de lignes ; leur texte a été conservé."
+          }
+        }
+      }
+    },
+    "Layout metadata was unavailable or invalid for %lld OCR regions; their text was preserved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées de mise en page étaient indisponibles ou invalides pour %lld zones de texte ; leur texte a été conservé."
+          }
+        }
+      }
+    },
+    "Listening could not finish safely: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’écoute n’a pas pu se terminer correctement : %@"
+          }
+        }
+      }
+    },
+    "Listening for one command…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À l’écoute d’une commande…"
+          }
+        }
+      }
+    },
+    "Listening stopped.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écoute arrêtée."
+          }
+        }
+      }
+    },
+    "Listening to your thought… Tap Done when you finish.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À l’écoute de votre pensée… Touchez Terminé quand vous avez fini."
+          }
+        }
+      }
+    },
+    "Live Activities are paused while local data is being removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les activités en direct sont suspendues pendant la suppression des données locales."
+          }
+        }
+      }
+    },
+    "Live Activities aren't available on this device.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les activités en direct ne sont pas disponibles sur cet appareil."
+          }
+        }
+      }
+    },
+    "Local data changed. Reopen briefing settings before continuing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données locales ont changé. Rouvrez les réglages du récap avant de continuer."
+          }
+        }
+      }
+    },
+    "Local model generation failed for this batch; context remains unknown.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La génération du modèle local a échoué pour ce lot ; le contexte reste inconnu."
+          }
+        }
+      }
+    },
+    "Local privacy cleanup needs attention before recording can continue. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nettoyage de confidentialité local demande votre attention avant de poursuivre l’enregistrement. %@"
+          }
+        }
+      }
+    },
+    "Microphone access is off. Type your thought, or enable access in Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès au micro est désactivé. Tapez votre pensée, ou activez l’accès dans Réglages."
+          }
+        }
+      }
+    },
+    "Microphone access is off. Use the routine buttons, or enable access in Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès au micro est désactivé. Utilisez les boutons de la routine, ou activez l’accès dans Réglages."
+          }
+        }
+      }
+    },
+    "Microphone audio release was not confirmed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La libération du micro n’a pas été confirmée."
+          }
+        }
+      }
+    },
+    "Microphone release is still unconfirmed. Retry stopping listening before starting another turn.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La libération du micro n’est toujours pas confirmée. Réessayez d’arrêter l’écoute avant d’en commencer une autre."
+          }
+        }
+      }
+    },
+    "Microphone released.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micro libéré."
+          }
+        }
+      }
+    },
+    "Model-proposed visual header; not an OS-verified app identity.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En-tête visuel proposé par le modèle ; pas une identité d’app vérifiée par le système."
+          }
+        }
+      }
+    },
+    "No complete header line fits the model excerpt limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune ligne d’en-tête complète ne tient dans la limite d’extrait du modèle."
+          }
+        }
+      }
+    },
+    "No complete short excerpt is available. Review or write a shorter note first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun extrait court et complet n’est disponible. Relisez ou écrivez d’abord une note plus courte."
+          }
+        }
+      }
+    },
+    "No current briefing facts are available. Review your sources or try refreshing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune information à jour n’est disponible pour le récap. Vérifiez vos sources ou essayez d’actualiser."
+          }
+        }
+      }
+    },
+    "No final capture was received. Nothing was saved. Try again or type your thought.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune note finale n’a été reçue. Rien n’a été enregistré. Réessayez ou tapez votre pensée."
+          }
+        }
+      }
+    },
+    "No final command was received. Nothing was changed. Try again or use the routine buttons.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune commande finale n’a été reçue. Rien n’a changé. Réessayez ou utilisez les boutons de la routine."
+          }
+        }
+      }
+    },
+    "No invitation is scheduled.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune invitation n’est programmée."
+          }
+        }
+      }
+    },
+    "No microphone input is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune entrée micro n’est disponible."
+          }
+        }
+      }
+    },
+    "No readable screen text was found. The image may be blank, protected, or too small. You can describe the routine in your own words.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun texte lisible n’a été trouvé à l’écran. L’image est peut-être vide, protégée ou trop petite. Vous pouvez décrire la routine avec vos mots."
+          }
+        }
+      }
+    },
+    "No single supported date was resolved. Choose a date and time, or save a reminder without a date.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune date unique n’a pu être déterminée. Choisissez une date et une heure, ou enregistrez un rappel sans date."
+          }
+        }
+      }
+    },
+    "No supported system voice is available for this language. Choose an installed voice in Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune voix système n’est disponible pour cette langue. Choisissez une voix installée dans Réglages."
+          }
+        }
+      }
+    },
+    "No visible text was extracted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun texte visible n’a été extrait."
+          }
+        }
+      }
+    },
+    "No writable default Calendar is available. Set up a calendar first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun calendrier par défaut modifiable n’est disponible. Configurez d’abord un calendrier."
+          }
+        }
+      }
+    },
+    "No writable default Reminders list is available. Set up a list in Reminders first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune liste Rappels par défaut modifiable n’est disponible. Créez d’abord une liste dans Rappels."
+          }
+        }
+      }
+    },
+    "Not enough activity evidence yet. Show a real activity or describe what you did; setup screens, sharing controls and app lists do not establish a routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore assez d’éléments d’activité. Montrez une vraie activité ou décrivez ce que vous avez fait ; les écrans de configuration, les commandes de partage et les listes d’apps ne suffisent pas à établir une routine."
+          }
+        }
+      }
+    },
+    "Notifications are off. Your chosen time is saved but is not scheduled.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les notifications sont désactivées. L’heure choisie est enregistrée mais pas programmée."
+          }
+        }
+      }
+    },
+    "Notifications are quiet. Allow alerts for a morning invitation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les notifications sont silencieuses. Autorisez les alertes pour l’invitation du matin."
+          }
+        }
+      }
+    },
+    "OCR text was truncated or omitted to stay within the extraction budget.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le texte reconnu a été tronqué ou omis pour respecter la limite d’extraction."
+          }
+        }
+      }
+    },
+    "On-device dictation is not available for this language. Type your thought; audio will not be sent to a server.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dictée sur l’appareil n’est pas disponible pour cette langue. Tapez votre pensée ; l’audio ne sera pas envoyé à un serveur."
+          }
+        }
+      }
+    },
+    "On-device recognition is not available for this language. Use the routine buttons; audio will not be sent to a server.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance sur l’appareil n’est pas disponible pour cette langue. Utilisez les boutons de la routine ; l’audio ne sera pas envoyé à un serveur."
+          }
+        }
+      }
+    },
+    "One-time invitation scheduled. Delivery follows your notification settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation unique programmée. Sa remise dépend de vos réglages de notifications."
+          }
+        }
+      }
+    },
+    "Only a recording created by this app can enter recording recovery.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul un enregistrement créé par cette app peut être récupéré."
+          }
+        }
+      }
+    },
+    "Original media timing could not be preserved; the decoded image and available decimal sample time were retained.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le minutage du média d’origine n’a pas pu être conservé ; l’image décodée et l’heure d’échantillon disponible ont été gardées."
+          }
+        }
+      }
+    },
+    "Original observation": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observation d’origine"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pause"
+          }
+        }
+      }
+    },
+    "Premium": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium"
+          }
+        }
+      }
+    },
+    "Prepared briefings currently support English and French.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les récaps préparés prennent en charge l’anglais et le français."
+          }
+        }
+      }
+    },
+    "Prepared briefings currently support English.": {
+      "extractionState": "stale",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les récaps préparés prennent en charge l’anglais et le français."
+          }
+        }
+      }
+    },
+    "Preparing audio…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation de l’audio…"
+          }
+        }
+      }
+    },
+    "Preparing the microphone…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation du micro…"
+          }
+        }
+      }
+    },
+    "Read at your pace, then tap Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lisez à votre rythme, puis touchez Suivant."
+          }
+        }
+      }
+    },
+    "Ready for your morning?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prêt pour votre matinée ?"
+          }
+        }
+      }
+    },
+    "Ready to speak": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prêt à parler"
+          }
+        }
+      }
+    },
+    "Ready when you start your approved routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prêt dès que vous lancez votre routine approuvée."
+          }
+        }
+      }
+    },
+    "Recorded screen text": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texte d’écran enregistré"
+          }
+        }
+      }
+    },
+    "Recording cleanup requires an isolated test workspace.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nettoyage des enregistrements nécessite un espace de test isolé."
+          }
+        }
+      }
+    },
+    "Recording discarded.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrement supprimé."
+          }
+        }
+      }
+    },
+    "Recording was interrupted. The saved portion is ready to review. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement a été interrompu. La partie sauvegardée est prête à relire. %@"
+          }
+        }
+      }
+    },
+    "Recording wasn't started.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement n’a pas démarré."
+          }
+        }
+      }
+    },
+    "Releasing the microphone…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libération du micro…"
+          }
+        }
+      }
+    },
+    "Reminders access is not authorized. Connect Reminders before reading or saving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à Rappels n’est pas autorisé. Connectez Rappels avant de lire ou d’enregistrer."
+          }
+        }
+      }
+    },
+    "Reminders could not be read. Access may have changed. Try again after checking permission.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les rappels n’ont pas pu être lus. L’accès a peut-être changé. Réessayez après avoir vérifié l’autorisation."
+          }
+        }
+      }
+    },
+    "Retry or discard the saved recording before adding another one.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayez ou supprimez l’enregistrement sauvegardé avant d’en ajouter un autre."
+          }
+        }
+      }
+    },
+    "Saved briefing settings couldn't be read. Reset them to choose sources again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réglages du récap n’ont pas pu être lus. Réinitialisez-les pour choisir à nouveau les sources."
+          }
+        }
+      }
+    },
+    "Screen capture has stopped. Finishing the recording…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La capture d’écran est arrêtée. Finalisation de l’enregistrement…"
+          }
+        }
+      }
+    },
+    "Screen capture stopped. The recording is still closing and is being kept. Wait or retry Stop; it will be available after it finishes closing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La capture d’écran est arrêtée. L’enregistrement est encore en cours de fermeture et il est conservé. Patientez ou touchez à nouveau Arrêter ; il sera disponible une fois fermé."
+          }
+        }
+      }
+    },
+    "Screen capture stopped. Waiting for the recording to finish closing before it can be removed. Retry cleanup after it closes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La capture d’écran est arrêtée. L’enregistrement doit finir de se fermer avant de pouvoir être supprimé. Relancez le nettoyage une fois fermé."
+          }
+        }
+      }
+    },
+    "Screen recording hasn't fully stopped. Stop it using the system controls, then retry forgetting.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement de l’écran n’est pas complètement arrêté. Arrêtez-le avec les commandes du système, puis relancez l’oubli."
+          }
+        }
+      }
+    },
+    "Screen recording isn't available on this device or is restricted by its settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement de l’écran n’est pas disponible sur cet appareil ou il est limité par ses réglages."
+          }
+        }
+      }
+    },
+    "Screen recording may still be active. Retry Stop or use the system screen-recording controls. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement de l’écran est peut-être encore actif. Touchez à nouveau Arrêter ou utilisez les commandes d’enregistrement du système. %@"
+          }
+        }
+      }
+    },
+    "Select observations in the same time zone and with the same human or synthetic origin.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez des observations du même fuseau horaire et de même origine, humaine ou synthétique."
+          }
+        }
+      }
+    },
+    "Select one to five different saved observations.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez entre une et cinq observations enregistrées différentes."
+          }
+        }
+      }
+    },
+    "Selected observation": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observation sélectionnée"
+          }
+        }
+      }
+    },
+    "Selected saved observations — tentative proposal": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observations enregistrées sélectionnées — proposition provisoire"
+          }
+        }
+      }
+    },
+    "Some OCR layout regions were omitted at the line limit; their text was preserved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines zones de texte ont été omises à la limite de lignes ; leur texte a été conservé."
+          }
+        }
+      }
+    },
+    "Some OCR layout regions were omitted because their complete text did not survive the extraction limits.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines zones de texte ont été omises car leur texte complet dépassait les limites d’extraction."
+          }
+        }
+      }
+    },
+    "Sparse sampling may miss fast transitions and does not reveal exact taps or the user's intent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un échantillonnage espacé peut manquer des transitions rapides et ne révèle ni les touchers exacts ni l’intention de l’utilisateur."
+          }
+        }
+      }
+    },
+    "Speaking…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture en cours…"
+          }
+        }
+      }
+    },
+    "Speech recognition is unavailable or not allowed. You can still type your thought.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale est indisponible ou non autorisée. Vous pouvez toujours taper votre pensée."
+          }
+        }
+      }
+    },
+    "Speech recognition is unavailable or not allowed. You can still use the routine buttons.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale est indisponible ou non autorisée. Vous pouvez toujours utiliser les boutons de la routine."
+          }
+        }
+      }
+    },
+    "Speech stopped during an interruption. Play it again when ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture s’est arrêtée lors d’une interruption. Relancez-la quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "Speech was interrupted. Resume when you are ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture a été interrompue. Reprenez quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "Spoken capture is not available here right now. You can still type your thought.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La note vocale n’est pas disponible ici pour le moment. Vous pouvez toujours taper votre pensée."
+          }
+        }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
+    "Starting your screen recording…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrage de l’enregistrement de l’écran…"
+          }
+        }
+      }
+    },
+    "Stop hasn't been confirmed. Retry Stop or stop recording using the system controls.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’arrêt n’a pas été confirmé. Touchez à nouveau Arrêter ou arrêtez l’enregistrement avec les commandes du système."
+          }
+        }
+      }
+    },
+    "Stopped at the recording size limit. Your recording is ready to review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêté à la limite de taille. Votre enregistrement est prêt à relire."
+          }
+        }
+      }
+    },
+    "Stopped at your %lld-minute limit. Your recording is ready to review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêté à votre limite de %lld minutes. Votre enregistrement est prêt à relire."
+          }
+        }
+      }
+    },
+    "Stopped using the system controls. Your recording is ready to review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêté avec les commandes du système. Votre enregistrement est prêt à relire."
+          }
+        }
+      }
+    },
+    "Stopping and saving your recording…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêt et sauvegarde de votre enregistrement…"
+          }
+        }
+      }
+    },
+    "Stopping the cancelled recording request…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêt de la demande d’enregistrement annulée…"
+          }
+        }
+      }
+    },
+    "Suggested %@ on the next calendar day in %@. Review the time before saving.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Suggested %1$@ on the next calendar day in %2$@. Review the time before saving."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ suggéré le jour suivant (%2$@). Vérifiez l’heure avant d’enregistrer."
+          }
+        }
+      }
+    },
+    "Suggested duration; review before approving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée suggérée ; à vérifier avant d’approuver."
+          }
+        }
+      }
+    },
+    "Tap to begin with MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touchez pour commencer avec MORE."
+          }
+        }
+      }
+    },
+    "Tap to say one command.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touchez pour dire une commande."
+          }
+        }
+      }
+    },
+    "Tentative suggestion from selected evidence; duration is planned, not measured.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestion provisoire tirée des éléments choisis ; la durée est prévue, pas mesurée."
+          }
+        }
+      }
+    },
+    "That was not one clear command. Try next, pause, resume, skip, repeat or stop.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce n’était pas une commande claire. Essayez suivant, pause, reprends, passe, répète ou arrête."
+          }
+        }
+      }
+    },
+    "The Lock Screen activity couldn't start.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’activité de l’écran verrouillé n’a pas pu démarrer."
+          }
+        }
+      }
+    },
+    "The Lock Screen activity couldn't update. Open MORE for current progress.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’activité de l’écran verrouillé n’a pas pu être mise à jour. Ouvrez MORE pour voir la progression actuelle."
+          }
+        }
+      }
+    },
+    "The Lock Screen activity hasn't been confirmed closed. Try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La fermeture de l’activité de l’écran verrouillé n’a pas été confirmée. Réessayez."
+          }
+        }
+      }
+    },
+    "The app-owned recording couldn't be removed. Retry discarding it. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement de l’app n’a pas pu être supprimé. Réessayez de le supprimer. %@"
+          }
+        }
+      }
+    },
+    "The archive contains the same file more than once.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archive contient plusieurs fois le même fichier."
+          }
+        }
+      }
+    },
+    "The audio session could not be released. Try again before listening.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session audio n’a pas pu être libérée. Réessayez avant d’écouter."
+          }
+        }
+      }
+    },
+    "The audio session did not activate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session audio ne s’est pas activée."
+          }
+        }
+      }
+    },
+    "The available calendar list could not be read reliably. Please refresh it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La liste des calendriers n’a pas pu être lue de façon fiable. Actualisez-la."
+          }
+        }
+      }
+    },
+    "The briefing date could not be resolved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date du récap n’a pas pu être déterminée."
+          }
+        }
+      }
+    },
+    "The briefing freshness settings are invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réglages de fraîcheur du récap sont invalides."
+          }
+        }
+      }
+    },
+    "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La suggestion combinée contient plus de texte justificatif qu’un seul plan ne peut en contenir. Vos observations complètes sont toujours enregistrées ; choisissez moins d’observations. Rien n’a été raccourci à votre insu."
+          }
+        }
+      }
+    },
+    "The invitation could not be confirmed. Try scheduling it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’invitation n’a pas pu être confirmée. Essayez de la programmer à nouveau."
+          }
+        }
+      }
+    },
+    "The invitation could not be fully removed. Retry forgetting your local data.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’invitation n’a pas pu être entièrement supprimée. Relancez l’oubli de vos données locales."
+          }
+        }
+      }
+    },
+    "The invitation time has passed. Open Morning when you are ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’heure de l’invitation est passée. Ouvrez Matinée quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "The local model abstained.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local s’est abstenu."
+          }
+        }
+      }
+    },
+    "The local model did not produce steps supported by these observations. Add clearer notes or edit a routine manually.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local n’a produit aucune étape étayée par ces observations. Ajoutez des notes plus claires ou modifiez une routine vous-même."
+          }
+        }
+      }
+    },
+    "The local model has not classified this frame.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local n’a pas classé cette image."
+          }
+        }
+      }
+    },
+    "The local model omitted this frame.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local a omis cette image."
+          }
+        }
+      }
+    },
+    "The local model reported ambiguous visible context.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local a signalé un contexte visible ambigu."
+          }
+        }
+      }
+    },
+    "The local model schema could not be prepared.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le schéma du modèle local n’a pas pu être préparé."
+          }
+        }
+      }
+    },
+    "The local model was unavailable; no classification was attempted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local était indisponible ; aucune classification n’a été tentée."
+          }
+        }
+      }
+    },
+    "The microphone session did not activate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session micro ne s’est pas activée."
+          }
+        }
+      }
+    },
+    "The model response could not be validated.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse du modèle n’a pas pu être validée."
+          }
+        }
+      }
+    },
+    "The observation archive exceeds its storage limit. Delete an observation before adding more.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archive des observations dépasse sa limite de stockage. Supprimez une observation avant d’en ajouter."
+          }
+        }
+      }
+    },
+    "The observation archive is full. Delete an observation before adding another.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archive des observations est pleine. Supprimez une observation avant d’en ajouter une autre."
+          }
+        }
+      }
+    },
+    "The observation file fingerprint is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’empreinte du fichier d’observation est invalide."
+          }
+        }
+      }
+    },
+    "The observation frames have invalid or duplicate identifiers or timestamps.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les images de l’observation ont des identifiants ou horodatages invalides ou en double."
+          }
+        }
+      }
+    },
+    "The proposed quote was not grounded in this frame.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La citation proposée ne figure pas dans cette image."
+          }
+        }
+      }
+    },
+    "The proposed visual identity was unsupported.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’identité visuelle proposée n’était pas étayée."
+          }
+        }
+      }
+    },
+    "The recording contains no readable video. Please try a short recording again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement ne contient pas de vidéo lisible. Réessayez avec un enregistrement court."
+          }
+        }
+      }
+    },
+    "The recording finished without a file to import.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement s’est terminé sans fichier à importer."
+          }
+        }
+      }
+    },
+    "The recording folder couldn't be safely opened. No linked folder was followed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le dossier d’enregistrement n’a pas pu être ouvert en toute sécurité. Aucun dossier lié n’a été suivi."
+          }
+        }
+      }
+    },
+    "The recording-start metadata is invalid for this observation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées de début d’enregistrement sont invalides pour cette observation."
+          }
+        }
+      }
+    },
+    "The saved observation changed. Review and approve this moment again before speaking.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’observation enregistrée a changé. Relisez et approuvez à nouveau ce moment avant la lecture."
+          }
+        }
+      }
+    },
+    "The saved observation was removed. Review this moment or skip it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’observation enregistrée a été supprimée. Revoyez ce moment ou passez-le."
+          }
+        }
+      }
+    },
+    "The saved recording cannot be opened. It has not been overwritten.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement sauvegardé ne peut pas être ouvert. Il n’a pas été écrasé."
+          }
+        }
+      }
+    },
+    "The saved recording's metadata cannot be read. The recording and metadata have been kept unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées de l’enregistrement ne peuvent pas être lues. L’enregistrement et ses métadonnées ont été conservés tels quels."
+          }
+        }
+      }
+    },
+    "The selected calendar day could not be resolved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le jour de calendrier sélectionné n’a pas pu être déterminé."
+          }
+        }
+      }
+    },
+    "The selected calendar returned an event that could not be read reliably. Please refresh it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le calendrier sélectionné a renvoyé un événement illisible. Actualisez-le."
+          }
+        }
+      }
+    },
+    "The source frame was blank or could not be extracted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’image source était vide ou n’a pas pu être extraite."
+          }
+        }
+      }
+    },
+    "The source text was truncated; context remains unknown.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le texte source a été tronqué ; le contexte reste inconnu."
+          }
+        }
+      }
+    },
+    "The source took too long to respond. Your morning can continue without it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La source a mis trop de temps à répondre. Votre matinée peut continuer sans elle."
+          }
+        }
+      }
+    },
+    "The system interrupted this recording. It may cover only part of your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le système a interrompu cet enregistrement. Il ne couvre peut-être qu’une partie de votre matinée."
+          }
+        }
+      }
+    },
+    "The system recording request took too long. It is being cancelled; no file will be imported.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La demande d’enregistrement du système a pris trop de temps. Elle est annulée ; aucun fichier ne sera importé."
+          }
+        }
+      }
+    },
+    "The visible-context catalog is invalid, ambiguous or too large.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le catalogue de contextes visibles est invalide, ambigu ou trop volumineux."
+          }
+        }
+      }
+    },
+    "There is no text to read.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a aucun texte à lire."
+          }
+        }
+      }
+    },
+    "There's no current briefing to read yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a pas encore de récap à lire."
+          }
+        }
+      }
+    },
+    "These observations exceed the saved-source limit of %lld characters. Longer saved observations within that limit are analyzed in smaller requests.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces observations dépassent la limite de %lld caractères par source. Les observations plus longues mais sous cette limite sont analysées en plusieurs petites demandes."
+          }
+        }
+      }
+    },
+    "These saved observations exceed the bounded local workload or contain a text unit too large to send safely. Your complete saved source is unchanged; nothing was silently shortened.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces observations dépassent la charge de travail locale autorisée ou contiennent un bloc de texte trop grand pour être envoyé en toute sécurité. Votre source complète n’a pas changé ; rien n’a été raccourci à votre insu."
+          }
+        }
+      }
+    },
+    "This app build is missing %@. Use a configured app build before requesting access.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il manque %@ dans cette version de l’app. Utilisez une version configurée avant de demander l’accès."
+          }
+        }
+      }
+    },
+    "This build has no calendar permission description. Use a configured app build before enabling calendar access.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version ne contient pas de description d’autorisation du calendrier. Utilisez une version configurée avant d’activer l’accès au calendrier."
+          }
+        }
+      }
+    },
+    "This build needs the screen-capture background mode before it can record across apps.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version a besoin du mode d’arrière-plan de capture d’écran pour enregistrer entre plusieurs apps."
+          }
+        }
+      }
+    },
+    "This decoded frame could not be analyzed for text.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le texte de cette image décodée n’a pas pu être analysé."
+          }
+        }
+      }
+    },
+    "This device does not support Apple's local model.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil ne prend pas en charge le modèle local d’Apple."
+          }
+        }
+      }
+    },
+    "This excerpt no longer matches a complete line in the saved source.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet extrait ne correspond plus à une ligne complète de la source enregistrée."
+          }
+        }
+      }
+    },
+    "This file changed while it was being identified. Try again after it finishes saving.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier a changé pendant son identification. Réessayez une fois son enregistrement terminé."
+          }
+        }
+      }
+    },
+    "This file exceeds the prototype's 512 MB limit. Export a shorter recording first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier dépasse la limite de 512 Mo du prototype. Exportez d’abord un enregistrement plus court."
+          }
+        }
+      }
+    },
+    "This file exceeds the prototype's local fingerprint size limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier dépasse la taille maximale d’identification locale du prototype."
+          }
+        }
+      }
+    },
+    "This image could not be decoded. Try a PNG or JPEG screenshot.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette image n’a pas pu être décodée. Essayez une capture d’écran PNG ou JPEG."
+          }
+        }
+      }
+    },
+    "This interpretation is not supported by the saved original evidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette interprétation n’est pas étayée par les éléments d’origine enregistrés."
+          }
+        }
+      }
+    },
+    "This invitation has expired. Choose another time.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette invitation a expiré. Choisissez une autre heure."
+          }
+        }
+      }
+    },
+    "This local file could not be read.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier local n’a pas pu être lu."
+          }
+        }
+      }
+    },
+    "This morning's progress isn't current enough to display.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La progression de cette matinée n’est pas assez récente pour être affichée."
+          }
+        }
+      }
+    },
+    "This observation has no supported text source for narration.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette observation n’a pas de source texte prise en charge pour la lecture."
+          }
+        }
+      }
+    },
+    "This observation is no longer in the archive.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette observation n’est plus dans l’archive."
+          }
+        }
+      }
+    },
+    "This proposal is incomplete or inconsistent with its saved evidence. Create another proposal.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette proposition est incomplète ou incohérente avec ses éléments enregistrés. Créez une autre proposition."
+          }
+        }
+      }
+    },
+    "This proposal needs more than ten moments, including your kept rituals. Select fewer observations; no kept ritual was removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette proposition nécessite plus de dix moments, rituels conservés compris. Sélectionnez moins d’observations ; aucun rituel conservé n’a été retiré."
+          }
+        }
+      }
+    },
+    "This recap needs an update. Open this moment to prepare it again, or tap Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce récap doit être mis à jour. Ouvrez ce moment pour le préparer à nouveau, ou touchez Suivant."
+          }
+        }
+      }
+    },
+    "This recording needs a screen-only selection with microphone and camera turned off.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet enregistrement nécessite une sélection de l’écran seul, micro et caméra désactivés."
+          }
+        }
+      }
+    },
+    "This requested frame could not be decoded.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette image demandée n’a pas pu être décodée."
+          }
+        }
+      }
+    },
+    "This routine file could not be opened. Your current routine is unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier de routine n’a pas pu être ouvert. Votre routine actuelle n’a pas changé."
+          }
+        }
+      }
+    },
+    "This routine file is too large. The limit is 1 MB.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier de routine est trop volumineux. La limite est de 1 Mo."
+          }
+        }
+      }
+    },
+    "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet extrait enregistré a changé ou a été supprimé. Choisissez-le à nouveau dans Historique, ou touchez Suivant."
+          }
+        }
+      }
+    },
+    "This screen review is not supported by its saved original sample.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette relecture d’écran n’est pas étayée par son échantillon d’origine enregistré."
+          }
+        }
+      }
+    },
+    "This source needs a reviewed written correction before it can support a proposal.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette source doit avoir une correction écrite relue avant de pouvoir appuyer une proposition."
+          }
+        }
+      }
+    },
+    "This speech could not resume. Play it again when ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture n’a pas pu reprendre. Relancez-la quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "This step could not finish: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape n’a pas pu se terminer : %@"
+          }
+        }
+      }
+    },
+    "This step has already finished in this run.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape est déjà terminée dans cette session."
+          }
+        }
+      }
+    },
+    "This step stopped before completion. Continue when you are ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape s’est arrêtée avant la fin. Reprenez quand vous le souhaitez."
+          }
+        }
+      }
+    },
+    "This text file could not be read as UTF-8, or exceeds the 32,000-character import limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier texte n’a pas pu être lu en UTF-8, ou dépasse la limite d’import de 32 000 caractères."
+          }
+        }
+      }
+    },
+    "This video has no readable finite duration. Try another recording.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette vidéo n’a pas de durée lisible. Essayez un autre enregistrement."
+          }
+        }
+      }
+    },
+    "Two observations use the same acquisition identifier.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deux observations utilisent le même identifiant d’acquisition."
+          }
+        }
+      }
+    },
+    "Understanding your command…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyse de votre commande…"
+          }
+        }
+      }
+    },
+    "Unexpected visible-context response fields.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Champs inattendus dans la réponse sur le contexte visible."
+          }
+        }
+      }
+    },
+    "Unsupported recording-start metadata was removed. The original observation and its chosen day are still available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des métadonnées de début d’enregistrement non prises en charge ont été supprimées. L’observation d’origine et le jour choisi sont toujours disponibles."
+          }
+        }
+      }
+    },
+    "Unsupported saved screen reviews and their original interpretation were removed. The original observation is still available for review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des relectures d’écran non étayées et leur interprétation d’origine ont été supprimées. L’observation d’origine est toujours disponible."
+          }
+        }
+      }
+    },
+    "Untitled event": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Événement sans titre"
+          }
+        }
+      }
+    },
+    "Untitled reminder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rappel sans titre"
+          }
+        }
+      }
+    },
+    "Visible content only; this does not prove an action or repeated habit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contenu visible uniquement ; cela ne prouve ni une action ni une habitude répétée."
+          }
+        }
+      }
+    },
+    "Voice commands are not available here right now. Use the routine buttons.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les commandes vocales ne sont pas disponibles ici pour le moment. Utilisez les boutons de la routine."
+          }
+        }
+      }
+    },
+    "Waiting for the system recording request to finish. Any late start will be stopped.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de la fin de la demande d’enregistrement du système. Tout démarrage tardif sera arrêté."
+          }
+        }
+      }
+    },
+    "Weather couldn't connect to Apple. Try again when a connection is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La météo n’a pas pu se connecter à Apple. Réessayez quand une connexion sera disponible."
+          }
+        }
+      }
+    },
+    "Working on %@.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours : %@."
+          }
+        }
+      }
+    },
+    "Your correction": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre correction"
+          }
+        }
+      }
+    },
+    "Your day isn't ready. Check Your day in Settings, or tap Next to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« Votre journée » n’est pas prête. Vérifiez « Votre journée » dans Réglages, ou touchez Suivant pour continuer."
+          }
+        }
+      }
+    },
+    "Your local data changed. Open Morning again before scheduling an invitation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos données locales ont changé. Rouvrez Matinée avant de programmer une invitation."
+          }
+        }
+      }
+    },
+    "Your recording finished and is ready to review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre enregistrement est terminé et prêt à relire."
+          }
+        }
+      }
+    },
+    "Your recording is ready to review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre enregistrement est prêt à relire."
+          }
+        }
+      }
+    },
+    "Your selected calendars aren't ready. Check Your day in Settings, or tap Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos calendriers sélectionnés ne sont pas prêts. Vérifiez « Votre journée » dans Réglages, ou touchez Suivant."
+          }
+        }
+      }
+    },
+    "Your sources have changed. Update this recap before playing it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos sources ont changé. Mettez à jour ce récap avant de le relire."
+          }
+        }
+      }
+    },
+    "Your words are ready to review. Nothing has been saved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos mots sont prêts à relire. Rien n’a été enregistré."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

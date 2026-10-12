@@ -23,9 +23,9 @@ struct MorningPrivacyView: View {
                     LabeledContent("Current routine", value: store.routine == nil ? "None" : "1")
                     LabeledContent("Previous routine", value: store.previousRoutine == nil ? "None" : "1")
                     LabeledContent("Saved mornings", value: String(store.history.runs.count))
-                    countRow("Observations", value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
-                    countRow("Saved thoughts & ideas", value: String(store.captures.count), identifier: "privacy.captures")
-                    countRow("Saved choices", value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : "Unavailable", identifier: "privacy.choices")
+                    countRow(String(localized: "Observations"), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
+                    countRow(String(localized: "Saved thoughts & ideas"), value: String(store.captures.count), identifier: "privacy.captures")
+                    countRow(String(localized: "Saved choices"), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : String(localized: "Unavailable"), identifier: "privacy.choices")
                 } else {
                     Text(store.privacyBlocksWork ? "Saved data is unavailable while removal needs attention." : "Saved data couldn’t be read. You can still choose to remove it.")
                 }

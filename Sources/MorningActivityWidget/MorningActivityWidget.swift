@@ -92,7 +92,7 @@ private struct MorningActivityLockScreen: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(presentation.heading).font(.headline)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text(isStale ? "Open MORE to update." : presentation.progress)
+                            Text(isStale ? String(localized: "Open MORE to update.") : presentation.progress)
                                 .font(.subheadline).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -126,7 +126,7 @@ private struct MorningActivityIslandDetail: View {
             Text(presentation.heading)
                 .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
                 .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
-            Text(presentation.isStale ? "Open MORE to update." : presentation.progress)
+            Text(presentation.isStale ? String(localized: "Open MORE to update.") : presentation.progress)
                 .font(.caption).foregroundStyle(.white.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
             Text(presentation.lastUpdate)
@@ -145,16 +145,16 @@ private struct MorningActivityPresentation {
     let isStale: Bool
     static let destination = URL(string: "more://morning")!
 
-    var heading: String { isStale ? "Update needed" : state.category.displayName }
-    var status: String { isStale ? "Update needed" : state.status.displayName }
+    var heading: String { isStale ? String(localized: "Update needed") : state.category.displayName }
+    var status: String { isStale ? String(localized: "Update needed") : state.status.displayName }
     var shortProgress: String { "\(state.completedSteps)/\(state.totalSteps)" }
-    var progress: String { "\(state.completedSteps) of \(state.totalSteps) moments passed" }
+    var progress: String { String(localized: "\(state.completedSteps) of \(state.totalSteps) moments passed") }
     // A static timestamp remains truthful even when the system defers a stale
     // presentation refresh. No timer implies that the app is still executing.
-    var lastUpdate: String { "Last update \(state.updatedAt.formatted(date: .omitted, time: .shortened))" }
+    var lastUpdate: String { String(localized: "Last update \(state.updatedAt.formatted(date: .omitted, time: .shortened))") }
     var accessibilitySummary: String {
-        if isStale { return "MORE. Update needed. Last saved progress: \(progress). \(lastUpdate). Open MORE to update." }
-        return "MORE. \(state.category.displayName). \(status). \(progress). \(lastUpdate)."
+        if isStale { return String(localized: "MORE. Update needed. Last saved progress: \(progress). \(lastUpdate). Open MORE to update.") }
+        return String(localized: "MORE. \(state.category.displayName). \(status). \(progress). \(lastUpdate).")
     }
     var statusSymbol: String {
         if isStale { return "exclamationmark.circle" }

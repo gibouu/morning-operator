@@ -47,9 +47,9 @@ public enum MorningInvitationForgetError: LocalizedError, Sendable, Equatable {
     case alreadyForgetting, cleanupUnconfirmed, staleGeneration
     public var errorDescription: String? {
         switch self {
-        case .alreadyForgetting: "Invitation cleanup is already in progress."
-        case .cleanupUnconfirmed: "The invitation could not be fully removed. Retry forgetting your local data."
-        case .staleGeneration: "Your local data changed. Open Morning again before scheduling an invitation."
+        case .alreadyForgetting: String(localized: "Invitation cleanup is already in progress.", bundle: .module)
+        case .cleanupUnconfirmed: String(localized: "The invitation could not be fully removed. Retry forgetting your local data.", bundle: .module)
+        case .staleGeneration: String(localized: "Your local data changed. Open Morning again before scheduling an invitation.", bundle: .module)
         }
     }
 }
@@ -92,7 +92,7 @@ public final class MorningInvitationService {
     public private(set) var isBusy = false
     public private(set) var isScheduled = false
     public private(set) var errorMessage: String?
-    public private(set) var statusText = "No invitation is scheduled."
+    public private(set) var statusText = String(localized: "No invitation is scheduled.", bundle: .module)
     public var needsRecovery: Bool { !storageAvailable }
 
     @ObservationIgnored private let storage: any MorningInvitationStorage
@@ -194,7 +194,7 @@ public final class MorningInvitationService {
             throw error
         }
         errorMessage = nil
-        statusText = "No invitation is scheduled."
+        statusText = String(localized: "No invitation is scheduled.", bundle: .module)
     }
 
     /// Consume only after the app's foreground/busy policy says it can accept the entry.
@@ -274,9 +274,9 @@ public final class MorningInvitationService {
                 guard revision == id else { return }
                 isScheduled = false
                 switch invitation?.disposition {
-                case .consumed: statusText = "Invitation used. Open Morning to continue."
-                case .expired: statusText = "This invitation has expired. Choose another time."
-                default: statusText = "No invitation is scheduled."
+                case .consumed: statusText = String(localized: "Invitation used. Open Morning to continue.", bundle: .module)
+                case .expired: statusText = String(localized: "This invitation has expired. Choose another time.", bundle: .module)
+                default: statusText = String(localized: "No invitation is scheduled.", bundle: .module)
                 }
                 return
             }
@@ -299,9 +299,9 @@ public final class MorningInvitationService {
                 guard revision == id else { return }
                 isScheduled = false
                 switch latestSettings.authorization {
-                case .notDetermined: statusText = "Allow notifications to schedule this invitation."
-                case .provisional: statusText = "Notifications are quiet. Allow alerts for a morning invitation."
-                default: statusText = "Notifications are off. Your chosen time is saved but is not scheduled."
+                case .notDetermined: statusText = String(localized: "Allow notifications to schedule this invitation.", bundle: .module)
+                case .provisional: statusText = String(localized: "Notifications are quiet. Allow alerts for a morning invitation.", bundle: .module)
+                default: statusText = String(localized: "Notifications are off. Your chosen time is saved but is not scheduled.", bundle: .module)
                 }
                 return
             }
@@ -309,7 +309,7 @@ public final class MorningInvitationService {
             // or remove it until consumed, cancelled or expired.
             guard current.scheduledAt > now() else {
                 isScheduled = false
-                statusText = "The invitation time has passed. Open Morning when you are ready."
+                statusText = String(localized: "The invitation time has passed. Open Morning when you are ready.", bundle: .module)
                 return
             }
             let pending = await notifications.pendingInvitation()
@@ -329,11 +329,11 @@ public final class MorningInvitationService {
             isScheduled = registered?.matches(current) == true
             if isScheduled {
                 errorMessage = nil
-                statusText = "One-time invitation scheduled. Delivery follows your notification settings."
+                statusText = String(localized: "One-time invitation scheduled. Delivery follows your notification settings.", bundle: .module)
             } else if current.scheduledAt <= now() {
-                statusText = "The invitation time has passed. Open Morning when you are ready."
+                statusText = String(localized: "The invitation time has passed. Open Morning when you are ready.", bundle: .module)
             } else {
-                errorMessage = "The invitation could not be confirmed. Try scheduling it again."
+                errorMessage = String(localized: "The invitation could not be confirmed. Try scheduling it again.", bundle: .module)
                 statusText = errorMessage!
             }
         } catch {
@@ -428,8 +428,8 @@ private final class NativeMorningInvitationNotificationClient: MorningInvitation
 
     func add(_ invitation: MorningInvitation, sound: Bool) async throws {
         let content = UNMutableNotificationContent()
-        content.title = "Ready for your morning?"
-        content.body = "Tap to begin with MORE."
+        content.title = String(localized: "Ready for your morning?", bundle: .module)
+        content.body = String(localized: "Tap to begin with MORE.", bundle: .module)
         content.categoryIdentifier = MorningInvitationService.categoryIdentifier
         content.userInfo = invitation.payload.dictionary
         content.interruptionLevel = .active

@@ -5,8 +5,8 @@ public enum ObservationFileFingerprintValidationError: Error, LocalizedError, Se
 
     public var errorDescription: String? {
         switch self {
-        case .invalidDigest: "The local file fingerprint is invalid."
-        case .invalidByteCount: "The local file size is invalid."
+        case .invalidDigest: String(localized: "The local file fingerprint is invalid.", bundle: .module)
+        case .invalidByteCount: String(localized: "The local file size is invalid.", bundle: .module)
         }
     }
 }

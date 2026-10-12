@@ -15,10 +15,10 @@ public enum SessionError: Error, LocalizedError, Equatable, Sendable {
     case routineNeedsApproval, emptyRoutine, invalidRoutine, invalidTransition
     public var errorDescription: String? {
         switch self {
-        case .routineNeedsApproval: "Review and approve this routine before starting."
-        case .emptyRoutine: "Add at least one step before starting your routine."
-        case .invalidRoutine: "Each routine step needs a unique identity, a title and a positive duration."
-        case .invalidTransition: "That command is not available in the current session state."
+        case .routineNeedsApproval: String(localized: "Review and approve this routine before starting.", bundle: .module)
+        case .emptyRoutine: String(localized: "Add at least one step before starting your routine.", bundle: .module)
+        case .invalidRoutine: String(localized: "Each routine step needs a unique identity, a title and a positive duration.", bundle: .module)
+        case .invalidTransition: String(localized: "That command is not available in the current session state.", bundle: .module)
         }
     }
 }
