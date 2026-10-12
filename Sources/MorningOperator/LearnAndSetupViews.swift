@@ -285,7 +285,7 @@ struct LearnView: View {
         if #available(iOS 27.0, *) {
             Button { recording = true } label: {
                 Label("Record", systemImage: "record.circle").lineLimit(1)
-            }.buttonStyle(TintedButtonStyle())
+            }.buttonStyle(CompactPrimaryButtonStyle())
                 .disabled(!store.canStartRecording)
                 .accessibilityLabel("Record a little of my morning")
                 .accessibilityIdentifier("learn.record")

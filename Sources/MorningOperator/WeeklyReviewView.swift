@@ -110,9 +110,9 @@ struct WeeklyReviewView: View {
             .disabled(weekOffset == 0)
             .accessibilityLabel("Next seven days").accessibilityIdentifier("review.nextWeek")
         }
-        // A lightly tinted pill: warmer than grey, quieter than a filled button.
-        .buttonStyle(.plain).foregroundStyle(MorningStyle.accent)
-        .background(MorningStyle.accent.opacity(0.12), in: Capsule())
+        // A dark pill anchors the week, matching the primary buttons.
+        .buttonStyle(.plain).foregroundStyle(MorningStyle.surface)
+        .background(MorningStyle.accent, in: Capsule())
         .simultaneousGesture(DragGesture(minimumDistance: 55).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
             changeWeek(by: value.translation.width > 0 ? -1 : 1)
