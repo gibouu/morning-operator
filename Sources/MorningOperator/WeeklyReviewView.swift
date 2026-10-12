@@ -244,7 +244,7 @@ struct WeeklyReviewView: View {
             NavigationLink {
                 CapturesView(store: store).navigationTitle("Saved thoughts").background(MorningStyle.background)
             } label: {
-                actionRow(String(localized: "Saved thoughts"), detail: store.captures.isEmpty ? String(localized: "A place for what comes to mind") : "\(store.captures.count) saved", symbol: "text.bubble")
+                actionRow(String(localized: "Saved thoughts"), detail: store.captures.isEmpty ? String(localized: "A place for what comes to mind") : String(localized: "\(store.captures.count) saved"), symbol: "text.bubble")
             }.accessibilityIdentifier("review.thoughts")
             Divider()
             NavigationLink {
@@ -621,7 +621,7 @@ private struct ReviewDayDetail: View {
             ForEach(Array(day.runs.enumerated()), id: \.element.id) { index, run in
                 Section {
                     LabeledContent("Active routine time", value: MorningStyle.duration(run.activeDurationSeconds))
-                    LabeledContent("Planned time", value: "\(run.plannedDurationMinutes) min")
+                    LabeledContent("Planned time", value: String(localized: "\(run.plannedDurationMinutes) min"))
                     if run.activeDurationSeconds == nil {
                         Text("Timing is incomplete or unavailable; this run is excluded from time averages.")
                             .font(.caption).foregroundStyle(.secondary)

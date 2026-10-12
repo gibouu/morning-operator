@@ -110,7 +110,7 @@ public final class MorningAutomationCoordinator {
                     // Record completion before reentering the store, which may immediately start the next step.
                     guard self.completed.insert(next.executionID).inserted else { return }
                     self.status = .completed
-                    self.message = "\(step.title) finished."
+                    self.message = String(localized: "\(step.title) finished.", bundle: .module)
                     onCompletion(next)
                 case .needsUser(let reason):
                     self.status = .waitingForUser

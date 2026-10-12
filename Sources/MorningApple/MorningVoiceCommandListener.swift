@@ -427,7 +427,7 @@ public final class MorningVoiceCommandListener {
             finishingTurnID = nil
             switch outcome {
             case .success(.command(let command)):
-                state = .idle; message = "Heard: \(command.transcript)"
+                state = .idle; message = String(localized: "Heard: \(command.transcript)", bundle: .module)
             case .success(.capture):
                 state = .idle; message = String(localized: "Your words are ready to review. Nothing has been saved.", bundle: .module)
             case .failure(let error):

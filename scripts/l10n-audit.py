@@ -133,6 +133,9 @@ def looks_visible(body):
     plain = re.sub(r"\\\([^)]*\)", "", body)
     if not USER_TEXT.search(plain):
         return False
+    # An interpolated value followed by words ("\\(count) saved") is a sentence.
+    if "\\(" in body and re.search(r"[A-Za-z]{3,}", plain):
+        return True
     if " " not in plain.strip():
         # Single tokens: keep capitalized words like "Calendar", skip identifiers/symbols.
         if re.fullmatch(r"[A-Z][a-z]+[.…!?]?", plain.strip()):
@@ -153,12 +156,20 @@ def cmd_literals(derived, only=None):
             path = os.path.join(dirpath, f)
             if only and os.path.abspath(only) != path:
                 continue
-            lines = {l for l, _, _ in ext.get(path, [])}
+            keys_by_line = defaultdict(list)
+            for l, key, _ in ext.get(path, []):
+                keys_by_line[l].append(key)
             src_lines = open(path).read().split("\n")
             hits = []
             for l, c, body in swift_literals(open(path).read()):
-                if l in lines or not looks_visible(body):
+                if not looks_visible(body):
                     continue
+                if l in keys_by_line:
+                    # A line can mix a localized string with a plain one; the
+                    # literal is covered only if its text appears in a key there.
+                    parts = [p for p in re.split(r"\\\([^)]*\)", body) if p.strip()]
+                    if any(all(p in key for p in parts) for key in keys_by_line[l]):
+                        continue
                 code = src_lines[l - 1]
                 if "localized:" in code or "verbatim:" in code or "Logger" in code or "log." in code:
                     continue

@@ -20,8 +20,8 @@ struct MorningPrivacyView: View {
             }
             Section("Saved in MORE") {
                 if store.privacyInventoryIsReadable {
-                    LabeledContent("Current routine", value: store.routine == nil ? "None" : "1")
-                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? "None" : "1")
+                    LabeledContent("Current routine", value: store.routine == nil ? String(localized: "None") : "1")
+                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? String(localized: "None") : "1")
                     LabeledContent("Saved mornings", value: String(store.history.runs.count))
                     countRow(String(localized: "Observations"), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
                     countRow(String(localized: "Saved thoughts & ideas"), value: String(store.captures.count), identifier: "privacy.captures")

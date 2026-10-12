@@ -240,9 +240,9 @@ private struct RoutineTransferPreview: View {
         Section {
             LabeledContent("Source version", value: String(document.sourceRoutineVersion))
                 .accessibilityIdentifier("\(prefix).version")
-            LabeledContent("Approval when exported", value: document.approvalAtExport ? "Approved" : "Draft")
+            LabeledContent("Approval when exported", value: document.approvalAtExport ? String(localized: "Approved") : String(localized: "Draft"))
                 .accessibilityIdentifier("\(prefix).approval")
-            LabeledContent("Planned time", value: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes")
+            LabeledContent("Planned time", value: String(localized: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes"))
             if document.sourceIsSynthetic {
                 Label("Sample or test plan", systemImage: "sparkles")
                     .font(.caption).foregroundStyle(.secondary)

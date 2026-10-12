@@ -239,7 +239,7 @@ private struct ObservationSampleDetail: View {
                     let userReview = acquisition.frameReviews.first { $0.sampleID == sample.id }
                     let originalDecision = acquisition.classification?.decisions.first { $0.sampleID == sample.id }
                     if let userReview {
-                        LabeledContent("Your label", value: userReview.label ?? "Unknown screen")
+                        LabeledContent("Your label", value: userReview.label ?? String(localized: "Unknown screen"))
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("Your label")
                             .accessibilityValue(userReview.label ?? String(localized: "Unknown screen"))

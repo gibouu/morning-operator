@@ -1862,6 +1862,66 @@
         }
       }
     },
+    "%lld saved": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg saved"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg saved"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg enregistrée"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg enregistrées"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld saved runs have no complete timing. They stay out of the average.": {
       "localizations": {
         "en": {
@@ -3186,6 +3246,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Approuver la mise à jour"
+          }
+        }
+      }
+    },
+    "Approved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approuvée"
           }
         }
       }
@@ -5254,6 +5324,16 @@
         }
       }
     },
+    "Heard: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entendu : %@"
+          }
+        }
+      }
+    },
     "Hidden from the Lock Screen. Your morning is still in MORE.": {
       "localizations": {
         "fr": {
@@ -6394,6 +6474,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Non connecté"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune"
           }
         }
       }

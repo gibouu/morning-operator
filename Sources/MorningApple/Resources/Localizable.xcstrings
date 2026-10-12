@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ finished.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ terminé."
+          }
+        }
+      }
+    },
     "%lld frames contain truncated or omitted OCR and cannot support app identification.": {
       "localizations": {
         "en": {
@@ -917,6 +927,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vivez votre matinée. L’enregistrement s’arrête après %@, ou vous pouvez l’arrêter plus tôt."
+          }
+        }
+      }
+    },
+    "Heard: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entendu : %@"
           }
         }
       }

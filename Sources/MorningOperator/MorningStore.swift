@@ -942,7 +942,7 @@ final class MorningStore {
                 archiveTerminalSession()
                 guard persist() else { pauseAfterSaveFailure(); return }
                 if command == .resume { synchronizeMorningActivity(allowStart: true) }
-                voiceCommandFeedback = "Heard: \(result.transcript)"
+                voiceCommandFeedback = String(localized: "Heard: \(result.transcript)")
                 voiceCommandPresented = false
                 if session?.status == .completed { queueCompletionInvitation() }
                 if command == .repeatStep { readCurrent() }
