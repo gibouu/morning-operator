@@ -6,6 +6,9 @@ import MorningCore
 import Testing
 import UniformTypeIdentifiers
 @testable import MorningApple
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 @Suite("Apple integration boundaries")
 struct MorningAppleTests {
@@ -15,6 +18,22 @@ struct MorningAppleTests {
         let schema = try RoutineGenerationSchema.make()
         let encoded = try JSONEncoder().encode(schema)
         #expect(encoded.count > 100)
+    }
+
+    @Test("The real local model independently abstains on synthetic setup screens", .enabled("Set MO_RUN_MODEL_INTEGRATION=1; this bypasses the deterministic prefilter to evaluate model behavior.") {
+        await ModelIntegrationGate.isReady()
+    })
+    @MainActor
+    func realLocalModelSetupAbstention() async throws {
+        let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: AppleIntelligenceService.instructions)
+        let response = try await session.respond(
+            to: "Evidence type: visibleTaskContent. Decide whether actual activity is evidenced.\n<observations>\n\(LearningEvidenceFixtures.setupOnly)\n</observations>",
+            schema: RoutineGenerationSchema.make(),
+            options: GenerationOptions(temperature: 0, maximumResponseTokens: 1_100)
+        )
+        let result = try JSONDecoder().decode(ModelAbstentionResult.self, from: Data(response.content.jsonString.utf8))
+        #expect(result.outcome == "insufficientEvidence")
+        #expect(result.steps.isEmpty)
     }
     #endif
 
@@ -141,6 +160,14 @@ struct MorningAppleTests {
         #expect(CGImageDestinationFinalize(destination))
     }
 }
+
+#if canImport(FoundationModels)
+private struct ModelAbstentionResult: Decodable {
+    struct Step: Decodable {}
+    let outcome: String
+    let steps: [Step]
+}
+#endif
 
 private enum ModelIntegrationGate {
     static func isReady() async -> Bool {

@@ -2,17 +2,33 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleExecutable</key><string>MorningOperator</string>
-    <key>CFBundleIdentifier</key><string>com.gibouu.morningoperator</string>
-    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>Morning Operator</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>LSMinimumSystemVersion</key><string>26.0</string>
-    <key>NSHighResolutionCapable</key><true/>
-    <key>NSMicrophoneUsageDescription</key><string>Morning Operator listens during the voice turns you start on this Mac.</string>
-    <key>NSSpeechRecognitionUsageDescription</key><string>Morning Operator transcribes your requested voice commands and drafts.</string>
-    <key>NSCalendarsFullAccessUsageDescription</key><string>When you choose to connect Calendar, Morning Operator reads upcoming events for your briefing. It does not modify your events.</string>
+	<key>CFBundleExecutable</key>
+	<string>MorningOperator</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.gibouu.morningoperator</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Morning Operator</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Morning Operator listens during the voice turns you start on this Mac.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Morning Operator transcribes your requested voice commands and drafts.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Morning Operator reads your schedule for spoken briefings and saves calendar events only when you confirm them.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Morning Operator adds the calendar event you review and choose to save.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Morning Operator saves the reminders you confirm and can read reminders for your morning briefing.</string>
 </dict>
 </plist>

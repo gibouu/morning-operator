@@ -18,3 +18,7 @@ recordings/
 screenshots/
 *.log
 docs/PROJECT-BRIEF.md
+
+# Regenerable Python tooling caches
+__pycache__/
+*.py[cod]

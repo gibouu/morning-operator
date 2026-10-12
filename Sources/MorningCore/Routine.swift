@@ -5,6 +5,20 @@ public enum StepKind: String, Codable, CaseIterable, Sendable {
     public var displayName: String { rawValue.capitalized }
 }
 
+/// A concrete app-owned operation, separate from an inferred activity category.
+/// A nil operation remains manual, including routines decoded from older files.
+public enum RoutineStepAutomation: String, Codable, CaseIterable, Sendable {
+    case spokenNote, todayCalendar, morningBriefing, savedObservation
+    public var displayName: String {
+        switch self {
+        case .spokenNote: "Read this note aloud"
+        case .todayCalendar: "Read today's calendar"
+        case .morningBriefing: "Read today's briefing"
+        case .savedObservation: "Read reviewed observation text"
+        }
+    }
+}
+
 public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     public let id: UUID
     public var title: String
@@ -12,10 +26,14 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     public var kind: StepKind
     public var durationMinutes: Int
     public var isRequired: Bool
+    public var automation: RoutineStepAutomation?
+    public var observationReference: RoutineObservationReference?
     public init(id: UUID = UUID(), title: String, detail: String = "", kind: StepKind = .custom,
-                durationMinutes: Int = 5, isRequired: Bool = false) {
+                durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
+                observationReference: RoutineObservationReference? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
         self.durationMinutes = max(1, durationMinutes); self.isRequired = isRequired
+        self.automation = automation; self.observationReference = observationReference
     }
 }
 
@@ -42,6 +60,12 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
         self.id = id; self.number = max(1, number); self.createdAt = createdAt
         self.sourceLabel = sourceLabel; self.steps = steps; self.isApproved = isApproved
     }
+    /// Kept source bindings retain sample provenance even after a new proposal
+    /// changes the routine label. A legacy sample marker remains conservative.
+    public var isSynthetic: Bool {
+        sourceLabel.localizedCaseInsensitiveContains("demo fixture") ||
+            steps.contains { $0.observationReference?.isSynthetic == true }
+    }
     public var totalDurationMinutes: Int { steps.reduce(0) { $0 + $1.durationMinutes } }
     public func approved() -> RoutineVersion { var copy = self; copy.isApproved = true; return copy }
     /// Explicit edits create a new version needing approval, leaving active sessions unchanged.
@@ -49,34 +73,94 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
         RoutineVersion(number: number + 1, createdAt: date, sourceLabel: sourceLabel ?? self.sourceLabel,
                        steps: steps, isApproved: false)
     }
-    /// Inferred proposals retain required rituals and explicit corrections with stable step IDs.
-    /// Explicit removal is available through revised(steps:).
+    /// Proposals retain complete required rituals and steps named by explicit preferences.
+    /// Trusted callers may supply automation; use inferredDraft for untrusted model output.
+    /// Explicit removal remains available through revised(steps:).
     public func proposing(steps proposedSteps: [RoutineStep], preserving preferences: [RoutineStepPreference] = [],
                           sourceLabel: String? = nil, at date: Date = Date()) -> RoutineVersion {
-        var result = proposedSteps
-        for previous in steps where previous.isRequired {
-            if let index = result.firstIndex(where: { $0.id == previous.id }) { result[index].isRequired = true }
-            else { result.append(previous) }
+        revised(steps: Self.reconcile(proposedSteps, previous: steps, preferences: preferences),
+            sourceLabel: sourceLabel, at: date)
+    }
+
+    /// A model can suggest content but cannot mark a ritual required, assign an operation,
+    /// or approve its own proposal. Prior required steps (and explicitly supplied preference
+    /// targets) retain all user-owned fields. Other corrections/removals need a separate
+    /// persisted preference journal; this method does not infer that missing history.
+    public static func inferredDraft(from candidate: RoutineVersion, preserving previous: RoutineVersion?,
+                                     preferences: [RoutineStepPreference] = [], at date: Date = Date()) -> RoutineVersion {
+        let proposed = candidate.steps.map { step in
+            var manual = step
+            manual.isRequired = false
+            manual.automation = nil
+            manual.observationReference = nil
+            return manual
+        }
+        // The sample's required ritual demonstrates the control; it is not a personal
+        // preference. Keep its existing synthetic provenance out of a learned morning.
+        let personalSteps = previous?.isSynthetic == true
+            ? [] : previous?.steps ?? []
+        return RoutineVersion(number: (previous?.number ?? 0) + 1, createdAt: date,
+            sourceLabel: candidate.sourceLabel,
+            steps: reconcile(proposed, previous: personalSteps, preferences: preferences),
+            isApproved: false)
+    }
+
+    private static func reconcile(_ proposed: [RoutineStep], previous: [RoutineStep],
+                                  preferences: [RoutineStepPreference]) -> [RoutineStep] {
+        var result = proposed
+        let preferenceIDs = Set(preferences.map(\.stepID))
+        let oldKeys = Dictionary(grouping: previous, by: RoutineStepMatchKey.init)
+        let proposedKeys = Dictionary(grouping: proposed.indices, by: { RoutineStepMatchKey(proposed[$0]) })
+        var replacedIndexes = Set<Int>()
+        for kept in previous where kept.isRequired || preferenceIDs.contains(kept.id) {
+            let idMatches = proposed.indices.filter { proposed[$0].id == kept.id }
+            let key = RoutineStepMatchKey(kept)
+            let index: Int?
+            if idMatches.count == 1 {
+                index = idMatches[0]
+            } else if idMatches.isEmpty, !key.title.isEmpty,
+                      oldKeys[key]?.count == 1, proposedKeys[key]?.count == 1 {
+                index = proposedKeys[key]?.first
+            } else {
+                index = nil
+            }
+            if let index, replacedIndexes.insert(index).inserted {
+                // Keep the entire prior value, not just the required flag. A fresh model ID
+                // and suggested duration/detail cannot erase this explicit user decision.
+                result[index] = kept
+            } else {
+                // Ambiguous semantic alternatives remain separate draft rows for review.
+                // Never guess which row may replace the person's kept ritual.
+                result.append(kept)
+            }
         }
         for preference in preferences {
-            if !result.contains(where: { $0.id == preference.stepID }),
-               let previous = steps.first(where: { $0.id == preference.stepID }) { result.append(previous) }
             guard let index = result.firstIndex(where: { $0.id == preference.stepID }) else { continue }
             if let required = preference.isRequired { result[index].isRequired = required }
             if let minutes = preference.durationMinutes { result[index].durationMinutes = max(1, minutes) }
         }
-        return revised(steps: result, sourceLabel: sourceLabel, at: date)
+        return result
     }
 }
 
+/// Deliberately no fuzzy/synonym/punctuation matching: similarity is not user approval.
+private struct RoutineStepMatchKey: Hashable {
+    let kind: String
+    let title: String
+    init(_ step: RoutineStep) {
+        kind = step.kind.rawValue
+        title = step.title.folding(options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX"))
+            .components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+}
 public enum DemoFixtures {
     /// Synthetic demonstration data, never a recorded personal morning.
     public static var candidateRoutine: RoutineVersion {
         RoutineVersion(sourceLabel: "Demo fixture — synthetic morning, not observed personal data", steps: [
-            RoutineStep(title: "A calm start", detail: "Sample briefing. Connect real sources before claiming live day context.", kind: .briefing, durationMinutes: 3),
-            RoutineStep(title: "People and messages", detail: "Review a chosen conversation. This fixture connects no external app or account.", kind: .messages, durationMinutes: 5),
-            RoutineStep(title: "Make room for the day", detail: "Review priorities in this sample routine.", kind: .calendar, durationMinutes: 3),
-            RoutineStep(title: "Keep something enjoyable", detail: "A short chess game or chosen entertainment belongs in your morning.", kind: .entertainment, durationMinutes: 8, isRequired: true)
+            RoutineStep(title: "Your morning", detail: "Good morning. Let’s see what’s ahead.", kind: .briefing, durationMinutes: 3, automation: .spokenNote),
+            RoutineStep(title: "People and messages", detail: "Check in with the people who matter.", kind: .messages, durationMinutes: 5),
+            RoutineStep(title: "Make room for the day", detail: "Read today’s events from your connected calendar.", kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
+            RoutineStep(title: "A little time to play", detail: "A little chess. A little joy. Keep this time for yourself.", kind: .entertainment, durationMinutes: 8, isRequired: true)
         ])
     }
     public static var routine: RoutineVersion { candidateRoutine.approved() }
