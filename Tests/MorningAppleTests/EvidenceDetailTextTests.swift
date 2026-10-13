@@ -31,24 +31,35 @@ struct EvidenceDetailTextTests {
         #expect(EvidenceDetailText.savedTentativeNotes.contains(EvidenceDetailText.tentativeNote))
     }
 
-    @Test("A retained quotation is found under either language and never by bare prose")
-    func retainedQuotationIsLanguageIndependent() {
-        let quote = "I review my calendar after breakfast."
-        for label in EvidenceDetailText.savedLabels {
-            #expect(EvidenceDetailText.detail("A summary.\n\(label) “\(quote)”", retains: quote))
-            #expect(!EvidenceDetailText.detail("A summary.\n\(label) “\(quote)", retains: quote))
+    @Test("Only the section the app generated, in one language, is recognized and removed",
+          arguments: EvidenceDetailText.savedLabels.indices)
+    func generatedSectionIsAnchoredAndSingleLanguage(language: Int) {
+        let label = EvidenceDetailText.savedLabels[language], note = EvidenceDetailText.savedTentativeNotes[language]
+        let other = (language + 1) % EvidenceDetailText.savedLabels.count
+        let otherLabel = EvidenceDetailText.savedLabels[other], otherNote = EvidenceDetailText.savedTentativeNotes[other]
+        let first = "I review my calendar after breakfast.", second = "Then I water\nthe plants.”"
+        let section = "\n\(note)\n\(label) “\(first)”\n\(label) “\(second)”"
+        // Lines that begin with either language's label are ordinary description text.
+        let description = "Review the calendar.\n\(otherLabel) shared calendar\n\(label) shared calendar\nConfirm the time."
+        #expect(EvidenceDetailText.description(of: description + section, citing: [first, second]) == description)
+        // Repeated quotations were written once, in first-citation order.
+        #expect(EvidenceDetailText.description(of: description + section, citing: [first, second, first]) == description)
+        #expect(EvidenceDetailText.description(of: section, citing: [first, second]) == "")
+        // Not the generated section: missing or reordered lines, mixed languages, trailing text,
+        // bare prose, or a look-alike line that only appears inside the description.
+        let rejected = [
+            description + "\n\(note)\n\(label) “\(first)”",
+            description + "\n\(note)\n\(label) “\(second)”\n\(label) “\(first)”",
+            description + "\n\(otherNote)\n\(label) “\(first)”\n\(label) “\(second)”",
+            description + "\n\(note)\n\(otherLabel) “\(first)”\n\(label) “\(second)”",
+            description + section + "\nA later line.",
+            description + "\n\(first)\n\(second)",
+            "\(otherLabel) “\(first)”\n\(otherLabel) “\(second)”\n" + description + "\n\(note)",
+            description
+        ]
+        for detail in rejected {
+            #expect(EvidenceDetailText.description(of: detail, citing: [first, second]) == nil)
         }
-        #expect(EvidenceDetailText.detail("A summary.\n\(EvidenceDetailText.line(quote))", retains: quote))
-        #expect(!EvidenceDetailText.detail("A summary.\n\(quote)", retains: quote))
-        #expect(!EvidenceDetailText.detail("A summary.\nEvidence: “I review my calendar.”", retains: quote))
-    }
-
-    @Test("The description shown in review excludes generated fragments of either language")
-    func descriptionStripsFragmentsOfEitherLanguage() {
-        for (label, note) in zip(EvidenceDetailText.savedLabels, EvidenceDetailText.savedTentativeNotes) {
-            #expect(EvidenceDetailText.description(of: "A summary.\n\(note)\n\(label) “A quotation.”") == "A summary.")
-            #expect(EvidenceDetailText.description(of: "A summary.\n\(label) “A quotation.”") == "A summary.")
-        }
-        #expect(EvidenceDetailText.description(of: "Only a summary.") == "Only a summary.")
+        #expect(EvidenceDetailText.description(of: description + section, citing: []) == nil)
     }
 }

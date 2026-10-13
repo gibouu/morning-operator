@@ -187,10 +187,11 @@ struct RoutineEvidenceProposalView: View {
     }
 
     private func briefDetail(_ step: RoutineStep) -> String {
-        guard store.pendingRoutineProposal?.support.first(where: { $0.stepID == step.id })?.reason == .inferredEvidence else {
-            return step.detail
-        }
-        return EvidenceDetailText.description(of: step.detail).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let support = store.pendingRoutineProposal?.support.first(where: { $0.stepID == step.id }),
+              support.reason == .inferredEvidence,
+              let description = EvidenceDetailText.description(of: step.detail,
+                  citing: support.citations.map(\.quote)) else { return step.detail }
+        return description.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

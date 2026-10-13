@@ -254,7 +254,11 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                   Set(item.preferenceIDs).isSubset(of: preferenceIDs),
                   item.reason != .inferredEvidence || item.preferenceIDs.isEmpty,
                   item.reason != .inferredEvidenceWithUserPreference || !item.preferenceIDs.isEmpty,
-                  (item.reason == .preservedUserDecision) == item.citations.isEmpty else {
+                  (item.reason == .preservedUserDecision) == item.citations.isEmpty,
+                  // The retained quotations must be the section the app itself wrote at the
+                  // end of the detail, never a look-alike inside the model's description.
+                  item.citations.isEmpty || EvidenceDetailText.description(of: step.detail,
+                      citing: item.citations.map(\.quote)) != nil else {
                 throw RoutineEvidenceProposalError.invalidProposal
             }
             for citation in item.citations {
@@ -264,8 +268,7 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                       (8...240).contains(citation.quote.count), citation.startCharacterOffset >= 0,
                       citation.endCharacterOffset >= citation.startCharacterOffset,
                       citation.endCharacterOffset <= ObservationArchive.maximumOriginalTextCharacters,
-                      citation.endCharacterOffset - citation.startCharacterOffset == citation.quote.count,
-                      EvidenceDetailText.detail(step.detail, retains: citation.quote) else {
+                      citation.endCharacterOffset - citation.startCharacterOffset == citation.quote.count else {
                     throw RoutineEvidenceProposalError.invalidProposal
                 }
             }
