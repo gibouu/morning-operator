@@ -545,16 +545,23 @@ enum MorningUITestNavigation {
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
         // A control on a sheet that is still sliding in exists before it can be
         // touched. Give it a moment before deciding it has to be scrolled to.
-        // Asking a control for its hit point while its screen is still moving
-        // in or out is recorded by XCTest as a failure ("Activation point
-        // invalid"), not as "no". So the questions below are only asked once
-        // the control's centre is on the screen.
-        let screen = app.frame
+        // On the iOS 27.0 simulator XCTest sometimes cannot compute a control's
+        // hit point ("Failed to determine hittability … Activation point
+        // invalid") and records that as a failure instead of answering no. It
+        // has happened on a sheet that was closing and on screens that looked
+        // settled. Here that one XCTest error counts as "not yet" and the
+        // question is asked again; nothing else is tolerated, and the control
+        // still has to be touchable for the assertion and the tap below.
         func canBeTouched() -> Bool {
             guard button.exists else { return false }
-            let frame = button.frame
-            guard !frame.isEmpty, screen.contains(CGPoint(x: frame.midX, y: frame.midY)) else { return false }
-            return button.isHittable
+            let tolerated = XCTExpectedFailure.Options()
+            tolerated.isStrict = false
+            tolerated.issueMatcher = { $0.compactDescription.contains("Failed to determine hittability") }
+            var answer = false
+            XCTExpectFailure("XCTest could not compute a hit point for \(identifier); asked again.", options: tolerated) {
+                answer = button.isHittable
+            }
+            return answer
         }
         let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
         _ = XCTWaiter.wait(for: [touchable], timeout: 2)
@@ -574,7 +581,7 @@ enum MorningUITestNavigation {
             if button.frame.height > 0, button.frame.midY < container.frame.midY { container.swipeDown() }
             else { container.swipeUp() }
         }
-        XCTAssertTrue(button.isHittable, "Control is not hittable: \(identifier)", file: file, line: line)
+        XCTAssertTrue(canBeTouched(), "Control is not hittable: \(identifier)", file: file, line: line)
         button.tap()
         if identifier == "run.start" {
             let confirm = app.buttons["morning.confirmStart"]

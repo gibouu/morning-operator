@@ -165,7 +165,7 @@ final class RoutineTransferTests: XCTestCase {
             NSPredicate(format: "label == %@", "Cancel"))
         if let cancel = nativeCancels.allElementsBoundByIndex.first(where: { $0.isHittable }) {
             cancel.tap()
-            waitAbsent(nativeBar)
+            waitAbsent(nativeBar, timeout: nativePanelWait)
         } else {
             dragDismissDocumentPanel(nativeBar, in: app)
         }
@@ -220,7 +220,7 @@ final class RoutineTransferTests: XCTestCase {
         XCTAssertEqual(save.label, "Save")
         attach("native-plan-only-file-ready-to-save-unique-synthetic-name", app)
         save.tap()
-        waitAbsent(nativeBar)
+        waitAbsent(nativeBar, timeout: nativePanelWait)
         let status = app.descendants(matching: .any).matching(identifier: "export.status").firstMatch
         reveal(status, in: app)
         XCTAssertTrue(status.label.contains("Routine exported"),
@@ -250,7 +250,7 @@ final class RoutineTransferTests: XCTestCase {
         savedFile.tap()
         XCTAssertTrue(app.buttons["import.use"].waitForExistence(timeout: 15),
                       "Actual provider selection must pass the real bounded loader.\n\(app.debugDescription)")
-        waitAbsent(nativeBar)
+        waitAbsent(nativeBar, timeout: nativePanelWait)
         for (index, title) in [currentTitle, "People and messages", "Make room for the day", "A little time to play"].enumerated() {
             let importedTitle = app.staticTexts["import.step.\(index).title"]
             reveal(importedTitle, in: app)
@@ -449,9 +449,9 @@ final class RoutineTransferTests: XCTestCase {
                        "Expected value \(value).\n\(app.debugDescription)")
     }
 
-    private func waitAbsent(_ element: XCUIElement) {
+    private func waitAbsent(_ element: XCUIElement, timeout: TimeInterval = 5) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed)
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {
