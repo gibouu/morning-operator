@@ -134,8 +134,9 @@ private struct ShippedCatalogs {
             .filter { $0.pathExtension == "swift" && $0.lastPathComponent != "OwnInterfaceWording.swift" }
         try #require(views.count > 50)
         // A string that survives only in a comment is not shown.
-        return try views.flatMap { try String(contentsOf: $0, encoding: .utf8).components(separatedBy: .newlines) }
-            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
+        return try views.map { try String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
+            .replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?m)(^|\s)//.*$"#, with: "", options: .regularExpression)
     }
 }
 
@@ -181,7 +182,12 @@ private enum OwnScreenFixtures {
         "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."
     ]
     static let routine = [
-        "Your routine", "A draft for you to review", "Add a moment",
+        "Your routine", "A draft for you to review",
+        "%lld min planned · Your own pace", "%lld min planned · Spoken guidance", "%lld min planned · Your own pace",
+        "%lld min planned · Spoken guidance", "%lld min planned · Your own pace", "%lld min planned · Spoken guidance",
+        "%lld min planned · Your own pace", "%lld min planned · Spoken guidance", "%lld min planned · Your own pace",
+        "%lld min planned · Spoken guidance", "%lld min planned · Your own pace", "%lld min planned · Spoken guidance",
+        "Add a moment",
         "Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine.",
         "Restore previous routine", "Export routine", "Learn from an observation",
         "Restoring a routine leaves your saved choices for future suggestions unchanged.", "Approve this routine"
@@ -193,8 +199,18 @@ private enum OwnScreenFixtures {
         "Recording stops at your chosen time limit or its file-size limit. This is a time limit, not a guess that you stopped using your phone. You can stop earlier using the app or the system controls.",
         "When recording finishes, visible text is extracted and saved locally. Review the text, then choose whether to ask Apple Intelligence for a routine suggestion. Your routine changes only after you approve. The video stays on this device until its extracted text is saved, or until you discard it."
     ]
+    static let voice = [
+        "Automatic",
+        "Matches your device’s language and dialect, then prefers a higher-quality installed voice. Your choice applies to spoken morning steps.",
+        "Preview selected voice",
+        "Listen through your current audio output. These are Apple system speech voices; Siri may use a different voice.",
+        "Installed voices", "A voice’s language affects pronunciation. Choosing it does not translate your routine.",
+        "More natural voices",
+        "In Settings → Accessibility → Read & Speak → Voices, choose your language and download an Enhanced or Premium voice if offered. Return here after the download finishes.",
+        "Refresh installed voices"
+    ]
     static let all = [("Learn", learn), ("Review", review), ("Settings", settings),
-                      ("Routine", routine), ("Recording", recording)]
+                      ("Routine", routine), ("Recording", recording), ("Voice", voice)]
 
     /// Recognized lines for a screen: each string on its own lines, long ones wrapped.
     static func lines(_ keys: [String], _ language: String, from catalogs: ShippedCatalogs, width: Int = 38) throws -> [String] {
@@ -440,7 +456,10 @@ struct OwnInterfaceWordingTests {
             "Vos matinées observées\nUn aperçu enregistré, pas un temps passé. Ces échantillons\nn’établissent ni ouvertures d’apps\n\(planned)",
             "Montrez votre matinée\nArrêter automatiquement après\n\(planned)",
             "La voix de votre matinée\nDes voix plus naturelles\n\(planned)",
-            "Vos matinées vont prendre forme.\n\(planned)"
+            "Vos matinées vont prendre forme.\n\(planned)",
+            // A saved routine's steps under its French heading, with the footer scrolled away.
+            "Votre routine\nTerminé\nVotre routine approuvée\nLire les messages de ma famille\n5 min prévues · À votre rythme\nPréparer le petit déjeuner des enfants\n10 min prévues · À votre rythme",
+            "Un brouillon à relire\nÉcouter les nouvelles du matin\n5 min prévues · Guidage vocal"
         ] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
         }
@@ -465,6 +484,9 @@ struct OwnInterfaceWordingTests {
             "Notes\nUn brouillon à relire\nBonjour Paul, voici les documents pour notre réunion.",
             "Minuteur\nArrêter automatiquement après\n09:00 Réunion de planification de l’équipe",
             "Sport\nSuggérer une routine\nVotre routine approuvée\n09:00 Réunion de planification de l’équipe",
+            "Notes\nDes voix plus naturelles\nComparer les voix françaises pour enregistrer le livre audio.",
+            // Two recognized sentences that share a word are one passage, counted once.
+            "Messages\nUse the audio output picker to choose an available\nspeaker. Output doesn't connect a HomePod microphone.\nPlease test the kitchen speaker at 09:00 tomorrow.",
             // A wrapped sentence is one piece, even when one of its lines reads like a label.
             "Fitness\nTime in\nyour routine,\nexcluding pauses.\n07:30 Mobility strength session",
             "Forme\nTemps passé dans\nvotre routine,\npauses exclues.\n07:30 Séance de mobilité et de force",

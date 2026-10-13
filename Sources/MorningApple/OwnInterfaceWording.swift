@@ -87,12 +87,11 @@ enum OwnInterfaceWording {
         shown("Sample morning, not your observed activity", fr: "Matinée d’exemple, pas votre activité observée"),
         shown("Your mornings will find their shape.", fr: "Vos matinées vont prendre forme."),
         shown("Your morning voice", fr: "La voix de votre matinée"),
-        shown("More natural voices", fr: "Des voix plus naturelles"),
         // These English lines have always identified a screen by themselves, so they still do.
         // Their translations are ordinary French that other apps also show (« Votre rythme »,
         // « Un brouillon à relire »): those only confirm a sentence of their screen, below.
         earlier("Your rhythm"), earlier("Suggest a routine"), earlier("Stop automatically after"),
-        earlier("Your approved routine"), earlier("A draft for you to review"),
+        earlier("Your approved routine"), earlier("A draft for you to review"), earlier("More natural voices"),
         earlier("On-device learning"),
         earlier("Enable screen recording"),
         earlier("Your first draft is ready to review")
@@ -150,7 +149,7 @@ enum OwnInterfaceWording {
               of: "Show us a little of your morning.\nWe’ll find the rhythm together.")]
     ]
 
-    /// The Learn, Review, Settings, routine and recording screens as they read today.
+    /// The Learn, Review, Settings, routine, recording and voice screens as they read today.
     static let screens: [Screen] = [
         Screen(name: "Learn", copy: [
             shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
@@ -267,6 +266,8 @@ enum OwnInterfaceWording {
             shown("Try the voice", fr: "Essayer la voix")
         ]),
         Screen(name: "Routine", copy: [
+            part("min planned · Your own pace", fr: "min prévues · À votre rythme", of: "%lld min planned · Your own pace"),
+            part("min planned · Spoken guidance", fr: "min prévues · Guidage vocal", of: "%lld min planned · Spoken guidance"),
             part("Editing creates a new draft; your saved mornings keep their original routine",
                  fr: "Modifier crée un nouveau brouillon ; vos matinées enregistrées gardent leur routine d’origine",
                  of: "Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine."),
@@ -307,6 +308,22 @@ enum OwnInterfaceWording {
             shown("Stop automatically after", fr: "Arrêter automatiquement après"),
             shown("Start screen recording", fr: "Lancer l’enregistrement de l’écran"),
             shown("You're in control", fr: "C’est vous qui décidez")
+        ]),
+        Screen(name: "Voice", copy: [
+            part("Your choice applies to spoken morning steps", fr: "Votre choix s’applique aux étapes lues à voix haute",
+                 of: "Matches your device’s language and dialect, then prefers a higher-quality installed voice. Your choice applies to spoken morning steps."),
+            part("These are Apple system speech voices; Siri may use a different voice",
+                 fr: "Ce sont les voix système d’Apple ; Siri peut utiliser une voix différente",
+                 of: "Listen through your current audio output. These are Apple system speech voices; Siri may use a different voice."),
+            part("Choosing it does not translate your routine", fr: "La choisir ne traduit pas votre routine",
+                 of: "A voice’s language affects pronunciation. Choosing it does not translate your routine."),
+            part("Return here after the download finishes", fr: "Revenez ici une fois le téléchargement terminé",
+                 of: "In Settings → Accessibility → Read & Speak → Voices, choose your language and download an Enhanced or Premium voice if offered. Return here after the download finishes.")
+        ], controls: [
+            shown("More natural voices", fr: "Des voix plus naturelles"),
+            shown("Installed voices", fr: "Voix installées"),
+            shown("Preview selected voice", fr: "Écouter la voix choisie"),
+            shown("Refresh installed voices", fr: "Actualiser les voix installées")
         ])
     ]
 
@@ -350,7 +367,13 @@ enum OwnInterfaceWording {
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
         return screens.contains { screen in
-            let sentences = screen.copy.filter { $0.isWithin(frame) }
+            // Each sentence needs words of its own: two that share a word are one passage, once.
+            var unclaimed = frame.text
+            let sentences = screen.copy.filter { phrase in
+                guard let found = phrase.normalized.lazy.compactMap({ unclaimed.range(of: " \($0) ") }).first else { return false }
+                unclaimed.replaceSubrange(found, with: " \u{1F} ")
+                return true
+            }
             guard let sentence = sentences.first else { return false }
             // A wrapped sentence can leave a line that reads like a label ("your routine,").
             // That line is the same piece, not a second one.
