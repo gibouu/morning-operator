@@ -545,9 +545,20 @@ enum MorningUITestNavigation {
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
         // A control on a sheet that is still sliding in exists before it can be
         // touched. Give it a moment before deciding it has to be scrolled to.
-        let touchable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: button)
+        // Asking a control for its hit point while its screen is still moving
+        // in or out is recorded by XCTest as a failure ("Activation point
+        // invalid"), not as "no". So the questions below are only asked once
+        // the control's centre is on the screen.
+        let screen = app.frame
+        func canBeTouched() -> Bool {
+            guard button.exists else { return false }
+            let frame = button.frame
+            guard !frame.isEmpty, screen.contains(CGPoint(x: frame.midX, y: frame.midY)) else { return false }
+            return button.isHittable
+        }
+        let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
         _ = XCTWaiter.wait(for: [touchable], timeout: 2)
-        for _ in 0..<4 where !button.isHittable {
+        for _ in 0..<4 where !canBeTouched() {
             let collection = app.collectionViews.containing(.button, identifier: identifier).firstMatch
             let table = app.tables.containing(.button, identifier: identifier).firstMatch
             let scroll = app.scrollViews.containing(.button, identifier: identifier).firstMatch

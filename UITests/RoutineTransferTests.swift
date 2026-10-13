@@ -201,8 +201,10 @@ final class RoutineTransferTests: XCTestCase {
             // search field, and no name field. Without a unique name this test
             // could select a file it did not save, so it stops here. It runs in
             // full wherever the panel offers the field.
-            XCTAssertTrue(nativeBar.buttons["DOCPicker.actionButton"].exists,
-                          "The native save panel must at least offer its Save action.\n\(app.debugDescription)")
+            let offeredSave = nativeBar.buttons["DOCPicker.actionButton"]
+            XCTAssertTrue(offeredSave.exists && offeredSave.isEnabled && offeredSave.isHittable,
+                          "The native save panel must at least offer a usable Save action.\n\(app.debugDescription)")
+            XCTAssertEqual(offeredSave.label, "Save")
             attach("native-save-panel-without-a-filename-field", app)
             throw XCTSkip("The native save round trip was not run: this system's Files save panel has no filename field, so the test cannot give its file a unique name (issue #95).")
         }

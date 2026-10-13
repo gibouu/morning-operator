@@ -385,6 +385,8 @@ final class QuietMorningTests: XCTestCase {
         assertTitle("Your morning", on: first, in: app)
         assertTitle("Today's calendar", on: third, in: app)
         XCTAssertTrue(first.isHittable && third.isHittable, app.debugDescription)
+        let orderBefore = (0..<10).map { app.buttons["morning.step.\($0)"].label }
+        XCTAssertFalse(orderBefore.contains(""), "All ten tiles must be read before the drag.\n\(app.debugDescription)")
         attach("more-native-drag-before", app)
 
         // A real native lift/drop from the first tile to the third tile's
@@ -399,14 +401,13 @@ final class QuietMorningTests: XCTestCase {
                         "A little reading", "Make some tea", "A moment to move", "A little time to play", "One thought for later"]
         // Quarantined, issue #72: on the iOS 27.0 simulator the tile lifts but
         // does not follow the drag, at either speed. The quarantine covers that
-        // one outcome only: the order exactly as it was before the drag. Any
-        // other order, right or wrong, goes through every check below with no
-        // quarantine.
+        // one outcome only: all ten tiles exactly as they were before the drag.
+        // Any other order, right or wrong, goes through every check below with
+        // no quarantine.
         let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "Your morning"),
                                               object: app.buttons["morning.step.0"])
         if XCTWaiter.wait(for: [moved], timeout: 5) != .completed,
-           app.buttons["morning.step.0"].label.contains("Your morning"),
-           app.buttons["morning.step.2"].label.contains("Today's calendar") {
+           (0..<10).map({ app.buttons["morning.step.\($0)"].label }) == orderBefore {
             attach("more-native-drag-did-not-move", app)
             XCTExpectFailure("A dragged tile lifts but does not move on the iOS 27.0 simulator (issue #72).") {
                 XCTFail("The dragged tile did not move: the first tile is still \"\(app.buttons["morning.step.0"].label)\".")
