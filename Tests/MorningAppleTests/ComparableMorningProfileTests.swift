@@ -156,6 +156,91 @@ struct ComparableMorningProfileTests {
         #expect(result.report.apps.map(\.app.key) == [chess])
     }
 
+    /// The same extraction saved as another observation on another date.
+    private func savedAgain(_ clip: ObservationAcquisition, on day: Int) throws -> ObservationAcquisition {
+        try ObservationAcquisition(
+            observedDate: .init(date: date(day), timeZoneIdentifier: zone, provenance: .userAssigned),
+            origin: clip.origin, sourceKind: .video, sourceLabel: "Synthetic recording, saved again",
+            originalText: clip.originalText, videoEvidence: clip.videoEvidence, classification: clip.classification)
+    }
+
+    private func expectEveryScheduledDayCountedOnce(_ report: ObservationTraceWindowReport) {
+        let keys = report.includedDayKeys + report.excludedDays.map(\.dayKey) + report.missingDayKeys
+        #expect(keys.count == report.scheduledDayCount)
+        #expect(Set(keys).count == keys.count)
+    }
+
+    @Test func aRecordingRepeatedOnAnotherDateIsFlaggedEvenWhenItsOwnDateHoldsTwoRecordings() throws {
+        let first = try clip(1, "FFCCFFFF")
+        let second = try clip(1, "CCCCCCCC")
+        let again = try savedAgain(first, on: 2)
+        let clean = try clip(3, "CCCCCCCC")
+        let entries = [first, second, again, clean]
+        let expected: [ObservationExcludedDay] = [.init(dayKey: key(1), reason: .repeatedRecording),
+                                                  .init(dayKey: key(2), reason: .repeatedRecording)]
+        // The answer does not depend on which copy the archive lists first.
+        for order in [entries, entries.reversed(), [again, clean, second, first]] {
+            let result = try profile(order, days: 1...4)
+            // Both dates of the repeated recording are excluded together and for the same
+            // reason. The second date is never a morning of its own.
+            #expect(result.report.excludedDays == expected)
+            #expect(result.report.includedDayKeys == [key(3)])
+            #expect(result.report.missingDayKeys == [key(4)])
+            expectEveryScheduledDayCountedOnce(result.report)
+            #expect(result.report.apps.map(\.app.key) == [chess])
+            #expect(result.report.observationDurationSeconds.daysWithEvidence == 1)
+            // The two recordings of the first date stay visible beside the reason.
+            #expect(Set(result.acquisitionIDsByDayKey[key(1)] ?? []) == [first.id, second.id])
+        }
+    }
+
+    @Test func repeatedRecordingIsTheReasonOnEveryDateItTouchesAndOnlyAcrossDates() throws {
+        let first = try clip(1, "FFCCFFFF")
+        let third = try clip(3, "FCFCFFFF")
+        // Dates 1 and 2 each hold two recordings and share one of them.
+        let shared = try [first, try clip(1, "CCCCCCCC"), try savedAgain(first, on: 2), try clip(2, "FFFFFFFF"),
+                          // Date 3 holds the same extraction twice and nothing else has it:
+                          // two recordings on one date, not one recording on two dates.
+                          third, try savedAgain(third, on: 3),
+                          // Date 4 holds two recordings; one of them is also the only one of date 5.
+                          try clip(4, "FFFFFFFF"), try clip(4, "CCCCCCCC")]
+        let entries = try shared + [try savedAgain(shared[7], on: 5), try clip(6, "CCCCCCCC")]
+        let result = try profile(entries, days: 1...7)
+        #expect(result.report.excludedDays == [.init(dayKey: key(1), reason: .repeatedRecording),
+                                              .init(dayKey: key(2), reason: .repeatedRecording),
+                                              .init(dayKey: key(3), reason: .duplicateDay),
+                                              .init(dayKey: key(4), reason: .repeatedRecording),
+                                              .init(dayKey: key(5), reason: .repeatedRecording)])
+        #expect(result.report.includedDayKeys == [key(6)])
+        #expect(result.report.missingDayKeys == [key(7)])
+        expectEveryScheduledDayCountedOnce(result.report)
+    }
+
+    @Test func aRepeatedRecordingIsFlaggedBeforeItsSamplesOrItsCaptureAreJudged() throws {
+        // Samples whose movie times run backwards, saved on two dates, and a readable
+        // recording saved on two dates with no declared capture. The second date of each
+        // also holds something else: notes without samples, and another recording.
+        let backwards = try ObservationVideoEvidence(durationSeconds: 7, frames: [
+            .init(requestedTimeSeconds: 0, actualTimeSeconds: 5, outcome: .observed, text: "Feed"),
+            .init(requestedTimeSeconds: 1, actualTimeSeconds: 2, outcome: .observed, text: "Chess")
+        ])
+        let unordered = try ObservationAcquisition(
+            observedDate: .init(date: date(1), timeZoneIdentifier: zone, provenance: .userAssigned),
+            origin: .synthetic, sourceKind: .video, sourceLabel: "Synthetic recording",
+            originalText: backwards.renderedText, videoEvidence: backwards)
+        let undeclared = try clip(3, "FFCCFFFF")
+        let notes = try ObservationAcquisition(
+            observedDate: .init(date: date(2), timeZoneIdentifier: zone, provenance: .userAssigned),
+            origin: .synthetic, sourceKind: .text, sourceLabel: "Synthetic notes", originalText: "Read the feed, then chess.")
+        let entries = try [unordered, try savedAgain(unordered, on: 2), notes,
+                           undeclared, try savedAgain(undeclared, on: 4), try clip(4, "FFFFFFFF"),
+                           try clip(5, "CCCCCCCC")]
+        let result = try profile(entries, days: 1...5, capture: [entries[6].id: complete])
+        #expect(result.report.excludedDays == (1...4).map { .init(dayKey: key($0), reason: .repeatedRecording) })
+        #expect(result.report.includedDayKeys == [key(5)])
+        expectEveryScheduledDayCountedOnce(result.report)
+    }
+
     @Test func recordingsWithNoDeclaredCaptureAreExcludedAsUnknownCaptureNotGuessed() throws {
         let entries = try (1...4).map { try clip($0, "FFCCFFFF", origin: .human) }
         let result = try profile(entries, days: 1...4, origin: .human, capture: [:])

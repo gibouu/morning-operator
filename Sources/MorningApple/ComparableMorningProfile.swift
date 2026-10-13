@@ -8,6 +8,20 @@ import MorningCore
 /// A date and an origin do not make an adequate morning. Each day is still judged by the
 /// comparison policy, and a day that fails is excluded with its reason, not counted as a
 /// morning with no activity.
+///
+/// A scheduled day is included, missing or excluded exactly once, and an excluded day carries
+/// one reason: the first that applies, in this order, whatever order the archive lists its
+/// observations in.
+/// 1. No observation of the requested origin, and one of another origin: `differentOrigin`
+///    if any is human or synthetic, else `automatedOrigin`, else `unknownOrigin`. A date that
+///    does have one of the requested origin is judged on it alone.
+/// 2. `repeatedRecording`: one of the date's recordings is also saved on another scheduled
+///    date under the requested origin. It is the reason on every such date, including a
+///    date that holds two recordings: `acquisitionIDsByDayKey` still shows those, while
+///    nothing else would show the repeat. The same extraction saved twice on one date and
+///    on no other is two recordings on one date, not a repeat.
+/// 3. `duplicateDay`, then `noSampledEvidence`, then `unreadableSamples`.
+/// 4. The comparison policy's reasons, in the order `ObservationTraceWindowReport` checks them.
 public struct ComparableMorningProfile: Sendable, Equatable {
     /// Scheduled days are exactly its included, missing and excluded days.
     public let report: ObservationTraceWindowReport
@@ -58,10 +72,12 @@ public struct ComparableMorningProfile: Sendable, Equatable {
         }
 
         // One extraction saved as two observations is still one recording. Its dates are
-        // excluded together: nothing says which date it belongs to.
-        var datesByEvidenceID: [UUID: Int] = [:]
-        for clips in matching.values where clips.count == 1 {
-            if let id = clips[0].videoEvidence?.id { datesByEvidenceID[id, default: 0] += 1 }
+        // excluded together: nothing says which date it belongs to. Every recording of a
+        // date counts, and each date once, so a date holding two recordings neither hides
+        // a repeat nor becomes one by holding the same extraction twice.
+        var dateCountByEvidenceID: [UUID: Int] = [:]
+        for clips in matching.values {
+            for id in Set(clips.compactMap { $0.videoEvidence?.id }) { dateCountByEvidenceID[id, default: 0] += 1 }
         }
         var days: [ObservationTraceDay] = []
         var exclusions: [ObservationExcludedDay] = []
@@ -77,14 +93,16 @@ public struct ComparableMorningProfile: Sendable, Equatable {
                 exclusions.append(.init(dayKey: key, reason: reason))
                 continue
             }
+            guard !clips.contains(where: { clip in
+                clip.videoEvidence.map { dateCountByEvidenceID[$0.id, default: 0] > 1 } ?? false
+            }) else {
+                exclusions.append(.init(dayKey: key, reason: .repeatedRecording)); continue
+            }
             guard clips.count == 1, let entry = clips.first, let observed = entry.observedDate else {
                 exclusions.append(.init(dayKey: key, reason: .duplicateDay)); continue
             }
             guard let evidence = entry.videoEvidence else {
                 exclusions.append(.init(dayKey: key, reason: .noSampledEvidence)); continue
-            }
-            guard datesByEvidenceID[evidence.id] == 1 else {
-                exclusions.append(.init(dayKey: key, reason: .repeatedRecording)); continue
             }
             // The review applies the person's screen reviews over the model's labels and
             // leaves conflicting or corrected samples unknown. Reuse it instead of a second
