@@ -23,11 +23,11 @@ struct LearningWindowTravelTests {
     private func key(_ day: Int, month: Int = 10) -> String { String(format: "2026-%02d-%02d", month, day) }
 
     /// Five minutes from `hour`:00 in Paris, every day, started on Monday 12 October at 03:00.
-    private func window(hour: Int = 7, mornings: Int = 3, startDay: Int = 12) throws -> LearningWindow {
+    private func window(hour: Int = 7, mornings: Int = 3, startDay: Int = 12, startHour: Int = 3) throws -> LearningWindow {
         var value = try LearningWindow(startMinuteOfDay: hour * 60, durationSeconds: 300,
             weekdays: Set(LearningWindowWeekday.allCases), timeZoneIdentifier: paris, morningCount: mornings,
             createdAt: at(11, 20), limits: .currentCapture)
-        try value.start(at: at(startDay, 3))
+        try value.start(at: at(startDay, startHour))
         return value
     }
 
@@ -342,6 +342,55 @@ struct LearningWindowTravelTests {
         #expect(report.reassignedAcquisitionIDs == [first.id, second.id])
         profile = try ComparableMorningProfile(window: learning, archive: archive, now: now, maximumSampleGapSeconds: 16)
         #expect(profile.undatedAcquisitionIDs == [second.id] && profile.report.missingDayKeys == [key(12), key(13)])
+    }
+
+    @Test func segmentsOfOneSessionBegunBeforeThePhonesMidnightAreNotTakenForAMoveByThePerson() throws {
+        // A long recording kept as segments dates every segment from the start of its
+        // session. This one starts in London on Monday at 23:59:30, which is Tuesday 00:59:30
+        // in Paris, and rolls over five minutes later: the second segment begins after
+        // London's midnight and still carries Monday. Nobody moved it.
+        let learning = try window(hour: 1, mornings: 1, startDay: 13, startHour: 0)
+        let sessionStart = try at(12, 23, 59, 30, zone: london)
+        let sessionID = UUID()
+        let segments = try (0..<2).map { index -> ObservationAcquisition in
+            let start = sessionStart.addingTimeInterval(Double(index) * 300)
+            let base = try recording(start, zone: london)
+            return try ObservationAcquisition(id: base.id,
+                observedDate: .init(date: sessionStart, timeZoneIdentifier: london, provenance: .recordingSession),
+                origin: base.origin, sourceKind: base.sourceKind, sourceLabel: base.sourceLabel,
+                originalText: base.originalText, videoEvidence: base.videoEvidence, classification: base.classification,
+                recordingContext: base.recordingContext,
+                sessionSegment: .init(sessionID: sessionID, segmentIndex: index, startSeconds: Double(index) * 300,
+                                      endSeconds: Double(index + 1) * 300))
+        }
+        #expect(segments.map { $0.observedDate?.dayKey } == [key(12), key(12)])
+        var archive = ObservationArchive()
+        try declare(segments, to: learning, in: &archive)
+        #expect(archive.entries.map { $0.windowCapture?.dayKey } == [key(13), key(13)])
+        let now = try at(13, 2)
+        // Both segments stand under the window's Tuesday. The first alone runs through the
+        // part mornings are compared over; with its sibling hidden it would count on its own.
+        let report = LearningWindowReport(window: learning, archive: archive, now: now)
+        #expect(report.reassignedAcquisitionIDs.isEmpty && report.ignoredAcquisitionIDs.isEmpty)
+        #expect(report.mornings.map(\.acquisitionIDs) == [segments.map(\.id)])
+        #expect(report.mornings.map(\.notCountedReason) == [.severalRecordings])
+        #expect(report.progress.adequateMorningCount == 0)
+        let profile = try ComparableMorningProfile(window: learning, archive: archive, now: now, maximumSampleGapSeconds: 16)
+        #expect(profile.report.excludedDays == [.init(dayKey: key(13), reason: .duplicateDay)])
+        #expect(profile.acquisitionIDsByDayKey == [key(13): segments.map(\.id)])
+        #expect(profile.otherTimeZoneAcquisitionIDs.isEmpty)
+
+        // The person then moves the second segment to Wednesday: now it is their choice.
+        try archive.assignObservedDate(id: segments[1].id, value: .init(date: at(14, 12, zone: london),
+            timeZoneIdentifier: london, provenance: .userAssigned))
+        #expect(LearningWindowReport(window: learning, archive: archive, now: now).reassignedAcquisitionIDs == [segments[1].id])
+        // A session stamp dated after its own recording is no stamp: the day decides.
+        let impossible = try recording(at(13, 0, zone: london), zone: london)
+        var odd = try ObservationArchive(entries: [impossible])
+        try odd.declareCapture(of: impossible.id, to: learning, at: now)
+        try odd.assignObservedDate(id: impossible.id, value: .init(date: at(14, 9, zone: london),
+            timeZoneIdentifier: london, provenance: .recordingSession))
+        #expect(LearningWindowReport(window: learning, archive: odd, now: now).reassignedAcquisitionIDs == [impossible.id])
     }
 
     @Test func pauseStopAndTheAllowancesHoldForARecordingMadeAway() throws {

@@ -59,14 +59,20 @@ extension LearningWindow {
     /// on the previous morning's day.
     ///
     /// The observation's own date is read for one thing only: to see whether the person
-    /// moved the observation in review. It is untouched as long as it still names the day
-    /// the recording started on, in whatever zone that date is written in. Any other day,
-    /// or no date, is the person's choice, and the declaration no longer counts.
+    /// moved the observation in review. It is untouched in two cases:
+    /// - it is the date its recording session stamped, at or before the instant the
+    ///   recording started. A long recording kept as segments dates every segment from the
+    ///   start of the session, so a segment begun after the phone's midnight carries the
+    ///   day before; that is the app's stamp, not the person's move;
+    /// - it was set in review and still names the day the recording started on, in whatever
+    ///   zone that date is written in.
+    /// Any other day, or no date, is the person's choice, and the declaration no longer counts.
     func standing(of entry: ObservationAcquisition) -> LearningWindowDeclarationStanding {
         guard let capture = entry.windowCapture, capture.windowID == id else { return .notDeclared }
         guard counts(capture) else { return .ignored }
-        guard let observed = entry.observedDate,
-              let recordedDay = try? ObservationObservedDate(date: capture.actualStart,
+        guard let observed = entry.observedDate else { return .reassigned }
+        if observed.provenance == .recordingSession, observed.date <= capture.actualStart { return .counted(capture) }
+        guard let recordedDay = try? ObservationObservedDate(date: capture.actualStart,
                   timeZoneIdentifier: observed.timeZoneIdentifier, provenance: observed.provenance),
               observed.dayKey == recordedDay.dayKey else { return .reassigned }
         return .counted(capture)
