@@ -274,6 +274,7 @@ enum OwnInterfaceWording {
             shown("Restoring a routine leaves your saved choices for future suggestions unchanged.",
                   fr: "Restaurer une routine ne modifie pas vos choix enregistrés pour les futures suggestions.")
         ], controls: [
+            shown("Your routine", fr: "Votre routine"),
             shown("Your approved routine", fr: "Votre routine approuvée"),
             shown("A draft for you to review", fr: "Un brouillon à relire"),
             shown("Add a moment", fr: "Ajouter un moment"),

@@ -136,7 +136,7 @@ private struct ShippedCatalogs {
         // A string that survives only in a comment is not shown.
         return try views.map { try String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
             .replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: #"(?m)(^|\s)//.*$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?m)(?<!:)//.*$"#, with: "", options: .regularExpression)
     }
 }
 
@@ -459,7 +459,10 @@ struct OwnInterfaceWordingTests {
             "Vos matinées vont prendre forme.\n\(planned)",
             // A saved routine's steps under its French heading, with the footer scrolled away.
             "Votre routine\nTerminé\nVotre routine approuvée\nLire les messages de ma famille\n5 min prévues · À votre rythme\nPréparer le petit déjeuner des enfants\n10 min prévues · À votre rythme",
-            "Un brouillon à relire\nÉcouter les nouvelles du matin\n5 min prévues · Guidage vocal"
+            "Un brouillon à relire\nÉcouter les nouvelles du matin\n5 min prévues · Guidage vocal",
+            // Scrolled past the heading: the sheet's title and rows that all read the same.
+            "Votre routine\nModifier\nTerminé\nLire les messages de ma famille\n5 min prévues · À votre rythme\nFaire une promenade dans le quartier\n10 min prévues · À votre rythme",
+            "Your routine\nEdit\nDone\nRead messages from my family\n5 min planned · Your own pace\nWalk around the neighbourhood\n10 min planned · Your own pace"
         ] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
         }
@@ -478,6 +481,7 @@ struct OwnInterfaceWordingTests {
             "Réglages\nConfidentialité et données\nVotre journée\nÉcoutez où vous voulez\n09:00 Réunion de planification de l’équipe",
             "Settings\nPrivacy & data\nYour day\nRead each step aloud\nListen where you like\n09:00 Team planning meeting",
             "Santé\nVotre routine\nActivité des apps\nDurée des sessions\n09:00 Réunion de planification de l’équipe",
+            "Forme\nVotre routine\nÉtirements du matin avec toute la famille\n10 min prévues · à mon rythme",
             "Fitness\nYour routine\nApp activity\nAverage routine time\n09:00 Team planning meeting",
             "Matinée\nMaintenant\nPause\n09:00 Réunion de planification de l’équipe",
             // A French title that is ordinary wording elsewhere does not reject by itself.
