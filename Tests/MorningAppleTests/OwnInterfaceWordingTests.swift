@@ -492,6 +492,9 @@ struct OwnInterfaceWordingTests {
             "Minuteur\nArrêter automatiquement après\n09:00 Réunion de planification de l’équipe",
             "Sport\nSuggérer une routine\nVotre routine approuvée\n09:00 Réunion de planification de l’équipe",
             "Notes\nDes voix plus naturelles\nComparer les voix françaises pour enregistrer le livre audio.",
+            // Ordinary remarks about timing and averages are not Review's summary.
+            "Notes\nWe have no complete timing data for the warm-up laps, so leave them out of the average.",
+            "Messages\nNous n’avons pas de durée complète pour ces tours. Ne les compte pas dans la moyenne.",
             // Two recognized sentences that share a word are one passage, counted once.
             "Messages\nUse the audio output picker to choose an available\nspeaker. Output doesn't connect a HomePod microphone.\nPlease test the kitchen speaker at 09:00 tomorrow.",
             // A wrapped sentence is one piece, even when one of its lines reads like a label.

@@ -217,12 +217,10 @@ enum OwnInterfaceWording {
             shown("Runs with incomplete timing are excluded from this average.",
                   fr: "Les sessions à la durée incomplète sont exclues de cette moyenne."),
             shown("A morning saved. Time still unknown.", fr: "Une matinée enregistrée. Durée encore inconnue."),
-            // The words every plural form shares, then the singular's own form.
-            part("have no complete timing", fr: "pas de durée complète",
+            // The plural form, then the singular's own wording in each language.
+            part("saved runs have no complete timing", fr: "sessions enregistrées n’ont pas de durée complète",
                  of: "%lld saved runs have no complete timing. They stay out of the average.",
-                 earlier: "has no complete timing"),
-            part("out of the average", fr: "pas dans la moyenne",
-                 of: "%lld saved runs have no complete timing. They stay out of the average."),
+                 earlier: "saved run has no complete timing", "session enregistrée n’a pas de durée complète"),
             part("Routine time begins with a completed run", fr: "Le temps de routine commence avec une session terminée",
                  of: "Explore the screens you saved below. Routine time begins with a completed run."),
             part("Days without a saved run stay empty", fr: "Les jours sans session enregistrée restent vides",
