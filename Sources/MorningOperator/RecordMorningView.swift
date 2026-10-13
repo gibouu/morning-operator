@@ -142,12 +142,12 @@ private struct RecordMorningContent: View {
 
     private var title: String {
         switch recording.state {
-        case .recording: "Go through your morning."
-        case .ready: "A little of your routine, captured."
-        case .stopping: "Finishing your recording."
-        case .starting: "Getting ready to record."
-        case .failed: "Let's try that again."
-        case .idle, .choosing: "Show how your morning goes."
+        case .recording: String(localized: "Go through your morning.")
+        case .ready: String(localized: "A little of your routine, captured.")
+        case .stopping: String(localized: "Finishing your recording.")
+        case .starting: String(localized: "Getting ready to record.")
+        case .failed: String(localized: "Let's try that again.")
+        case .idle, .choosing: String(localized: "Show how your morning goes.")
         }
     }
 }

@@ -125,7 +125,7 @@ struct LearningBatchRunnerTests {
         #expect(Set(support.citations.map(\.acquisitionID)) == Set(entries.map(\.id)))
         let last = try #require(prepared.units.last)
         #expect(support.citations.contains { $0.acquisitionID == last.acquisitionID && $0.startCharacterOffset >= last.startCharacterOffset })
-        #expect(proposal.routine.steps[0].detail.components(separatedBy: "Evidence:").count == 2)
+        #expect(proposal.routine.steps[0].detail.components(separatedBy: EvidenceDetailText.label).count == 2)
         #expect(proposal.routine.sourceLabel.contains("Demo fixture"))
         let restored = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONEncoder().encode(proposal))
         #expect(restored.isCurrent(archive: try ObservationArchive(entries: entries), baseRoutine: nil))

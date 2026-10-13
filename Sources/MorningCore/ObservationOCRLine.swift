@@ -5,9 +5,9 @@ public enum ObservationOCRLineError: Error, LocalizedError, Sendable, Equatable 
 
     public var errorDescription: String? {
         switch self {
-        case .invalidBounds: "An OCR line has invalid normalized image bounds."
-        case .invalidConfidence: "An OCR line has invalid recognition confidence."
-        case .invalidLine: "An OCR line has an invalid text span."
+        case .invalidBounds: String(localized: "An OCR line has invalid normalized image bounds.", bundle: .module)
+        case .invalidConfidence: String(localized: "An OCR line has invalid recognition confidence.", bundle: .module)
+        case .invalidLine: String(localized: "An OCR line has an invalid text span.", bundle: .module)
         }
     }
 }

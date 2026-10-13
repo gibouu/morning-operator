@@ -12,7 +12,7 @@ struct SavedRecordingRecoveryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label(store.busy ? "Reading your recording" : "Your recording is saved", systemImage: "externaldrive.badge.checkmark")
                 .font(.subheadline.weight(.medium))
-            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? "Retry understanding it, or discard the recording."))
+            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? String(localized: "Retry understanding it, or discard the recording.")))
                 .font(.caption).foregroundStyle(MorningStyle.muted)
             if store.sessionActive {
                 Text("Finish or stop the current morning before retrying.").font(.caption)
@@ -55,7 +55,7 @@ struct MorningRecordingStatus: View {
                         Text(recording.state == .recording ? "Recording your morning" : "Finishing your recording")
                             .font(.subheadline.weight(.medium))
                         Text(recording.state == .recording
-                             ? "Stops in \(remainingTime) · visible screen only"
+                             ? String(localized: "Stops in \(remainingTime) · visible screen only")
                              : recording.message).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer(minLength: 4)

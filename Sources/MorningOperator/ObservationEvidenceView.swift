@@ -63,11 +63,11 @@ struct ObservationEvidenceView: View {
 
     private func classificationStatus(_ value: ObservationContextClassification) -> String {
         switch value.status {
-        case .noEligibleFrames: "No samples have enough usable text to recognize a screen."
-        case .unavailable: "On-device screen recognition is unavailable. The saved samples are still here."
-        case .completed: "On-device recognition finished. Unclear screens remain unknown."
-        case .partialFailure: "Some screens could not be analyzed. Those samples remain unknown."
-        case .failed: "Screen recognition did not finish. Samples remain unknown; you can retry."
+        case .noEligibleFrames: String(localized: "No samples have enough usable text to recognize a screen.")
+        case .unavailable: String(localized: "On-device screen recognition is unavailable. The saved samples are still here.")
+        case .completed: String(localized: "On-device recognition finished. Unclear screens remain unknown.")
+        case .partialFailure: String(localized: "Some screens could not be analyzed. Those samples remain unknown.")
+        case .failed: String(localized: "Screen recognition did not finish. Samples remain unknown; you can retry.")
         }
     }
 
@@ -75,15 +75,15 @@ struct ObservationEvidenceView: View {
         if let decision = classification?.decisions.first(where: { $0.sampleID == frame.id }) {
             switch decision.evidence {
             case .identified(let app, _): return app.displayName
-            case .ambiguous: return "Unclear screen"
+            case .ambiguous: return String(localized: "Unclear screen")
             case .unknown: break
             }
         }
         switch frame.outcome {
-        case .observed: return classification == nil ? "Text found · screen not yet recognized" : "Unknown screen"
-        case .blank: return "No readable text"
-        case .decodeFailed: return "Frame unavailable"
-        case .ocrFailed: return "Text extraction failed"
+        case .observed: return classification == nil ? String(localized: "Text found · screen not yet recognized") : String(localized: "Unknown screen")
+        case .blank: return String(localized: "No readable text")
+        case .decodeFailed: return String(localized: "Frame unavailable")
+        case .ocrFailed: return String(localized: "Text extraction failed")
         }
     }
 

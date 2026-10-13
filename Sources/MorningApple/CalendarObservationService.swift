@@ -96,19 +96,19 @@ public enum CalendarObservationError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .notAuthorized:
-            "Calendar reading is not authorized. You can continue without a calendar snapshot."
+            String(localized: "Calendar reading is not authorized. You can continue without a calendar snapshot.", bundle: .module)
         case .missingUsageDescription:
-            "This build has no calendar permission description. Use a configured app build before enabling calendar access."
+            String(localized: "This build has no calendar permission description. Use a configured app build before enabling calendar access.", bundle: .module)
         case .invalidDay:
-            "The selected calendar day could not be resolved."
+            String(localized: "The selected calendar day could not be resolved.", bundle: .module)
         case .selectionRequired:
-            "Choose at least one calendar before preparing a calendar briefing."
+            String(localized: "Choose at least one calendar before preparing a calendar briefing.", bundle: .module)
         case .selectedCalendarsUnavailable:
-            "A selected calendar is no longer available. Review your calendar selection before refreshing."
+            String(localized: "A selected calendar is no longer available. Review your calendar selection before refreshing.", bundle: .module)
         case .invalidCalendarData:
-            "The available calendar list could not be read reliably. Please refresh it."
+            String(localized: "The available calendar list could not be read reliably. Please refresh it.", bundle: .module)
         case .invalidEventData:
-            "The selected calendar returned an event that could not be read reliably. Please refresh it."
+            String(localized: "The selected calendar returned an event that could not be read reliably. Please refresh it.", bundle: .module)
         }
     }
 }
@@ -204,7 +204,7 @@ public final class CalendarObservationService {
             let occurrence = record.occurrenceDate ?? record.start
             // Length prefixes avoid delimiter collisions; the bit pattern avoids locale/date formatting changes.
             let identity = "\(record.calendarID.utf8.count):\(record.calendarID)\(record.id.utf8.count):\(record.id):\(occurrence.timeIntervalSinceReferenceDate.bitPattern)"
-            events.append(CalendarEventSummary(id: identity, title: record.title.isEmpty ? "Untitled event" : record.title,
+            events.append(CalendarEventSummary(id: identity, title: record.title.isEmpty ? String(localized: "Untitled event", bundle: .module) : record.title,
                 start: start, end: end, isAllDay: record.isAllDay, calendarTitle: choice.title,
                 calendarID: choice.id, sourceTitle: choice.sourceTitle))
         }
@@ -245,7 +245,7 @@ private final class EventKitCalendarObservationProvider: CalendarObservationProv
     func calendarChoices() throws -> [CalendarChoice] {
         guard isAuthorized else { throw CalendarObservationError.notAuthorized }
         return store.calendars(for: .event).map {
-            CalendarChoice(id: $0.calendarIdentifier, title: $0.title, sourceTitle: $0.source?.title ?? "Calendar source")
+            CalendarChoice(id: $0.calendarIdentifier, title: $0.title, sourceTitle: $0.source?.title ?? String(localized: "Calendar source", bundle: .module))
         }
     }
 
@@ -264,7 +264,7 @@ private final class EventKitCalendarObservationProvider: CalendarObservationProv
                 throw CalendarObservationError.invalidEventData
             }
             return CalendarObservationEvent(id: event.eventIdentifier ?? event.calendarItemIdentifier,
-                calendarID: nativeCalendar.calendarIdentifier, title: event.title ?? "Untitled event",
+                calendarID: nativeCalendar.calendarIdentifier, title: event.title ?? String(localized: "Untitled event", bundle: .module),
                 start: start, end: end, isAllDay: event.isAllDay, occurrenceDate: event.occurrenceDate,
                 isCancelled: event.status == .canceled,
                 currentUserDeclined: event.attendees?.contains { $0.isCurrentUser && $0.participantStatus == .declined } ?? false,

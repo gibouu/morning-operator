@@ -7,16 +7,16 @@ public enum RoutineEvidenceProposalError: Error, LocalizedError, Sendable, Equat
     case inputBudgetExceeded, outputBudgetExceeded, tooManySteps, invalidCitation, invalidProposal
     public var errorDescription: String? {
         switch self {
-        case .invalidSelection: "Select one to five different saved observations."
-        case .dateRequired: "Assign an observed day to every selected observation first."
-        case .incompatibleSources: "Select observations in the same time zone and with the same human or synthetic origin."
-        case .unsupportedSource: "This source needs a reviewed written correction before it can support a proposal."
-        case .insufficientEvidence: "Each selected observation needs usable activity evidence. Review its notes or choose another observation."
-        case .inputBudgetExceeded: "These saved observations exceed the bounded local workload or contain a text unit too large to send safely. Your complete saved source is unchanged; nothing was silently shortened."
-        case .outputBudgetExceeded: "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened."
-        case .tooManySteps: "This proposal needs more than ten moments, including your kept rituals. Select fewer observations; no kept ritual was removed."
-        case .invalidCitation: "A proposed step could not be tied to the exact supplied evidence. Your current routine is unchanged."
-        case .invalidProposal: "This proposal is incomplete or inconsistent with its saved evidence. Create another proposal."
+        case .invalidSelection: String(localized: "Select one to five different saved observations.", bundle: .module)
+        case .dateRequired: String(localized: "Assign an observed day to every selected observation first.", bundle: .module)
+        case .incompatibleSources: String(localized: "Select observations in the same time zone and with the same human or synthetic origin.", bundle: .module)
+        case .unsupportedSource: String(localized: "This source needs a reviewed written correction before it can support a proposal.", bundle: .module)
+        case .insufficientEvidence: String(localized: "Each selected observation needs usable activity evidence. Review its notes or choose another observation.", bundle: .module)
+        case .inputBudgetExceeded: String(localized: "These saved observations exceed the bounded local workload or contain a text unit too large to send safely. Your complete saved source is unchanged; nothing was silently shortened.", bundle: .module)
+        case .outputBudgetExceeded: String(localized: "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened.", bundle: .module)
+        case .tooManySteps: String(localized: "This proposal needs more than ten moments, including your kept rituals. Select fewer observations; no kept ritual was removed.", bundle: .module)
+        case .invalidCitation: String(localized: "A proposed step could not be tied to the exact supplied evidence. Your current routine is unchanged.", bundle: .module)
+        case .invalidProposal: String(localized: "This proposal is incomplete or inconsistent with its saved evidence. Create another proposal.", bundle: .module)
         }
     }
 }
@@ -25,9 +25,9 @@ public enum RoutineEvidenceSourceLayer: String, Codable, Sendable {
     case original, correction, videoFrame
     public var displayName: String {
         switch self {
-        case .original: "Original observation"
-        case .correction: "Your correction"
-        case .videoFrame: "Recorded screen text"
+        case .original: String(localized: "Original observation", bundle: .module)
+        case .correction: String(localized: "Your correction", bundle: .module)
+        case .videoFrame: String(localized: "Recorded screen text", bundle: .module)
         }
     }
 }
@@ -254,7 +254,11 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                   Set(item.preferenceIDs).isSubset(of: preferenceIDs),
                   item.reason != .inferredEvidence || item.preferenceIDs.isEmpty,
                   item.reason != .inferredEvidenceWithUserPreference || !item.preferenceIDs.isEmpty,
-                  (item.reason == .preservedUserDecision) == item.citations.isEmpty else {
+                  (item.reason == .preservedUserDecision) == item.citations.isEmpty,
+                  // The retained quotations must be the section the app itself wrote at the
+                  // end of the detail, never a look-alike inside the model's description.
+                  item.citations.isEmpty || EvidenceDetailText.description(of: step.detail,
+                      citing: item.citations.map(\.quote)) != nil else {
                 throw RoutineEvidenceProposalError.invalidProposal
             }
             for citation in item.citations {
@@ -264,8 +268,7 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                       (8...240).contains(citation.quote.count), citation.startCharacterOffset >= 0,
                       citation.endCharacterOffset >= citation.startCharacterOffset,
                       citation.endCharacterOffset <= ObservationArchive.maximumOriginalTextCharacters,
-                      citation.endCharacterOffset - citation.startCharacterOffset == citation.quote.count,
-                      Data(step.detail.utf8).range(of: Data("Evidence: “\(citation.quote)”".utf8)) != nil else {
+                      citation.endCharacterOffset - citation.startCharacterOffset == citation.quote.count else {
                     throw RoutineEvidenceProposalError.invalidProposal
                 }
             }
@@ -483,7 +486,7 @@ public enum LearningEvidencePreparation {
                 citationsByStep[id] = existing
             } else {
                 let step = RoutineStep(title: title,
-                    detail: detail + "\nTentative suggestion from selected evidence; duration is planned, not measured.",
+                    detail: detail + "\n" + EvidenceDetailText.tentativeNote,
                     kind: input.kind, durationMinutes: input.durationMinutes)
                 keyIndexes[key] = proposed.count
                 proposed.append(step); citationsByStep[step.id] = citations
@@ -496,11 +499,11 @@ public enum LearningEvidencePreparation {
             let quotes = (citationsByStep[proposed[index].id] ?? []).compactMap { citation -> String? in
                 seenQuotes.insert(Data(citation.quote.utf8)).inserted ? citation.quote : nil
             }
-            proposed[index].detail += "\nEvidence: " + quotes.map { "“\($0)”" }.joined(separator: "\nEvidence: ")
+            proposed[index].detail += "\n" + quotes.map(EvidenceDetailText.line).joined(separator: "\n")
             guard proposed[index].detail.count <= maximumDetailCharacters else { throw RoutineEvidenceProposalError.outputBudgetExceeded }
         }
         let synthetic = evidence.sourceSnapshots.first?.origin == .synthetic
-        let source = synthetic ? "Demo fixture — synthetic saved observations" : "Selected saved observations — tentative proposal"
+        let source = synthetic ? "Demo fixture — synthetic saved observations" : String(localized: "Selected saved observations — tentative proposal", bundle: .module)
         let candidate = RoutineVersion(createdAt: date, sourceLabel: source, steps: proposed, isApproved: false)
         var routine = EvidenceRoutineProposal.inferredDraft(from: candidate, preserving: base,
             preferences: preferences, at: date)

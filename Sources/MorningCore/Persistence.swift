@@ -10,8 +10,8 @@ public enum PersistenceError: Error, LocalizedError, Sendable, Equatable {
     case unsupportedSchema(Int)
     public var errorDescription: String? {
         switch self {
-        case .fileURLRequired: "Choose a local file for this workspace."
-        case .unsupportedSchema(let version): "This file uses an unsupported schema version (\(version))."
+        case .fileURLRequired: String(localized: "Choose a local file for this workspace.", bundle: .module)
+        case .unsupportedSchema(let version): String(localized: "This file uses an unsupported schema version (\(version)).", bundle: .module)
         }
     }
 }

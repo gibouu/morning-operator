@@ -114,7 +114,7 @@ struct RoutineExportView: View {
                 contentType: .json, defaultFilename: "MORE-Morning-Routine") { result in
                 switch result {
                 case .success:
-                    statusMessage = "Routine exported. Your saved routine hasn't changed."
+                    statusMessage = String(localized: "Routine exported. Your saved routine hasn't changed.")
                     statusIsError = false
                 case .failure(let error):
                     let cocoaError = error as NSError
@@ -123,7 +123,7 @@ struct RoutineExportView: View {
                         statusMessage = nil
                         statusIsError = false
                     } else {
-                        statusMessage = "The file couldn't be saved. \(error.localizedDescription)"
+                        statusMessage = String(localized: "The file couldn't be saved. \(error.localizedDescription)")
                         statusIsError = true
                     }
                 }
@@ -151,7 +151,7 @@ struct RoutineExportView: View {
             showingFileExporter = true
         } catch {
             preparedFile = nil
-            statusMessage = "The file couldn't be prepared. \(error.localizedDescription)"
+            statusMessage = String(localized: "The file couldn't be prepared. \(error.localizedDescription)")
             statusIsError = true
         }
     }
@@ -217,7 +217,7 @@ struct RoutineImportView: View {
                 Button {
                     failureMessage = nil
                     if !onUse(documentSnapshot) {
-                        failureMessage = errorMessage() ?? "The draft couldn't be saved. Your current routine is unchanged."
+                        failureMessage = errorMessage() ?? String(localized: "The draft couldn't be saved. Your current routine is unchanged.")
                     }
                 } label: {
                     Label("Use as a draft", systemImage: "square.and.pencil")
@@ -240,9 +240,9 @@ private struct RoutineTransferPreview: View {
         Section {
             LabeledContent("Source version", value: String(document.sourceRoutineVersion))
                 .accessibilityIdentifier("\(prefix).version")
-            LabeledContent("Approval when exported", value: document.approvalAtExport ? "Approved" : "Draft")
+            LabeledContent("Approval when exported", value: document.approvalAtExport ? String(localized: "Approved") : String(localized: "Draft"))
                 .accessibilityIdentifier("\(prefix).approval")
-            LabeledContent("Planned time", value: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes")
+            LabeledContent("Planned time", value: String(localized: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes"))
             if document.sourceIsSynthetic {
                 Label("Sample or test plan", systemImage: "sparkles")
                     .font(.caption).foregroundStyle(MorningStyle.muted)
@@ -264,7 +264,7 @@ private struct RoutineTransferPreview: View {
             Section {
                 Text(verbatim: step.title).font(.headline).textSelection(.enabled)
                     .accessibilityIdentifier("\(prefix).step.\(index).title")
-                LabeledContent(step.kind.displayName, value: "\(step.durationMinutes) minutes planned")
+                LabeledContent(step.kind.displayName, value: String(localized: "\(step.durationMinutes) minutes planned"))
                     .font(.subheadline)
                     .accessibilityIdentifier("\(prefix).step.\(index).minutes")
                 if step.isRequired {

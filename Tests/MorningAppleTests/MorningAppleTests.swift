@@ -47,7 +47,7 @@ struct MorningAppleTests {
         let proposal = try await service.analyze(text: source, sourceLabel: "Synthetic model integration test")
         #expect(!proposal.isApproved)
         #expect(!proposal.steps.isEmpty)
-        #expect(proposal.steps.allSatisfy { !$0.isRequired && $0.detail.contains("Evidence:") })
+        #expect(proposal.steps.allSatisfy { !$0.isRequired && $0.detail.contains(EvidenceDetailText.label) })
         #expect(proposal.steps.allSatisfy { (1...60).contains($0.durationMinutes) })
         print("MODEL_INTEGRATION_PASSED: actual local model returned \(proposal.steps.count) grounded, unapproved steps from synthetic notes.")
     }

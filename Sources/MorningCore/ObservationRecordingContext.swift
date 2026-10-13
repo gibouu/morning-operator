@@ -5,8 +5,8 @@ public enum ObservationRecordingContextError: Error, LocalizedError, Sendable, E
 
     public var errorDescription: String? {
         switch self {
-        case .invalidStartDate: "The recording start date is invalid."
-        case .invalidTimeZone: "The recording time zone is invalid."
+        case .invalidStartDate: String(localized: "The recording start date is invalid.", bundle: .module)
+        case .invalidTimeZone: String(localized: "The recording time zone is invalid.", bundle: .module)
         }
     }
 }

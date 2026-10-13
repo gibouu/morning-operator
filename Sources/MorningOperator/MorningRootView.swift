@@ -97,14 +97,14 @@ struct MorningRootView: View {
             }
             processPendingEntries()
         }) {
-            detailSheet("Settings") { SetupView(store: store) }
+            detailSheet(String(localized: "Settings")) { SetupView(store: store) }
         }
         .sheet(isPresented: $showingInvitation, onDismiss: processPendingEntries) {
             MorningInvitationView(service: store.invitation)
                 .interactiveDismissDisabled(store.privacyBlocksWork)
         }
         .sheet(isPresented: $showingLearn, onDismiss: processPendingEntries) {
-            detailSheet("Learn my morning") { LearnView(store: store) }
+            detailSheet(String(localized: "Learn my morning")) { LearnView(store: store) }
         }
         .sheet(isPresented: $store.capturePresented, onDismiss: captureReviewDismissed) {
             QuickCaptureView(store: store)
@@ -325,21 +325,21 @@ struct MorningRootView: View {
                 storageIsAvailable: store.storageIsAvailable, hasRoutine: store.routine != nil,
                 routineIsApproved: store.routine?.isApproved == true, sessionStatus: store.session?.status),
             consumedIDs: store.consumedMorningEntryIDs)
-        let waitingNotice = "Your morning is waiting. Finish what you're doing here, then MORE can begin."
+        let waitingNotice = String(localized: "Your morning is waiting. Finish what you're doing here, then MORE can begin.")
         guard destination != .wait else {
             if scenePhase == .active, store.notice == nil { store.notice = waitingNotice }
             return
         }
         if store.notice == waitingNotice { store.notice = nil }
         if Date.now >= request.expiresAt {
-            store.notice = "Your morning is ready when you are. Tap Start to begin."
+            store.notice = String(localized: "Your morning is ready when you are. Tap Start to begin.")
         }
         if let payload = router.invitationPayload {
             do {
                 if try store.invitation.consume(payload) == nil { destination = .revealMorning }
             } catch {
                 destination = .revealMorning
-                store.notice = "Your invitation couldn't be saved. Start your morning when you're ready."
+                store.notice = String(localized: "Your invitation couldn't be saved. Start your morning when you're ready.")
             }
         }
         // Acknowledge before navigation changes trigger another view update. The
@@ -643,7 +643,7 @@ struct TodayView: View {
                 }.font(.caption2).foregroundStyle(MorningStyle.muted).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .accessibilityLabel(upcoming == nil ? "Set morning invitation" : "Edit morning invitation")
-                .accessibilityValue(upcoming?.formatted(date: .complete, time: .shortened) ?? "No upcoming invitation")
+                .accessibilityValue(upcoming?.formatted(date: .complete, time: .shortened) ?? String(localized: "No upcoming invitation"))
                 .accessibilityIdentifier("morning.invitation")
                 .disabled(!canEditInvitation || !store.storageIsAvailable)
         }
@@ -777,7 +777,7 @@ struct TodayView: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: dense ? 20 : 24))
         .overlay(RoundedRectangle(cornerRadius: dense ? 20 : 24).strokeBorder(current ? Color.primary.opacity(0.35) : .clear))
-        .accessibilityLabel("\(index + 1). \(step.title), \(step.durationMinutes) minutes\(complete ? ", completed" : skipped ? ", skipped" : "")")
+        .accessibilityLabel(complete ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, completed" : skipped ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, skipped" : "\(index + 1). \(step.title), \(step.durationMinutes) minutes")
         .accessibilityHint(canArrange ? "Opens details. Hold to move this moment." : "Opens details")
         .accessibilityIdentifier("morning.step.\(index)")
         .accessibilityActions {
@@ -807,7 +807,7 @@ struct TodayView: View {
                 }.font(.caption.weight(.medium)).foregroundStyle(MorningStyle.accent)
                 Spacer()
             }
-            Text(store.currentStep?.title ?? "Your morning")
+            Text(store.currentStep?.title ?? String(localized: "Your morning"))
                 .font(.headline).accessibilityIdentifier("run.step")
             if compact {
                 EmptyView()
@@ -961,7 +961,7 @@ private struct MorningActionDock: View {
     @ViewBuilder private var actionItems: some View {
         if let session = store.session, store.sessionActive {
             let intendsResume = session.status == .paused
-            action(intendsResume ? "Continue" : "Pause", symbol: intendsResume ? .play : .pause,
+            action(intendsResume ? String(localized: "Continue") : String(localized: "Pause"), symbol: intendsResume ? .play : .pause,
                    id: "morning.playback") {
                 // Honor the displayed command and original session, never toggle
                 // whatever state an interruption may have produced meanwhile.
@@ -976,7 +976,7 @@ private struct MorningActionDock: View {
             }
         } else if let routine = store.routine {
             let generation = store.dataGeneration
-            action(routine.isApproved ? "Play" : "Review",
+            action(routine.isApproved ? String(localized: "Play") : String(localized: "Review"),
                    symbol: routine.isApproved ? .play : .review,
                    id: routine.isApproved ? "run.start" : "morning.reviewDraft",
                    keepsExpanded: routine.isApproved) {
@@ -987,11 +987,11 @@ private struct MorningActionDock: View {
                 } else { edit() }
             }
         } else {
-            action("Sample", symbol: .play, id: "morning.sample") { store.loadSample() }
+            action(String(localized: "Sample"), symbol: .play, id: "morning.sample") { store.loadSample() }
         }
-        action("Learn", symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
-        action("History", symbol: .history, id: "morning.review", review)
-        action("Settings", symbol: .settings, id: "morning.settings", settings)
+        action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
+        action(String(localized: "History"), symbol: .history, id: "morning.review", review)
+        action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
     }
 
     private func action(_ title: String, symbol: MorningDockSymbol, id: String, disabled: Bool = false,

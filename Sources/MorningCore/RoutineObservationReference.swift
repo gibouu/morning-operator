@@ -4,8 +4,8 @@ public enum RoutineObservationReferenceError: Error, LocalizedError, Sendable, E
     case invalidRevision, invalidQuote
     public var errorDescription: String? {
         switch self {
-        case .invalidRevision: "The saved observation reference is invalid."
-        case .invalidQuote: "Choose one complete, short excerpt from the saved observation."
+        case .invalidRevision: String(localized: "The saved observation reference is invalid.", bundle: .module)
+        case .invalidQuote: String(localized: "Choose one complete, short excerpt from the saved observation.", bundle: .module)
         }
     }
 }

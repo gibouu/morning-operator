@@ -52,7 +52,7 @@ public enum MorningAutomationStatus: String, Sendable, Equatable {
 @Observable
 public final class MorningAutomationCoordinator {
     public private(set) var status: MorningAutomationStatus = .idle
-    public private(set) var message = "Ready when you start your approved routine."
+    public private(set) var message = String(localized: "Ready when you start your approved routine.", bundle: .module)
     public private(set) var context: MorningStepContext?
 
     @ObservationIgnored private let executor: any MorningStepExecuting
@@ -88,14 +88,14 @@ public final class MorningAutomationCoordinator {
         context = next
         guard !completed.contains(next.executionID) else {
             status = .completed
-            message = "This step has already finished in this run."
+            message = String(localized: "This step has already finished in this run.", bundle: .module)
             return false
         }
 
         let attempt = UUID()
         attemptID = attempt
         status = .executing
-        message = "Working on \(step.title)."
+        message = String(localized: "Working on \(step.title).", bundle: .module)
         let executor = self.executor
         task = Task { [weak self] in
             do {
@@ -110,7 +110,7 @@ public final class MorningAutomationCoordinator {
                     // Record completion before reentering the store, which may immediately start the next step.
                     guard self.completed.insert(next.executionID).inserted else { return }
                     self.status = .completed
-                    self.message = "\(step.title) finished."
+                    self.message = String(localized: "\(step.title) finished.", bundle: .module)
                     onCompletion(next)
                 case .needsUser(let reason):
                     self.status = .waitingForUser
@@ -126,10 +126,10 @@ public final class MorningAutomationCoordinator {
                 self.attemptID = nil
                 if error is CancellationError {
                     self.status = .cancelled
-                    self.message = "This step stopped before completion. Continue when you are ready."
+                    self.message = String(localized: "This step stopped before completion. Continue when you are ready.", bundle: .module)
                 } else {
                     self.status = .failed
-                    self.message = "This step could not finish: \(error.localizedDescription)"
+                    self.message = String(localized: "This step could not finish: \(error.localizedDescription)", bundle: .module)
                 }
             }
         }
@@ -147,7 +147,7 @@ public final class MorningAutomationCoordinator {
         if let previous, wasExecuting { executor.cancel(context: previous) }
         if previous != nil {
             status = .cancelled
-            message = "Automatic progression is stopped. Your current step is preserved."
+            message = String(localized: "Automatic progression is stopped. Your current step is preserved.", bundle: .module)
         }
     }
 }

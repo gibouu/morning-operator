@@ -14,11 +14,11 @@ public enum RecordingCleanupError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidTestWorkspace: "Recording cleanup requires an isolated test workspace."
-        case .unsafeDirectory: "The recording folder couldn't be safely opened. No linked folder was followed."
-        case .unexpectedFileType: "An unexpected item remains in the recording folder. It hasn't been removed."
-        case .captureStopUnconfirmed: "Screen recording hasn't fully stopped. Stop it using the system controls, then retry forgetting."
-        case .forgettingInProgress: "Finish forgetting local data before starting another recording."
+        case .invalidTestWorkspace: String(localized: "Recording cleanup requires an isolated test workspace.", bundle: .module)
+        case .unsafeDirectory: String(localized: "The recording folder couldn't be safely opened. No linked folder was followed.", bundle: .module)
+        case .unexpectedFileType: String(localized: "An unexpected item remains in the recording folder. It hasn't been removed.", bundle: .module)
+        case .captureStopUnconfirmed: String(localized: "Screen recording hasn't fully stopped. Stop it using the system controls, then retry forgetting.", bundle: .module)
+        case .forgettingInProgress: String(localized: "Finish forgetting local data before starting another recording.", bundle: .module)
         }
     }
 }

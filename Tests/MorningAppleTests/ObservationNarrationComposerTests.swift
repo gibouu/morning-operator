@@ -206,4 +206,46 @@ struct ObservationNarrationComposerTests {
         }
     }
 
+    @Test("An approved sentence keeps its composition language after the interface language changes",
+          arguments: ObservationNarrationLanguage.allCases, ObservationNarrationLanguage.allCases)
+    func approvedSentenceSurvivesLanguageChange(approved: ObservationNarrationLanguage,
+                                                current: ObservationNarrationLanguage) throws {
+        let source = try notes()
+        let archive = try ObservationArchive(entries: [source])
+        let candidate = try #require(ObservationNarrationComposer.candidates(for: source).first)
+        let prepared = try ObservationNarrationComposer.prepare(acquisition: source, candidate: candidate, language: approved)
+        // Composing again in the current language differs from the approved bytes exactly
+        // when the language changed; playback must therefore not depend on it.
+        let recomposed = try ObservationNarrationComposer.resolve(reference: prepared.reference, archive: archive, language: current)
+        #expect(recomposed.spokenText.utf8.elementsEqual(prepared.spokenText.utf8) == (approved == current))
+        let resolved = try ObservationNarrationComposer.resolve(reference: prepared.reference, archive: archive,
+            approvedText: prepared.spokenText)
+        #expect(resolved == prepared)
+    }
+
+    @Test("Saved English and French sentences resolve byte for byte; an edited one needs a new approval")
+    func savedSentencesResolveExactly() throws {
+        let source = try notes()
+        let archive = try ObservationArchive(entries: [source])
+        let candidate = try #require(ObservationNarrationComposer.candidates(for: source).first)
+        let reference = try ObservationNarrationComposer.prepare(acquisition: source, candidate: candidate).reference
+        // The first literal is what an English build saved before French existed.
+        let saved = ["In your saved note from October 8, 2026:\nA quiet cup of tea.",
+                     "Dans votre note enregistrée du 8 octobre 2026 :\nA quiet cup of tea."]
+        for sentence in saved {
+            let resolved = try ObservationNarrationComposer.resolve(reference: reference, archive: archive, approvedText: sentence)
+            #expect(resolved.spokenText.utf8.elementsEqual(sentence.utf8))
+            #expect(resolved.reference == reference)
+        }
+        for edited in ["In your saved note from October 9, 2026:\nA quiet cup of tea.", "A quiet cup of tea.", ""] {
+            #expect(throws: ObservationNarrationError.sourceChanged) {
+                try ObservationNarrationComposer.resolve(reference: reference, archive: archive, approvedText: edited)
+            }
+        }
+        var changed = archive
+        try changed.correct(id: source.id, text: "A quiet cup of tea.")
+        #expect(throws: ObservationNarrationError.sourceChanged) {
+            try ObservationNarrationComposer.resolve(reference: reference, archive: changed, approvedText: saved[0])
+        }
+    }
 }

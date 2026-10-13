@@ -451,4 +451,32 @@ struct ObservationArchiveTests {
             try JSONDecoder().decode(ObservationAcquisition.self, from: JSONSerialization.data(withJSONObject: object))
         }
     }
+
+    @Test("Imported evidence is decided by the saved source kind, never by a translated label")
+    func importedEvidenceIgnoresLabelLanguage() throws {
+        func entry(_ kind: ObservationAcquisitionSourceKind, _ label: String) throws -> ObservationAcquisition {
+            try .init(importedAt: imported, sourceKind: kind, sourceLabel: label, originalText: "A synthetic morning note")
+        }
+        // A typed note keeps the label of the language it was saved in.
+        for label in ["Your written observation", "Votre observation écrite", "Any later wording"] {
+            let note = try entry(.manual, label)
+            #expect(!note.isImportedEvidence)
+            let restored = try JSONDecoder().decode(ObservationAcquisition.self, from: JSONEncoder().encode(note))
+            #expect(!restored.isImportedEvidence)
+        }
+        // An import stays an import even if its label equals a typed note's label.
+        for kind in [ObservationAcquisitionSourceKind.text, .image] {
+            #expect(try entry(kind, "Selected file: synthetic.txt").isImportedEvidence)
+            #expect(try entry(kind, "Your written observation").isImportedEvidence)
+        }
+        let evidence = try video()
+        #expect(try movie(evidence).isImportedEvidence)
+        // Builds without a source kind saved only the English label for a typed note.
+        #expect(try !entry(.unknown, ObservationAcquisition.legacyWrittenSourceLabel).isImportedEvidence)
+        #expect(ObservationAcquisition.legacyWrittenSourceLabel == "Your written observation")
+        // The localized pre-release build migrated such a note under its French label.
+        #expect(try !entry(.unknown, "Votre observation écrite").isImportedEvidence)
+        #expect(ObservationAcquisition.legacyWrittenSourceLabels == ["Your written observation", "Votre observation écrite"])
+        #expect(try entry(.unknown, "Selected file: synthetic.txt").isImportedEvidence)
+    }
 }

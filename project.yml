@@ -17,6 +17,8 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     MARKETING_VERSION: "0.1.0"
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     CURRENT_PROJECT_VERSION: "1"
 targets:
   MorningOperator:
@@ -25,6 +27,9 @@ targets:
     sources:
       - path: Sources/MorningOperator
       - path: Resources/Assets.xcassets
+      - path: Resources/Localizable.xcstrings
+      - path: Resources/InfoPlist.xcstrings
+      - path: Resources/AppShortcuts.xcstrings
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator

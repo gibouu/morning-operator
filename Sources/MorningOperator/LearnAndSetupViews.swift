@@ -19,8 +19,8 @@ struct LearnView: View {
 
     private var learningContent: some View {
         VStack(alignment: .leading, spacing: 24) {
-            PageHeading(eyebrow: "Your rhythm", title: "Make your morning yours.",
-                subtitle: "Start with what you already do. You'll review every suggestion before it becomes your routine.")
+            PageHeading(eyebrow: String(localized: "Your rhythm"), title: String(localized: "Make your morning yours."),
+                subtitle: String(localized: "Start with what you already do. You'll review every suggestion before it becomes your routine."))
 
             if let issue = store.observationIssue {
                 Card {
@@ -55,7 +55,7 @@ struct LearnView: View {
 
             Card {
                 VStack(alignment: .leading, spacing: 18) {
-                    sectionTitle("Show us your morning", symbol: "rectangle.on.rectangle")
+                    sectionTitle(String(localized: "Show us your morning"), symbol: "rectangle.on.rectangle")
                     Text("Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -72,7 +72,7 @@ struct LearnView: View {
 
             Card {
                 VStack(alignment: .leading, spacing: 18) {
-                    sectionTitle(store.hasImportedObservation ? "What we could see" : "Add context, if you like", symbol: "pencil.and.outline")
+                    sectionTitle(store.hasImportedObservation ? String(localized: "What we could see") : String(localized: "Add context, if you like"), symbol: "pencil.and.outline")
                     Text(store.hasImportedObservation
                          ? "Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."
                          : "What do you check first? What helps you feel ready? Include the small things you want to make time for.")
@@ -218,7 +218,7 @@ struct LearnView: View {
                 .accessibilityIdentifier("learn.reviewProposal")
         }
         if !store.canSuggestSavedObservations {
-            Label(store.routinePreferencesIssue ?? "On-device suggestions aren't ready here yet. You can build and edit your routine yourself.", systemImage: "info.circle")
+            Label(store.routinePreferencesIssue ?? String(localized: "On-device suggestions aren't ready here yet. You can build and edit your routine yourself."), systemImage: "info.circle")
                 .font(.footnote).foregroundStyle(MorningStyle.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -321,8 +321,8 @@ struct SetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            PageHeading(eyebrow: "Make yourself at home", title: "A few things, your way.",
-                subtitle: "Choose what to connect and how you'd like your morning to sound.")
+            PageHeading(eyebrow: String(localized: "Make yourself at home"), title: String(localized: "A few things, your way."),
+                subtitle: String(localized: "Choose what to connect and how you'd like your morning to sound."))
 
             CardButton { choosingInvitation = true } content: {
                 HStack(spacing: 14) {
@@ -406,7 +406,7 @@ struct SetupView: View {
                             MorningAudioRoutePicker()
                         }
                         #else
-                        Text("Choose a speaker or HomePod from your Mac's sound controls, then try the voice here.")
+                        Text(String(localized: "Choose a speaker or HomePod from your Mac's sound controls, then try the voice here."))
                             .font(.footnote).foregroundStyle(MorningStyle.muted)
                             .fixedSize(horizontal: false, vertical: true)
                         #endif
@@ -511,7 +511,7 @@ struct StepEditor: View {
                         }
                     }
                     Stepper(value: $step.durationMinutes, in: 1...120) {
-                        Text("\(step.durationMinutes) \(step.durationMinutes == 1 ? "minute" : "minutes")")
+                        Text("\(step.durationMinutes) minutes")
                             .monospacedDigit()
                     }
                     .accessibilityLabel("Duration in minutes")
@@ -596,15 +596,15 @@ struct StepEditor: View {
     private var automationExplanation: String {
         switch step.automation {
         case .none:
-            "Take this moment at your own pace, then tap Next when you're ready."
+            String(localized: "Take this moment at your own pace, then tap Next when you're ready.")
         case .spokenNote:
-            "Reads the text you approve for this step. Speaking the instructions doesn't carry out the activity they describe."
+            String(localized: "Reads the text you approve for this step. Speaking the instructions doesn't carry out the activity they describe.")
         case .todayCalendar:
-            "Reads today's remaining events from calendars you select in Your day. Calendar access and spoken guidance are required."
+            String(localized: "Reads today's remaining events from calendars you select in Your day. Calendar access and spoken guidance are required.")
         case .morningBriefing:
-            "Reads a current recap from the calendars and optional city you choose in Your day. Available sources are prepared before speech; no events are changed."
+            String(localized: "Reads a current recap from the calendars and optional city you choose in Your day. Available sources are prepared before speech; no events are changed.")
         case .savedObservation:
-            "Reads the dated excerpt you selected. If the source changes or is deleted, playback stops for review. This is a saved observation, not a live inbox."
+            String(localized: "Reads the dated excerpt you selected. If the source changes or is deleted, playback stops for review. This is a saved observation, not a live inbox.")
         }
     }
 }

@@ -1,0 +1,1056 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    " One prior warning was omitted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Un avertissement précédent a été omis."
+          }
+        }
+      }
+    },
+    "A little chess. A little joy. Keep this time for yourself.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un peu d’échecs. Un peu de joie. Gardez ce temps pour vous."
+          }
+        }
+      }
+    },
+    "A little time to play": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un peu de temps pour jouer"
+          }
+        }
+      }
+    },
+    "A portable routine needs 1–10 moments with unique identities, valid names and 1–120 planned minutes each. Its text and metadata must fit the supported limits.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une routine portable doit compter 1 à 10 moments, chacun avec une identité unique, un nom valide et 1 à 120 minutes prévues. Son texte et ses métadonnées doivent respecter les limites prises en charge."
+          }
+        }
+      }
+    },
+    "A sample has more than one screen interpretation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un échantillon a plusieurs interprétations d’écran."
+          }
+        }
+      }
+    },
+    "A screen interpretation changed its source timestamp.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une interprétation d’écran a changé son horodatage source."
+          }
+        }
+      }
+    },
+    "A screen interpretation is not supported by its exact source sample.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une interprétation d’écran n’est pas étayée par son échantillon source exact."
+          }
+        }
+      }
+    },
+    "A screen interpretation refers to an unknown sample.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une interprétation d’écran fait référence à un échantillon inconnu."
+          }
+        }
+      }
+    },
+    "A video sample contains inconsistent extraction evidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un échantillon vidéo contient des éléments d’extraction incohérents."
+          }
+        }
+      }
+    },
+    "Above the target you chose": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Au-dessus de l’objectif que vous avez choisi"
+          }
+        }
+      }
+    },
+    "Add a few words before saving this capture.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez quelques mots avant d’enregistrer cette note."
+          }
+        }
+      }
+    },
+    "Add at least one step before starting your routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez au moins une étape avant de commencer votre routine."
+          }
+        }
+      }
+    },
+    "An OCR line has an invalid text span.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une ligne de texte reconnue a une plage de texte invalide."
+          }
+        }
+      }
+    },
+    "An OCR line has invalid normalized image bounds.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une ligne de texte reconnue a des limites d’image invalides."
+          }
+        }
+      }
+    },
+    "An OCR line has invalid recognition confidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une ligne de texte reconnue a un indice de confiance invalide."
+          }
+        }
+      }
+    },
+    "At most 100 routine preferences can be saved. Clear an unused preference first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez enregistrer au maximum 100 préférences de routine. Effacez d’abord une préférence inutilisée."
+          }
+        }
+      }
+    },
+    "Briefing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récap"
+          }
+        }
+      }
+    },
+    "Calendar": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendrier"
+          }
+        }
+      }
+    },
+    "Calendar idea": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idée d’agenda"
+          }
+        }
+      }
+    },
+    "Check in with the people who matter.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prenez des nouvelles des personnes qui comptent."
+          }
+        }
+      }
+    },
+    "Choose a local file for this workspace.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fichier local pour cet espace de travail."
+          }
+        }
+      }
+    },
+    "Choose a supported portable routine document. Workspace snapshots and older raw routine files cannot be imported here.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un document de routine portable pris en charge. Les sauvegardes d’espace de travail et les anciens fichiers de routine bruts ne peuvent pas être importés ici."
+          }
+        }
+      }
+    },
+    "Choose a time in the future for your invitation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une heure future pour votre invitation."
+          }
+        }
+      }
+    },
+    "Choose a valid time zone for this request.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fuseau horaire valide pour cette demande."
+          }
+        }
+      }
+    },
+    "Choose a valid time zone for your invitation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un fuseau horaire valide pour votre invitation."
+          }
+        }
+      }
+    },
+    "Choose an activity, an end on or after the start, and a daily target between 0 minutes and 24 hours.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une activité, une date de fin égale ou postérieure à la date de début, et un objectif quotidien compris entre 0 minute et 24 heures."
+          }
+        }
+      }
+    },
+    "Choose one complete, short excerpt from the saved observation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un extrait court et complet de l’observation enregistrée."
+          }
+        }
+      }
+    },
+    "Custom": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personnalisé"
+          }
+        }
+      }
+    },
+    "Dream": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rêve"
+          }
+        }
+      }
+    },
+    "Each routine step needs a unique identity, a title and a positive duration.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque étape de la routine doit avoir une identité unique, un titre et une durée positive."
+          }
+        }
+      }
+    },
+    "Edit the routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier la routine"
+          }
+        }
+      }
+    },
+    "Entertainment": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divertissement"
+          }
+        }
+      }
+    },
+    "Finish or stop the session before adding it to history.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez ou arrêtez la session avant de l’ajouter à l’historique."
+          }
+        }
+      }
+    },
+    "Forgetting local data is still in progress.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’oubli des données locales est toujours en cours."
+          }
+        }
+      }
+    },
+    "Good morning. Let’s see what’s ahead.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonjour. Voyons ce qui vous attend."
+          }
+        }
+      }
+    },
+    "Imported routine — review before approval": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routine importée — à relire avant approbation"
+          }
+        }
+      }
+    },
+    "In progress": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours"
+          }
+        }
+      }
+    },
+    "Keep the longer plan": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garder le plan plus long"
+          }
+        }
+      }
+    },
+    "Local privacy controls require a file location.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réglages de confidentialité locaux nécessitent un emplacement de fichier."
+          }
+        }
+      }
+    },
+    "Local privacy status is unreadable. Ordinary access is paused until it is explicitly reset.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’état de confidentialité local est illisible. L’accès normal est suspendu jusqu’à une réinitialisation explicite."
+          }
+        }
+      }
+    },
+    "Local privacy status uses an unsupported format. Ordinary access is paused.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’état de confidentialité local utilise un format non pris en charge. L’accès normal est suspendu."
+          }
+        }
+      }
+    },
+    "Make room for the day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites de la place pour la journée"
+          }
+        }
+      }
+    },
+    "Messages": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages"
+          }
+        }
+      }
+    },
+    "More than one suggested moment could match a saved preference. Review the matching activities before trying again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plusieurs moments suggérés pourraient correspondre à une préférence enregistrée. Vérifiez les activités concernées avant de réessayer."
+          }
+        }
+      }
+    },
+    "No target chosen": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun objectif choisi"
+          }
+        }
+      }
+    },
+    "No words were received. Try again or type your thought.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mot n’a été reçu. Réessayez ou tapez votre pensée."
+          }
+        }
+      }
+    },
+    "Not saved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non enregistré"
+          }
+        }
+      }
+    },
+    "Nothing recorded for this day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien d’enregistré pour ce jour"
+          }
+        }
+      }
+    },
+    "Observation measurements must be nonnegative and match their coverage.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les mesures d’observation doivent être positives et correspondre à leur couverture."
+          }
+        }
+      }
+    },
+    "Original media timing metadata was invalid or inconsistent and was omitted; saved sample time and text were preserved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les métadonnées temporelles du média d’origine étaient invalides ou incohérentes et ont été omises ; l’heure et le texte des échantillons ont été conservés."
+          }
+        }
+      }
+    },
+    "Outside the chosen period": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hors de la période choisie"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pause"
+          }
+        }
+      }
+    },
+    "People and messages": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proches et messages"
+          }
+        }
+      }
+    },
+    "Read reviewed observation text": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire le texte d’observation relu"
+          }
+        }
+      }
+    },
+    "Read this note aloud": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire cette note à voix haute"
+          }
+        }
+      }
+    },
+    "Read today's briefing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire le récap du jour"
+          }
+        }
+      }
+    },
+    "Read today's calendar": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire l’agenda du jour"
+          }
+        }
+      }
+    },
+    "Read today’s events from your connected calendar.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lisez les événements du jour depuis votre calendrier connecté."
+          }
+        }
+      }
+    },
+    "Reminder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rappel"
+          }
+        }
+      }
+    },
+    "Requested video samples must remain in time order.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les échantillons vidéo demandés doivent rester dans l’ordre chronologique."
+          }
+        }
+      }
+    },
+    "Review and approve this routine before starting.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relisez et approuvez cette routine avant de commencer."
+          }
+        }
+      }
+    },
+    "Saved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré"
+          }
+        }
+      }
+    },
+    "That capture is longer than 4,000 characters. Try a shorter thought or type it instead.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette note dépasse 4 000 caractères. Essayez une pensée plus courte ou tapez-la."
+          }
+        }
+      }
+    },
+    "That command is not available in the current session state.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette commande n’est pas disponible dans l’état actuel de la session."
+          }
+        }
+      }
+    },
+    "That event identifier already belongs to a different app transition.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet identifiant d’événement appartient déjà à une autre transition d’app."
+          }
+        }
+      }
+    },
+    "The action attempt could not be found.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tentative d’action est introuvable."
+          }
+        }
+      }
+    },
+    "The app transition has an invalid time zone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transition d’app a un fuseau horaire invalide."
+          }
+        }
+      }
+    },
+    "The app transition has an invalid timestamp.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transition d’app a un horodatage invalide."
+          }
+        }
+      }
+    },
+    "The current routine version cannot be safely updated. No routine was replaced.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La version actuelle de la routine ne peut pas être mise à jour en toute sécurité. Aucune routine n’a été remplacée."
+          }
+        }
+      }
+    },
+    "The local file fingerprint is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’empreinte du fichier local est invalide."
+          }
+        }
+      }
+    },
+    "The local file size is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La taille du fichier local est invalide."
+          }
+        }
+      }
+    },
+    "The local privacy files could not be opened safely. Nothing was replaced.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fichiers de confidentialité locaux n’ont pas pu être ouverts en toute sécurité. Rien n’a été remplacé."
+          }
+        }
+      }
+    },
+    "The original media timestamp is invalid or unsupported.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’horodatage du média d’origine est invalide ou non pris en charge."
+          }
+        }
+      }
+    },
+    "The recorded date is not valid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date enregistrée n’est pas valide."
+          }
+        }
+      }
+    },
+    "The recorded time zone is not valid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fuseau horaire enregistré n’est pas valide."
+          }
+        }
+      }
+    },
+    "The recording start date is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date de début de l’enregistrement est invalide."
+          }
+        }
+      }
+    },
+    "The recording time zone is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fuseau horaire de l’enregistrement est invalide."
+          }
+        }
+      }
+    },
+    "The requested date could not be understood.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date demandée n’a pas pu être comprise."
+          }
+        }
+      }
+    },
+    "The saved invitation could not be read safely. Cancel it before creating another.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’invitation enregistrée n’a pas pu être lue en toute sécurité. Annulez-la avant d’en créer une autre."
+          }
+        }
+      }
+    },
+    "The saved observation reference is invalid.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La référence à l’observation enregistrée est invalide."
+          }
+        }
+      }
+    },
+    "The suggested routine has conflicting step identities. Your routine is unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La routine suggérée contient des identités d’étapes contradictoires. Votre routine n’a pas changé."
+          }
+        }
+      }
+    },
+    "The video evidence contains a repeated sample identifier.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les éléments vidéo contiennent un identifiant d’échantillon répété."
+          }
+        }
+      }
+    },
+    "The video evidence exceeds the bounded frame or text budget.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les éléments vidéo dépassent la limite d’images ou de texte."
+          }
+        }
+      }
+    },
+    "The video evidence has an unsupported duration.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les éléments vidéo ont une durée non prise en charge."
+          }
+        }
+      }
+    },
+    "There is no pending local-data removal.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune suppression de données locales n’est en attente."
+          }
+        }
+      }
+    },
+    "These saved preferences exceed the local storage limit. Shorten a retained moment or clear an unused preference.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces préférences enregistrées dépassent la limite de stockage locale. Raccourcissez un moment conservé ou effacez une préférence inutilisée."
+          }
+        }
+      }
+    },
+    "This action cannot be dispatched or updated from its current state.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action ne peut pas être lancée ni mise à jour dans son état actuel."
+          }
+        }
+      }
+    },
+    "This action is outside its current approval scope.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action sort du cadre de son approbation actuelle."
+          }
+        }
+      }
+    },
+    "This file uses an unsupported schema version (%lld).": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier utilise une version de schéma non prise en charge (%lld)."
+          }
+        }
+      }
+    },
+    "This intent is already journaled. Reconcile its outcome before taking another action.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette intention est déjà consignée. Vérifiez son résultat avant toute autre action."
+          }
+        }
+      }
+    },
+    "This period has ended or was cancelled. Start a new one to change it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette période est terminée ou a été annulée. Commencez-en une nouvelle pour la modifier."
+          }
+        }
+      }
+    },
+    "This removal request no longer matches the current privacy state.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette demande de suppression ne correspond plus à l’état de confidentialité actuel."
+          }
+        }
+      }
+    },
+    "This routine document contains unsupported fields. No actions or settings were imported.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document de routine contient des champs non pris en charge. Aucune action ni aucun réglage n’a été importé."
+          }
+        }
+      }
+    },
+    "This routine document could not be read. The current routine is unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document de routine n’a pas pu être lu. La routine actuelle n’a pas changé."
+          }
+        }
+      }
+    },
+    "This routine document exceeds the 1 MiB limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document de routine dépasse la limite de 1 Mio."
+          }
+        }
+      }
+    },
+    "This routine document uses an unsupported version. The current routine is unchanged.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document de routine utilise une version non prise en charge. La routine actuelle n’a pas changé."
+          }
+        }
+      }
+    },
+    "This saved routine preference is invalid. Review or reset it before learning again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette préférence de routine enregistrée est invalide. Vérifiez-la ou réinitialisez-la avant un nouvel apprentissage."
+          }
+        }
+      }
+    },
+    "Thought": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pensée"
+          }
+        }
+      }
+    },
+    "Time to enjoy": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un moment pour soi"
+          }
+        }
+      }
+    },
+    "Two saved preferences conflict for the same suggested moment. Review those preferences before trying again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deux préférences enregistrées se contredisent pour le même moment suggéré. Vérifiez ces préférences avant de réessayer."
+          }
+        }
+      }
+    },
+    "Wellbeing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bien-être"
+          }
+        }
+      }
+    },
+    "Within the target you chose": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans l’objectif que vous avez choisi"
+          }
+        }
+      }
+    },
+    "Your moment": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre moment"
+          }
+        }
+      }
+    },
+    "Your morning": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre matinée"
+          }
+        }
+      }
+    },
+    "Your turn": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À vous"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

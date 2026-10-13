@@ -55,27 +55,27 @@ public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
     public var explanation: String {
         switch self {
         case .approvedQuotation:
-            "You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source."
+            String(localized: "You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source.", bundle: .module)
         case .keptChoice:
-            "You chose to keep this moment. Its quotation stays with that choice until you clear it in Review."
+            String(localized: "You chose to keep this moment. Its quotation stays with that choice until you clear it in Review.", bundle: .module)
         case .markedRequired:
-            "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it."
+            String(localized: "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it.", bundle: .module)
         case .savedRun:
-            "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it."
+            String(localized: "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it.", bundle: .module)
         case .choicesUnavailable:
-            "Your saved choices could not be read, so this quotation is kept until they can be checked."
+            String(localized: "Your saved choices could not be read, so this quotation is kept until they can be checked.", bundle: .module)
         case .unlinkedMatchingText:
-            "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it."
+            String(localized: "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it.", bundle: .module)
         case .unapprovedDraftQuotation:
-            "This quotation sits unchanged in a draft you have not approved or kept, so it goes with its observation. The step's name and timing are yours and stay."
+            String(localized: "This quotation sits unchanged in a draft you have not approved or kept, so it goes with its observation. The step's name and timing are yours and stay.", bundle: .module)
         case .reworkedStep:
-            "This step no longer matches its saved excerpt exactly, so its wording is treated as yours and stays. Only its link to the observation stops working."
+            String(localized: "This step no longer matches its saved excerpt exactly, so its wording is treated as yours and stays. Only its link to the observation stops working.", bundle: .module)
         case .suggestionSource:
-            "This pending suggestion was built from the observation and has to be worked out again."
+            String(localized: "This pending suggestion was built from the observation and has to be worked out again.", bundle: .module)
         case .suggestionCitation:
-            "This pending suggestion quotes the observation. The suggestion is set aside and has to be worked out again."
+            String(localized: "This pending suggestion quotes the observation. The suggestion is set aside and has to be worked out again.", bundle: .module)
         case .insideDiscardedSuggestion:
-            "This copy sits inside a pending suggestion that has to be worked out again. A choice you kept is listed separately."
+            String(localized: "This copy sits inside a pending suggestion that has to be worked out again. A choice you kept is listed separately.", bundle: .module)
         }
     }
 }
@@ -180,7 +180,8 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 return result
             }
             let newline = Data([0x0A])
-            let starts = offsets(of: "Evidence: “").map(\.upperBound)
+            // A detail keeps the label of the language it was written in.
+            let starts = EvidenceDetailText.readableLabels.flatMap { offsets(of: "\($0) “") }.map(\.upperBound).sorted()
             let ends = starts.isEmpty ? [] : offsets(of: "”").map(\.lowerBound)
             // Byte-exact throughout: two spellings of the same letters are two quotations.
             var seenLines = Set<Data>()
@@ -250,10 +251,11 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 guard let reference = step.observationReference else { continue }
                 // Removal needs proof that the text is still the untouched saved excerpt:
                 // the same byte-for-byte check playback uses against the current source.
-                // An edited sentence, or a source that changed or is gone, is kept.
+                // An edited sentence, or a source that changed or is gone, is kept. The
+                // excerpt keeps the language it was composed in, whatever the interface is now.
                 let untouched = step.automation == .savedObservation
-                    && (try? ObservationNarrationComposer.resolve(reference: reference, archive: archive))?
-                        .spokenText.utf8.elementsEqual(step.detail.utf8) == true
+                    && (try? ObservationNarrationComposer.resolve(reference: reference, archive: archive,
+                                                                  approvedText: step.detail)) != nil
                 copies.append(.init(acquisitionID: reference.acquisitionID, store: store, kind: kind(step),
                     stepID: step.id, quote: reference.quote,
                     reason: explicitDecision(step, reference) ?? (preferences == nil ? .choicesUnavailable

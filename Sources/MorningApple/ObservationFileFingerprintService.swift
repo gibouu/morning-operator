@@ -8,10 +8,10 @@ public enum ObservationFileFingerprintError: Error, LocalizedError, Sendable, Eq
 
     public var errorDescription: String? {
         switch self {
-        case .localRegularFileRequired: "Choose a local regular file to identify."
-        case .unreadableFile: "This local file could not be read."
-        case .fileTooLarge: "This file exceeds the prototype's local fingerprint size limit."
-        case .fileChanged: "This file changed while it was being identified. Try again after it finishes saving."
+        case .localRegularFileRequired: String(localized: "Choose a local regular file to identify.", bundle: .module)
+        case .unreadableFile: String(localized: "This local file could not be read.", bundle: .module)
+        case .fileTooLarge: String(localized: "This file exceeds the prototype's local fingerprint size limit.", bundle: .module)
+        case .fileChanged: String(localized: "This file changed while it was being identified. Try again after it finishes saving.", bundle: .module)
         }
     }
 }

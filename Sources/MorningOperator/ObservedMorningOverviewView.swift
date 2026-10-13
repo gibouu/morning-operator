@@ -34,7 +34,7 @@ struct ObservedMorningOverviewView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .accessibilityIdentifier("review.observed.group.\(partition.id)")
                             Text(partition.timeZoneIdentifier).font(.caption).foregroundStyle(MorningStyle.muted)
-                            Text("\(partition.recognizedDayCount) \(partition.recognizedDayCount == 1 ? "day" : "days") with labeled samples · \(partition.observedDayCount) \(partition.observedDayCount == 1 ? "day" : "days") with observations")
+                            Text("\(partition.recognizedDayCount) days with labeled samples · \(partition.observedDayCount) days with observations")
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("review.observed.coverage.\(partition.id)")
                         }
@@ -64,10 +64,10 @@ struct ObservedMorningOverviewView: View {
                             Text("Showing 3 of \(contexts.count) labels. All labels and quotations are below.")
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
-                        Text("\(partition.unclassifiedDayKeys.count) observed \(partition.unclassifiedDayKeys.count == 1 ? "day" : "days") without labels · \(partition.missingDayKeys.count) dates without observations")
+                        Text("\(partition.unclassifiedDayKeys.count) observed days without labels · \(partition.missingDayKeys.count) dates without observations")
                             .font(.caption).foregroundStyle(MorningStyle.muted)
                         if !partition.daysWithUnknownMoments.isEmpty {
-                            Text("Unresolved samples remain on \(partition.daysWithUnknownMoments.count) observed \(partition.daysWithUnknownMoments.count == 1 ? "day" : "days").")
+                            Text("Unresolved samples remain on \(partition.daysWithUnknownMoments.count) observed days.")
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                     }
@@ -216,26 +216,26 @@ private enum ObservedMorningPresentation {
         }
         #endif
         switch origin {
-        case .human: return "My mornings"
-        case .synthetic: return "Samples & tests"
-        case .automated: return "Automated activity"
-        case .unknown: return "Origin unsure"
+        case .human: return String(localized: "My mornings")
+        case .synthetic: return String(localized: "Samples & tests")
+        case .automated: return String(localized: "Automated activity")
+        case .unknown: return String(localized: "Origin unsure")
         }
     }
     static func momentLabel(_ moment: ObservationReviewMoment) -> String {
         switch moment.resolution {
-        case .recognized: moment.resolvedContext?.displayName ?? "Unknown screen"
-        case .ambiguous: "Ambiguous screen"
-        case .conflicting: "Unresolved at this timestamp"
-        case .unknown: "Unknown screen"
+        case .recognized: moment.resolvedContext?.displayName ?? String(localized: "Unknown screen")
+        case .ambiguous: String(localized: "Ambiguous screen")
+        case .conflicting: String(localized: "Unresolved at this timestamp")
+        case .unknown: String(localized: "Unknown screen")
         }
     }
     static func momentCaption(_ moment: ObservationReviewMoment) -> String {
         let seconds = max(0, Int(moment.timeSeconds.rounded()))
-        let time = String(format: "%02d:%02d in this recording", seconds / 60, seconds % 60)
-        if moment.samples.count > 1 { return "\(time) · \(moment.samples.count) samples share this time" }
-        if moment.hasRequestedTimeFallback { return "\(time) · requested time only" }
-        if moment.samples.contains(where: { $0.provenance == .userReviewed }) { return "\(time) · Your label" }
+        let time = String(format: String(localized: "%02d:%02d in this recording"), seconds / 60, seconds % 60)
+        if moment.samples.count > 1 { return String(localized: "\(time) · \(moment.samples.count) samples share this time") }
+        if moment.hasRequestedTimeFallback { return String(localized: "\(time) · requested time only") }
+        if moment.samples.contains(where: { $0.provenance == .userReviewed }) { return String(localized: "\(time) · Your label") }
         return time
     }
 }

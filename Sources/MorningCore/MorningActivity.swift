@@ -8,12 +8,12 @@ public enum MorningActivityCategory: String, Codable, Hashable, Sendable, CaseIt
     case briefing, messages, calendar, wellbeing, entertainment, custom
     public var displayName: String {
         switch self {
-        case .briefing: "Briefing"
-        case .messages: "Messages"
-        case .calendar: "Calendar"
-        case .wellbeing: "Wellbeing"
-        case .entertainment: "Time to enjoy"
-        case .custom: "Your moment"
+        case .briefing: String(localized: "Briefing", bundle: .module)
+        case .messages: String(localized: "Messages", bundle: .module)
+        case .calendar: String(localized: "Calendar", bundle: .module)
+        case .wellbeing: String(localized: "Wellbeing", bundle: .module)
+        case .entertainment: String(localized: "Time to enjoy", bundle: .module)
+        case .custom: String(localized: "Your moment", bundle: .module)
         }
     }
 }
@@ -22,9 +22,9 @@ public enum MorningActivityStatus: String, Codable, Hashable, Sendable, CaseIter
     case running, paused, needsAttention
     public var displayName: String {
         switch self {
-        case .running: "In progress"
-        case .paused: "Paused"
-        case .needsAttention: "Your turn"
+        case .running: String(localized: "In progress", bundle: .module)
+        case .paused: String(localized: "Paused", bundle: .module)
+        case .needsAttention: String(localized: "Your turn", bundle: .module)
         }
     }
 }

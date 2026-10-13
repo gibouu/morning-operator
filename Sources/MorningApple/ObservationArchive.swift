@@ -6,18 +6,18 @@ public enum ObservationArchiveError: Error, LocalizedError, Sendable, Equatable 
     case archiveFull, archiveTooLarge, unknownAcquisition, invalidClassification, correctedObservation, invalidFrameReview
     public var errorDescription: String? {
         switch self {
-        case .invalidSource: "An observation contains invalid or inconsistent source evidence."
-        case .invalidDate: "Choose a valid observed date and time zone."
-        case .invalidDigest: "The observation file fingerprint is invalid."
-        case .invalidRecordingContext: "The recording-start metadata is invalid for this observation."
-        case .duplicateAcquisition: "Two observations use the same acquisition identifier."
-        case .duplicateDigest: "The archive contains the same file more than once."
-        case .archiveFull: "The observation archive is full. Delete an observation before adding another."
-        case .archiveTooLarge: "The observation archive exceeds its storage limit. Delete an observation before adding more."
-        case .unknownAcquisition: "This observation is no longer in the archive."
-        case .invalidClassification: "This interpretation is not supported by the saved original evidence."
-        case .correctedObservation: "Corrected notes cannot retain an interpretation of the original recording."
-        case .invalidFrameReview: "This screen review is not supported by its saved original sample."
+        case .invalidSource: String(localized: "An observation contains invalid or inconsistent source evidence.", bundle: .module)
+        case .invalidDate: String(localized: "Choose a valid observed date and time zone.", bundle: .module)
+        case .invalidDigest: String(localized: "The observation file fingerprint is invalid.", bundle: .module)
+        case .invalidRecordingContext: String(localized: "The recording-start metadata is invalid for this observation.", bundle: .module)
+        case .duplicateAcquisition: String(localized: "Two observations use the same acquisition identifier.", bundle: .module)
+        case .duplicateDigest: String(localized: "The archive contains the same file more than once.", bundle: .module)
+        case .archiveFull: String(localized: "The observation archive is full. Delete an observation before adding another.", bundle: .module)
+        case .archiveTooLarge: String(localized: "The observation archive exceeds its storage limit. Delete an observation before adding more.", bundle: .module)
+        case .unknownAcquisition: String(localized: "This observation is no longer in the archive.", bundle: .module)
+        case .invalidClassification: String(localized: "This interpretation is not supported by the saved original evidence.", bundle: .module)
+        case .correctedObservation: String(localized: "Corrected notes cannot retain an interpretation of the original recording.", bundle: .module)
+        case .invalidFrameReview: String(localized: "This screen review is not supported by its saved original sample.", bundle: .module)
         }
     }
 }
@@ -28,6 +28,28 @@ public enum ObservationAcquisitionOrigin: String, Codable, Sendable, CaseIterabl
 
 public enum ObservationAcquisitionSourceKind: String, Codable, Sendable, CaseIterable {
     case image, video, text, manual, unknown
+}
+
+extension ObservationAcquisition {
+    /// The source label of a typed note in builds that saved no source kind. It is
+    /// persisted data, not interface text: it stays English and is never translated.
+    public static let legacyWrittenSourceLabel = "Your written observation"
+
+    /// Every label a build could have saved on a typed note of unknown kind: the English
+    /// one, and the French one a localized pre-release build wrote during migration.
+    public static let legacyWrittenSourceLabels = [legacyWrittenSourceLabel, "Votre observation écrite"]
+
+    /// Whether this is evidence brought in from a file or recording rather than a note
+    /// typed by the user. Decided from the saved source kind, so a source label written
+    /// in one interface language reads the same in another. Only a legacy entry of
+    /// unknown kind falls back to the fixed labels old builds gave a typed note.
+    public var isImportedEvidence: Bool {
+        switch sourceKind {
+        case .manual: false
+        case .image, .video, .text: true
+        case .unknown: !Self.legacyWrittenSourceLabels.contains(sourceLabel)
+        }
+    }
 }
 
 public enum ObservationDateProvenance: String, Codable, Sendable {
@@ -79,11 +101,11 @@ public enum ObservationAcquisitionWarning: String, Codable, Sendable {
     public var message: String {
         switch self {
         case .invalidClassificationRemoved:
-            "An unsupported saved interpretation was removed. The original observation is still available."
+            String(localized: "An unsupported saved interpretation was removed. The original observation is still available.", bundle: .module)
         case .invalidRecordingContextRemoved:
-            "Unsupported recording-start metadata was removed. The original observation and its chosen day are still available."
+            String(localized: "Unsupported recording-start metadata was removed. The original observation and its chosen day are still available.", bundle: .module)
         case .invalidFrameReviewsRemoved:
-            "Unsupported saved screen reviews and their original interpretation were removed. The original observation is still available for review."
+            String(localized: "Unsupported saved screen reviews and their original interpretation were removed. The original observation is still available for review.", bundle: .module)
         }
     }
 }

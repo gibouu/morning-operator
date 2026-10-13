@@ -73,10 +73,10 @@ public enum ActionJournalError: Error, LocalizedError, Equatable, Sendable {
     case approvalMismatch, duplicateIntent, attemptNotFound, invalidTransition
     public var errorDescription: String? {
         switch self {
-        case .approvalMismatch: "This action is outside its current approval scope."
-        case .duplicateIntent: "This intent is already journaled. Reconcile its outcome before taking another action."
-        case .attemptNotFound: "The action attempt could not be found."
-        case .invalidTransition: "This action cannot be dispatched or updated from its current state."
+        case .approvalMismatch: String(localized: "This action is outside its current approval scope.", bundle: .module)
+        case .duplicateIntent: String(localized: "This intent is already journaled. Reconcile its outcome before taking another action.", bundle: .module)
+        case .attemptNotFound: String(localized: "The action attempt could not be found.", bundle: .module)
+        case .invalidTransition: String(localized: "This action cannot be dispatched or updated from its current state.", bundle: .module)
         }
     }
 }

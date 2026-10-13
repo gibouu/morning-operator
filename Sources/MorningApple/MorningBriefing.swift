@@ -27,10 +27,10 @@ public enum MorningBriefingError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidDate: "The briefing date could not be resolved."
-        case .invalidTimeZone: "Choose a valid time zone for this briefing."
-        case .unsupportedLocale: "Prepared briefings currently support English."
-        case .invalidPolicy: "The briefing freshness settings are invalid."
+        case .invalidDate: String(localized: "The briefing date could not be resolved.", bundle: .module)
+        case .invalidTimeZone: String(localized: "Choose a valid time zone for this briefing.", bundle: .module)
+        case .unsupportedLocale: String(localized: "Prepared briefings currently support English and French.", bundle: .module)
+        case .invalidPolicy: String(localized: "The briefing freshness settings are invalid.", bundle: .module)
         }
     }
 }
@@ -113,8 +113,8 @@ public struct PreparedMorningBriefing: Identifiable, Sendable, Equatable {
 }
 
 public enum MorningBriefingComposer {
-    /// Deterministic English prose; English locale variants control dates, clocks
-    /// and decimal formatting. This does not ask a model to summarize private data.
+    /// Deterministic English or French prose; the locale controls the language, dates,
+    /// clocks and decimal formatting. This does not ask a model to summarize private data.
     public static func prepare(
         calendar inputCalendar: MorningBriefingInput<CalendarSnapshot>,
         weather inputWeather: MorningBriefingInput<WeatherObservationSnapshot>,
@@ -128,7 +128,7 @@ public enum MorningBriefingComposer {
         }
         guard let zone = TimeZone(identifier: timeZoneIdentifier) else { throw MorningBriefingError.invalidTimeZone }
         let locale = Locale(identifier: localeIdentifier)
-        guard locale.language.languageCode?.identifier == "en" else { throw MorningBriefingError.unsupportedLocale }
+        guard let phrases = MorningBriefingPhrases(locale: locale) else { throw MorningBriefingError.unsupportedLocale }
         guard policy.calendarMaximumAge.isFinite, policy.calendarMaximumAge > 0,
               policy.weatherMaximumAge.isFinite, policy.weatherMaximumAge > 0,
               (1...5).contains(policy.maximumCalendarEvents) else { throw MorningBriefingError.invalidPolicy }
@@ -140,8 +140,8 @@ public enum MorningBriefingComposer {
             throw MorningBriefingError.invalidDate
         }
         var calendarSection = Self.calendarSection(inputCalendar, dayStart: dayStart, dayEnd: dayEnd,
-            now: now, zone: zone, locale: locale, policy: policy)
-        var weatherSection = Self.weatherSection(inputWeather, now: now, locale: locale,
+            now: now, zone: zone, locale: locale, phrases: phrases, policy: policy)
+        var weatherSection = Self.weatherSection(inputWeather, now: now, locale: locale, phrases: phrases,
             unit: temperatureUnit, policy: policy)
         let hasFacts = calendarSection.status == .fresh || weatherSection.status == .fresh
         // Configure sources in Settings, not in every spoken morning. A failed
@@ -154,7 +154,7 @@ public enum MorningBriefingComposer {
             formatter.locale = locale; formatter.timeZone = zone
             formatter.dateStyle = .full; formatter.timeStyle = .none
             segments.append(.init(id: "introduction", source: .introduction,
-                text: "Here is your briefing for \(formatter.string(from: day))."))
+                text: phrases.introduction(formatter.string(from: day))))
             segments += calendarSection.segments + weatherSection.segments
         }
         let weatherSnapshot: WeatherObservationSnapshot?
@@ -173,11 +173,11 @@ public enum MorningBriefingComposer {
 
     private static func calendarSection(_ input: MorningBriefingInput<CalendarSnapshot>,
         dayStart: Date, dayEnd: Date, now: Date, zone: TimeZone, locale: Locale,
-        policy: MorningBriefingFreshnessPolicy) -> MorningBriefingSection {
-        guard case .snapshot(let snapshot) = input else { return missingSection(input, name: "Calendar") }
+        phrases: MorningBriefingPhrases, policy: MorningBriefingFreshnessPolicy) -> MorningBriefingSection {
+        guard case .snapshot(let snapshot) = input else { return missingSection(input, name: phrases.calendarName, phrases: phrases) }
         func invalid(_ issue: MorningBriefingSourceIssue, stale: Bool = false) -> MorningBriefingSection {
-            section(status: stale ? .stale : .unavailable, issue: issue, name: "Calendar",
-                retrievedAt: snapshot.retrievedAt, sourceLabels: snapshot.sourceLabels)
+            section(status: stale ? .stale : .unavailable, issue: issue, name: phrases.calendarName,
+                phrases: phrases, retrievedAt: snapshot.retrievedAt, sourceLabels: snapshot.sourceLabels)
         }
         guard snapshot.retrievedAt.timeIntervalSinceReferenceDate.isFinite,
               snapshot.dayStart.timeIntervalSinceReferenceDate.isFinite,
@@ -215,8 +215,8 @@ public enum MorningBriefingComposer {
         formatter.locale = locale; formatter.timeZone = zone
         formatter.dateStyle = .none; formatter.timeStyle = .short
         var texts = shown.map { event in
-            let title = boundedTitle(event.title)
-            if event.isAllDay { return endingSentence("All day: \(title)") }
+            let title = boundedTitle(event.title, phrases: phrases)
+            if event.isAllDay { return endingSentence(phrases.allDay(title)) }
             if event.start <= now {
                 let ending: String
                 if event.end >= dayEnd {
@@ -225,19 +225,19 @@ public enum MorningBriefingComposer {
                     endFormatter.dateStyle = .medium; endFormatter.timeStyle = .short
                     ending = endFormatter.string(from: event.end)
                 } else { ending = formatter.string(from: event.end) }
-                return endingSentence("In progress until \(ending): \(title)")
+                return endingSentence(phrases.inProgress(ending, title))
             }
-            return endingSentence("At \(formatter.string(from: event.start)): \(title)")
+            return endingSentence(phrases.at(formatter.string(from: event.start), title))
         }
-        if remaining.isEmpty { texts = ["No remaining events today in your selected calendars."] }
+        if remaining.isEmpty { texts = [phrases.noRemainingEvents] }
         let omitted = remaining.count - shown.count
-        if omitted > 0 { texts.append("Plus \(omitted) more \(omitted == 1 ? "event" : "events") today.") }
+        if omitted > 0 { texts.append(phrases.more(omitted)) }
         let boundaries = remaining.flatMap { event -> [Date] in
             guard !event.isAllDay else { return [] }
             return [event.start, event.end].filter { $0 > now }
         }
         let expiry = ([snapshot.retrievedAt.addingTimeInterval(policy.calendarMaximumAge), dayEnd] + boundaries).min()
-        return .init(status: .fresh, issue: nil, statusText: "Read from your selected calendars.",
+        return .init(status: .fresh, issue: nil, statusText: phrases.calendarStatus,
             retrievedAt: snapshot.retrievedAt, observationAt: nil, sourceLabels: snapshot.sourceLabels,
             omissionCount: omitted, segments: texts.enumerated().map {
                 .init(id: "calendar.\($0.offset)", source: .calendar, text: $0.element)
@@ -245,13 +245,13 @@ public enum MorningBriefingComposer {
     }
 
     private static func weatherSection(_ input: MorningBriefingInput<WeatherObservationSnapshot>,
-        now: Date, locale: Locale, unit: MorningBriefingTemperatureUnit,
+        now: Date, locale: Locale, phrases: MorningBriefingPhrases, unit: MorningBriefingTemperatureUnit,
         policy: MorningBriefingFreshnessPolicy) -> MorningBriefingSection {
-        guard case .snapshot(let snapshot) = input else { return missingSection(input, name: "Weather") }
+        guard case .snapshot(let snapshot) = input else { return missingSection(input, name: phrases.weatherName, phrases: phrases) }
         let labels = [snapshot.attribution.serviceName, snapshot.location.displayName]
         func invalid(_ issue: MorningBriefingSourceIssue, stale: Bool = false) -> MorningBriefingSection {
-            section(status: stale ? .stale : .unavailable, issue: issue, name: "Weather",
-                retrievedAt: snapshot.retrievedAt, observationAt: snapshot.observationAt, sourceLabels: labels)
+            section(status: stale ? .stale : .unavailable, issue: issue, name: phrases.weatherName,
+                phrases: phrases, retrievedAt: snapshot.retrievedAt, observationAt: snapshot.observationAt, sourceLabels: labels)
         }
         guard snapshot.retrievedAt.timeIntervalSinceReferenceDate.isFinite,
               snapshot.observationAt.timeIntervalSinceReferenceDate.isFinite,
@@ -269,31 +269,26 @@ public enum MorningBriefingComposer {
         number.locale = locale; number.numberStyle = .decimal
         number.minimumFractionDigits = 0; number.maximumFractionDigits = 0
         guard let formatted = number.string(from: NSNumber(value: temperature)) else { return invalid(.invalidSnapshot) }
-        let unitName = unit == .celsius ? "Celsius" : "Fahrenheit"
-        let text = endingSentence("Weather in \(boundedTitle(snapshot.location.displayName)): \(boundedTitle(snapshot.conditionDescription)), \(formatted) degrees \(unitName)")
-        return .init(status: .fresh, issue: nil, statusText: "Current conditions from \(snapshot.attribution.serviceName).",
+        let text = endingSentence(phrases.weather(boundedTitle(snapshot.location.displayName, phrases: phrases),
+            boundedTitle(snapshot.conditionDescription, phrases: phrases), formatted, unit))
+        return .init(status: .fresh, issue: nil, statusText: phrases.weatherStatus(snapshot.attribution.serviceName),
             retrievedAt: snapshot.retrievedAt, observationAt: snapshot.observationAt, sourceLabels: labels,
             omissionCount: 0, segments: [.init(id: "weather.0", source: .weather, text: text)], validUntil: expiry)
     }
 
-    private static func missingSection<T: Sendable & Equatable>(_ input: MorningBriefingInput<T>, name: String) -> MorningBriefingSection {
+    private static func missingSection<T: Sendable & Equatable>(_ input: MorningBriefingInput<T>, name: String,
+        phrases: MorningBriefingPhrases) -> MorningBriefingSection {
         switch input {
-        case .notConfigured: section(status: .notConfigured, issue: .notConfigured, name: name)
-        case .denied: section(status: .denied, issue: .permissionDenied, name: name)
-        case .unavailable, .snapshot: section(status: .unavailable, issue: .sourceUnavailable, name: name)
+        case .notConfigured: section(status: .notConfigured, issue: .notConfigured, name: name, phrases: phrases)
+        case .denied: section(status: .denied, issue: .permissionDenied, name: name, phrases: phrases)
+        case .unavailable, .snapshot: section(status: .unavailable, issue: .sourceUnavailable, name: name, phrases: phrases)
         }
     }
 
     private static func section(status: MorningBriefingSourceStatus, issue: MorningBriefingSourceIssue,
-        name: String, retrievedAt: Date? = nil, observationAt: Date? = nil,
+        name: String, phrases: MorningBriefingPhrases, retrievedAt: Date? = nil, observationAt: Date? = nil,
         sourceLabels: [String] = []) -> MorningBriefingSection {
-        let statusText: String
-        switch status {
-        case .notConfigured: statusText = "\(name) is not configured."
-        case .denied: statusText = "\(name) access is not allowed."
-        case .stale: statusText = "\(name) needs a fresh update."
-        default: statusText = "\(name) is unavailable for this briefing."
-        }
+        let statusText = phrases.status(status, name: name)
         return .init(status: status, issue: issue, statusText: statusText,
             retrievedAt: retrievedAt, observationAt: observationAt, sourceLabels: sourceLabels,
             omissionCount: 0, segments: [], validUntil: nil)
@@ -308,14 +303,81 @@ public enum MorningBriefingComposer {
             segments: [.init(id: "\(source.rawValue).status", source: source, text: section.statusText)], validUntil: nil)
     }
 
-    private static func boundedTitle(_ text: String) -> String {
+    private static func boundedTitle(_ text: String, phrases: MorningBriefingPhrases) -> String {
         let oneLine = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        guard !oneLine.isEmpty else { return "Untitled event" }
+        guard !oneLine.isEmpty else { return phrases.untitledEvent }
         return oneLine.count > 160 ? String(oneLine.prefix(159)) + "…" : oneLine
     }
 
     private static func endingSentence(_ text: String) -> String {
         guard let last = text.last, !".!?…".contains(last) else { return text }
         return text + "."
+    }
+}
+
+/// Deterministic briefing sentences for each supported language. Keeping them
+/// explicit (rather than in the string catalog) keeps prepared speech testable
+/// for a given locale regardless of the device language.
+struct MorningBriefingPhrases {
+    let french: Bool
+
+    init?(locale: Locale) {
+        switch locale.language.languageCode?.identifier {
+        case "en": french = false
+        case "fr": french = true
+        default: return nil
+        }
+    }
+
+    var calendarName: String { french ? "Le calendrier" : "Calendar" }
+    var weatherName: String { french ? "La météo" : "Weather" }
+    var untitledEvent: String { french ? "Événement sans titre" : "Untitled event" }
+    var noRemainingEvents: String {
+        french ? "Plus aucun événement aujourd’hui dans les calendriers sélectionnés."
+            : "No remaining events today in your selected calendars."
+    }
+    var calendarStatus: String {
+        french ? "Lu depuis les calendriers sélectionnés." : "Read from your selected calendars."
+    }
+
+    func introduction(_ date: String) -> String {
+        french ? "Voici votre récap pour \(date)." : "Here is your briefing for \(date)."
+    }
+    func allDay(_ title: String) -> String { french ? "Toute la journée : \(title)" : "All day: \(title)" }
+    func inProgress(_ ending: String, _ title: String) -> String {
+        french ? "En cours jusqu’à \(ending) : \(title)" : "In progress until \(ending): \(title)"
+    }
+    func at(_ time: String, _ title: String) -> String { french ? "À \(time) : \(title)" : "At \(time): \(title)" }
+    func more(_ count: Int) -> String {
+        if french { return count == 1 ? "Et 1 autre événement aujourd’hui." : "Et \(count) autres événements aujourd’hui." }
+        return "Plus \(count) more \(count == 1 ? "event" : "events") today."
+    }
+    func weather(_ place: String, _ condition: String, _ temperature: String,
+                 _ unit: MorningBriefingTemperatureUnit) -> String {
+        if french {
+            let unitName = unit == .celsius ? "degrés Celsius" : "degrés Fahrenheit"
+            return "Météo à \(place) : \(condition), \(temperature) \(unitName)"
+        }
+        return "Weather in \(place): \(condition), \(temperature) degrees \(unit == .celsius ? "Celsius" : "Fahrenheit")"
+    }
+    func weatherStatus(_ service: String) -> String {
+        french ? "Conditions actuelles fournies par \(service)." : "Current conditions from \(service)."
+    }
+    func status(_ status: MorningBriefingSourceStatus, name: String) -> String {
+        if french {
+            let weather = name == weatherName
+            switch status {
+            case .notConfigured: return weather ? "La météo n’est pas configurée." : "Le calendrier n’est pas configuré."
+            case .denied: return weather ? "L’accès à la météo n’est pas autorisé." : "L’accès au calendrier n’est pas autorisé."
+            case .stale: return weather ? "La météo doit être mise à jour." : "Le calendrier doit être mis à jour."
+            default: return weather ? "La météo n’est pas disponible pour ce récap." : "Le calendrier n’est pas disponible pour ce récap."
+            }
+        }
+        switch status {
+        case .notConfigured: return "\(name) is not configured."
+        case .denied: return "\(name) access is not allowed."
+        case .stale: return "\(name) needs a fresh update."
+        default: return "\(name) is unavailable for this briefing."
+        }
     }
 }

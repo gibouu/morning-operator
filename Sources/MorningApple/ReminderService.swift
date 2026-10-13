@@ -74,18 +74,18 @@ public enum ReminderServiceError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .remindersNotAuthorized: "Reminders access is not authorized. Connect Reminders before reading or saving."
-        case .calendarNotAuthorized: "Calendar writing is not authorized. Connect Calendar before saving."
-        case .missingUsageDescription(let key): "This app build is missing \(key). Use a configured app build before requesting access."
-        case .noWritableReminderList: "No writable default Reminders list is available. Set up a list in Reminders first."
-        case .noWritableCalendar: "No writable default Calendar is available. Set up a calendar first."
-        case .invalidTitle: "Enter a title between 1 and 300 characters."
-        case .notesTooLong: "Keep the notes within 10,000 characters."
-        case .invalidDate: "Choose valid dates with an event end after its start, lasting at most 31 days."
-        case .invalidTimeZone: "Choose a valid time zone."
-        case .alarmNeedsDate: "A reminder alert needs a due date and time."
-        case .invalidQuery: "Choose a reminder date range of at most 90 days and a result limit from 1 to 200."
-        case .fetchFailed: "Reminders could not be read. Access may have changed. Try again after checking permission."
+        case .remindersNotAuthorized: String(localized: "Reminders access is not authorized. Connect Reminders before reading or saving.", bundle: .module)
+        case .calendarNotAuthorized: String(localized: "Calendar writing is not authorized. Connect Calendar before saving.", bundle: .module)
+        case .missingUsageDescription(let key): String(localized: "This app build is missing \(key). Use a configured app build before requesting access.", bundle: .module)
+        case .noWritableReminderList: String(localized: "No writable default Reminders list is available. Set up a list in Reminders first.", bundle: .module)
+        case .noWritableCalendar: String(localized: "No writable default Calendar is available. Set up a calendar first.", bundle: .module)
+        case .invalidTitle: String(localized: "Enter a title between 1 and 300 characters.", bundle: .module)
+        case .notesTooLong: String(localized: "Keep the notes within 10,000 characters.", bundle: .module)
+        case .invalidDate: String(localized: "Choose valid dates with an event end after its start, lasting at most 31 days.", bundle: .module)
+        case .invalidTimeZone: String(localized: "Choose a valid time zone.", bundle: .module)
+        case .alarmNeedsDate: String(localized: "A reminder alert needs a due date and time.", bundle: .module)
+        case .invalidQuery: String(localized: "Choose a reminder date range of at most 90 days and a result limit from 1 to 200.", bundle: .module)
+        case .fetchFailed: String(localized: "Reminders could not be read. Access may have changed. Try again after checking permission.", bundle: .module)
         }
     }
 }
@@ -163,7 +163,7 @@ public final class ReminderService {
                     guard !reminder.isCompleted, let components = reminder.dueDateComponents,
                           let due = EventKitDraftValidation.reminderDueDate(components),
                           due >= start, due <= end else { return nil }
-                    return ReminderSummary(id: reminder.calendarItemIdentifier, title: reminder.title ?? "Untitled reminder",
+                    return ReminderSummary(id: reminder.calendarItemIdentifier, title: reminder.title ?? String(localized: "Untitled reminder", bundle: .module),
                         notes: reminder.notes ?? "", dueDate: due, listTitle: reminder.calendar.title)
                 }.sorted {
                     if $0.dueDate != $1.dueDate { return ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }

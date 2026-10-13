@@ -2,7 +2,16 @@ import Foundation
 
 public enum StepKind: String, Codable, CaseIterable, Sendable {
     case briefing, messages, calendar, wellbeing, entertainment, custom
-    public var displayName: String { rawValue.capitalized }
+    public var displayName: String {
+        switch self {
+        case .briefing: String(localized: "Briefing", bundle: .module)
+        case .messages: String(localized: "Messages", bundle: .module)
+        case .calendar: String(localized: "Calendar", bundle: .module)
+        case .wellbeing: String(localized: "Wellbeing", bundle: .module)
+        case .entertainment: String(localized: "Entertainment", bundle: .module)
+        case .custom: String(localized: "Custom", bundle: .module)
+        }
+    }
 }
 
 /// A concrete app-owned operation, separate from an inferred activity category.
@@ -11,10 +20,10 @@ public enum RoutineStepAutomation: String, Codable, CaseIterable, Sendable {
     case spokenNote, todayCalendar, morningBriefing, savedObservation
     public var displayName: String {
         switch self {
-        case .spokenNote: "Read this note aloud"
-        case .todayCalendar: "Read today's calendar"
-        case .morningBriefing: "Read today's briefing"
-        case .savedObservation: "Read reviewed observation text"
+        case .spokenNote: String(localized: "Read this note aloud", bundle: .module)
+        case .todayCalendar: String(localized: "Read today's calendar", bundle: .module)
+        case .morningBriefing: String(localized: "Read today's briefing", bundle: .module)
+        case .savedObservation: String(localized: "Read reviewed observation text", bundle: .module)
         }
     }
 }
@@ -157,10 +166,10 @@ public enum DemoFixtures {
     /// Synthetic demonstration data, never a recorded personal morning.
     public static var candidateRoutine: RoutineVersion {
         RoutineVersion(sourceLabel: "Demo fixture — synthetic morning, not observed personal data", steps: [
-            RoutineStep(title: "Your morning", detail: "Good morning. Let’s see what’s ahead.", kind: .briefing, durationMinutes: 3, automation: .spokenNote),
-            RoutineStep(title: "People and messages", detail: "Check in with the people who matter.", kind: .messages, durationMinutes: 5),
-            RoutineStep(title: "Make room for the day", detail: "Read today’s events from your connected calendar.", kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
-            RoutineStep(title: "A little time to play", detail: "A little chess. A little joy. Keep this time for yourself.", kind: .entertainment, durationMinutes: 8, isRequired: true)
+            RoutineStep(title: String(localized: "Your morning", bundle: .module), detail: String(localized: "Good morning. Let’s see what’s ahead.", bundle: .module), kind: .briefing, durationMinutes: 3, automation: .spokenNote),
+            RoutineStep(title: String(localized: "People and messages", bundle: .module), detail: String(localized: "Check in with the people who matter.", bundle: .module), kind: .messages, durationMinutes: 5),
+            RoutineStep(title: String(localized: "Make room for the day", bundle: .module), detail: String(localized: "Read today’s events from your connected calendar.", bundle: .module), kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
+            RoutineStep(title: String(localized: "A little time to play", bundle: .module), detail: String(localized: "A little chess. A little joy. Keep this time for yourself.", bundle: .module), kind: .entertainment, durationMinutes: 8, isRequired: true)
         ])
     }
     public static var routine: RoutineVersion { candidateRoutine.approved() }

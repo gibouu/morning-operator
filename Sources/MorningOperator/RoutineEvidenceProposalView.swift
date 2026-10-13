@@ -40,9 +40,9 @@ struct RoutineEvidenceProposalView: View {
                                             let incomplete = omitted.filter { $0.reason == .unavailableOrTruncatedFrame }.count
                                             let unsupported = omitted.filter { $0.reason == .unsupportedVisualContext }.count
                                             let reviewedUnknown = omitted.filter { $0.reason == .explicitlyReviewedUnknown }.count
-                                            if reviewedUnknown > 0 { Text("\(reviewedUnknown) \(reviewedUnknown == 1 ? "sample you kept" : "samples you kept") unknown").font(.caption).foregroundStyle(MorningStyle.muted) }
-                                            if incomplete > 0 { Text("\(incomplete) unavailable or incomplete \(incomplete == 1 ? "sample" : "samples")").font(.caption).foregroundStyle(MorningStyle.muted) }
-                                            if unsupported > 0 { Text("\(unsupported) \(unsupported == 1 ? "sample without" : "samples without") suitable activity context").font(.caption).foregroundStyle(MorningStyle.muted) }
+                                            if reviewedUnknown > 0 { Text("\(reviewedUnknown) samples you kept unknown").font(.caption).foregroundStyle(MorningStyle.muted) }
+                                            if incomplete > 0 { Text("\(incomplete) unavailable or incomplete samples").font(.caption).foregroundStyle(MorningStyle.muted) }
+                                            if unsupported > 0 { Text("\(unsupported) samples without suitable activity context").font(.caption).foregroundStyle(MorningStyle.muted) }
                                         }.padding(.vertical, 5)
                                     }
                                 }
@@ -172,7 +172,7 @@ struct RoutineEvidenceProposalView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(isSample ? "Sample morning" : "Your next morning")
                     .font(.system(.title2, design: .serif, weight: .medium))
-                Text("Selected: \(proposal.sourceSnapshots.count) \(proposal.sourceSnapshots.count == 1 ? "observation" : "observations") across \(dayCount) dated \(dayCount == 1 ? "day" : "days")")
+                Text("Selected: \(proposal.sourceSnapshots.count) observations across \(dayCount) dated days")
                     .font(.subheadline).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("proposal.sources")
                 Text(store.routine == nil ? "Review your moments, then approve when ready."
                      : "Your current routine stays ready until you approve.")
@@ -187,12 +187,11 @@ struct RoutineEvidenceProposalView: View {
     }
 
     private func briefDetail(_ step: RoutineStep) -> String {
-        guard store.pendingRoutineProposal?.support.first(where: { $0.stepID == step.id })?.reason == .inferredEvidence else {
-            return step.detail
-        }
-        let description = step.detail.components(separatedBy: "\nEvidence:").first ?? step.detail
-        return (description.components(separatedBy: "\nTentative suggestion from selected evidence;").first ?? description)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let support = store.pendingRoutineProposal?.support.first(where: { $0.stepID == step.id }),
+              support.reason == .inferredEvidence,
+              let description = EvidenceDetailText.description(of: step.detail,
+                  citing: support.citations.map(\.quote)) else { return step.detail }
+        return description.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

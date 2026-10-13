@@ -86,6 +86,50 @@ struct ObservationNarrationExecutionTests {
     private func context(_ step: RoutineStep) -> MorningStepContext {
         .init(executionID: .init(sessionID: UUID(), routineVersionID: UUID(), stepID: step.id))
     }
+
+    /// Mirrors the app's resolver: the saved, approved sentence selects the composition.
+    private func archiveExecutor(_ archive: ObservationArchive, speak: @escaping @MainActor (String) -> Void) -> MorningAppStepExecutor {
+        MorningAppStepExecutor(prepare: { Issue.record("Not a live briefing"); return nil },
+            speak: { speak($0) }, stop: {}, resolveObservation: { step in
+                guard let reference = step.observationReference else { return nil }
+                return try? ObservationNarrationComposer.resolve(reference: reference, archive: archive,
+                    approvedText: step.detail).spokenText
+            })
+    }
+
+    @Test("An approved moment still plays after the interface language changes",
+          arguments: ObservationNarrationLanguage.allCases)
+    func approvedMomentPlaysInItsApprovedLanguage(approved: ObservationNarrationLanguage) async throws {
+        let entry = try source()
+        let archive = try ObservationArchive(entries: [entry])
+        let prepared = try ObservationNarrationComposer.prepare(acquisition: entry,
+            candidate: #require(ObservationNarrationComposer.candidates(for: entry).first), language: approved)
+        let step = step(prepared)
+        var spoken: [String] = []
+        let executor = archiveExecutor(archive) { spoken.append($0) }
+        #expect(try await executor.execute(step: step, context: context(step)) == .completed)
+        #expect(spoken == [prepared.spokenText])
+    }
+
+    @Test func englishMomentSavedBeforeFrenchExistedStillPlays() async throws {
+        let entry = try source()
+        let archive = try ObservationArchive(entries: [entry])
+        let reference = try ObservationNarrationComposer.prepare(acquisition: entry,
+            candidate: #require(ObservationNarrationComposer.candidates(for: entry).first)).reference
+        let saved = "In this synthetic sample's saved text from October 10, 2026:\nRemember the sketch of the garden."
+        let step = RoutineStep(title: "A saved moment", detail: saved, automation: .savedObservation,
+                               observationReference: reference)
+        var spoken: [String] = []
+        let executor = archiveExecutor(archive) { spoken.append($0) }
+        #expect(try await executor.execute(step: step, context: context(step)) == .completed)
+        #expect(spoken == [saved])
+        var edited = step
+        edited.detail = saved.replacingOccurrences(of: "garden", with: "harbor")
+        guard case .unavailable = try await executor.execute(step: edited, context: context(edited)) else {
+            Issue.record("An edited sentence is not the approved one"); return
+        }
+        #expect(spoken == [saved])
+    }
 }
 
 @MainActor
