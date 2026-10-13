@@ -9,6 +9,8 @@ public enum RecordingSessionStoreError: Error, Sendable, Equatable {
     case unreadableManifest
     /// The manifest decoded but broke one of its own rules.
     case manifestRejected(RecordingSessionManifestError)
+    /// The encoded manifest exceeds its size bound. Nothing was written.
+    case manifestTooLarge
     /// The manifest in this folder names another session.
     case sessionMismatch
     case sessionExists
@@ -58,6 +60,11 @@ public struct RecordingSessionRecovery: Equatable, Sendable {
 /// Every removal opens the sessions folder, then the session's folder inside it, neither
 /// through a link, and unlinks leaf names there.
 /// The owner serializes calls, as for `PendingScreenRecordingStore`.
+///
+/// **Nothing in the app creates a session yet, and two things must come first.** Full
+/// forgetting in `MorningStore` must call `forgetAll()` and remove the sessions'
+/// observations. And archive capacity, the five-observation selection and the
+/// comparable-morning profile must count sessions, not segments: see `SegmentedSessionEvidence`.
 public struct RecordingSessionStore: Sendable {
     public static let manifestFileName = "session-manifest.json"
     private let root: URL
@@ -121,7 +128,7 @@ public struct RecordingSessionStore: Sendable {
     public func save(_ manifest: RecordingSessionManifest) throws {
         try requireSessionDirectory(manifest.id)
         guard try JSONEncoder().encode(manifest).count <= RecordingSessionManifest.maximumEncodedBytes else {
-            throw RecordingSessionStoreError.manifestRejected(.tooManySegments)
+            throw RecordingSessionStoreError.manifestTooLarge
         }
         let url = manifestURL(manifest.id)
         // Never write through a link placed at the manifest's name.

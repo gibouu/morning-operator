@@ -373,6 +373,46 @@ struct RecordingSessionStoreTests {
         #expect(FileManager.default.fileExists(atPath: elsewhere.appendingPathComponent("segment-0000.mp4").path))
     }
 
+    @Test("A linked sessions folder is never followed")
+    func linkedSessionsRoot() async throws {
+        // The real sessions live elsewhere; the store's own root is a link to them.
+        var victim = try FakeSegmentedSession()
+        defer { victim.cleanUp() }
+        try await victim.recordSegments(1)
+        let workspace = FileManager.default.temporaryDirectory.appendingPathComponent("more-linked-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: workspace) }
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: workspace.appendingPathComponent("RecordingSessions"),
+            withDestinationURL: victim.root.appendingPathComponent("RecordingSessions"))
+        let store = RecordingSessionStore(directory: workspace)
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.sessionIDs() }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.load(victim.id) }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.reconcile(victim.id) }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.forget(victim.id) }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.forgetAll() }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) { try store.save(victim.manifest) }
+        #expect(throws: RecordingSessionStoreError.unsafeLocation) {
+            try store.create(RecordingSessionManifest(context: try ObservationRecordingContext(
+                startedAt: FakeSegmentedSession.start, timeZoneIdentifier: "Europe/Paris")))
+        }
+        #expect(victim.fileExists(0))
+        #expect(try victim.store.load(victim.id) == victim.manifest)
+    }
+
+    @Test("A manifest larger than its bound is refused before it is read")
+    func oversizeManifest() async throws {
+        var session = try FakeSegmentedSession()
+        defer { session.cleanUp() }
+        try await session.recordSegments(1)
+        let padding = String(repeating: " ", count: 4 * RecordingSessionManifest.maximumEncodedBytes)
+        var data = try Data(contentsOf: session.store.manifestURL(session.id))
+        data.append(Data(padding.utf8))
+        try data.write(to: session.store.manifestURL(session.id))
+        #expect(throws: RecordingSessionStoreError.unreadableManifest) { try session.store.load(session.id) }
+        #expect(throws: RecordingSessionStoreError.unreadableManifest) { try session.store.reconcile(session.id) }
+        #expect(session.fileExists(0), "Nothing is touched when the manifest cannot be read.")
+    }
+
     @Test("Only names this store writes are treated as its segment files")
     func ownedNames() {
         #expect(RecordingSessionStore.segmentFileName(7) == "segment-0007.mp4")
