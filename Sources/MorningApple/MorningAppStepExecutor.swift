@@ -100,7 +100,8 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
 
     /// The same segments supply the detail sheet and the utterance.
     public static func text(for operation: RoutineStepAutomation?, in document: PreparedMorningBriefing) -> String {
-        document.segments.filter { operation != .todayCalendar || $0.source != .weather }
+        // Calendar-only speech keeps the introduction and the calendar, nothing else.
+        document.segments.filter { operation != .todayCalendar || $0.source == .introduction || $0.source == .calendar }
             .map(\.text).joined(separator: " ")
     }
 

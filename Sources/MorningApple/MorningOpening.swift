@@ -88,7 +88,7 @@ public enum MorningOpeningComposer {
         func fact(_ section: MorningBriefingSection) -> SectionFact {
             switch section.status {
             case .notConfigured: return .silent
-            case .denied, .unavailable: return .unavailable
+            case .denied, .unavailable, .missing: return .unavailable
             case .stale: return .stale
             case .fresh:
                 guard inWindow, let validUntil = section.validUntil, now < validUntil,
@@ -145,8 +145,9 @@ public enum MorningOpeningComposer {
             add("unknownSenders", .unknownSenders, phrases.unknownSenders(percent: percent))
         }
 
-        // The brief is offered only when it has something current to read.
-        let hasBrief = [weather, calendar].contains { if case .fresh = $0 { true } else { false } }
+        // The brief is offered only when it has something current to read. Sleep is not
+        // quoted in the opening, but a brief that holds a current night is still a brief.
+        let hasBrief = [weather, calendar, fact(briefing.sleep)].contains { if case .fresh = $0 { true } else { false } }
         let choices: [MorningOpeningChoice] = hasBrief ? [.brief, .ritual, .stop] : [.ritual, .stop]
         add("choice", .choice, phrases.choice(withBrief: hasBrief))
         return .init(segments: segments, choices: choices, text: segments.map(\.text).joined(separator: " "))

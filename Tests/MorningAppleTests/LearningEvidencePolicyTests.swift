@@ -64,7 +64,9 @@ struct LearningEvidencePolicyTests {
     func nativeRecordingHomeDoesNotBecomeObservedActivity() {
         for markers in ["morning\nMORE · Recording", "MORNING\nmore • RECORDING",
                         "morning   MORE · Recording", "good morning\nMORE · Recording",
-                        "bonjour\nMORE · Recording", "bonjour MORE · Recording"] {
+                        "bonjour\nMORE · Recording", "bonjour MORE · Recording",
+                        // The badge alone on its line: nothing but MORE's home prints it.
+                        "Calendar\nMORE · Recording"] {
             let screen = markers + "\n19 min\n09:00 Team planning meeting"
             #expect(!LearningEvidencePolicy.isEligibleVisualContext(screen))
             #expect(ProposalValidation.step(title: "Review calendar", detail: "", kind: "calendar", durationMinutes: 3,
@@ -80,7 +82,6 @@ struct LearningEvidencePolicyTests {
     func nativeRecordingMarkerIsNotAGenericMorningFilter() throws {
         for screen in [
             "Calendar\nmorning\nRecording\n09:00 Team planning meeting",
-            "Calendar\nMORE · Recording\n09:00 Team planning meeting",
             "Messages\nmorning\nPlease discuss MORE · Recording with the design team.",
             "Calendar\nmorning\n09:00 MORE · Recording planning meeting",
             "Article\nA morning more recording project can help document family stories."

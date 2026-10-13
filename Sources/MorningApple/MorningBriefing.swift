@@ -11,11 +11,16 @@ public enum MorningBriefingInput<Value: Sendable & Equatable>: Sendable, Equatab
 
 public enum MorningBriefingSourceStatus: String, Sendable, Equatable {
     case notConfigured, denied, unavailable, fresh, stale
+    /// The read worked as far as can be known and returned no record. Sleep only.
+    case missing
 }
 
 public enum MorningBriefingSourceIssue: String, Sendable, Equatable {
     case notConfigured, permissionDenied, sourceUnavailable, expired
     case futureTimestamp, wrongDay, wrongTimeZone, invalidSelection, invalidSnapshot
+    /// Sleep only. There is no "permission denied" among these on purpose: a health
+    /// read that was not permitted looks exactly like `noRecord`.
+    case unavailableOnDevice, notReadable, noRecord, olderRecord
 }
 
 public enum MorningBriefingTemperatureUnit: String, Codable, CaseIterable, Sendable, Equatable {
@@ -39,21 +44,25 @@ public struct MorningBriefingFreshnessPolicy: Sendable, Equatable {
     public let calendarMaximumAge: TimeInterval
     public let weatherMaximumAge: TimeInterval
     public let maximumCalendarEvents: Int
+    /// How long one sleep read is used before it is read again. A watch can deliver the
+    /// night some time after waking, so a read is not kept for the whole morning.
+    public let sleepMaximumAge: TimeInterval
 
     public static let standard = Self(calendarMaximumAge: 300, weatherMaximumAge: 1_800,
                                       maximumCalendarEvents: 5)
 
     /// Invalid policies are rejected by prepare; event limits may be 1 through 5.
     public init(calendarMaximumAge: TimeInterval = 300, weatherMaximumAge: TimeInterval = 1_800,
-                maximumCalendarEvents: Int = 5) {
+                maximumCalendarEvents: Int = 5, sleepMaximumAge: TimeInterval = 1_800) {
         self.calendarMaximumAge = calendarMaximumAge
         self.weatherMaximumAge = weatherMaximumAge
         self.maximumCalendarEvents = maximumCalendarEvents
+        self.sleepMaximumAge = sleepMaximumAge
     }
 }
 
 public struct MorningBriefingSegment: Identifiable, Sendable, Equatable {
-    public enum Source: String, Sendable, Equatable { case introduction, calendar, weather }
+    public enum Source: String, Sendable, Equatable { case introduction, calendar, weather, sleep }
     public let id: String
     public let source: Source
     /// This same sentence is displayed and sent to speech. There is no second
@@ -66,8 +75,8 @@ public struct MorningBriefingSection: Sendable, Equatable {
     public let issue: MorningBriefingSourceIssue?
     public let statusText: String
     public let retrievedAt: Date?
-    /// WeatherKit's conditions time; nil for EventKit, which exposes no remote
-    /// synchronization time for the local read.
+    /// WeatherKit's conditions time, or the end of the recorded sleep window; nil for
+    /// EventKit, which exposes no remote synchronization time for the local read.
     public let observationAt: Date?
     public let sourceLabels: [String]
     public let omissionCount: Int
@@ -90,17 +99,23 @@ public struct PreparedMorningBriefing: Identifiable, Sendable, Equatable {
     public let temperatureUnit: MorningBriefingTemperatureUnit
     public let calendar: MorningBriefingSection
     public let weather: MorningBriefingSection
+    /// Sleep duration, the one health observation. `notConfigured` when health is excluded.
+    public let sleep: MorningBriefingSection
+    /// The recorded night behind a fresh sleep section; nil in every other state.
+    public let sleepObservation: SleepObservation?
     public let selectedCalendarIDs: Set<String>
     public let weatherLocation: WeatherLocation?
     public let weatherAttribution: WeatherAttributionInfo?
     public let segments: [MorningBriefingSegment]
 
-    public var hasUsableFacts: Bool { calendar.status == .fresh || weather.status == .fresh }
+    public var hasUsableFacts: Bool {
+        calendar.status == .fresh || weather.status == .fresh || sleep.status == .fresh
+    }
     public var displayText: String { segments.map(\.text).joined(separator: "\n") }
     public var spokenText: String { segments.map(\.text).joined(separator: " ") }
     public var validUntil: Date? {
         guard hasUsableFacts else { return nil }
-        return ([dayEnd] + [calendar.validUntil, weather.validUntil].compactMap { $0 }).min()
+        return ([dayEnd] + [calendar.validUntil, weather.validUntil, sleep.validUntil].compactMap { $0 }).min()
     }
 
     public func isCurrent(at date: Date, timeZoneIdentifier: String) -> Bool {
@@ -118,6 +133,7 @@ public enum MorningBriefingComposer {
     public static func prepare(
         calendar inputCalendar: MorningBriefingInput<CalendarSnapshot>,
         weather inputWeather: MorningBriefingInput<WeatherObservationSnapshot>,
+        sleep inputSleep: SleepBriefingInput = .excluded,
         for day: Date, at now: Date, timeZoneIdentifier: String,
         localeIdentifier: String = "en_US",
         temperatureUnit: MorningBriefingTemperatureUnit = .celsius,
@@ -131,6 +147,7 @@ public enum MorningBriefingComposer {
         guard let phrases = MorningBriefingPhrases(locale: locale) else { throw MorningBriefingError.unsupportedLocale }
         guard policy.calendarMaximumAge.isFinite, policy.calendarMaximumAge > 0,
               policy.weatherMaximumAge.isFinite, policy.weatherMaximumAge > 0,
+              policy.sleepMaximumAge.isFinite, policy.sleepMaximumAge > 0,
               (1...5).contains(policy.maximumCalendarEvents) else { throw MorningBriefingError.invalidPolicy }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone
@@ -143,11 +160,21 @@ public enum MorningBriefingComposer {
             now: now, zone: zone, locale: locale, phrases: phrases, policy: policy)
         var weatherSection = Self.weatherSection(inputWeather, now: now, locale: locale, phrases: phrases,
             unit: temperatureUnit, policy: policy)
+        var (sleepSection, sleepObservation) = Self.sleepSection(inputSleep, now: now, dayEnd: dayEnd,
+            calendar: calendar, zone: zone, locale: locale, phrases: phrases, policy: policy)
         let hasFacts = calendarSection.status == .fresh || weatherSection.status == .fresh
+            || sleepSection.status == .fresh
         // Configure sources in Settings, not in every spoken morning. A failed
         // configured source gets one short sentence only when another can help.
         calendarSection = withFailureSegment(calendarSection, source: .calendar, include: hasFacts)
         weatherSection = withFailureSegment(weatherSection, source: .weather, include: hasFacts)
+        // Sleep that is excluded, not connected or impossible on this device is left out
+        // of speech: it is a standing state, not news, and it must never sound like zero.
+        // A missing, older or unreadable record is said in one plain sentence.
+        let silentSleep: [MorningBriefingSourceIssue?] = [.notConfigured, .sourceUnavailable, .unavailableOnDevice]
+        sleepSection = withFailureSegment(sleepSection, source: .sleep,
+            include: hasFacts && !silentSleep.contains(sleepSection.issue))
+        if sleepSection.status != .fresh { sleepObservation = nil }
         var segments: [MorningBriefingSegment] = []
         if hasFacts {
             let formatter = DateFormatter()
@@ -155,7 +182,7 @@ public enum MorningBriefingComposer {
             formatter.dateStyle = .full; formatter.timeStyle = .none
             segments.append(.init(id: "introduction", source: .introduction,
                 text: phrases.introduction(formatter.string(from: day))))
-            segments += calendarSection.segments + weatherSection.segments
+            segments += calendarSection.segments + weatherSection.segments + sleepSection.segments
         }
         let weatherSnapshot: WeatherObservationSnapshot?
         if case .snapshot(let snapshot) = inputWeather { weatherSnapshot = snapshot } else { weatherSnapshot = nil }
@@ -165,6 +192,7 @@ public enum MorningBriefingComposer {
         return .init(id: UUID(), preparedAt: now, dayStart: dayStart, dayEnd: dayEnd,
             timeZoneIdentifier: timeZoneIdentifier, localeIdentifier: localeIdentifier,
             temperatureUnit: temperatureUnit, calendar: calendarSection, weather: weatherSection,
+            sleep: sleepSection, sleepObservation: sleepObservation,
             selectedCalendarIDs: selectedCalendarIDs,
             weatherLocation: weatherSnapshot?.location,
             weatherAttribution: weatherSection.status == .fresh ? weatherSnapshot?.attribution : nil,
@@ -276,6 +304,62 @@ public enum MorningBriefingComposer {
             omissionCount: 0, segments: [.init(id: "weather.0", source: .weather, text: text)], validUntil: expiry)
     }
 
+    /// The duration and its window, nothing else. The states follow the issue's list:
+    /// unavailable on this device, no record, an older record, not readable.
+    private static func sleepSection(_ input: SleepBriefingInput, now: Date, dayEnd: Date, calendar: Calendar,
+        zone: TimeZone, locale: Locale, phrases: MorningBriefingPhrases,
+        policy: MorningBriefingFreshnessPolicy) -> (MorningBriefingSection, SleepObservation?) {
+        func plain(_ status: MorningBriefingSourceStatus, _ issue: MorningBriefingSourceIssue, _ text: String,
+                   readAt: Date? = nil) -> (MorningBriefingSection, SleepObservation?) {
+            (.init(status: status, issue: issue, statusText: text, retrievedAt: readAt, observationAt: nil,
+                   sourceLabels: [], omissionCount: 0, segments: [], validUntil: nil), nil)
+        }
+        let snapshot: SleepSnapshot
+        switch input {
+        case .excluded: return plain(.notConfigured, .notConfigured, phrases.sleepExcluded)
+        case .notConnected: return plain(.unavailable, .sourceUnavailable, phrases.sleepNotConnected)
+        case .unavailableOnDevice: return plain(.unavailable, .unavailableOnDevice, phrases.sleepUnavailableOnDevice)
+        case .notReadable: return plain(.unavailable, .notReadable, phrases.sleepNotReadable)
+        case .snapshot(let value): snapshot = value
+        }
+        guard snapshot.readAt.timeIntervalSinceReferenceDate.isFinite else {
+            return plain(.unavailable, .invalidSnapshot, phrases.sleepNotReadable)
+        }
+        guard snapshot.readAt <= now else {
+            return plain(.unavailable, .futureTimestamp, phrases.sleepNotReadable, readAt: snapshot.readAt)
+        }
+        let expiry = min(snapshot.readAt.addingTimeInterval(policy.sleepMaximumAge), dayEnd)
+        guard now < expiry else { return plain(.stale, .expired, phrases.sleepNeedsUpdate, readAt: snapshot.readAt) }
+        let time = DateFormatter()
+        time.locale = locale; time.timeZone = zone
+        time.dateStyle = .none; time.timeStyle = .short
+        let date = DateFormatter()
+        date.locale = locale; date.timeZone = zone
+        date.setLocalizedDateFormatFromTemplate("dMMMM")
+        switch SleepNight.summarize(snapshot.samples, readAt: snapshot.readAt, at: now, calendar: calendar) {
+        case .noRecord:
+            return plain(.missing, .noRecord, phrases.sleepNoRecord, readAt: snapshot.readAt)
+        case .olderRecord(let endedAt):
+            return plain(.stale, .olderRecord,
+                phrases.sleepOlderRecord(date.string(from: endedAt), time.string(from: endedAt)), readAt: snapshot.readAt)
+        case .recorded(let observation):
+            // Two clock times name a window only while it is shorter than a day. A briefing
+            // prepared in the evening can hold a longer one; then each end carries its date.
+            let nextDay = calendar.date(byAdding: .day, value: 1, to: observation.windowStart)
+            let needsDates = nextDay.map { $0 <= observation.windowEnd } ?? true
+            func moment(_ instant: Date) -> String {
+                needsDates ? phrases.sleepMoment(date.string(from: instant), time.string(from: instant))
+                    : time.string(from: instant)
+            }
+            let text = phrases.sleep(phrases.duration(minutes: observation.asleepMinutes),
+                from: moment(observation.windowStart), to: moment(observation.windowEnd))
+            return (.init(status: .fresh, issue: nil, statusText: phrases.sleepStatus,
+                retrievedAt: snapshot.readAt, observationAt: observation.windowEnd,
+                sourceLabels: observation.sourceKinds.map(phrases.sleepSource), omissionCount: 0,
+                segments: [.init(id: "sleep.0", source: .sleep, text: text)], validUntil: expiry), observation)
+        }
+    }
+
     private static func missingSection<T: Sendable & Equatable>(_ input: MorningBriefingInput<T>, name: String,
         phrases: MorningBriefingPhrases) -> MorningBriefingSection {
         switch input {
@@ -363,6 +447,67 @@ struct MorningBriefingPhrases {
     func weatherStatus(_ service: String) -> String {
         french ? "Conditions actuelles fournies par \(service)." : "Current conditions from \(service)."
     }
+
+    // Sleep. A duration and its window; no score, no judgement, no advice. None of these
+    // sentences says or implies that permission was refused: that cannot be known.
+    var sleepStatus: String {
+        french ? "Lu depuis les données Santé de cet appareil." : "Read from the Health data on this device."
+    }
+    var sleepExcluded: String { french ? "Le sommeil n’est pas inclus." : "Sleep is not included." }
+    var sleepNotConnected: String {
+        french ? "La lecture du sommeil ne fait pas partie de cette version."
+            : "Sleep reading is not part of this version."
+    }
+    var sleepUnavailableOnDevice: String {
+        french ? "Les données de santé ne sont pas disponibles sur cet appareil."
+            : "Health data is not available on this device."
+    }
+    var sleepNotReadable: String {
+        french ? "Les données de sommeil n’ont pas pu être lues." : "Sleep data could not be read."
+    }
+    var sleepNeedsUpdate: String {
+        french ? "Les données de sommeil doivent être mises à jour." : "Sleep data needs a fresh update."
+    }
+    var sleepNoRecord: String {
+        french ? "Aucun relevé de sommeil trouvé depuis hier soir."
+            : "No sleep record was found since yesterday evening."
+    }
+    func sleepOlderRecord(_ date: String, _ time: String) -> String {
+        french ? "Le dernier relevé de sommeil s’est terminé le \(date) à \(time)."
+            : "The latest sleep record ended on \(date) at \(time)."
+    }
+    /// An end of a window that lasts a day or more: its date as well as its clock time.
+    func sleepMoment(_ date: String, _ time: String) -> String {
+        french ? "le \(date) à \(time)" : "\(date) at \(time)"
+    }
+    func sleep(_ duration: String, from start: String, to end: String) -> String {
+        french ? "Sommeil enregistré : \(duration), entre \(start) et \(end)."
+            : "Sleep recorded: \(duration), between \(start) and \(end)."
+    }
+    /// Words, not "h" and "min": the same string is read aloud.
+    func duration(minutes total: Int) -> String {
+        let hours = total / 60, minutes = total % 60
+        var parts: [String] = []
+        if french {
+            // French counts zero and one as singular.
+            if hours > 0 { parts.append("\(hours) \(hours < 2 ? "heure" : "heures")") }
+            if minutes > 0 || hours == 0 { parts.append("\(minutes) \(minutes < 2 ? "minute" : "minutes")") }
+        } else {
+            if hours > 0 { parts.append("\(hours) \(hours == 1 ? "hour" : "hours")") }
+            if minutes > 0 || hours == 0 { parts.append("\(minutes) \(minutes == 1 ? "minute" : "minutes")") }
+        }
+        return parts.joined(separator: " ")
+    }
+    func sleepSource(_ kind: SleepSourceKind) -> String {
+        switch kind {
+        case .watch: french ? "Montre" : "Watch"
+        case .phone: french ? "Téléphone" : "Phone"
+        case .thirdPartyApp: french ? "Autre app" : "Another app"
+        case .manualEntry: french ? "Saisie manuelle" : "Manual entry"
+        case .unknown: french ? "Source inconnue" : "Unknown source"
+        }
+    }
+
     func status(_ status: MorningBriefingSourceStatus, name: String) -> String {
         if french {
             let weather = name == weatherName
