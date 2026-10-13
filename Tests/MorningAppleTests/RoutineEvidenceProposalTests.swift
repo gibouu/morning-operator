@@ -428,10 +428,11 @@ struct RoutineEvidenceProposalTests {
         let approved = proposal.routine.approved()
         let detail = approved.steps[0].detail
         #expect(approved.isApproved)
-        #expect(detail.contains("Evidence:"))
+        // Generation writes the label of the language the tests run in.
+        #expect(detail.contains(EvidenceDetailText.label))
         #expect(Data(detail.utf8).range(of: Data(words.utf8)) != nil)
         #expect(Data(detail.utf8).range(of: Data(sources[2].originalText.utf8)) != nil)
-        #expect(detail.components(separatedBy: "Evidence:").count == 3)
+        #expect(detail.components(separatedBy: EvidenceDetailText.label).count == 3)
         #expect(detail.count <= 8_000)
     }
 
