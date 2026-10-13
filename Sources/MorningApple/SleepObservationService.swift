@@ -96,6 +96,8 @@ public enum SleepNight {
     /// previous night's sleep ends before it for nearly everyone; it is a convention, not
     /// something the samples say.
     public static let eveningHour = 18
+    /// The longest single span that is taken as a sleep sample.
+    public static let maximumSampleSpan: TimeInterval = 86_400
 
     /// Yesterday at 18:00 on the wall clock of `calendar`'s time zone.
     public static func eveningCutoff(before now: Date, calendar: Calendar) -> Date? {
@@ -109,6 +111,8 @@ public enum SleepNight {
     /// 1. **What counts.** Only samples in an asleep stage (unspecified, core, deep, REM)
     ///    that ended at or before `now`. "In bed" and "awake" never add time. A night with
     ///    only "in bed" samples therefore has no asleep record: time in bed is not sleep.
+    ///    A span that is empty, reversed, not finite or longer than 24 hours is not a sleep
+    ///    sample this rule can use, and is ignored.
     /// 2. **Which samples.** Those that ended after yesterday 18:00 local time. A sample that
     ///    started before that hour and ended after it is counted whole, as recorded.
     /// 3. **Overlap.** The spans are merged before they are added, so an hour recorded by two
@@ -129,12 +133,14 @@ public enum SleepNight {
     /// - Why nothing was found. No samples can mean nothing was recorded, nothing has synced
     ///   yet, or the read was not permitted. These cannot be told apart.
     ///
-    /// A total that rounds to zero minutes is not reported as a night: it is `noRecord`.
+    /// A total since yesterday evening that rounds to zero minutes is not reported as a
+    /// night. It is `noRecord`, and not `olderRecord`: an earlier record is then not the latest.
     public static func summarize(_ samples: [SleepSample], readAt: Date, at now: Date,
                                  calendar: Calendar) -> SleepNightSummary {
         let asleep = samples.filter {
             $0.stage.isAsleep && $0.start.timeIntervalSinceReferenceDate.isFinite &&
-                $0.end.timeIntervalSinceReferenceDate.isFinite && $0.end > $0.start && $0.end <= now
+                $0.end.timeIntervalSinceReferenceDate.isFinite && $0.end > $0.start && $0.end <= now &&
+                $0.end.timeIntervalSince($0.start) <= maximumSampleSpan
         }
         guard let cutoff = eveningCutoff(before: now, calendar: calendar) else { return .noRecord }
         let recent = asleep.filter { $0.end > cutoff }.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
@@ -151,7 +157,7 @@ public enum SleepNight {
                 windowEnd: recent.map(\.end).max() ?? first.end, asleepDuration: total,
                 sourceKinds: Set(recent.map(\.sourceKind)).sorted(),
                 sourceCount: Set(recent.map(\.sourceID)).count, readAt: readAt)
-            if observation.asleepMinutes > 0 { return .recorded(observation) }
+            return observation.asleepMinutes > 0 ? .recorded(observation) : .noRecord
         }
         if let latest = asleep.filter({ $0.end <= cutoff }).map(\.end).max() { return .olderRecord(endedAt: latest) }
         return .noRecord

@@ -72,7 +72,12 @@ struct SleepObservationTests {
         let reversed = sample(.asleepCore, "2026-10-10T07:00:00Z", "2026-10-10T06:00:00Z")
         let tiny = SleepSample(stage: .asleepCore, start: now.addingTimeInterval(-3_620), end: now.addingTimeInterval(-3_600), sourceID: "s", sourceKind: .watch)
         #expect(summary([reversed, tiny]) == .noRecord, "Under half a minute is never reported as a night of zero minutes.")
-        #expect(summary([older, tiny]) == .olderRecord(endedAt: SleepFixtures.date("2026-10-09T07:00:00Z")))
+        #expect(summary([older, tiny]) == .noRecord, "With a newer span present, the older record is not the latest.")
+        let absurd = SleepSample(stage: .asleepCore, start: Date(timeIntervalSinceReferenceDate: -1e21), end: now, sourceID: "s", sourceKind: .watch)
+        let tooLong = sample(.asleepCore, "2026-10-09T06:59:00Z", "2026-10-10T07:00:00Z")
+        #expect(summary([absurd, tooLong]) == .noRecord, "A span over 24 hours is not a usable sleep sample.")
+        let wholeDay = sample(.asleepCore, "2026-10-09T07:00:00Z", "2026-10-10T07:00:00Z")
+        #expect(recorded([wholeDay])?.asleepMinutes == 1_440)
     }
 
     @Test func aNightAcrossMidnightAndAClockChangeIsElapsedTime() throws {
