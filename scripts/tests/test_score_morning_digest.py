@@ -210,6 +210,50 @@ class DigestScorerTests(unittest.TestCase):
             self.assertEqual(subprocess.run(command, capture_output=True).returncode, 2)
             self.assertEqual((base / "report.json").read_bytes(), report)
 
+    def test_hand_authored_file_in_swift_emitted_shape_is_unverified_never_a_pass(self):
+        # The same file is decoded by Tests/MorningAppleTests/MorningDigestTests.swift.
+        # It was written by hand in the shape the Swift types emit; no model produced it.
+        actual_bytes = (Path(__file__).parent / "fixtures" / "swift-digest-hand-authored.json").read_bytes()
+        actual = json.loads(actual_bytes)
+        native_source, inbox = (state["sourceID"] for state in actual["sourceStates"])
+        fields = {claim["field"]: claim["value"] for claim in actual["claims"]}
+        # A prepared unit is one evidence ID, so this truth keeps both fields in one evidence item.
+        truth = {"schemaVersion": 1, "runID": actual["runID"], "status": "completed", "sources": [
+            {"sourceID": "fixture.message.01", "sourceRevision": "controller-revision", "sourceKind": "message",
+             "availability": "available", "fields": fields, "requiredFields": list(fields),
+             "evidence": [{"evidenceID": "fixture.message.01.text", "text": "\n".join(fields.values()),
+                           "fields": list(fields)}]},
+            {"sourceID": inbox, "sourceRevision": "1", "sourceKind": "message", "availability": "unavailable",
+             "fields": {}, "requiredFields": [], "evidence": []}]}
+        truth_bytes = json.dumps(truth).encode()
+        alignment = {"schemaVersion": 1, "method": "independent-visible-source-alignment",
+                     "actualSHA256": scorer.sha256(actual_bytes), "truthSHA256": scorer.sha256(truth_bytes),
+                     "sourceIDs": {native_source: "fixture.message.01"},
+                     "evidenceIDs": {actual["claims"][0]["evidence"][0]["evidenceID"]: "fixture.message.01.text"},
+                     "sourceRevisions": {native_source: {"actualRevision": actual["claims"][0]["sourceRevision"],
+                                                         "truthRevision": "controller-revision"}}}
+        receipt = {"schemaVersion": 1, "runID": actual["runID"], "outputSHA256": scorer.sha256(actual_bytes),
+                   "producer": "native-model", "executionStatus": "completed", "requestCount": 1,
+                   "responseCount": 1, "inputSHA256": ["c" * 64], "truthWasModelInput": False}
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            for name, data in [("truth", truth_bytes), ("actual", actual_bytes),
+                               ("alignment", json.dumps(alignment).encode()), ("receipt", json.dumps(receipt).encode())]:
+                (base / (name + ".json")).write_bytes(data)
+            command = [sys.executable, str(SCRIPT), "--truth", str(base / "truth.json"),
+                       "--actual", str(base / "actual.json"), "--alignment", str(base / "alignment.json")]
+            # Even beside a well-formed receipt, a hand-authored producer cannot reach exit 0.
+            for report_name, extra in [("report.json", []), ("report-with-receipt.json", ["--receipt", str(base / "receipt.json")])]:
+                with self.subTest(report=report_name):
+                    result = subprocess.run(command + ["--report", str(base / report_name)] + extra,
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 4, result.stderr)
+                    report = json.loads((base / report_name).read_text())
+                    self.assertEqual(report["benchmarkStatus"], "unverified-output")
+                    self.assertEqual(report["inferenceEvidence"]["status"], "not-model-output")
+                    self.assertTrue(report["allRequiredFactsSupportedExactly"])
+                    self.assertEqual(report["factMetrics"]["unsupportedCount"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
