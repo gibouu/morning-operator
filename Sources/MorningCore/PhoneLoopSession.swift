@@ -43,7 +43,8 @@ public enum PhoneLoopStopReason: String, Codable, Sendable, CaseIterable {
     /// The person stopped the run, or took the phone over more often than the step's budget of looks allows.
     case userStop
     /// The proposed action is outside what the application's policy allows, or the app in front
-    /// is not one the policy names.
+    /// is not one the policy names, or it is an external effect whose intent this run has
+    /// already handed to the executor once.
     case actionNotPermitted
     /// The expected result was not observed in the same app after the action, or it already held
     /// before the action so nothing could have proved it.
@@ -315,6 +316,8 @@ public enum PhoneLoopDirective: Sendable, Equatable {
 /// A pause lasts at most `maxExternalEffectWaitSeconds`. If the executor refuses the draft
 /// before any attempt exists (no approval, a duplicate intent), there is no state to report:
 /// end the run with `userStopped`, or let the pause expire.
+/// A run pauses for one intent once. A proposal naming an intent this run already handed over
+/// stops the run as `actionNotPermitted`, so a report is never matched to a second pause.
 ///
 /// `now` is the controller's monotonic time in seconds, from one clock. A `now` that is not a
 /// finite number, or is earlier than one already given, stops the run as stale evidence:
@@ -365,6 +368,9 @@ public actor PhoneLoopSession {
     private var runnerClock: (id: String, lastCaptureSeconds: Double)?
     private var lastNow = -TimeInterval.infinity
     private var acceptedObservationIDs: Set<UUID> = []
+    /// Every intent this run has paused for. A report names only its intent, so an intent must
+    /// mean one pause.
+    private var routedIntentIDs: Set<UUID> = []
     private var disconnectedAt: TimeInterval?
 
     /// `startedAt` is the wall-clock start, kept for the record only.
@@ -461,6 +467,10 @@ public actor PhoneLoopSession {
 
         switch proposal.action {
         case .externalEffect(let reference):
+            // An intent is one effect, performed at most once: the executor refuses it a second
+            // time, and a report about it can only describe the first. Pausing for it again
+            // would let that old report close this step for an effect nobody performed.
+            guard routedIntentIDs.insert(reference.intentID).inserted else { return stop(.actionNotPermitted, now: now) }
             // Nothing is sent. The run pauses, and what was observed before the effect is given
             // up now: whatever the executor does, that screen is no longer a basis for anything.
             step?.externalIntentID = reference.intentID

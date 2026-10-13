@@ -375,6 +375,8 @@ public struct PhoneObservationMessage: Codable, Sendable, Equatable {
 /// An answer is matched to the command it answers by everything the protocol says it echoes:
 /// run, step and sequence, all three. An observation that differs in any of them is not the
 /// answer the gate is waiting for; it changes nothing, and the genuine answer still counts.
+/// So does one whose observation ID this gate has already seen on an answer: an ID names one
+/// capture, the session accepts each ID once, and the gate must not take what the session ignores.
 ///
 /// The gate orders commands; it does not authenticate them. It lives in the runner's memory: a
 /// runner that restarts has forgotten what it carried out, which is why the session stops a run
@@ -390,6 +392,8 @@ public struct PhoneCommandGate: Sendable {
     /// on that answer: the session sends an action in the step of the observation it came from.
     private var lastAdmittedStepID: UUID?
     private var awaitsObserveAnswer = false
+    /// The observation ID of every answer that echoed the command admitted last, in this run.
+    private var answeredObservationIDs: Set<UUID> = []
     public init(runID: UUID) { self.runID = runID }
 
     /// `nil` means the command may be carried out, once.
@@ -411,13 +415,15 @@ public struct PhoneCommandGate: Sendable {
     }
 
     /// Only the first answer to the `observe` admitted last becomes a basis: one that echoes its
-    /// run, its step and its sequence. The answer to an action, an answer sent twice, another
-    /// run's answer and an answer naming another step or sequence do not, and leave the gate as
-    /// it was.
+    /// run, its step and its sequence under an observation ID not used before. The answer to an
+    /// action, an answer sent twice, another run's answer, an answer naming another step or
+    /// sequence and an answer repeating an earlier observation ID do not, and none of them stops
+    /// the genuine answer from counting afterwards.
     public mutating func sent(_ observation: PhoneObservationMessage) {
-        guard awaitsObserveAnswer, observation.runID == runID, observation.stepID == lastAdmittedStepID,
+        guard observation.runID == runID, observation.stepID == lastAdmittedStepID,
               observation.sequence == lastAdmittedSequence
         else { return }
+        guard answeredObservationIDs.insert(observation.observationID).inserted, awaitsObserveAnswer else { return }
         awaitsObserveAnswer = false
         lastObservationID = observation.observationID
     }

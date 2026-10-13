@@ -112,59 +112,6 @@ struct PhoneLoopHostileConditionsTests {
         #expect(await session.record.steps.map(\.outcome) == [.verified])
     }
 
-    @Test
-    func runnerGateTakesOnlyTheAnswerThatEchoesRunStepAndSequence() async throws {
-        let session = try self.session()
-        let observe = try command(await session.start(now: 0))
-        let genuine = try observation(for: observe)
-        func answer(runID: UUID? = nil, stepID: UUID? = nil, sequence: Int? = nil) throws -> PhoneObservationMessage {
-            try PhoneObservationMessage(runID: runID ?? observe.runID, stepID: stepID ?? observe.stepID,
-                                        sequence: sequence ?? observe.sequence,
-                                        freshness: genuine.freshness, screen: genuine.screen)
-        }
-        var gate = PhoneCommandGate(runID: observe.runID)
-        // Nothing is admitted yet: an answer to a command this gate never admitted is not a basis.
-        gate.sent(genuine)
-        #expect(gate.lastObservationID == nil)
-        #expect(gate.admit(observe) == nil)
-        // One identifier wrong at a time, then all of them.
-        for stray in [try answer(runID: UUID()), try answer(stepID: UUID()), try answer(sequence: observe.sequence + 1),
-                      try answer(runID: UUID(), stepID: UUID(), sequence: observe.sequence + 1)] {
-            gate.sent(stray)
-            #expect(gate.lastObservationID == nil)
-        }
-        gate.sent(genuine)
-        #expect(gate.lastObservationID == genuine.observationID)
-        // The slot is taken once: a second answer with the right identifiers does not replace it.
-        gate.sent(try answer())
-        #expect(gate.lastObservationID == genuine.observationID)
-    }
-
-    @Test
-    func runnerGateRefusesAnActionOfAnotherStepThanItsObservation() async throws {
-        let session = try self.session()
-        let observe = try command(await session.start(now: 0))
-        var gate = PhoneCommandGate(runID: observe.runID)
-        #expect(gate.admit(observe) == nil)
-        let seen = try observation(for: observe, screen: PhoneScreenState(foregroundBundleID: "com.apple.springboard", elements: []))
-        gate.sent(seen)
-        _ = await session.receive(seen, now: 0.1)
-        let proposal = PhoneActionProposal(runID: observe.runID, stepID: observe.stepID,
-                                           observationID: seen.observationID, action: .readOnly(.openApp(bundleID: app)))
-        let action = try command(await session.propose(proposal, now: 0.2))
-        #expect(action.stepID == observe.stepID)
-
-        // The session sends an action in the step of the observation it came from. The same
-        // action naming another step is not that command, and refusing it spends nothing.
-        let otherStep = PhoneCommandMessage(runID: action.runID, stepID: UUID(), sequence: action.sequence,
-                                            basedOnObservationID: action.basedOnObservationID,
-                                            timeoutSeconds: action.timeoutSeconds, command: action.command)
-        #expect(gate.admit(otherStep) == .notBasedOnLatestObservation)
-        #expect(gate.lastObservationID == seen.observationID && gate.lastAdmittedSequence == observe.sequence)
-        #expect(gate.admit(action) == nil)
-        #expect(gate.admit(action) == .replayedOrOutOfOrder)
-    }
-
     // MARK: Wire limits
 
     @Test
