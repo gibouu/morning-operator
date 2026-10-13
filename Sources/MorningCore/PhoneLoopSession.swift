@@ -4,8 +4,10 @@ import Foundation
 // what counts as evidence and when a step is done. No transport, no XCTest, no model call and no
 // timer live here; the caller passes the controller's monotonic time into every call.
 
-/// How a step was carried out. A session issues commands in one of the three automated modes;
-/// `manualIntervention` is recorded when the person touched the phone during a step.
+/// How a step was carried out. A session issues commands in one of the three automated modes
+/// and records that mode on each step. `manualIntervention` names a step the person carried out
+/// themselves; this session never writes it (it counts interventions on the step instead), and
+/// it is here so one vocabulary covers a whole morning.
 public enum PhoneStepExecutionMode: String, Codable, Sendable, CaseIterable {
     case nativeAction, configuredShortcut, tetheredController, manualIntervention
 }
@@ -27,10 +29,14 @@ public enum PhoneLoopStopReason: String, Codable, Sendable, CaseIterable {
     /// The target did not identify exactly one hittable element of the observation it was derived from.
     case ambiguousTarget
     case unexpectedDialog
+    /// An observation came from another runner clock than the run's first one: the phone
+    /// restarted or another runner process answered. What that runner knows of the screen and
+    /// of the commands already carried out is gone, so nothing it says can settle a step.
+    case runnerChanged
     case modelFailure
     case transportDisconnected
     case transportTimeout
-    /// The person stopped the run, or took the phone over more often than the step's retry budget allows.
+    /// The person stopped the run, or took the phone over more often than the step's budget of looks allows.
     case userStop
     /// The proposed action is outside what the application's policy allows, or the app in front
     /// is not one the policy names.
@@ -60,14 +66,37 @@ public enum PhoneStepOutcome: String, Codable, Sendable {
     case stopped
 }
 
+/// Which kind of evidence completed a step. They are not equally strong.
+public enum PhoneVerificationKind: String, Codable, Sendable, CaseIterable {
+    /// The app that was opened is the one in front.
+    case appInFront
+    /// The one element the policy expects after this tap was absent before and present after.
+    case expectedElementAppeared
+    /// The tab was not selected before and is the only selected tab after.
+    case tabSelected
+    /// The row labels on screen differ from before, with one list still shown. Weak: on a feed
+    /// that refreshes by itself this happens without any scroll, and rows of other lists on the
+    /// screen are included because an observation does not say which list a row belongs to.
+    /// It shows that the screen changed, not that the swipe changed it.
+    case rowsChanged
+}
+
 /// What is kept about one step: identifiers, counts and timings, never screen content.
 public struct PhoneStepRecord: Codable, Sendable, Equatable, Identifiable {
     public let id: UUID
+    /// The adapter that sent this step's commands.
     public let mode: PhoneStepExecutionMode
     public let action: PhoneCommandKind?
     public let outcome: PhoneStepOutcome
-    /// Commands sent beyond the first observation and the first action.
-    public let retryCount: Int
+    /// Set only when `outcome` is `verified`.
+    public let verifiedBy: PhoneVerificationKind?
+    /// Observations requested beyond the step's first one, reconnects aside.
+    public let extraLookCount: Int
+    /// Times the action was sent beyond the first.
+    public let actionResendCount: Int
+    /// Times the person touched the phone during this step. Above zero, the result cannot be
+    /// attributed to the adapter alone, whatever `mode` says.
+    public let manualInterventionCount: Int
     public let durationSeconds: TimeInterval
     /// From the observation being accepted to a proposal being accepted: the planner's time.
     public let proposalWaitSeconds: TimeInterval?
@@ -98,9 +127,10 @@ public struct PhoneScreenExpectation: Sendable, Equatable {
 /// There are no default numbers; whoever starts a run chooses them.
 public struct PhoneLoopPolicy: Sendable, Equatable {
     public let allowedBundleIDs: Set<String>
-    /// Navigation labels that may be tapped, each with the result that proves the tap worked.
+    /// Per app (bundle ID), the navigation labels that may be tapped there, each with the result
+    /// that proves the tap worked. A label approved for one app is not valid in another.
     /// The driver takes both from the person the same way (`--navigate-label`, `--expect-label`).
-    public let navigation: [String: PhoneScreenExpectation]
+    public let navigation: [String: [String: PhoneScreenExpectation]]
     public let tabLabels: Set<String>
     public let allowsListScroll: Bool
     /// The oldest an observation may be when something is decided from it.
@@ -108,31 +138,42 @@ public struct PhoneLoopPolicy: Sendable, Equatable {
     public let commandTimeoutSeconds: TimeInterval
     /// How long a lost connection may last before the run stops.
     public let reconnectWindowSeconds: TimeInterval
-    public let maxRetriesPerStep: Int
+    /// Two budgets, because the risks differ: a look only reads, a resend can act twice.
+    /// Observations a step may request beyond its first (after a timeout, an inconclusive
+    /// answer or a manual intervention).
+    public let maxExtraLooksPerStep: Int
+    /// Times a step may send its action again. Zero means an action is never sent twice.
+    public let maxActionResendsPerStep: Int
     public let maxReconnects: Int
     public let maxSteps: Int
 
-    public init(allowedBundleIDs: Set<String>, navigation: [String: PhoneScreenExpectation], tabLabels: Set<String>,
+    public init(allowedBundleIDs: Set<String>, navigation: [String: [String: PhoneScreenExpectation]], tabLabels: Set<String>,
                 allowsListScroll: Bool, maxEvidenceAgeSeconds: TimeInterval, commandTimeoutSeconds: TimeInterval,
-                reconnectWindowSeconds: TimeInterval, maxRetriesPerStep: Int, maxReconnects: Int, maxSteps: Int) throws {
+                reconnectWindowSeconds: TimeInterval, maxExtraLooksPerStep: Int, maxActionResendsPerStep: Int,
+                maxReconnects: Int, maxSteps: Int) throws {
         func require(_ condition: Bool, _ field: String) throws {
             if !condition { throw PhoneLoopProtocolError.valueOutOfRange(field: field) }
         }
         try require(allowedBundleIDs.allSatisfy(PhoneLoopWire.isBundleID), "allowedBundleIDs")
-        try require(navigation.allSatisfy { PhoneLoopWire.isIdentifier($0.key) && PhoneLoopWire.isIdentifier($0.value.label) }, "navigation")
+        try require(navigation.allSatisfy { app, labels in
+            allowedBundleIDs.contains(app)
+                && labels.allSatisfy { PhoneLoopWire.isIdentifier($0.key) && PhoneLoopWire.isIdentifier($0.value.label) }
+        }, "navigation")
         try require(tabLabels.allSatisfy(PhoneLoopWire.isIdentifier), "tabLabels")
         try require(maxEvidenceAgeSeconds.isFinite && maxEvidenceAgeSeconds > 0
                     && maxEvidenceAgeSeconds <= PhoneLoopWire.maxValiditySeconds, "maxEvidenceAgeSeconds")
         try require(commandTimeoutSeconds.isFinite && commandTimeoutSeconds > 0
                     && commandTimeoutSeconds <= PhoneLoopWire.maxTimeoutSeconds, "commandTimeoutSeconds")
         try require(reconnectWindowSeconds.isFinite && reconnectWindowSeconds > 0, "reconnectWindowSeconds")
-        try require(maxRetriesPerStep >= 0, "maxRetriesPerStep")
+        try require(maxExtraLooksPerStep >= 0, "maxExtraLooksPerStep")
+        try require(maxActionResendsPerStep >= 0, "maxActionResendsPerStep")
         try require(maxReconnects >= 0, "maxReconnects")
         try require(maxSteps >= 1, "maxSteps")
         self.allowedBundleIDs = allowedBundleIDs; self.navigation = navigation; self.tabLabels = tabLabels
         self.allowsListScroll = allowsListScroll; self.maxEvidenceAgeSeconds = maxEvidenceAgeSeconds
         self.commandTimeoutSeconds = commandTimeoutSeconds; self.reconnectWindowSeconds = reconnectWindowSeconds
-        self.maxRetriesPerStep = maxRetriesPerStep; self.maxReconnects = maxReconnects; self.maxSteps = maxSteps
+        self.maxExtraLooksPerStep = maxExtraLooksPerStep; self.maxActionResendsPerStep = maxActionResendsPerStep
+        self.maxReconnects = maxReconnects; self.maxSteps = maxSteps
     }
 }
 
@@ -186,6 +227,9 @@ public enum PhoneLoopRejection: Sendable, Equatable {
 public enum PhoneLoopDirective: Sendable, Equatable {
     case send(PhoneCommandMessage)
     /// Ask the planner about this observation, then call `propose`, `modelFailed` or `finish`.
+    /// If an earlier request of this run is still being worked on (a disconnect or an
+    /// intervention made the session look again), cancel it: its answer names an observation
+    /// that is no longer the latest and would only be ignored.
     case requestProposal(stepID: UUID, observationID: UUID)
     /// Take this to `ActionExecutor`, under its own approval. The run has ended.
     case routeToActionExecutor(PhoneExternalEffectReference)
@@ -203,7 +247,9 @@ public enum PhoneLoopDirective: Sendable, Equatable {
 /// and see the expected result in a new observation. Sending an action or receiving its answer
 /// does not complete a step; only the evidence does. Every step starts with its own observation.
 ///
-/// `now` is the controller's monotonic time in seconds, from one clock, never going backwards.
+/// `now` is the controller's monotonic time in seconds, from one clock. A `now` that is not a
+/// finite number, or is earlier than one already given, stops the run as stale evidence:
+/// nothing can be aged against such a clock.
 public struct PhoneLoopSession: ~Copyable, Sendable {
     public let runID: UUID
     public let policy: PhoneLoopPolicy
@@ -220,12 +266,15 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// What a new observation must show: this app in front and, except for `openApp`, the check.
     private struct Expectation: Sendable, Equatable { let app: String; let check: ScreenCheck? }
     private enum Ruling: Sendable { case allowed(Expectation), refused(PhoneLoopStopReason) }
-    private struct PendingAction: Sendable { let action: PhoneReadOnlyAction; var expectation: Expectation }
+    /// `basis` is the screen the action was validated against.
+    private struct PendingAction: Sendable { let action: PhoneReadOnlyAction; let expectation: Expectation; let basis: PhoneScreenState }
     private struct Step: Sendable {
         let id: UUID
         let startedAt: TimeInterval
-        var mode: PhoneStepExecutionMode
-        var retryCount = 0
+        let mode: PhoneStepExecutionMode
+        var extraLooks = 0
+        var resends = 0
+        var interventions = 0
         var roundTrips: [PhoneRoundTrip] = []
         var pending: PendingAction?
         var proposalRequestedAt: TimeInterval?
@@ -240,8 +289,9 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     private var step: Step?
     private var outstanding: Outstanding?
     private var evidence: Evidence?
-    /// The latest accepted capture time of every runner clock seen in this run.
-    private var lastCaptureByClock: [String: Double] = [:]
+    /// The runner clock of the first accepted observation, and its latest accepted capture time.
+    private var runnerClock: (id: String, lastCaptureSeconds: Double)?
+    private var lastNow = -TimeInterval.infinity
     private var acceptedObservationIDs: Set<UUID> = []
     private var disconnectedAt: TimeInterval?
 
@@ -257,6 +307,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     // MARK: Inputs
 
     public mutating func start(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .ready else { return .ignored(.notExpectedInThisPhase) }
         return beginStep(now: now)
     }
@@ -264,6 +315,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// An observation is accepted only as the answer to the one outstanding command of the
     /// current step of this run, and only once.
     public mutating func receive(_ observation: PhoneObservationMessage, now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard let outstanding, let current = step else { return .ignored(.notExpectedInThisPhase) }
         guard observation.runID == runID else { return .ignored(.foreignRun) }
         guard observation.stepID == current.id else { return .ignored(.wrongStep) }
@@ -277,11 +329,14 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         acceptedObservationIDs.insert(observation.observationID)
         closeRoundTrip(.answered, now: now)
 
-        // An answer whose capture is not later than one already accepted from the same clock is old evidence.
-        if let last = lastCaptureByClock[observation.freshness.clockID], observation.freshness.capturedUptimeSeconds <= last {
-            return stop(.staleEvidence, now: now)
+        // The run belongs to the runner that answered first. An answer from another clock is
+        // another runner; one whose capture is not later than the last accepted is old evidence.
+        if let runnerClock {
+            guard runnerClock.id == observation.freshness.clockID else { return stop(.runnerChanged, now: now) }
+            guard observation.freshness.capturedUptimeSeconds > runnerClock.lastCaptureSeconds
+            else { return stop(.staleEvidence, now: now) }
         }
-        lastCaptureByClock[observation.freshness.clockID] = observation.freshness.capturedUptimeSeconds
+        runnerClock = (observation.freshness.clockID, observation.freshness.capturedUptimeSeconds)
         if observation.screen.dialogVisible { return stop(.unexpectedDialog, now: now) }
         let accepted = Evidence(observation: observation, anchor: outstanding.issuedAt)
 
@@ -289,7 +344,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             // The answer to an action: evidence for the postcondition, never a basis for the next action.
             guard let pending = current.pending else { return stop(.postconditionNotVerified, now: now) }
             // Its age bound includes the time the action itself took. Too old to prove anything
-            // is not a failure of the action: look again, if a retry is left.
+            // is not a failure of the action: look again, if a look is left.
             guard isFresh(accepted, now: now) else { return recover(orStopWith: .staleEvidence, now: now) }
             if Self.holds(pending.expectation, in: observation.screen) { return completeStep(.verified, now: now) }
             return recover(orStopWith: .postconditionNotVerified, now: now)
@@ -299,17 +354,16 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         evidence = accepted
 
         if let pending = current.pending {
-            // The action's result was in doubt. It either happened, or it may be sent again
-            // against this new evidence, or the run stops; it is never assumed.
+            // The action's result was in doubt, and this look is the reconciliation. Either it
+            // shows the expected result (the action happened), or it shows exactly the screen the
+            // action was validated against (it did not happen, and may be sent again), or it is
+            // inconclusive and the run stops. A screen that merely contains a matching element
+            // is some third screen nobody approved an action on.
             if Self.holds(pending.expectation, in: observation.screen) { return completeStep(.verified, now: now) }
-            // Element identifiers mean nothing across observations, so "the same action" also has
-            // to mean the same app: a look that shows another app is not a place to try again.
-            guard current.retryCount < policy.maxRetriesPerStep,
-                  case .allowed(let expectation) = rule(on: pending.action, in: observation.screen),
-                  expectation.app == pending.expectation.app
+            guard current.resends < policy.maxActionResendsPerStep,
+                  Self.showsSameScreen(observation.screen, as: pending.basis)
             else { return stop(.postconditionNotVerified, now: now) }
-            step?.retryCount += 1
-            step?.pending?.expectation = expectation
+            step?.resends += 1
             phase = .awaitingPostObservation
             return issue(.perform(pending.action), basedOn: observation.observationID, now: now)
         }
@@ -322,6 +376,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// that observation is still fresh, and the application's policy allows the action on the
     /// one element the target identifies there.
     public mutating func propose(_ proposal: PhoneActionProposal, now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal, let current = step, let evidence else { return .ignored(.notExpectedInThisPhase) }
         guard proposal.runID == runID else { return .ignored(.foreignRun) }
         guard proposal.stepID == current.id else { return .ignored(.wrongStep) }
@@ -341,7 +396,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             switch rule(on: action, in: evidence.observation.screen) {
             case .refused(let reason): return stop(reason, now: now)
             case .allowed(let expectation):
-                step?.pending = PendingAction(action: action, expectation: expectation)
+                step?.pending = PendingAction(action: action, expectation: expectation, basis: evidence.observation.screen)
                 phase = .awaitingPostObservation
                 return issue(.perform(action), basedOn: evidence.observation.observationID, now: now)
             }
@@ -350,12 +405,14 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// The planner produced nothing usable.
     public mutating func modelFailed(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal else { return .ignored(.notExpectedInThisPhase) }
         return stop(.modelFailure, now: now)
     }
 
     /// The plan has nothing further to do. Allowed only between an observation and an action.
     public mutating func finish(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal else { return .ignored(.notExpectedInThisPhase) }
         closeStep(.observedOnly, now: now)
         evidence = nil
@@ -365,6 +422,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// Stops at once, whatever is outstanding. An answer that arrives afterwards is ignored.
     public mutating func userStopped(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard !isTerminal else { return .ignored(.notExpectedInThisPhase) }
         return stop(.userStop, now: now)
     }
@@ -372,6 +430,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// Call whenever time has passed. Applies the command timeout, the reconnect window and the
     /// age limit on evidence a planner is still thinking about.
     public mutating func checkDeadlines(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         if let outstanding {
             guard now - outstanding.issuedAt >= policy.commandTimeoutSeconds else { return .wait }
             closeRoundTrip(.timedOut, now: now)
@@ -386,8 +445,10 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     }
 
     /// The channel went away. Whatever was outstanding is lost and what the phone shows is no
-    /// longer known; a proposal about the earlier screen will not be accepted.
+    /// longer known; a proposal about the earlier screen will not be accepted, so a planner
+    /// request still in progress should be cancelled.
     public mutating func transportDisconnected(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard isUnderway else { return .ignored(.notExpectedInThisPhase) }
         closeRoundTrip(.lostOnDisconnect, now: now)
         evidence = nil
@@ -401,6 +462,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// must be observed again before anything else, and an action that was outstanding is
     /// settled from that new observation, not sent again blindly.
     public mutating func transportReconnected(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .disconnected, let disconnectedAt else { return .ignored(.notExpectedInThisPhase) }
         guard now - disconnectedAt < policy.reconnectWindowSeconds else { return stop(.transportDisconnected, now: now) }
         self.disconnectedAt = nil
@@ -408,25 +470,31 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return observe(now: now)
     }
 
-    /// The person touched the phone. The step and the run are marked, and nothing captured before
-    /// this moment is used: evidence in hand is dropped, an outstanding command is abandoned (its
-    /// answer will be ignored) and the screen is observed again (after a reconnect, if the channel
-    /// is down). Every intervention spends one of the step's retries; with none left the run
-    /// stops as `userStop`.
+    /// The person touched the phone. The step counts it and the run becomes `mixed`. Nothing
+    /// captured before this moment is used: evidence in hand is dropped, an outstanding command is
+    /// abandoned (its answer will be ignored) and the screen is observed again (after a reconnect,
+    /// if the channel is down). Every intervention spends one of the step's extra looks; with
+    /// none left the run stops as `userStop`.
     public mutating func recordManualIntervention(now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
         guard isUnderway || phase == .disconnected else { return .ignored(.notExpectedInThisPhase) }
-        step?.mode = .manualIntervention
+        step?.interventions += 1
         record.authorship = .mixed
         evidence = nil
         closeRoundTrip(.abandoned, now: now)
         guard phase == .disconnected else { return recover(orStopWith: .userStop, now: now) }
         // Reconnecting observes again anyway; the intervention still counts.
-        guard let current = step, current.retryCount < policy.maxRetriesPerStep else { return stop(.userStop, now: now) }
-        step?.retryCount += 1
+        guard let current = step, current.extraLooks < policy.maxExtraLooksPerStep else { return stop(.userStop, now: now) }
+        step?.extraLooks += 1
         return .wait
     }
 
     // MARK: Transitions
+
+    private mutating func haltOnUnsoundClock(_ now: TimeInterval) -> PhoneLoopDirective? {
+        if now.isFinite, now >= lastNow { lastNow = now; return nil }
+        return isTerminal ? .ignored(.notExpectedInThisPhase) : stop(.staleEvidence, now: lastNow.isFinite ? lastNow : 0)
+    }
 
     private var isTerminal: Bool {
         switch phase {
@@ -466,12 +534,11 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return .send(message)
     }
 
-    /// One more observation, if the step still has a retry left. Every command beyond a step's
-    /// first observation and first action is counted, so a step sends at most `2 + maxRetriesPerStep`
-    /// commands plus one per reconnect.
+    /// One more observation, if the step still has a look left. A step therefore sends at most
+    /// `2 + maxExtraLooksPerStep + maxActionResendsPerStep` commands, plus one per reconnect.
     private mutating func recover(orStopWith reason: PhoneLoopStopReason, now: TimeInterval) -> PhoneLoopDirective {
-        guard let current = step, current.retryCount < policy.maxRetriesPerStep else { return stop(reason, now: now) }
-        step?.retryCount += 1
+        guard let current = step, current.extraLooks < policy.maxExtraLooksPerStep else { return stop(reason, now: now) }
+        step?.extraLooks += 1
         evidence = nil
         return observe(now: now)
     }
@@ -502,7 +569,9 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         guard let current = step else { return }
         record.steps.append(PhoneStepRecord(
             id: current.id, mode: current.mode, action: current.pending?.action.kind, outcome: outcome,
-            retryCount: current.retryCount, durationSeconds: now - current.startedAt,
+            verifiedBy: outcome == .verified ? current.pending.map { Self.verificationKind(of: $0.expectation) } : nil,
+            extraLookCount: current.extraLooks, actionResendCount: current.resends,
+            manualInterventionCount: current.interventions, durationSeconds: now - current.startedAt,
             proposalWaitSeconds: current.proposalWaitSeconds, roundTrips: current.roundTrips,
             externalIntentID: current.externalIntentID))
         step = nil
@@ -525,7 +594,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             let check: ScreenCheck
             switch action {
             case .tapNavigation:
-                guard let expected = policy.navigation[target.label] else { return .refused(.actionNotPermitted) }
+                guard let expected = policy.navigation[app]?[target.label] else { return .refused(.actionNotPermitted) }
                 check = .element(expected)
             case .selectTab:
                 guard policy.tabLabels.contains(target.label) else { return .refused(.actionNotPermitted) }
@@ -555,6 +624,26 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return false
     }
 
+    private static func verificationKind(of expectation: Expectation) -> PhoneVerificationKind {
+        switch expectation.check {
+        case nil: .appInFront
+        case .element: .expectedElementAppeared
+        case .tabSelected: .tabSelected
+        case .cellsChanged: .rowsChanged
+        }
+    }
+
+    /// Same app in front and the same elements (identifier, role, label and flags), in any order.
+    /// This relies on the runner naming an element the same way in every observation of an
+    /// unchanged screen. `textLines` is not compared: it is content, and a clock on screen changes it.
+    private static func showsSameScreen(_ screen: PhoneScreenState, as basis: PhoneScreenState) -> Bool {
+        func byID(_ state: PhoneScreenState) -> [String: PhoneScreenElement] {
+            Dictionary(state.elements.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        }
+        return screen.foregroundBundleID == basis.foregroundBundleID && byID(screen) == byID(basis)
+    }
+
+    /// Every row on screen: an observation does not say which list a row belongs to.
     private static func cellLabels(in screen: PhoneScreenState) -> [String] {
         screen.elements.filter { $0.role == .cell }.map(\.label)
     }

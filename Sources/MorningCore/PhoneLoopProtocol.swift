@@ -6,6 +6,11 @@ import Foundation
 // observation that echoes the command's run, step and sequence. Nothing here opens a channel,
 // drives XCTest or calls a model: `PhoneLoopSession` (the other file) is the pure policy, and
 // the transport, the runner and the planner are separate work.
+//
+// Messages carry no authentication. Run, step and sequence numbers catch duplicates, reordering
+// and leftovers of an earlier run; they are not secrets. An observation forged by someone on the
+// channel that echoes the current run, step and sequence would be accepted, and so would a forged
+// command by the runner. The transport must authenticate both ends and protect integrity.
 
 /// Format constants. A message of another version is refused: there is no negotiation and no
 /// best-effort reading of a newer or older shape.
@@ -50,8 +55,17 @@ public enum PhoneElementRole: String, Codable, Sendable, CaseIterable {
     case button, cell, staticText, tab, navigationBar, list
 }
 
-/// One element as the runner saw it. `id` is the runner's own name for it inside this single
-/// observation; it means nothing in another observation.
+/// One element as the runner saw it.
+///
+/// What the runner must report:
+/// - `label` is the accessibility label. The session matches labels only. The driver's
+///   `exactElement` also matches an accessibility identifier; a runner must not act on an
+///   identifier match, and must look a target up again by role and label.
+/// - `id` is the runner's own name for the element. While the screen is unchanged the runner
+///   must give the same element the same `id` in every observation, because "nothing happened,
+///   the action may be sent again" is decided by comparing elements, identifiers included.
+///   Once the screen has changed an `id` promises nothing: the same `id` may name something
+///   else, which is why a target also carries role and label and all three must agree.
 public struct PhoneScreenElement: Codable, Sendable, Equatable {
     public let id: String
     public let role: PhoneElementRole
@@ -312,6 +326,10 @@ public struct PhoneObservationMessage: Codable, Sendable, Equatable {
 /// from the observation this runner sent in answer to the `observe` just before it. So a command
 /// that is delivered twice, late, out of order or after a reconnect is not carried out a second
 /// time, and one observation supports at most one action.
+///
+/// The gate orders commands; it does not authenticate them. It lives in the runner's memory: a
+/// runner that restarts has forgotten what it carried out, which is why the session stops a run
+/// whose answers start coming from another runner clock.
 public struct PhoneCommandGate: Sendable {
     public enum Refusal: Error, Equatable, Sendable { case foreignRun, replayedOrOutOfOrder, notBasedOnLatestObservation }
 
