@@ -66,9 +66,9 @@ enum OwnInterfaceWording {
         /// For every line that ends with this wording in the letter case MORE shows it, the
         /// words read before it on that line. The mark between its words may be read as any
         /// sign or not at all, so only the words and their case are compared.
-        func wordsBeforeLineEnd(in frame: Frame) -> [[String]] {
+        func wordsBeforeLineEnd(in frame: Frame, withoutClockTimes: Bool = false) -> [[String]] {
             let shown = wordings.map(Frame.words)
-            return frame.shownLines.compactMap { line in
+            return (withoutClockTimes ? frame.shownLinesWithoutClockTime : frame.shownLines).compactMap { line in
                 shown.first { line.count >= $0.count && Array(line.suffix($0.count)) == $0 }
                     .map { line.dropLast($0.count).map(LearningEvidencePolicy.normalized) }
             }
@@ -82,11 +82,18 @@ enum OwnInterfaceWording {
         /// Each line's words as recognized, in their own letter case.
         let shownLines: [[String]]
 
+        /// The same, leaving out lines that show an hour ("09:30", « 9h30 »): once split into
+        /// words, an hour's two numbers read like a day and a month.
+        let shownLinesWithoutClockTime: [[String]]
+
         init(_ source: String) {
             let recognized = source.components(separatedBy: .newlines)
             lines = Set(recognized.map(LearningEvidencePolicy.normalized))
             text = " \(LearningEvidencePolicy.normalized(source)) "
             shownLines = recognized.map(Self.words).filter { !$0.isEmpty }
+            shownLinesWithoutClockTime = recognized
+                .filter { $0.range(of: #"\d\s*[:hH]\s*\d"#, options: .regularExpression) == nil }
+                .map(Self.words).filter { !$0.isEmpty }
         }
 
         /// Split the way `LearningEvidencePolicy.normalized` splits, keeping case and accents.
@@ -890,7 +897,7 @@ enum OwnInterfaceWording {
     /// words ("READ MORE · Recording"), or as "more recording" in any other case or place,
     /// it identifies nothing.
     static func showsRecordingBadge(_ frame: Frame) -> Bool {
-        let before = recordingBadge.wordsBeforeLineEnd(in: frame).map(withoutSymbols)
+        let before = recordingBadge.wordsBeforeLineEnd(in: frame, withoutClockTimes: true).map(withoutSymbols)
         if before.contains(where: isHomeDate) { return true }
         // Alone on its line: nothing before it, or only what the badge's own dot is read as.
         // Any other word, even one letter ("A MORE Recording"), makes it ordinary text.
@@ -913,29 +920,29 @@ enum OwnInterfaceWording {
     /// weekday abbreviation, first or last, and beside it a day with its month, in either
     /// order ("Tue, Oct 13", "Tue 13 Oct", « mar. 13 oct. »). A few regions print the month as
     /// a number ("Tue 13. 10.", « 10-13, mar. »). Nothing else is a date here: not a count
-    /// beside short words ("Save 1"), not an hour ("9 AM"), not a duration (« 5 min »).
+    /// beside short words ("Save 1"), not an hour ("9 AM", "Tue 09:30"), not a duration
+    /// (« 5 min »). An hour whose colon Vision dropped ("Tue 9 05") still reads as a date.
     ///
     /// The words arrive lowercase and without accents. A real date in this form on another
     /// app's line that also ends with the badge's capitals is still read as the home.
     private static func isHomeDate(_ words: [String]) -> Bool {
         guard words.count == 3 else { return false }
         return homeDateNames.contains { language in
-            let rest: [String]
-            if language.weekdays.contains(words[0]) { rest = Array(words[1...]) }
-            else if language.weekdays.contains(words[2]) { rest = Array(words[..<2]) }
-            else { return false }
+            let weekdayFirst = language.weekdays.contains(words[0])
+            guard weekdayFirst || language.weekdays.contains(words[2]) else { return false }
+            let rest = Array(weekdayFirst ? words[1...] : words[..<2])
             let numbers = rest.map { $0.count <= 2 && $0.allSatisfy { ("0"..."9").contains($0) } ? Int($0) : nil }
             func fits(day: Int?, longest: Int?) -> Bool {
                 guard let day, let longest else { return false }
                 return (1...longest).contains(day)
             }
-            func length(ofMonth number: Int?) -> Int? {
-                number.flatMap { (1...12).contains($0) ? monthLengths[$0 - 1] : nil }
-            }
-            return fits(day: numbers[0], longest: language.months[rest[1]])
-                || fits(day: numbers[1], longest: language.months[rest[0]])
-                || fits(day: numbers[0], longest: length(ofMonth: numbers[1]))
-                || fits(day: numbers[1], longest: length(ofMonth: numbers[0]))
+            if fits(day: numbers[0], longest: language.months[rest[1]])
+                || fits(day: numbers[1], longest: language.months[rest[0]]) { return true }
+            // The month as a number, in the two orders printed: after the weekday, the day as
+            // written (never "09") then the month; before it, the month then the day.
+            guard let month = numbers[weekdayFirst ? 1 : 0], (1...12).contains(month),
+                  !(weekdayFirst && rest[0].hasPrefix("0")) else { return false }
+            return fits(day: numbers[weekdayFirst ? 0 : 1], longest: monthLengths[month - 1])
         }
     }
 

@@ -243,13 +243,16 @@ public struct ObservationVideoEvidence: Codable, Identifiable, Sendable, Equatab
     }
 
     /// Exactly what `timestamp` can print between the marker's brackets: minutes in two digits,
-    /// or more without a leading zero, then seconds from 00.0 to 59.9 (60.0 when rounded up).
+    /// or three without a leading zero (far beyond the longest recording accepted), then
+    /// seconds from 00.0 to 59.9, or 60.0 when rounded up. A time of negative zero, which the
+    /// frame type admits, prints as "00:-0.0".
     private static func isFrameMarker(_ line: String) -> Bool {
         guard line.hasPrefix(frameMarkerPrefix), line.hasSuffix("]") else { return false }
         let time = Array(line.dropFirst(frameMarkerPrefix.count).dropLast().unicodeScalars)
         func isDigit(_ scalar: Unicode.Scalar) -> Bool { ("0"..."9").contains(scalar) }
-        guard time.count >= 7 else { return false }
+        guard time.count == 7 || time.count == 8 else { return false }
         let minutes = time.dropLast(5), seconds = Array(time.suffix(5))
+        if String(String.UnicodeScalarView(time)) == "00:-0.0" { return true }
         guard minutes.allSatisfy(isDigit), minutes.count == 2 || minutes.first != "0",
               seconds[0] == ":", isDigit(seconds[1]), isDigit(seconds[2]), seconds[3] == ".", isDigit(seconds[4]) else {
             return false

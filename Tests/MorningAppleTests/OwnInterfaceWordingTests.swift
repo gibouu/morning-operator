@@ -873,7 +873,9 @@ struct OwnInterfaceWordingTests {
         "13 MORE Recording", "Tue MORE Recording", "Tue, Oct MORE Recording", "Tue, Oct 32 MORE Recording",
         "Tue, Feb 30 MORE Recording", "Tue, Oct 0 MORE Recording", "Tue, Oct 013 MORE Recording",
         "Tue, Oct 13 A B C D MORE Recording", "Tue, Oct 13 0 0 0 MORE Recording", "Tue, Oct 13 v v MORE Recording",
-        "Tue 13 13 MORE Recording", "Tue 31 4 MORE Recording", "Tue 0 5 MORE Recording", "13 Tue Oct MORE Recording", "Tue, Oct 13 2026 MORE Recording",
+        "Tue 13 13 MORE Recording", "Tue 31 4 MORE Recording", "Tue 0 5 MORE Recording", "13 Tue Oct MORE Recording",
+        "Tue 09:30 MORE Recording", "Tue 9:05 MORE Recording", "09:30 Tue MORE Recording", "Tue 09 30 MORE Recording",
+        "mar. 9h05 MORE Enregistrement", "Tue 4 31 MORE Recording", "31 4 Tue MORE Recording", "Tue, Oct 13 2026 MORE Recording",
         "Tue, Oct 13 at 9 MORE Recording", "Tue, mars 13 MORE Recording", "mar. 13 Feb MORE Enregistrement",
         "mar. 13 Oct 9 MORE Enregistrement", "lun. 31 avr. MORE Enregistrement", "Day 13 Oct MORE Recording",
         "Tue Tue 13 MORE Recording", "Set 1 Tue MORE Recording", "Mon 3 Jan 4 MORE Recording"
