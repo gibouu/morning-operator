@@ -7,7 +7,10 @@ struct MorningPrivacyView: View {
     @ViewState<Bool> private var confirmingRemoval = false
     @ViewState<Bool> private var removalApproved = false
 
+    private static let removalAnchor = "privacy.removalSection"
+
     var body: some View {
+      ScrollViewReader { proxy in
         MorningList {
             // Pending cleanup is the only action available. Keep its progress or
             // retry message at the top even when hiding the inventory changes the
@@ -62,6 +65,13 @@ struct MorningPrivacyView: View {
             if !store.privacyBlocksWork { removalSection }
         }
         .scrollContentBackground(.hidden).background(MorningStyle.background)
+        // The list keeps its position when the section is added above it, and
+        // Forget sits at the bottom: bring the progress or retry message into view.
+        .onChange(of: store.privacyBlocksWork) { _, blocked in
+            guard blocked else { return }
+            Task { @MainActor in proxy.scrollTo(Self.removalAnchor, anchor: .top) }
+        }
+      }
         .navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(store.privacyBlocksWork)
         .interactiveDismissDisabled(store.privacyBlocksWork)
@@ -105,14 +115,16 @@ struct MorningPrivacyView: View {
 
     private var removalSection: some View {
         Section {
-            if store.privacyIsForgetting {
-                ProgressView("Removing local data…")
-                    .accessibilityIdentifier("privacy.removing")
-            } else {
-                Button(store.privacyHasInterruptedRemoval ? "Retry removing local data" : "Forget MORE’s local data", role: .destructive) {
-                    confirmingRemoval = true
-                }.accessibilityIdentifier("privacy.forget")
-            }
+            Group {
+                if store.privacyIsForgetting {
+                    ProgressView("Removing local data…")
+                        .accessibilityIdentifier("privacy.removing")
+                } else {
+                    Button(store.privacyHasInterruptedRemoval ? "Retry removing local data" : "Forget MORE’s local data", role: .destructive) {
+                        confirmingRemoval = true
+                    }.accessibilityIdentifier("privacy.forget")
+                }
+            }.id(Self.removalAnchor)
             if let status = store.privacyStatus {
                 Text(status).font(.footnote).foregroundStyle(MorningStyle.muted)
                     .accessibilityIdentifier("privacy.status")
