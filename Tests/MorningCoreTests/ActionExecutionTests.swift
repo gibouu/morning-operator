@@ -12,6 +12,8 @@ private actor FakeAdapter: ActionAdapter {
     private var reply: Reply = .outcome(.accepted(receiptReference: "provider-receipt-1"))
     private var reconciliation: ActionReconciliation? = .stillUnknown
     private var duringDispatch: (@Sendable () -> Void)?
+    private var holding = false
+    private var held: CheckedContinuation<Void, Never>?
     private(set) var dispatched: [PreparedAction] = []
     private(set) var reconciled: [ActionAttempt] = []
     private(set) var statesOnDiskAtDispatch: [ActionAttemptState?] = []
@@ -22,11 +24,15 @@ private actor FakeAdapter: ActionAdapter {
     /// `nil` makes the reconciliation query itself fail.
     func reconciliation(_ answer: ActionReconciliation?) { reconciliation = answer }
     func duringDispatch(_ hook: (@Sendable () -> Void)?) { duringDispatch = hook }
+    /// The next dispatch stays inside the channel until `release()`.
+    func holdNextDispatch() { holding = true }
+    func release() { holding = false; held?.resume(); held = nil }
 
     func dispatch(_ action: PreparedAction) async throws -> ActionDispatchOutcome {
         dispatched.append(action)
         let onDisk = try? AtomicJSONFile<ActionJournal>(url: journalURL).load()
         statesOnDiskAtDispatch.append(onDisk?.attempts.first { $0.id == action.attemptID }?.state)
+        if holding { holding = false; await withCheckedContinuation { held = $0 } }
         await Task.yield()
         duringDispatch?()
         switch reply {
@@ -325,18 +331,67 @@ struct ActionExecutionTests {
     }
 
     @Test
-    func approvalThatExpiresBetweenPreparationAndDispatchIsRefused() async throws {
-        // Each reading is 10 s later: approval granted at +10, preparation at +20 (valid), dispatch check at +30 (expired at +25).
-        let harness = Harness(step: 10); defer { harness.cleanUp() }
-        let (journal, executor) = try harness.launch()
-        let draft = draft()
-        let granted = harness.clock.read()
-        let approval = await executor.approve(draft, expiresAt: granted.addingTimeInterval(25))
-        #expect(approval.grantedAt == granted.addingTimeInterval(10))
-        #expect(await refusal { try await executor.dispatch(draft, approvalID: approval.id) } == .approvalExpired(approvalID: approval.id))
-        #expect(await harness.adapter.dispatched.isEmpty)
-        // Preparation had passed, so the attempt exists; it is closed without any effect.
-        #expect(await journal.snapshot().attempts.map(\.state) == [.cancelled])
+    func approvalThatExpiresAfterPreparationIsRefusedBeforeTheAdapter() async throws {
+        // Each clock reading is 10 s later: granted at +10, preparation at +20, the check before
+        // `dispatching` is written at +30, the check after it (just before the adapter) at +40.
+        // Preparation had passed in both cases, so an attempt exists; it is closed with no effect.
+        let cases: [(expiresAfter: TimeInterval, closedAs: ActionAttemptState)] = [(25, .cancelled), (35, .failedKnown)]
+        for entry in cases {
+            let harness = Harness(step: 10); defer { harness.cleanUp() }
+            let (journal, executor) = try harness.launch()
+            let draft = draft()
+            let granted = harness.clock.read()
+            let approval = await executor.approve(draft, expiresAt: granted.addingTimeInterval(entry.expiresAfter))
+            #expect(approval.grantedAt == granted.addingTimeInterval(10))
+            #expect(await refusal { try await executor.dispatch(draft, approvalID: approval.id) } == .approvalExpired(approvalID: approval.id))
+            #expect(await harness.adapter.dispatched.isEmpty)
+            #expect(await journal.snapshot().attempts.map(\.state) == [entry.closedAs])
+            #expect(try AtomicJSONFile<ActionJournal>(url: harness.url).load().attempts.map(\.state) == [entry.closedAs])
+        }
+    }
+
+    @Test
+    func revocationStopsADispatchThatIsAlreadyWaitingItsTurn() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (_, executor) = try harness.launch()
+        let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
+        let one = draft(body: "one"), two = draft(body: "two")
+        await harness.adapter.holdNextDispatch()
+        let first = Task { try await executor.dispatch(one, approvalID: standing.id) }
+        while await harness.adapter.dispatched.isEmpty { await Task.yield() }
+        // The second request queues behind the send in progress; the withdrawal arrives after it.
+        let second = Task { () -> ActionExecutionError? in
+            do { _ = try await executor.dispatch(two, approvalID: standing.id); return nil }
+            catch { return error as? ActionExecutionError }
+        }
+        for _ in 0..<100 { await Task.yield() }
+        await executor.revoke(standing.id)
+        await harness.adapter.release()
+        #expect(try await first.value.state == .accepted)
+        #expect(await second.value == .approvalRevoked(approvalID: standing.id))
+        #expect(await harness.adapter.dispatched.map(\.intent.id) == [one.id])
+    }
+
+    @Test
+    func twoExecutorsOnOneJournalCannotBothSendIntoAnUnknownOutcome() async throws {
+        // Not a supported arrangement (one executor per store), but the rule must not depend on it.
+        let harness = Harness(); defer { harness.cleanUp() }
+        let journal = try ActionJournalStore(fileURL: harness.url)
+        let executors = (0..<2).map { _ in ActionExecutor(journal: journal, adapter: harness.adapter) }
+        await harness.adapter.reply(.lostResponse)
+        var work: [(ActionExecutor, ActionDraft, UUID)] = []
+        for index in 0..<16 {
+            let executor = executors[index % 2]
+            let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
+            work.append((executor, draft(body: "message \(index)"), standing.id))
+        }
+        await withTaskGroup(of: Void.self) { group in
+            for (executor, draft, approvalID) in work { group.addTask { _ = try? await executor.dispatch(draft, approvalID: approvalID) } }
+        }
+        #expect(await harness.adapter.dispatched.count <= 1)
+        let states = await journal.snapshot().attempts.map(\.state)
+        #expect(states.filter { $0 == .outcomeUnknown }.count == (await harness.adapter.dispatched.count))
+        #expect(states.allSatisfy { $0 == .outcomeUnknown || $0 == .failedKnown })
     }
 
     // MARK: Unknown outcomes
