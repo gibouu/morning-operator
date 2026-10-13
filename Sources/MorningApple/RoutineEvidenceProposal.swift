@@ -427,7 +427,7 @@ public enum LearningEvidencePreparation {
                 }
                 var text = entry.originalText
                 var sourceOffset = 0
-                let screenshotHeader = "[User-selected screenshot; one moment, not a confirmed habit]\n"
+                let screenshotHeader = LearningEvidencePolicy.screenshotHeader
                 if entry.sourceKind == .image, text.hasPrefix(screenshotHeader) {
                     text = String(text.dropFirst(screenshotHeader.count))
                     sourceOffset = screenshotHeader.count

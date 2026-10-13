@@ -1,8 +1,15 @@
 import Foundation
+import MorningCore
 
 enum LearningEvidenceKind: String, Equatable, Sendable {
     case userReportedActivity
     case visibleTaskContent
+}
+
+/// What a text is, stated by whoever holds it: a person's own words, the recognized text of
+/// one screenshot, or the saved text of a recording (see `ObservationVideoEvidence.renderedText`).
+public enum LearningEvidenceTextKind: Sendable {
+    case writtenReport, screenshot, recording
 }
 
 struct LearningEvidenceUnit: Sendable {
@@ -15,37 +22,32 @@ struct LearningEvidenceUnit: Sendable {
 /// These checks deliberately prefer abstention over turning setup or marketing into a routine.
 /// This is a narrow heuristic, not comprehensive scene classification or proof of user actions.
 enum LearningEvidencePolicy {
-    static func prepare(_ input: String) throws -> [LearningEvidenceUnit] {
-        let units: [LearningEvidenceUnit]
-        if input.contains("[Observed frame at ") || input.contains("[User-selected video:") {
-            // Filter whole frames before chunking: splitting first can detach marketing copy
-            // from its identifying UI context and make an invalid quote appear legitimate.
-            var frames: [String] = []
-            var current: [String] = []
-            var inFrame = false
-            for line in input.components(separatedBy: .newlines) {
-                if line.hasPrefix("[Observed frame at ") {
-                    if inFrame { frames.append(current.joined(separator: "\n")) }
-                    current = []
-                    inFrame = true
-                } else if inFrame, !line.hasPrefix("[Recording coverage:") {
-                    current.append(line)
-                }
-            }
-            if inFrame { frames.append(current.joined(separator: "\n")) }
-            units = frames.filter(isEligibleVisualContext).map {
-                LearningEvidenceUnit(text: $0, kind: .visibleTaskContent)
-            }
-        } else if input.contains("[User-selected screenshot;") {
-            let body = input.components(separatedBy: .newlines)
-                .filter { !$0.hasPrefix("[User-selected screenshot;") && !$0.hasPrefix("[Recording coverage:") }
-                .joined(separator: "\n")
-            units = isEligibleVisualContext(body) ? [.init(text: body, kind: .visibleTaskContent)] : []
-        } else {
+    /// The line above a screenshot's recognized text in a saved observation.
+    static let screenshotHeader = "[User-selected screenshot; one moment, not a confirmed habit]\n"
+
+    /// Text whose kind the caller states. The kind is never read from the text: a written
+    /// report may quote a frame marker, and a screen may display one.
+    static func prepare(_ input: String, as kind: LearningEvidenceTextKind) throws -> [LearningEvidenceUnit] {
+        switch kind {
+        case .writtenReport:
             // Written descriptions remain a separate positive path. Pasted onboarding copy
             // and bare interface inventories still do not become reports of personal actions.
-            units = isEligibleWrittenContext(input) ? [.init(text: input, kind: .userReportedActivity)] : []
+            return try unique(isEligibleWrittenContext(input) ? [.init(text: input, kind: .userReportedActivity)] : [])
+        case .screenshot:
+            // One screen, whole, whatever its lines look like.
+            return try prepare(frames: [input.hasPrefix(screenshotHeader) ? String(input.dropFirst(screenshotHeader.count)) : input])
+        case .recording:
+            return try prepare(frames: ObservationVideoEvidence.frameTexts(inRenderedText: input))
         }
+    }
+
+    /// Frames as the caller holds them, each judged whole. Splitting a frame first can detach
+    /// marketing copy from its identifying UI context and make an invalid quote appear legitimate.
+    static func prepare(frames: [String]) throws -> [LearningEvidenceUnit] {
+        try unique(frames.filter(isEligibleVisualContext).map { .init(text: $0, kind: .visibleTaskContent) })
+    }
+
+    private static func unique(_ units: [LearningEvidenceUnit]) throws -> [LearningEvidenceUnit] {
         var seen = Set<String>()
         let unique = units.filter { seen.insert("\($0.kind.rawValue):\(ObservationText.normalized($0.text))").inserted }
         guard !unique.isEmpty else { throw AppleIntelligenceError.insufficientActivityEvidence }

@@ -673,10 +673,10 @@ struct OwnInterfaceWordingTests {
             let screen = lines.joined(separator: "\n")
             #expect(isOwnInterface(screen), "\(name) in \(language) passed as evidence.")
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
             }
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen)
+                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen, as: .screenshot)
             }
             // Scrolled anywhere: any fourteen consecutive lines (a phone shows more) still show
             // enough of the screen, without its navigation title and whatever the wrapping width.
@@ -696,7 +696,7 @@ struct OwnInterfaceWordingTests {
                        OwnScreenFixtures.frenchReview, OwnScreenFixtures.frenchSettings] {
             #expect(isOwnInterface(screen))
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
             }
         }
         let quote = "Lancez un enregistrement que vous partagez"
@@ -781,7 +781,7 @@ struct OwnInterfaceWordingTests {
             let screen = OwnScreenFixtures.runningHome(language, dateRow: row).joined(separator: "\n")
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
             }
         }
         // The badge alone on its line is enough, whatever else the frame shows: only MORE's
@@ -798,7 +798,7 @@ struct OwnInterfaceWordingTests {
             sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
         // The frame after it, in another app, is still read.
         let next = "Calendar\n09:00 Team planning meeting"
-        let units = try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n\(screen)\n[Observed frame at 00:10.0]\n\(next)")
+        let units = try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n\(screen)\n\n[Observed frame at 00:10.0]\n\(next)", as: .recording)
         #expect(units.map(\.text) == [next])
     }
 
@@ -834,8 +834,50 @@ struct OwnInterfaceWordingTests {
         ]
         for screen in screens {
             #expect(!isOwnInterface(screen), "Wrongly rejected:\n\(screen)")
-            #expect(try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen).count == 1)
+            #expect(try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording).count == 1)
         }
+    }
+
+    @Test("Every date the home can print beside its badge is recognized, in English and French and each region's order",
+          arguments: ["en_US", "en_GB", "en_CA", "en_AU", "en_IN", "en_FR", "en_DE", "fr_FR", "fr_CA", "fr_CH", "fr_BE", "fr_US"])
+    func everyPrintedHomeDateIsRecognized(locale: String) throws {
+        // The home's own format, for each day of a leap year: every weekday, month and day.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+        style.locale = Locale(identifier: locale)
+        style.timeZone = calendar.timeZone
+        let badge = locale.hasPrefix("fr") ? "MORE · Enregistrement" : "MORE · Recording"
+        let start = try #require(calendar.date(from: DateComponents(year: 2028, month: 1, day: 1)))
+        for day in 0..<366 {
+            let date = try #require(calendar.date(byAdding: .day, value: day, to: start)).formatted(style)
+            let unpunctuated = date.filter { $0.isLetter || $0.isNumber || $0 == " " }
+            // With its punctuation, without it, in capitals, and with the chevron and the dot.
+            for row in [date, unpunctuated, date.uppercased(), "\(date) v O"] {
+                #expect(isOwnInterface("Recorder\n\(row) \(badge)\n09:00 Team planning meeting"),
+                        "Not read as the home's date: \(row)")
+            }
+        }
+    }
+
+    @Test("A number beside short words is not the home's date, so another app's line ending in the badge's words is kept",
+          arguments: [
+        "Save 1 MORE Recording", "9 AM MORE Recording", "Track 12 MORE Recording", "5 min MORE Enregistrement",
+        "Save MORE Recording", "Save 32 MORE Recording", "Take 2 of 5 MORE Recording", "Oct 13 MORE Recording",
+        "13 MORE Recording", "Tue MORE Recording", "Tue, Oct MORE Recording", "Tue, Oct 32 MORE Recording",
+        "Tue, Feb 30 MORE Recording", "Tue, Oct 0 MORE Recording", "Tue, Oct 013 MORE Recording",
+        "Oct 13, Tue MORE Recording", "13 Tue Oct MORE Recording", "Tue, Oct 13 2026 MORE Recording",
+        "Tue, Oct 13 at 9 MORE Recording", "mar. oct. 13 MORE Enregistrement",
+        "mar. 13 Oct 9 MORE Enregistrement", "lun. 31 avr. MORE Enregistrement", "Day 13 Oct MORE Recording",
+        "Tue Tue 13 MORE Recording", "Set 1 Tue MORE Recording", "Mon 3 Jan 4 MORE Recording"
+    ])
+    func numberedLinesAreNotTheHomeDate(line: String) throws {
+        let screen = "Recorder\n\(line)\n09:00 Team planning meeting"
+        #expect(!OwnInterfaceWording.identifies(.init(screen)))
+        #expect(!isOwnInterface(screen), "Wrongly rejected:\n\(screen)")
+        let units = try LearningEvidencePolicy.prepare(frames: [screen])
+        #expect(units.map(\.text) == [screen])
+        #expect(units.first?.kind == .visibleTaskContent)
     }
 
     // MARK: Screens that display an earlier observation or a suggestion
@@ -986,11 +1028,11 @@ struct OwnInterfaceWordingTests {
         ]
         for screen in screens {
             #expect(!isOwnInterface(screen), "Wrongly rejected:\n\(screen)")
-            let units = try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+            let units = try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
             #expect(units.count == 1)
         }
         let written = "Chaque matin j’ouvre Dictaphone, je touche Enregistrer et je dicte mes notes. Then I tap Record again."
-        #expect(try LearningEvidencePolicy.prepare(written).first?.kind == .userReportedActivity)
+        #expect(try LearningEvidencePolicy.prepare(written, as: .writtenReport).first?.kind == .userReportedActivity)
     }
 
     @Test("Per screen and language: controls alone never reject, one sentence alone never rejects, two pieces do",

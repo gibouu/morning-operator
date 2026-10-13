@@ -188,6 +188,9 @@ public struct ObservationVideoEvidence: Codable, Identifiable, Sendable, Equatab
 
     /// A display rendering of this extraction, never a second OCR pass. Deduplication here
     /// affects notes only; original frames and later returns remain in the structured evidence.
+    ///
+    /// Saved observations must equal this text byte for byte, so its form cannot change. It
+    /// is read back by `frameTexts(inRenderedText:)` only where no frames were kept.
     public var renderedText: String {
         let header = "[User-selected video: \(Self.timestamp(durationSeconds)); \(decodedFrameCount) frames sampled. This is partial visual evidence, not a complete interaction log.]"
         var segments = [header]
@@ -196,13 +199,57 @@ public struct ObservationVideoEvidence: Codable, Identifiable, Sendable, Equatab
             guard frame.outcome == .observed, !frame.text.isEmpty else { previousText = nil; continue }
             let normalized = frame.text.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
             guard normalized != previousText else { continue }
-            segments.append("[Observed frame at \(Self.timestamp(frame.timeSeconds))]\n\(frame.text)")
+            segments.append("\(Self.frameMarkerPrefix)\(Self.timestamp(frame.timeSeconds))]\n\(frame.text)")
             previousText = normalized
         }
-        if frames.contains(where: \.textWasTruncated) {
-            segments.append("[Some OCR text was omitted to stay within the import limit. Truncated frames cannot support app identification.]")
-        }
+        if frames.contains(where: \.textWasTruncated) { segments.append(Self.truncationNote) }
         return segments.joined(separator: "\n\n")
+    }
+
+    private static let frameMarkerPrefix = "[Observed frame at "
+    private static let truncationNote = "[Some OCR text was omitted to stay within the import limit. Truncated frames cannot support app identification.]"
+
+    /// The frames of a text written by `renderedText`, for a caller that holds only the text.
+    /// Whoever holds the frames themselves must pass those instead: text is the weaker form.
+    ///
+    /// A frame begins where the renderer could have begun one and nowhere else: at a line that
+    /// is a marker and nothing more ("[Observed frame at 00:10.0]"), standing first or after
+    /// the blank line the renderer puts between its parts. A marker inside a frame's own text,
+    /// such as a screen that displays an earlier observation, sits directly under another line
+    /// and stays that frame's text. Lines before the first frame (the header, a coverage note)
+    /// and the closing note about omitted text are not frames.
+    ///
+    /// Limit of the saved form: a frame whose own text holds an empty line directly above a
+    /// marker line reads as two frames. Text recognition here never produces an empty line, so
+    /// no screen can cause it; only frames built by hand can. The renderer cannot escape that
+    /// case without changing text that saved observations are checked against.
+    public static func frameTexts(inRenderedText text: String) -> [String] {
+        // Only the line feed the renderer writes separates lines; any other break is content.
+        let lines = text.components(separatedBy: "\n")
+        var frames: [[String]] = []
+        for (index, line) in lines.enumerated() {
+            if isFrameMarker(line), index == 0 || lines[index - 1].isEmpty {
+                if !frames.isEmpty, frames[frames.count - 1].last == "" { frames[frames.count - 1].removeLast() }
+                frames.append([])
+            } else if !frames.isEmpty {
+                frames[frames.count - 1].append(line)
+            }
+        }
+        if let last = frames.last, last.count >= 2, last.suffix(2) == ["", truncationNote] {
+            frames[frames.count - 1].removeLast(2)
+        }
+        return frames.map { $0.joined(separator: "\n") }
+    }
+
+    /// Exactly what `timestamp` prints between the marker's brackets: minutes in two digits or
+    /// more, seconds in two, and one tenth.
+    private static func isFrameMarker(_ line: String) -> Bool {
+        guard line.hasPrefix(frameMarkerPrefix), line.hasSuffix("]") else { return false }
+        let time = line.dropFirst(frameMarkerPrefix.count).dropLast().unicodeScalars.map { scalar -> Character in
+            ("0"..."9").contains(scalar) ? "0" : Character(scalar)
+        }
+        guard time.count >= 7 else { return false }
+        return String(time.suffix(5)) == ":00.0" && time.dropLast(5).allSatisfy { $0 == "0" }
     }
 
     /// Decisions identify visible contexts, not OS launches. Missing decisions remain unknown.

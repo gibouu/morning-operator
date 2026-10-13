@@ -44,7 +44,7 @@ struct MorningAppleTests {
     func realLocalModelIntegration() async throws {
         let service = AppleIntelligenceService()
         let source = "At 07:30 I review today's calendar. After breakfast I play chess for ten minutes."
-        let proposal = try await service.analyze(text: source, sourceLabel: "Synthetic model integration test")
+        let proposal = try await service.analyze(text: source, as: .writtenReport, sourceLabel: "Synthetic model integration test")
         #expect(!proposal.isApproved)
         #expect(!proposal.steps.isEmpty)
         #expect(proposal.steps.allSatisfy { !$0.isRequired && $0.detail.contains(EvidenceDetailText.label) })

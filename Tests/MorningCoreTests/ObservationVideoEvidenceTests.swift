@@ -36,6 +36,25 @@ struct ObservationVideoEvidenceTests {
         #expect(report.appSummary(key: "visible.inbox")?.sampledVisibleSecondsEstimate == nil)
     }
 
+    @Test func renderedTextReadsBackAsTheFramesItWasWrittenFrom() throws {
+        let a = "Demo Inbox\nAn entirely synthetic message subject"
+        // A screen showing an earlier observation: a marker line inside the frame's own text.
+        let b = "Demo Review\n[Observed frame at 00:00.0]\nDemo Inbox\n[Observed frame at 99:59.9]"
+        let c = "[Observed frame at 00:02.0]\nDemo Calendar\r\n09:00 A synthetic planning meeting\u{2028}Next"
+        // Repeats, a blank and a failed sample, times out of order, a truncated last frame.
+        let frames = try [frame(0, a, actual: 3), frame(1, a), frame(2, b, actual: 0.5),
+            ObservationFrameEvidence(requestedTimeSeconds: 3, outcome: .blank),
+            frame(4, b), ObservationFrameEvidence(requestedTimeSeconds: 5, outcome: .decodeFailed),
+            frame(6, c), frame(7, a, truncated: true)]
+        let evidence = try ObservationVideoEvidence(durationSeconds: 8, frames: frames)
+        #expect(ObservationVideoEvidence.frameTexts(inRenderedText: evidence.renderedText) == [a, b, b, c, a])
+        // The note MorningStore puts above an interrupted recording changes nothing.
+        let noted = "[Recording coverage: interrupted once]\n\n" + evidence.renderedText
+        #expect(ObservationVideoEvidence.frameTexts(inRenderedText: noted) == [a, b, b, c, a])
+        #expect(ObservationVideoEvidence.frameTexts(inRenderedText: "No frames here.\n[Observed frame at 00:00.0]").isEmpty)
+        #expect(ObservationVideoEvidence.frameTexts(inRenderedText: "").isEmpty)
+    }
+
     @Test func everyRequestedFailureAndBlankHasARecordAndMissingDecisionsRemainUnknown() throws {
         let frames = try [frame(0, "Synthetic inbox content"),
             ObservationFrameEvidence(requestedTimeSeconds: 1, actualTimeSeconds: 1, outcome: .blank),

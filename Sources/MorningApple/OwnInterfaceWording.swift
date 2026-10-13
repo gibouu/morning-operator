@@ -905,15 +905,39 @@ enum OwnInterfaceWording {
         return words
     }
 
-    /// The home's date as written with separate words ("Tue, Oct 13", « mar. 13 oct. »): a day
-    /// of the month with up to three short words (« ter., 13 de out. »). A date written as one run of signs
-    /// ("10月13日") is not recognized here; the badge then needs another piece of the home.
+    /// The home's date row, as the home prints it: `weekday(.abbreviated).month(.abbreviated).day()`
+    /// in the app's language, English or French. That is exactly three words once punctuation
+    /// is set aside, since Vision may drop it: a weekday abbreviation first, then a month
+    /// abbreviation and a day that month has, in the order the language and region write them
+    /// ("Tue, Oct 13", "Tue 13 Oct", « mar. 13 oct. »). Nothing else is a date here: not a
+    /// count beside short words ("Save 1"), not an hour ("9 AM"), not a duration (« 5 min »).
+    ///
+    /// The words arrive lowercase and without accents. A real date in this form on another
+    /// app's line that also ends with the badge's capitals is still read as the home.
     private static func isHomeDate(_ words: [String]) -> Bool {
-        let days = words.filter { Int($0).map { (1...31).contains($0) } ?? false }
-        let names = words.filter { $0.allSatisfy(\.isLetter) }
-        return days.count == 1 && (1...3).contains(names.count) && days.count + names.count == words.count
-            && names.allSatisfy { (2...5).contains($0.count) }
+        guard words.count == 3 else { return false }
+        return homeDateNames.contains { language in
+            guard language.weekdays.contains(words[0]) else { return false }
+            return language.dayFirst.contains { dayFirst in
+                let (day, month) = dayFirst ? (words[1], words[2]) : (words[2], words[1])
+                guard let longest = language.months[month], day.count <= 2,
+                      day.allSatisfy({ ("0"..."9").contains($0) }), let number = Int(day) else { return false }
+                return (1...longest).contains(number)
+            }
+        }
     }
+
+    /// Abbreviations as Foundation prints them for English and French in every region tried
+    /// (see the test that formats each day of a leap year), with each month's longest length,
+    /// and whether the day is written before the month.
+    private static let homeDateNames: [(weekdays: Set<String>, months: [String: Int], dayFirst: [Bool])] = [
+        (["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+         ["jan": 31, "feb": 29, "mar": 31, "apr": 30, "may": 31, "jun": 30, "jul": 31, "aug": 31,
+          "sep": 30, "sept": 30, "oct": 31, "nov": 30, "dec": 31], [false, true]),
+        (["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
+         ["janv": 31, "fevr": 29, "mars": 31, "avr": 30, "mai": 31, "juin": 30, "juil": 31, "juill": 31,
+          "aout": 31, "sept": 30, "oct": 31, "nov": 30, "dec": 31], [true])
+    ]
 
     static func containsMarketing(_ frame: Frame) -> Bool {
         marketing.contains { $0.isWithin(frame) } || marketingPair.allSatisfy { $0.isWithin(frame) }

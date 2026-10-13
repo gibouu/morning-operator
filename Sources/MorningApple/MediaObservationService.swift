@@ -88,7 +88,7 @@ public actor MediaObservationService {
             await progress?(1)
             return MediaObservation(
                 kind: .image,
-                text: "[User-selected screenshot; one moment, not a confirmed habit]\n\(recognized.text)",
+                text: LearningEvidencePolicy.screenshotHeader + recognized.text,
                 sampledFrameCount: 1, durationSeconds: nil, warnings: recognized.warnings, videoEvidence: nil
             )
         }

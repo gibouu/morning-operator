@@ -75,6 +75,7 @@ public final class AppleIntelligenceService {
 
     public func analyze(
         text: String,
+        as kind: LearningEvidenceTextKind,
         sourceLabel: String? = nil,
         progress: (@MainActor @Sendable (_ completedRequests: Int, _ totalRequests: Int) -> Void)? = nil
     ) async throws -> RoutineVersion {
@@ -82,7 +83,7 @@ public final class AppleIntelligenceService {
         guard input.utf8.count <= ObservationArchive.maximumTextBytes else {
             throw RoutineEvidenceProposalError.inputBudgetExceeded
         }
-        let evidence = try LearningEvidencePolicy.prepare(input)
+        let evidence = try LearningEvidencePolicy.prepare(input, as: kind)
         let sourceKind = evidence[0].kind
         let promptPrefix = "Evidence type: \(sourceKind.rawValue). Decide whether there is actual activity evidence; an empty result is valid.\n<observations>\n"
         let promptSuffix = "\n</observations>"
