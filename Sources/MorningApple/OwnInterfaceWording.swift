@@ -527,13 +527,10 @@ enum OwnInterfaceWording {
         Screen(name: "Suggested update", copy: [
             shown("Your current routine stays ready until you approve.", fr: "Votre routine actuelle reste prête jusqu’à votre approbation."),
             shown("Review your moments, then approve when ready.", fr: "Relisez vos moments, puis approuvez quand vous le souhaitez."),
-            shown("Compare with current routine", fr: "Comparer avec la routine actuelle"),
             part("These samples weren't used to suggest activities", fr: "Ces échantillons n’ont pas servi à suggérer des activités",
                  of: "These samples weren't used to suggest activities. Missing or unsuitable evidence stays unknown."),
             part("Missing or unsuitable evidence stays unknown", fr: "Les éléments manquants ou inadaptés restent inconnus",
                  of: "These samples weren't used to suggest activities. Missing or unsuitable evidence stays unknown."),
-            shown("Kept by your choice", fr: "Gardé selon votre choix"),
-            shown("Your saved timing choice", fr: "Votre choix de durée enregistré"),
             shown("Correct a source in Learn to request a new suggestion.",
                   fr: "Corrigez une source dans Apprendre pour demander une nouvelle suggestion."),
             part("Minutes are planned, not measured averages", fr: "Les minutes sont prévues, pas des moyennes mesurées",
@@ -555,6 +552,10 @@ enum OwnInterfaceWording {
             shown("Approve update", fr: "Approuver la mise à jour"),
             shown("Keep current", fr: "Garder l’actuelle"),
             shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"),
+            // Headings a recommendation in any app could carry: they confirm, they do not count.
+            shown("Compare with current routine", fr: "Comparer avec la routine actuelle"),
+            shown("Kept by your choice", fr: "Gardé selon votre choix"),
+            shown("Your saved timing choice", fr: "Votre choix de durée enregistré"),
             shown("Selected observations", fr: "Observations sélectionnées"),
             shown("About this suggestion", fr: "À propos de cette suggestion"),
             shown("Suggestion no longer available", fr: "Suggestion plus disponible"),
@@ -573,9 +574,9 @@ enum OwnInterfaceWording {
                  of: "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review."),
             part("Saving only its duration lets the other details vary",
                  fr: "N’enregistrer que sa durée laisse varier les autres détails",
-                 of: "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review."),
-            shown("Keep in future suggestions", fr: "Garder dans les futures suggestions")
+                 of: "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review.")
         ], controls: [
+            shown("Keep in future suggestions", fr: "Garder dans les futures suggestions"),
             shown("What Morning Operator does", fr: "Ce que fait Morning Operator"),
             shown("Make it yours", fr: "Personnalisez-la"),
             shown("Your moment", fr: "Votre moment"),

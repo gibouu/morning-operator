@@ -887,7 +887,9 @@ struct OwnInterfaceWordingTests {
             "Notes\nMise à jour suggérée pour demain\n09:00 Réunion de planification de l’équipe\n30 minutes prévues",
             "Updates\nApprove update\n5 minutes planned\n09:00 Team planning meeting",
             "Messages\nGaps may hide others\nPlease bring the printed meeting notes tomorrow.",
-            "Notes\nKept by your choice\nPlease bring the printed meeting notes tomorrow.",
+            "Fitness\nCompare with current routine\nWhy this suggestion?\n45 minutes planned\n09:00 Mobility and strength session with the group",
+            "Forme\nComparer avec la routine actuelle\nPourquoi cette suggestion ?\n45 minutes prévues\n09:00 Séance de mobilité et de renforcement avec le groupe",
+            "Notes\nKept by your choice\nYour saved timing choice\nPlease bring the printed meeting notes tomorrow.",
             // A label of one of these screens beside a sentence of another is not either screen.
             "Messages\nYour current routine stays ready until you approve.\nObservations\nPlease bring the printed meeting notes tomorrow.",
             "Messages\nNo return is established by these samples.\nYour label\nPlease bring the printed meeting notes tomorrow.",
