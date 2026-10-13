@@ -154,8 +154,6 @@ enum OwnInterfaceWording {
     static let screens: [Screen] = [
         Screen(name: "Learn", copy: [
             shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
-            part("Start with what you already do", fr: "Partez de ce que vous faites déjà",
-                 of: "Start with what you already do. You'll review every suggestion before it becomes your routine."),
             part("You'll review every suggestion before it becomes your routine",
                  fr: "Vous relirez chaque suggestion avant qu’elle ne devienne votre routine",
                  of: "Start with what you already do. You'll review every suggestion before it becomes your routine."),
@@ -170,7 +168,6 @@ enum OwnInterfaceWording {
                  of: "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically."),
             part("recording never starts automatically", fr: "l’enregistrement ne démarre jamais automatiquement",
                  of: "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically."),
-            shown("Add context, if you like", fr: "Ajoutez du contexte, si vous le souhaitez"),
             shown("Your routine stays in your hands", fr: "Votre routine reste entre vos mains"),
             part("Your current routine stays ready while you review a suggestion",
                  fr: "Votre routine actuelle reste prête pendant que vous relisez une suggestion",
@@ -198,6 +195,8 @@ enum OwnInterfaceWording {
             shown("Record", fr: "Enregistrer"),
             shown("Choose", fr: "Choisir"),
             shown("Your rhythm", fr: "Votre rythme"),
+            // Advice any app might give; as complete lines they confirm, they do not count as sentences.
+            shown("Add context, if you like", fr: "Ajoutez du contexte, si vous le souhaitez"),
             shown("What we could see", fr: "Ce que nous avons pu voir"),
             shown("Build it myself", fr: "La créer moi-même")
         ]),
@@ -330,9 +329,7 @@ enum OwnInterfaceWording {
                  fr: "Ce sont les voix système d’Apple ; Siri peut utiliser une voix différente",
                  of: "Listen through your current audio output. These are Apple system speech voices; Siri may use a different voice."),
             part("Choosing it does not translate your routine", fr: "La choisir ne traduit pas votre routine",
-                 of: "A voice’s language affects pronunciation. Choosing it does not translate your routine."),
-            part("Return here after the download finishes", fr: "Revenez ici une fois le téléchargement terminé",
-                 of: "In Settings → Accessibility → Read & Speak → Voices, choose your language and download an Enhanced or Premium voice if offered. Return here after the download finishes.")
+                 of: "A voice’s language affects pronunciation. Choosing it does not translate your routine.")
         ], controls: [
             shown("More natural voices", fr: "Des voix plus naturelles"),
             shown("Installed voices", fr: "Voix installées"),

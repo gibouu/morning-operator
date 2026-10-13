@@ -495,6 +495,9 @@ struct OwnInterfaceWordingTests {
             // Ordinary remarks about timing and averages are not Review's summary.
             "Notes\nWe have no complete timing data for the warm-up laps, so leave them out of the average.",
             "Messages\nNous n’avons pas de durée complète pour ces tours. Ne les compte pas dans la moyenne.",
+            // Advice any app might give, even when two such remarks meet.
+            "Messages\nSend the error report before our 09:00 meeting. A screenshot or text file works too. Add context, if you like.",
+            "Notes\nInstalled voices\nDownload the new French narrator pack. Return here after the download finishes.",
             // Two recognized sentences that share a word are one passage, counted once.
             "Messages\nUse the audio output picker to choose an available\nspeaker. Output doesn't connect a HomePod microphone.\nPlease test the kitchen speaker at 09:00 tomorrow.",
             // A wrapped sentence is one piece, even when one of its lines reads like a label.
