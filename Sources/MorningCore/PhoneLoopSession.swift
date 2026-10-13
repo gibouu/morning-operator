@@ -30,11 +30,13 @@ public enum PhoneLoopStopReason: String, Codable, Sendable, CaseIterable {
     case modelFailure
     case transportDisconnected
     case transportTimeout
+    /// The person stopped the run, or took the phone over more often than the step's retry budget allows.
     case userStop
-    /// The proposed action is outside what the application's policy allows.
+    /// The proposed action is outside what the application's policy allows, or the app in front
+    /// is not one the policy names.
     case actionNotPermitted
-    /// The expected result was not observed after the action, or it already held before the
-    /// action so nothing could have proved it.
+    /// The expected result was not observed in the same app after the action, or it already held
+    /// before the action so nothing could have proved it.
     case postconditionNotVerified
 }
 
@@ -210,12 +212,13 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     public private(set) var phase: PhoneLoopPhase = .ready
     public private(set) var record: PhoneRunRecord
 
-    private enum Expectation: Sendable, Equatable {
-        case foreground(String)
+    private enum ScreenCheck: Sendable, Equatable {
         case element(PhoneScreenExpectation)
         case tabSelected(String)
         case cellsChanged(from: [String])
     }
+    /// What a new observation must show: this app in front and, except for `openApp`, the check.
+    private struct Expectation: Sendable, Equatable { let app: String; let check: ScreenCheck? }
     private enum Ruling: Sendable { case allowed(Expectation), refused(PhoneLoopStopReason) }
     private struct PendingAction: Sendable { let action: PhoneReadOnlyAction; var expectation: Expectation }
     private struct Step: Sendable {
@@ -237,7 +240,8 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     private var step: Step?
     private var outstanding: Outstanding?
     private var evidence: Evidence?
-    private var lastCapture: (clockID: String, uptimeSeconds: Double)?
+    /// The latest accepted capture time of every runner clock seen in this run.
+    private var lastCaptureByClock: [String: Double] = [:]
     private var acceptedObservationIDs: Set<UUID> = []
     private var disconnectedAt: TimeInterval?
 
@@ -274,21 +278,23 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         closeRoundTrip(.answered, now: now)
 
         // An answer whose capture is not later than one already accepted from the same clock is old evidence.
-        if let lastCapture, lastCapture.clockID == observation.freshness.clockID,
-           observation.freshness.capturedUptimeSeconds <= lastCapture.uptimeSeconds {
+        if let last = lastCaptureByClock[observation.freshness.clockID], observation.freshness.capturedUptimeSeconds <= last {
             return stop(.staleEvidence, now: now)
         }
-        lastCapture = (observation.freshness.clockID, observation.freshness.capturedUptimeSeconds)
+        lastCaptureByClock[observation.freshness.clockID] = observation.freshness.capturedUptimeSeconds
         if observation.screen.dialogVisible { return stop(.unexpectedDialog, now: now) }
+        let accepted = Evidence(observation: observation, anchor: outstanding.issuedAt)
 
         if outstanding.kind != .observe {
             // The answer to an action: evidence for the postcondition, never a basis for the next action.
             guard let pending = current.pending else { return stop(.postconditionNotVerified, now: now) }
+            // Its age bound includes the time the action itself took. Too old to prove anything
+            // is not a failure of the action: look again, if a retry is left.
+            guard isFresh(accepted, now: now) else { return recover(orStopWith: .staleEvidence, now: now) }
             if Self.holds(pending.expectation, in: observation.screen) { return completeStep(.verified, now: now) }
             return recover(orStopWith: .postconditionNotVerified, now: now)
         }
 
-        let accepted = Evidence(observation: observation, anchor: outstanding.issuedAt)
         guard isFresh(accepted, now: now) else { return stop(.staleEvidence, now: now) }
         evidence = accepted
 
@@ -399,15 +405,19 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return observe(now: now)
     }
 
-    /// The person touched the phone. The step and the run are marked, and evidence captured
-    /// before the intervention is dropped: if a planner was about to be asked, the screen is observed again.
+    /// The person touched the phone. The step and the run are marked, and nothing captured before
+    /// this moment is used: evidence in hand is dropped, an outstanding command is abandoned (its
+    /// answer will be ignored) and the screen is observed again. That observation counts against
+    /// the step's retries; with none left the run stops as `userStop`.
     public mutating func recordManualIntervention(now: TimeInterval) -> PhoneLoopDirective {
         guard isUnderway || phase == .disconnected else { return .ignored(.notExpectedInThisPhase) }
         step?.mode = .manualIntervention
         record.authorship = .mixed
-        guard phase == .awaitingProposal else { return .wait }
         evidence = nil
-        return observe(now: now)
+        // Reconnecting observes again anyway.
+        guard phase != .disconnected else { return .wait }
+        closeRoundTrip(.abandoned, now: now)
+        return recover(orStopWith: .userStop, now: now)
     }
 
     // MARK: Transitions
@@ -501,22 +511,27 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         switch action {
         case .openApp(let bundleID):
             guard policy.allowedBundleIDs.contains(bundleID) else { return .refused(.actionNotPermitted) }
-            expectation = .foreground(bundleID)
-        case .tapNavigation(let target):
-            guard let expected = policy.navigation[target.label] else { return .refused(.actionNotPermitted) }
-            guard Self.identifiesOne(target, among: [.button, .cell, .staticText], in: screen) else { return .refused(.ambiguousTarget) }
-            expectation = .element(expected)
-        case .selectTab(let target):
-            guard policy.tabLabels.contains(target.label) else { return .refused(.actionNotPermitted) }
-            guard Self.identifiesOne(target, among: [.tab], in: screen) else { return .refused(.ambiguousTarget) }
-            expectation = .tabSelected(target.label)
-        case .scrollListUp(let target):
-            guard policy.allowsListScroll else { return .refused(.actionNotPermitted) }
-            // The driver scrolls only when exactly one visible list exists, whatever it is called.
-            let lists = screen.elements.filter { $0.role == .list && $0.isHittable }
-            guard lists.count == 1, lists[0].id == target.elementID, lists[0].label == target.label, target.role == .list
-            else { return .refused(.ambiguousTarget) }
-            expectation = .cellsChanged(from: Self.cellLabels(in: screen))
+            expectation = Expectation(app: bundleID, check: nil)
+        case .tapNavigation(let target), .selectTab(let target), .scrollListUp(let target):
+            // Labels are allowed inside the apps the policy names, not wherever they happen to appear.
+            guard let app = screen.foregroundBundleID, policy.allowedBundleIDs.contains(app)
+            else { return .refused(.actionNotPermitted) }
+            let check: ScreenCheck
+            switch action {
+            case .tapNavigation:
+                guard let expected = policy.navigation[target.label] else { return .refused(.actionNotPermitted) }
+                check = .element(expected)
+            case .selectTab:
+                guard policy.tabLabels.contains(target.label) else { return .refused(.actionNotPermitted) }
+                check = .tabSelected(target.label)
+            default:
+                guard policy.allowsListScroll else { return .refused(.actionNotPermitted) }
+                // The driver scrolls only when exactly one visible list exists, whatever it is called.
+                guard screen.elements.filter({ $0.role == .list && $0.isHittable }).count == 1 else { return .refused(.ambiguousTarget) }
+                check = .cellsChanged(from: Self.cellLabels(in: screen))
+            }
+            guard Self.identifiesOne(target, among: action.targetRoles, in: screen) else { return .refused(.ambiguousTarget) }
+            expectation = Expectation(app: app, check: check)
         }
         // A result that is already there cannot show that the action did anything.
         guard !Self.isAlreadyPresent(expectation, in: screen) else { return .refused(.postconditionNotVerified) }
@@ -539,8 +554,9 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     }
 
     private static func holds(_ expectation: Expectation, in screen: PhoneScreenState) -> Bool {
-        switch expectation {
-        case .foreground(let bundleID): return screen.foregroundBundleID == bundleID
+        guard screen.foregroundBundleID == expectation.app else { return false }
+        switch expectation.check {
+        case nil: return true
         case .element(let expected):
             return screen.elements.filter { $0.role == expected.role && $0.label == expected.label }.count == 1
         case .tabSelected(let label):
@@ -552,10 +568,11 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     }
 
     private static func isAlreadyPresent(_ expectation: Expectation, in screen: PhoneScreenState) -> Bool {
-        switch expectation {
-        case .foreground, .cellsChanged: holds(expectation, in: screen)
+        switch expectation.check {
+        case nil: screen.foregroundBundleID == expectation.app
         case .element(let expected): screen.elements.contains { $0.role == expected.role && $0.label == expected.label }
         case .tabSelected(let label): screen.elements.contains { $0.role == .tab && $0.label == label && $0.isSelected }
+        case .cellsChanged: false
         }
     }
 }

@@ -28,6 +28,8 @@ private struct FakePhone {
     var ignoresNextAction = false
     var showsDialog = false
     var listFitsOnScreen = false
+    /// A navigation tap lands in this app instead of staying in the one it was made in.
+    var tapLeavesFor: String?
     var extraElements: [PhoneScreenElement] = []
     var textLines: [String] = []
 
@@ -66,7 +68,9 @@ private struct FakePhone {
                 performed.append(action.kind)
                 switch action {
                 case .openApp(let bundleID): foreground = bundleID; screen = .mailboxes
-                case .tapNavigation(let target): if screen == .mailboxes, target.label == "Inbox" { screen = .inbox }
+                case .tapNavigation(let target):
+                    if screen == .mailboxes, target.label == "Inbox" { screen = .inbox }
+                    if let tapLeavesFor { foreground = tapLeavesFor }
                 case .selectTab(let target): selectedTab = target.label
                 case .scrollListUp: if !listFitsOnScreen { scrollOffset += 1 }
                 }
@@ -131,6 +135,17 @@ private final class Harness {
         let directive = session.receive(observation, now: now)
         if case .requestProposal = directive { seen = observation }
         return directive
+    }
+
+    /// An answer the fake phone did not produce: right run, step and sequence, chosen clock and screen.
+    func forged(for directive: PhoneLoopDirective, clockID: String, uptime: Double,
+                screen: PhoneScreenState) throws -> PhoneObservationMessage {
+        let sent = try command(directive)
+        return try PhoneObservationMessage(
+            runID: sent.runID, stepID: sent.stepID, sequence: sent.sequence,
+            freshness: PhoneEvidenceFreshness(clockID: clockID, capturedUptimeSeconds: uptime,
+                                              capturedAtWallClock: Date(timeIntervalSince1970: 1_800_000_000), validForSeconds: 10),
+            screen: screen)
     }
 
     /// A complete round trip: send, answer, deliver.
@@ -257,6 +272,17 @@ struct PhoneLoopProtocolTests {
         #expect(try command(action) { $0["kind"] = "tapNavigation" })
         #expect(try command(action) { $0["kind"] = "tapNavigation"; $0["bundleID"] = nil
             $0["target"] = ["elementID": "x", "role": "window", "label": "Inbox"] })
+        // A known role on the wrong kind of command is refused too.
+        func aimed(_ kind: String, at role: String) throws -> Bool {
+            try command(action) { $0["kind"] = kind; $0["bundleID"] = nil
+                $0["target"] = ["elementID": "x", "role": role, "label": "Search"] }
+        }
+        #expect(try !aimed("selectTab", at: "tab"))
+        #expect(try aimed("selectTab", at: "list"))
+        #expect(try aimed("selectTab", at: "button"))
+        #expect(try aimed("scrollListUp", at: "button"))
+        #expect(try aimed("tapNavigation", at: "tab"))
+        #expect(try aimed("tapNavigation", at: "navigationBar"))
 
         func observation(_ change: (inout [String: Any]) -> Void) throws -> Bool {
             var object = try jsonObject(answer); change(&object); return isRefused(PhoneObservationMessage.self, object)
@@ -548,6 +574,39 @@ struct PhoneLoopProtocolTests {
         let old = try PhoneObservationMessage(runID: action.runID, stepID: action.stepID, sequence: action.sequence,
                                               freshness: first.freshness, screen: first.screen)
         #expect(rewound.deliver(old) == .stopped(.staleEvidence))
+
+        // Switching to another clock and back does not make an older capture acceptable.
+        let switched = try Harness(maxSteps: 3)
+        let home = PhoneScreenState(foregroundBundleID: "com.apple.springboard", elements: [])
+        let mail = PhoneScreenState(foregroundBundleID: mailApp, elements: [])
+        var directive = switched.session.start(now: switched.now)
+        _ = switched.deliver(try switched.forged(for: directive, clockID: "A", uptime: 100, screen: home))
+        directive = try switched.propose(.openApp(bundleID: mailApp))
+        directive = switched.deliver(try switched.forged(for: directive, clockID: "B", uptime: 1, screen: mail))
+        #expect(switched.session.record.steps.map(\.outcome) == [.verified])
+        #expect(switched.deliver(try switched.forged(for: directive, clockID: "A", uptime: 90, screen: mail)) == .stopped(.staleEvidence))
+    }
+
+    @Test
+    func anActionAnswerOlderThanTheAgeLimitDoesNotVerifyTheStep() throws {
+        // The app did open, but the answer is 2.5 s old against a 2 s limit: it proves nothing by itself.
+        let harness = try Harness(maxSteps: 1)
+        _ = try harness.startAndObserve()
+        let answer = try #require(try harness.carry(try harness.propose(.openApp(bundleID: mailApp))))
+        let directive = harness.deliver(answer, after: 2.5)
+        #expect(try harness.command(directive).command == .observe)
+        #expect(harness.session.phase == .reconcilingAction)
+        #expect(harness.session.record.steps.isEmpty)
+        // A fresh look shows it, and the step is verified from that, without sending the action again.
+        #expect(try harness.exchange(directive) == .completed)
+        #expect(harness.phone.performed == [.openApp])
+        #expect(harness.session.record.steps.first?.retryCount == 1)
+
+        let strict = try Harness(maxRetries: 0)
+        _ = try strict.startAndObserve()
+        let late = try #require(try strict.carry(try strict.propose(.openApp(bundleID: mailApp))))
+        #expect(strict.deliver(late, after: 2.5) == .stopped(.staleEvidence))
+        #expect(strict.session.record.steps.map(\.outcome) == [.stopped])
     }
 
     @Test
@@ -631,6 +690,32 @@ struct PhoneLoopProtocolTests {
                 == .stopped(.ambiguousTarget))
         // The unambiguous row is accepted.
         guard case .send = try stop({ _ in }, { try $0.target("cell-inbox") }) else { Issue.record("A valid target was refused"); return }
+    }
+
+    @Test
+    func allowedLabelsCountOnlyInsideAnAllowedApp() throws {
+        // Another app shows a row, tabs and a list with exactly the labels the policy allows for mail.
+        func inBank(_ id: String, _ action: (PhoneElementTarget) -> PhoneReadOnlyAction) throws -> PhoneLoopDirective {
+            let harness = try Harness()
+            harness.phone.foreground = "com.example.bank"
+            harness.phone.screen = .mailboxes
+            _ = try harness.startAndObserve()
+            let directive = try harness.propose(action(try harness.target(id)))
+            #expect(harness.sentKinds == [.observe])
+            return directive
+        }
+        #expect(try inBank("cell-inbox") { .tapNavigation($0) } == .stopped(.actionNotPermitted))
+        #expect(try inBank("tab-search") { .selectTab($0) } == .stopped(.actionNotPermitted))
+        #expect(try inBank("list-main") { .scrollListUp($0) } == .stopped(.actionNotPermitted))
+
+        // A tap that lands in another app is not verified by that app showing the expected label.
+        let harness = try Harness(maxSteps: 2, maxRetries: 0)
+        _ = try harness.openMailAndObserve()
+        harness.phone.tapLeavesFor = "com.example.browser"
+        #expect(try harness.exchange(try harness.propose(.tapNavigation(try harness.target("cell-inbox"))))
+                == .stopped(.postconditionNotVerified))
+        #expect(harness.phone.state.elements.contains { $0.role == .navigationBar && $0.label == "Inbox" })
+        #expect(harness.session.record.steps.map(\.outcome) == [.verified, .stopped])
     }
 
     @Test
@@ -986,6 +1071,41 @@ struct PhoneLoopProtocolTests {
     }
 
     @Test
+    func nothingCapturedBeforeAManualInterventionIsUsed() throws {
+        // An observation is in flight when the person touches the phone.
+        let looking = try Harness()
+        let first = looking.session.start(now: looking.now)
+        let before = try #require(try looking.carry(first))
+        let again = looking.session.recordManualIntervention(now: looking.now + 0.05)
+        #expect(try looking.command(again).command == .observe)
+        #expect(try looking.command(again).sequence == 2)
+        #expect(looking.deliver(before) == .ignored(.outOfSequence))
+        #expect(looking.session.phase == .awaitingObservation)
+
+        // An action's answer is in flight: it showed the result, but the person may have undone it since.
+        let acting = try Harness(maxSteps: 1)
+        _ = try acting.startAndObserve()
+        let answer = try #require(try acting.carry(try acting.propose(.openApp(bundleID: mailApp))))
+        let look = acting.session.recordManualIntervention(now: acting.now + 0.05)
+        #expect(acting.session.phase == .reconcilingAction)
+        #expect(acting.deliver(answer) == .ignored(.outOfSequence))
+        #expect(acting.session.record.steps.isEmpty)
+        #expect(try acting.exchange(look) == .completed)
+        let step = try #require(acting.session.record.steps.first)
+        #expect(step.mode == .manualIntervention && step.outcome == .verified && step.retryCount == 1)
+        #expect(step.roundTrips.map(\.result) == [.answered, .abandoned, .answered])
+
+        // Each intervention spends a retry, so a step cannot be made to send commands without end.
+        let bounded = try Harness(maxRetries: 1)
+        _ = try bounded.startAndObserve()
+        _ = try bounded.exchange(bounded.session.recordManualIntervention(now: bounded.now))
+        #expect(bounded.session.recordManualIntervention(now: bounded.now) == .stopped(.userStop))
+        #expect(bounded.session.record.authorship == .mixed)
+        #expect(bounded.session.record.steps.map(\.mode) == [.manualIntervention])
+        #expect(bounded.sentKinds == [.observe, .observe])
+    }
+
+    @Test
     func aRunCanLookAndFinishWithoutActing() throws {
         let harness = try Harness()
         #expect(harness.session.finish(now: harness.now) == .ignored(.notExpectedInThisPhase))
@@ -1033,6 +1153,12 @@ struct PhoneLoopProtocolTests {
         gate.sent(answer)
         #expect(gate.admit(action) == nil)
         #expect(gate.admit(action) == .replayedOrOutOfOrder)
+        // The observation is spent. Sending it again, or sending the action's own answer, does not
+        // let a second action with a new sequence through.
+        gate.sent(answer)
+        #expect(gate.lastObservationID == nil)
+        gate.sent(try harness.forged(for: .send(action), clockID: "phone-boot-1", uptime: 90_001, screen: answer.screen))
+        #expect(gate.lastObservationID == nil)
         #expect(gate.admit(observe) == .replayedOrOutOfOrder)             // an older command arriving late
 
         let other = try Harness()

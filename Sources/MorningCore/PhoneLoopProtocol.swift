@@ -153,6 +153,16 @@ public enum PhoneReadOnlyAction: Sendable, Equatable {
         case .scrollListUp: .scrollListUp
         }
     }
+
+    /// The element classes this action may be aimed at, in the order the driver searches them.
+    var targetRoles: [PhoneElementRole] {
+        switch self {
+        case .openApp: []
+        case .tapNavigation: [.button, .cell, .staticText]
+        case .selectTab: [.tab]
+        case .scrollListUp: [.list]
+        }
+    }
 }
 
 public enum PhoneCommand: Sendable, Equatable {
@@ -247,6 +257,8 @@ public struct PhoneCommandMessage: Codable, Sendable, Equatable {
                 guard PhoneLoopWire.isBundleID(bundleID) else { throw PhoneLoopProtocolError.valueOutOfRange(field: "bundleID") }
             case .tapNavigation(let target), .selectTab(let target), .scrollListUp(let target):
                 guard target.isWellFormed else { throw PhoneLoopProtocolError.valueOutOfRange(field: "target") }
+                // Each kind acts on its own class of element, and on no other.
+                guard action.targetRoles.contains(target.role) else { throw PhoneLoopProtocolError.inconsistentCommand }
             }
         }
     }
@@ -297,14 +309,17 @@ public struct PhoneObservationMessage: Codable, Sendable, Equatable {
 /// The runner's half of ordering. A runner asks this before carrying out a command and tells it
 /// about each observation it sends. A command is admitted only if it belongs to this run, its
 /// sequence is higher than every sequence already admitted, and (for an action) it was derived
-/// from the last observation this runner sent. So a command that is delivered twice, late, out
-/// of order or after a reconnect is not carried out a second time.
+/// from the observation this runner sent in answer to the `observe` just before it. So a command
+/// that is delivered twice, late, out of order or after a reconnect is not carried out a second
+/// time, and one observation supports at most one action.
 public struct PhoneCommandGate: Sendable {
     public enum Refusal: Error, Equatable, Sendable { case foreignRun, replayedOrOutOfOrder, notBasedOnLatestObservation }
 
     public let runID: UUID
     public private(set) var lastAdmittedSequence = 0
+    /// The observation an action may be based on, until an action or a newer command uses it up.
     public private(set) var lastObservationID: UUID?
+    private var awaitsObserveAnswer = false
     public init(runID: UUID) { self.runID = runID }
 
     /// `nil` means the command may be carried out, once.
@@ -314,14 +329,19 @@ public struct PhoneCommandGate: Sendable {
         if case .perform = command.command {
             guard let lastObservationID, command.basedOnObservationID == lastObservationID
             else { return .notBasedOnLatestObservation }
-            // The screen is about to change: nothing else may be derived from that observation.
-            self.lastObservationID = nil
         }
+        // Whatever was observed before this command is no longer a basis for an action.
+        lastObservationID = nil
         lastAdmittedSequence = command.sequence
+        awaitsObserveAnswer = command.command == .observe
         return nil
     }
 
+    /// Only the first answer to the `observe` admitted last becomes a basis. The answer to an
+    /// action, an answer sent twice and another run's answer do not.
     public mutating func sent(_ observation: PhoneObservationMessage) {
-        if observation.runID == runID { lastObservationID = observation.observationID }
+        guard awaitsObserveAnswer, observation.runID == runID, observation.sequence == lastAdmittedSequence else { return }
+        awaitsObserveAnswer = false
+        lastObservationID = observation.observationID
     }
 }
