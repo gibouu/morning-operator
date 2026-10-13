@@ -727,6 +727,16 @@ struct PhoneLoopProtocolTests {
         _ = try await tooLate.pauseForEffect()
         _ = await tooLate.session.transportDisconnected(now: tooLate.now)
         #expect(await tooLate.session.transportReconnected(now: tooLate.now + 40) == .stopped(.transportDisconnected))
+        // A report that arrives after the window has run out is that disconnect, even if the clock
+        // was never checked, and even when the effect's step was the last one allowed.
+        for steps in [2, 4] {
+            let overdue = try Harness(maxSteps: steps)
+            let effect = try await overdue.pauseForEffect()
+            _ = await overdue.session.transportDisconnected(now: overdue.now)
+            #expect(await overdue.settle(effect, .verified, after: 31) == .stopped(.transportDisconnected))
+            #expect(await overdue.session.record.steps.last?.outcome == .stopped)
+            #expect(await overdue.session.record.steps.last?.externalEffectState == nil)
+        }
         let none = try Harness(maxSteps: 4, maxReconnects: 0)
         _ = try await none.pauseForEffect()
         #expect(await none.session.transportDisconnected(now: none.now) == .stopped(.transportDisconnected))

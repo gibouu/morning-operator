@@ -124,8 +124,9 @@ public struct PhoneStepRecord: Codable, Sendable, Equatable, Identifiable {
     public let proposalWaitSeconds: TimeInterval?
     public let roundTrips: [PhoneRoundTrip]
     public let externalIntentID: UUID?
-    /// What the #12 executor reported for `externalIntentID`, in its own words. Absent while
-    /// nothing was reported: a step stopped during the pause has an intent and no state.
+    /// What the #12 executor reported for `externalIntentID`, in its own words. Absent when no
+    /// outcome was accepted: a step stopped during the pause by the person, a timeout or the
+    /// channel has an intent and no state; one stopped by an unknown outcome has both.
     public let externalEffectState: ActionAttemptState?
 }
 
@@ -481,13 +482,16 @@ public actor PhoneLoopSession {
     /// What the #12 executor established about the effect the run is paused for: the `state` of
     /// its attempt, as `ActionExecutor.dispatch` or `reconcile` returned it, and the intent it
     /// belongs to. A settled state resumes the run with a new observation; an unknown one stops
-    /// it. Past the pause's limit a report is the timeout it is, whatever it says.
+    /// it. Past the pause's limit a report is the timeout it is, whatever it says, and past the
+    /// reconnect window of a channel that dropped during the pause it is that disconnect.
     public func externalEffectSettled(intentID: UUID, state: ActionAttemptState, now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard case .awaitingExternalEffect(let reference) = phase, let current = step, let pausedAt = current.effectRequestedAt
         else { return .ignored(.notExpectedInThisPhase) }
         guard intentID == reference.intentID else { return .ignored(.notTheAwaitedEffect) }
         guard now - pausedAt < policy.maxExternalEffectWaitSeconds else { return stop(.externalEffectTimeout, now: now) }
+        // So is a channel that has been away for longer than the reconnect window.
+        if let disconnectedAt, now - disconnectedAt >= policy.reconnectWindowSeconds { return stop(.transportDisconnected, now: now) }
         switch state {
         case .readyToDispatch:
             return .ignored(.effectNotSettled)
