@@ -966,4 +966,50 @@ struct RoutineEvidenceProposalTests {
         #expect(proposal.isCurrent(archive: archive, baseRoutine: nil))
     }
 
+    /// The test process runs in one interface language. Each argument is the label a build
+    /// running in another language (or an English build from before French existed) saved.
+    @Test("A saved proposal stays valid whichever language wrote its evidence lines",
+          arguments: EvidenceDetailText.savedLabels)
+    func savedProposalValidatesUnderAnotherLanguage(savedLabel: String) throws {
+        let entry = try source()
+        let archive = try ObservationArchive(entries: [entry])
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence,
+            steps: [step(evidence.units[0])], preserving: nil)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(proposal)) as? [String: Any])
+        var routine = try #require(object["routine"] as? [String: Any])
+        var steps = try #require(routine["steps"] as? [[String: Any]])
+        let written = try #require(steps[0]["detail"] as? String)
+        let quote = proposal.support[0].citations[0].quote
+        let savedLine = "\(savedLabel) “\(quote)”"
+        let saved = written.replacingOccurrences(of: EvidenceDetailText.line(quote), with: savedLine)
+        #expect(saved.components(separatedBy: savedLine).count == 2)
+        steps[0]["detail"] = saved
+        routine["steps"] = steps; object["routine"] = routine
+        let restored = try JSONDecoder().decode(EvidenceRoutineProposal.self,
+            from: JSONSerialization.data(withJSONObject: object))
+        #expect(restored.routine.steps[0].detail == saved)
+        #expect(restored.isCurrent(archive: archive, baseRoutine: nil))
+        #expect(EvidenceDetailText.description(of: saved) == "Consider a short calendar review.")
+    }
+
+    @Test("A label no build ever wrote still cannot stand in for the retained quotation")
+    func unknownEvidenceLabelIsRejected() throws {
+        let entry = try source()
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence,
+            steps: [step(evidence.units[0])], preserving: nil)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(proposal)) as? [String: Any])
+        var routine = try #require(object["routine"] as? [String: Any])
+        var steps = try #require(routine["steps"] as? [[String: Any]])
+        let written = try #require(steps[0]["detail"] as? String)
+        let quote = proposal.support[0].citations[0].quote
+        let unknown = written.replacingOccurrences(of: EvidenceDetailText.line(quote), with: "Beweis: “\(quote)”")
+        #expect(unknown != written)
+        steps[0]["detail"] = unknown
+        routine["steps"] = steps; object["routine"] = routine
+        #expect(throws: RoutineEvidenceProposalError.invalidProposal) {
+            try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONSerialization.data(withJSONObject: object))
+        }
+    }
 }

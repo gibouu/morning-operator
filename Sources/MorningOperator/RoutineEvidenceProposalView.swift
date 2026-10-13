@@ -190,9 +190,7 @@ struct RoutineEvidenceProposalView: View {
         guard store.pendingRoutineProposal?.support.first(where: { $0.stepID == step.id })?.reason == .inferredEvidence else {
             return step.detail
         }
-        let description = step.detail.components(separatedBy: EvidenceDetailText.separator).first ?? step.detail
-        return (description.components(separatedBy: "\n" + EvidenceDetailText.tentativeNote).first ?? description)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return EvidenceDetailText.description(of: step.detail).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

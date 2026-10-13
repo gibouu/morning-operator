@@ -265,7 +265,7 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                       citation.endCharacterOffset >= citation.startCharacterOffset,
                       citation.endCharacterOffset <= ObservationArchive.maximumOriginalTextCharacters,
                       citation.endCharacterOffset - citation.startCharacterOffset == citation.quote.count,
-                      Data(step.detail.utf8).range(of: Data(EvidenceDetailText.line(citation.quote).utf8)) != nil else {
+                      EvidenceDetailText.detail(step.detail, retains: citation.quote) else {
                     throw RoutineEvidenceProposalError.invalidProposal
                 }
             }
