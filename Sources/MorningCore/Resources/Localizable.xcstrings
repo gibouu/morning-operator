@@ -91,6 +91,16 @@
         }
       }
     },
+    "Above the target you chose": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Au-dessus de l’objectif que vous avez choisi"
+          }
+        }
+      }
+    },
     "Add a few words before saving this capture.": {
       "localizations": {
         "fr": {
@@ -241,6 +251,16 @@
         }
       }
     },
+    "Choose an activity, an end on or after the start, and a daily target between 0 minutes and 24 hours.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une activité, une date de fin égale ou postérieure à la date de début, et un objectif quotidien compris entre 0 minute et 24 heures."
+          }
+        }
+      }
+    },
     "Choose one complete, short excerpt from the saved observation.": {
       "localizations": {
         "fr": {
@@ -277,6 +297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chaque étape de la routine doit avoir une identité unique, un titre et une durée positive."
+          }
+        }
+      }
+    },
+    "Edit the routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier la routine"
           }
         }
       }
@@ -341,6 +371,16 @@
         }
       }
     },
+    "Keep the longer plan": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garder le plan plus long"
+          }
+        }
+      }
+    },
     "Local privacy controls require a file location.": {
       "localizations": {
         "fr": {
@@ -401,12 +441,42 @@
         }
       }
     },
+    "No target chosen": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun objectif choisi"
+          }
+        }
+      }
+    },
     "No words were received. Try again or type your thought.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Aucun mot n’a été reçu. Réessayez ou tapez votre pensée."
+          }
+        }
+      }
+    },
+    "Not saved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non enregistré"
+          }
+        }
+      }
+    },
+    "Nothing recorded for this day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien d’enregistré pour ce jour"
           }
         }
       }
@@ -427,6 +497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Les métadonnées temporelles du média d’origine étaient invalides ou incohérentes et ont été omises ; l’heure et le texte des échantillons ont été conservés."
+          }
+        }
+      }
+    },
+    "Outside the chosen period": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hors de la période choisie"
           }
         }
       }
@@ -527,6 +607,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Relisez et approuvez cette routine avant de commencer."
+          }
+        }
+      }
+    },
+    "Saved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré"
           }
         }
       }
@@ -811,6 +901,16 @@
         }
       }
     },
+    "This period has ended or was cancelled. Start a new one to change it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette période est terminée ou a été annulée. Commencez-en une nouvelle pour la modifier."
+          }
+        }
+      }
+    },
     "This removal request no longer matches the current privacy state.": {
       "localizations": {
         "fr": {
@@ -907,6 +1007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bien-être"
+          }
+        }
+      }
+    },
+    "Within the target you chose": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans l’objectif que vous avez choisi"
           }
         }
       }

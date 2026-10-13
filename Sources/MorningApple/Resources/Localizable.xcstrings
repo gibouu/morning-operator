@@ -2428,6 +2428,16 @@
         }
       }
     },
+    "This copy sits inside a pending suggestion that has to be worked out again. A choice you kept is listed separately.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette copie se trouve dans une suggestion en attente qui doit être refaite. Un choix que vous avez gardé figure séparément."
+          }
+        }
+      }
+    },
     "This decoded frame could not be analyzed for text.": {
       "localizations": {
         "fr": {
@@ -2528,6 +2538,16 @@
         }
       }
     },
+    "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment est marqué pour rester dans votre routine ; sa citation est donc conservée. Elle figure ici pour que vous puissiez la revoir ou la retirer."
+          }
+        }
+      }
+    },
     "This morning's progress isn't current enough to display.": {
       "localizations": {
         "fr": {
@@ -2558,6 +2578,26 @@
         }
       }
     },
+    "This pending suggestion quotes the observation. The suggestion is set aside and has to be worked out again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette suggestion en attente cite l’observation. Elle est mise de côté et doit être refaite."
+          }
+        }
+      }
+    },
+    "This pending suggestion was built from the observation and has to be worked out again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette suggestion en attente a été établie à partir de l’observation et doit être refaite."
+          }
+        }
+      }
+    },
     "This proposal is incomplete or inconsistent with its saved evidence. Create another proposal.": {
       "localizations": {
         "fr": {
@@ -2574,6 +2614,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cette proposition nécessite plus de dix moments, rituels conservés compris. Sélectionnez moins d’observations ; aucun rituel conservé n’a été retiré."
+          }
+        }
+      }
+    },
+    "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette citation fait partie d’une session enregistrée de votre matinée. Elle reste avec cette session et figure ici pour que vous puissiez la voir."
+          }
+        }
+      }
+    },
+    "This quotation sits unchanged in a draft you have not approved or kept, so it goes with its observation. The step's name and timing are yours and stay.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette citation figure telle quelle dans un brouillon que vous n’avez ni approuvé ni gardé ; elle est donc supprimée avec son observation. Le nom et la durée de l’étape sont les vôtres et restent en place."
           }
         }
       }
@@ -2684,6 +2744,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cette étape est déjà terminée dans cette session."
+          }
+        }
+      }
+    },
+    "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape contient des mots identiques à ceux de l’observation, mais aucun lien vers elle ; elle est donc considérée comme la vôtre et reste en place. Elle figure ici pour que vous puissiez la revoir ou la retirer."
+          }
+        }
+      }
+    },
+    "This step no longer matches its saved excerpt exactly, so its wording is treated as yours and stays. Only its link to the observation stops working.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape ne correspond plus exactement à son extrait enregistré ; sa formulation est donc considérée comme la vôtre et reste en place. Seul son lien vers l’observation cesse de fonctionner."
           }
         }
       }
@@ -2838,6 +2918,26 @@
         }
       }
     },
+    "You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez approuvé cette citation dans une routine. Elle reste conservée en copie séparée tant que vous ne retirez pas cette étape, et elle ne peut plus être relue à partir de sa source."
+          }
+        }
+      }
+    },
+    "You chose to keep this moment. Its quotation stays with that choice until you clear it in Review.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez choisi de garder ce moment. Sa citation reste attachée à ce choix tant que vous ne l’effacez pas dans Historique."
+          }
+        }
+      }
+    },
     "Your correction": {
       "localizations": {
         "fr": {
@@ -2884,6 +2984,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Votre enregistrement est prêt à relire."
+          }
+        }
+      }
+    },
+    "Your saved choices could not be read, so this quotation is kept until they can be checked.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos choix enregistrés n’ont pas pu être lus ; cette citation est donc conservée jusqu’à ce qu’ils puissent être vérifiés."
           }
         }
       }
