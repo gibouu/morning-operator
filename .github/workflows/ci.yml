@@ -29,6 +29,8 @@ jobs:
     # The package imports Apple frameworks, so it cannot build on Linux.
     # macOS minutes cost about ten times Linux ones: keep this job small.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
+    # This repository is public: never point CI_RUNNER at a self-hosted runner.
+    # A pull request from a fork would run its code on that machine.
     runs-on: ${{ vars.CI_RUNNER || 'macos-26' }}
     timeout-minutes: 20
     steps:
@@ -60,18 +62,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select the newest installed Xcode
-        run: |
-          newest="$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)"
-          echo "DEVELOPER_DIR=$newest/Contents/Developer" >> "$GITHUB_ENV"
-          DEVELOPER_DIR="$newest/Contents/Developer" xcodebuild -version
+      # The image's default Xcode is used on purpose: the newest one installed
+      # there can be a beta, and a compiler change should not arrive unannounced.
+      - name: Show the Xcode in use
+        run: xcodebuild -version
 
+      # The step fails on xcodebuild's own exit status. -quiet keeps the log to
+      # warnings and errors, all of which stay in the job log.
       - name: Build for the iOS Simulator
         run: |
-          set -o pipefail
           xcodebuild -project MorningOperator.xcodeproj -scheme MorningOperator \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO build-for-testing \
-            | tee xcodebuild.log | grep -E "error:|warning: unable|BUILD|\*\* " || true
-          grep -q "TEST BUILD SUCCEEDED" xcodebuild.log
-
+            -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO \
+            -quiet build-for-testing
