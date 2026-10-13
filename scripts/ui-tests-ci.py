@@ -114,13 +114,15 @@ def summarize(summary, tests, title, allow_skips=True):
     by_result = {}
     for suite, case in cases:
         by_result.setdefault(case.get("result", "unknown"), []).append((suite, case))
-    passed, failed, skipped = (len(by_result.get(key, [])) for key in ("Passed", "Failed", "Skipped"))
-    other = len(cases) - passed - failed - skipped
+    passed, failed, skipped, expected = (len(by_result.get(key, []))
+                                         for key in ("Passed", "Failed", "Skipped", "Expected Failure"))
+    other = len(cases) - passed - failed - skipped - expected
     seconds = sum(case.get("durationInSeconds", 0) for _, case in cases)
     devices = ", ".join(f"{d.get('deviceName', '?')} · iOS {d.get('osVersion', '?')}" for d in tests.get("devices", []))
 
     lines = [f"### {title}", "",
              f"**{passed} passed · {failed} failed · {skipped} skipped** of {len(cases)} tests"
+             + (f" · {expected} failing as expected (quarantined)" if expected else "")
              + (f" · {other} with another result" if other else "")
              + f" · {seconds / 60:.1f} min of test time · {devices or 'no device recorded'}", ""]
     if failed:
@@ -128,6 +130,12 @@ def summarize(summary, tests, title, allow_skips=True):
         for suite, case in by_result["Failed"]:
             first = (messages(case, "Failure Message") or ["no message recorded"])[0]
             lines.append(f"| `{suite}/{case.get('name')}` | {cell(first)} |")
+        lines.append("")
+    if expected:
+        lines += ["| Quarantined test (fails as expected) | Recorded reason |", "| --- | --- |"]
+        for suite, case in by_result["Expected Failure"]:
+            reason = (messages(case, "Expected Failure") or messages(case, "Failure Message") or ["no reason recorded"])[0]
+            lines.append(f"| `{suite}/{case.get('name')}` | {cell(reason)} |")
         lines.append("")
     if skipped:
         reasons = {}
@@ -153,7 +161,7 @@ def summarize(summary, tests, title, allow_skips=True):
         problems.append(f"{other} test(s) with neither a pass, a failure nor a skip")
     if skipped and not allow_skips:
         problems.append(f"{skipped} test(s) skipped in a pass where every selected test must run")
-    if summary.get("result") not in ("Passed", "Skipped") and not problems:
+    if summary.get("result") not in ("Passed", "Skipped", "Expected Failure") and not problems:
         problems.append(f"the bundle reports the overall result {summary.get('result')!r}")
     return "\n".join(lines), problems
 

@@ -224,9 +224,17 @@ final class ObservationScreenReviewTests: XCTestCase {
     }
 
     private func visibleList(in app: XCUIApplication) -> XCUIElement {
-        let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
-            + app.scrollViews.allElementsBoundByIndex
-        guard let list = lists.first(where: { $0.exists && $0.isHittable }) else {
+        // A list that is still sliding in exists but cannot be touched yet.
+        // Wait for the screen to settle before deciding that none is visible.
+        func candidates() -> [XCUIElement] {
+            app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+                + app.scrollViews.allElementsBoundByIndex
+        }
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            candidates().contains { $0.exists && $0.isHittable }
+        }, object: nil)
+        _ = XCTWaiter.wait(for: [settled], timeout: 5)
+        guard let list = candidates().first(where: { $0.exists && $0.isHittable }) else {
             XCTFail("No visible native list.\n\(app.debugDescription)")
             return app.collectionViews.firstMatch
         }

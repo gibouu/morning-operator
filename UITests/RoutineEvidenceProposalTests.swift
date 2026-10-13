@@ -623,7 +623,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     private func approveEditedRoutine(in app: XCUIApplication) {
         tap("routine.approve", in: app)
         waitAbsent(app.navigationBars["Your routine"])
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
     }
 
     private func leaveSavedChoices(in app: XCUIApplication) {
@@ -786,7 +786,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         XCTAssertFalse(app.buttons["routine.approve"].exists)
         MorningUITestNavigation.closeRoutine(in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
     }
 
     private func assertRoutineRows(_ title: String, count: Int, in app: XCUIApplication) {

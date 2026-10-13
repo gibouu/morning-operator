@@ -124,11 +124,10 @@ final class ObservationNarrationTests: XCTestCase {
         tap("narration.done", in: app)
         waitForAbsence(app.navigationBars["A saved moment"], in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists, "Selecting source content cannot approve a new routine.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+            "Selecting source content cannot approve a new routine.")
         relaunchWithoutSeed(app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
     }
 
     private func approveDraft(expectedText: String, in app: XCUIApplication) {
@@ -144,7 +143,7 @@ final class ObservationNarrationTests: XCTestCase {
         app.navigationBars["Make it yours"].buttons["Cancel"].tap()
         waitForAbsence(app.navigationBars["Make it yours"], in: app)
         tap("routine.approve", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5), app.debugDescription)
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
     }
 
     private func enableReadAloud(in app: XCUIApplication) {

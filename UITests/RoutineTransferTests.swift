@@ -118,7 +118,7 @@ final class RoutineTransferTests: XCTestCase {
         assertRoutine(currentTitle, count: 4, approved: true, in: app)
         MorningUITestNavigation.closeRoutine(in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
         XCTAssertFalse(app.staticTexts["run.state"].exists,
                        "Restoring an approved plan makes it ready; it must not start it.")
     }
@@ -334,7 +334,7 @@ final class RoutineTransferTests: XCTestCase {
             assertRoutine(currentTitle, count: 4, approved: false, in: app)
             tap("routine.approve", in: app)
             waitAbsent(app.navigationBars["Your routine"])
-            XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+            MorningUITestNavigation.assertMorningAction("run.start", in: app)
         }
         return app
     }
@@ -390,8 +390,7 @@ final class RoutineTransferTests: XCTestCase {
 
     private func assertCannotStart(in app: XCUIApplication) {
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
         XCTAssertFalse(app.staticTexts["run.state"].exists)
     }
 

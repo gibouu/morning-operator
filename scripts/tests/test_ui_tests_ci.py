@@ -114,6 +114,14 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(ci.summarize({"result": "Skipped"}, tests, "Title")[1], [])
         self.assertEqual(len(ci.summarize({"result": "Skipped"}, tests, "Title", allow_skips=False)[1]), 1)
 
+    def test_a_quarantined_test_is_listed_but_is_not_a_problem(self):
+        reason = [{"nodeType": "Expected Failure", "name": "Does not fit (issue #1)"}]
+        text, problems = ci.summarize({"result": "Passed", "failedTests": 0},
+                                      bundle(case("testA", "Passed"), case("testB", "Expected Failure", 1, reason)), "Title")
+        self.assertEqual(problems, [])
+        self.assertIn("1 failing as expected (quarantined)", text)
+        self.assertIn("| `SuiteTests/testB` | Does not fit (issue #1) |", text)
+
     def test_an_unknown_result_is_a_problem(self):
         _, problems = ci.summarize({"result": "unknown"}, bundle(case("testA", "unknown")), "Title")
         self.assertEqual(len(problems), 1)

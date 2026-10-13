@@ -42,8 +42,13 @@ final class InterfaceTourTests: XCTestCase {
         XCTAssertTrue(app.buttons["setup.briefing"].waitForExistence(timeout: 10), app.debugDescription)
         attach("\(prefix)-settings", app)
         tapAfterScrolling(app.buttons["setup.briefing"], in: app)
-        XCTAssertTrue(app.textFields["briefing.citySearch"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["briefing.synthetic"].waitForExistence(timeout: 10), app.debugDescription)
         attach("\(prefix)-your-day", app)
+        // The city field is a row of a native list: below the fold it does not exist yet.
+        let city = app.textFields["briefing.citySearch"]
+        for _ in 0..<12 where !(city.exists && city.isHittable) { app.swipeUp() }
+        XCTAssertTrue(city.exists && city.isHittable, app.debugDescription)
+        attach("\(prefix)-your-day-city", app)
         app.terminate()
 
         app = launch(arguments, workspace: workspace)
