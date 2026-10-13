@@ -337,6 +337,16 @@ private enum OwnScreenFixtures {
         .other("17:30 Pick up the children from football practice", "17:30 Aller chercher les enfants à l’entraînement de football"),
         .shown("Source sample")
     ], recognizedWithoutBars: false)
+    /// Choosing a line of a saved observation to hear again.
+    static let savedMoment = ContentScreen(name: "Saved moment", top: [.shown("A saved moment"), .shown("Done")], body: [
+        .shown("Keep a thought from a morning you've saved. Choose the words you want to hear again."),
+        .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
+        .shown("What you'll hear"), meeting, .shown("Hear preview"), .shown("Add to my morning"),
+        .shown("The date is spoken too. This is a saved excerpt, not today's messages. MORE checks its source before every playback."),
+        .shown("Choose an excerpt"), meeting, reply,
+        .other("12:30 Lunch with the product team at the corner café", "12:30 Déjeuner avec l’équipe produit au café du coin"),
+        .shown("Up to 24 short, complete lines from the saved text. Check extracted words against the recording; screen recognition can make mistakes.")
+    ])
     /// Correcting a sampled screen's label: excerpts of its original text to choose from.
     static let screenLabel = ContentScreen(name: "Screen label", top: [.shown("Screen label")], body: [
         .shown("Your label"), .other("Calendar", "Calendrier"),
@@ -406,7 +416,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [observation, unorderedObservation, sampledMoment, screenLabel, observations, choosingObservations,
+    static let contentScreens = [observation, unorderedObservation, sampledMoment, savedMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
@@ -898,6 +908,7 @@ struct OwnInterfaceWordingTests {
             "Notes\nMise à jour suggérée pour demain\n09:00 Réunion de planification de l’équipe\n30 minutes prévues",
             "Updates\nApprove update\n5 minutes planned\n09:00 Team planning meeting",
             "Messages\nGaps may hide others\nPlease bring the printed meeting notes tomorrow.",
+            "Nature\nObservation\nA saved moment\nChoose an excerpt\nTwo herons seen near the northern pond at sunrise",
             "Fitness\nCompare with current routine\nWhy this suggestion?\n45 minutes planned\n09:00 Mobility and strength session with the group",
             "Forme\nComparer avec la routine actuelle\nPourquoi cette suggestion ?\n45 minutes prévues\n09:00 Séance de mobilité et de renforcement avec le groupe",
             "Notes\nKept by your choice\nYour saved timing choice\nPlease bring the printed meeting notes tomorrow.",

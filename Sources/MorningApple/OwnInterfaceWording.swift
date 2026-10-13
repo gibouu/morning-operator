@@ -443,6 +443,7 @@ enum OwnInterfaceWording {
             shown("No sampled recording is attached to this observation.",
                   fr: "Aucun enregistrement échantillonné n’est lié à cette observation.")
         ], controls: [
+            shown("Observation", fr: "Observation"),
             shown("Sampled moments", fr: "Moments échantillonnés"),
             shown("Saved samples", fr: "Échantillons enregistrés"),
             shown("View sampled screens", fr: "Voir les écrans échantillonnés"),
@@ -492,6 +493,28 @@ enum OwnInterfaceWording {
             shown("Original extracted text", fr: "Texte extrait d’origine"),
             shown("Source sample", fr: "Échantillon source"),
             shown("Read this saved moment", fr: "Lire ce moment enregistré")
+        ]),
+        // Choosing a line of a saved observation to hear again.
+        Screen(name: "Saved moment", copy: [
+            part("Keep a thought from a morning you've saved", fr: "Gardez une pensée d’une matinée enregistrée",
+                 of: "Keep a thought from a morning you've saved. Choose the words you want to hear again."),
+            part("Choose the words you want to hear again", fr: "Choisissez les mots que vous voulez réentendre",
+                 of: "Keep a thought from a morning you've saved. Choose the words you want to hear again."),
+            part("This is a saved excerpt, not today's messages", fr: "Il s’agit d’un extrait enregistré, pas des messages du jour",
+                 of: "The date is spoken too. This is a saved excerpt, not today's messages. MORE checks its source before every playback."),
+            part("MORE checks its source before every playback", fr: "MORE vérifie sa source avant chaque lecture",
+                 of: "The date is spoken too. This is a saved excerpt, not today's messages. MORE checks its source before every playback."),
+            part("Up to 24 short, complete lines from the saved text", fr: "Jusqu’à 24 lignes courtes et complètes du texte enregistré",
+                 of: "Up to 24 short, complete lines from the saved text. Check extracted words against the recording; screen recognition can make mistakes."),
+            part("Check extracted words against the recording; screen recognition can make mistakes",
+                 fr: "Comparez les mots extraits à l’enregistrement ; la reconnaissance d’écran peut se tromper",
+                 of: "Up to 24 short, complete lines from the saved text. Check extracted words against the recording; screen recognition can make mistakes.")
+        ], controls: [
+            shown("A saved moment", fr: "Un moment enregistré"),
+            shown("Choose an excerpt", fr: "Choisir un extrait"),
+            shown("What you'll hear", fr: "Ce que vous entendrez"),
+            shown("Hear preview", fr: "Écouter un aperçu"),
+            shown("Add to my morning", fr: "Ajouter à ma matinée")
         ]),
         // Correcting one sampled screen's label, above excerpts of its original text.
         Screen(name: "Screen label", copy: [
