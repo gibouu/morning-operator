@@ -13,7 +13,7 @@ struct VoicePickerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            MorningList {
                 Section {
                     voiceRow(name: "Automatic", detail: automaticDetail, identifier: nil)
                         .accessibilityIdentifier("voice.default")

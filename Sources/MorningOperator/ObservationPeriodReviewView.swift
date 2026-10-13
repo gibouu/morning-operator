@@ -43,7 +43,7 @@ private struct ObservationPeriodReviewView: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     if let report, let first = report.dayKeys.first, let last = report.dayKeys.last {
@@ -174,7 +174,7 @@ private struct ObservationRecurrenceSources: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             if let context {
                 Section {
                     Text(context.context.displayName).font(.system(.title2, design: .serif, weight: .medium))

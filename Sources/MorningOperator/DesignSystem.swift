@@ -74,6 +74,19 @@ struct PrimaryButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.45)
     }
 }
+/// The primary brown fill at the secondary button's compact size, so the two
+/// actions sit side by side without the primary one dominating.
+struct CompactPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18).padding(.vertical, 14)
+            .foregroundStyle(.white)
+            .background(MorningStyle.controlTint.opacity(configuration.isPressed ? 0.8 : 1), in: Capsule())
+            .contentShape(Capsule())
+            .opacity(isEnabled ? 1 : 0.45)
+    }
+}
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
@@ -146,5 +159,21 @@ struct EmptyMoment: View {
             Text(detail).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(26)
             .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 28))
+    }
+}
+
+/// Grouped forms and lists with warm rows that match cards, instead of iOS's
+/// white cells on the beige background. Rows that set their own background keep it.
+struct MorningForm<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View { Form { Group { content }.morningRows() } }
+}
+struct MorningList<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View { List { Group { content }.morningRows() } }
+}
+extension View {
+    func morningRows() -> some View {
+        listRowBackground(MorningStyle.surface).listRowSeparatorTint(MorningStyle.line)
     }
 }

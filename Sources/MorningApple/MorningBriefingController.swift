@@ -54,6 +54,7 @@ public final class MorningBriefingController {
     public private(set) var settings = MorningBriefingSettings()
     public private(set) var calendarChoices: [CalendarChoice] = []
     public private(set) var cityResults: [WeatherLocation] = []
+    public private(set) var citySuggestions: [CitySuggestion] = []
     public private(set) var prepared: PreparedMorningBriefing?
     public private(set) var isPreparing = false
     public private(set) var isConnectingCalendar = false
@@ -107,6 +108,8 @@ public final class MorningBriefingController {
     @ObservationIgnored private var accessTask: Task<Void, Never>?
     @ObservationIgnored private var searchAttempt: UUID?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
+    @ObservationIgnored private var suggestionAttempt: UUID?
+    @ObservationIgnored private var suggestionTask: Task<Void, Never>?
     @ObservationIgnored private var calendarInput: MorningBriefingInput<CalendarSnapshot> = .notConfigured
     @ObservationIgnored private var weatherInput: MorningBriefingInput<WeatherObservationSnapshot> = .notConfigured
     @ObservationIgnored private var preparingKey: PreparationKey?
@@ -244,6 +247,59 @@ public final class MorningBriefingController {
         await task.value
     }
 
+    /// Suggestions while typing. Earlier suggestions stay visible until newer ones
+    /// arrive; a failed or superseded request leaves them unchanged and silent,
+    /// since an explicit search still reports errors.
+    public func suggestCities(_ query: String) async {
+        guard prepareForAccess() else { return }
+        suggestionTask?.cancel()
+        let attempt = UUID(), expectedRevision = revision
+        suggestionAttempt = attempt
+        let service = weather, timeout = sourceTimeout
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { if suggestionAttempt == attempt { suggestionAttempt = nil; suggestionTask = nil } }
+            guard let values = try? await BriefingSourceDeadline<[CitySuggestion]>().run(timeout: timeout, body: {
+                try await service.suggestCities(query)
+            }), !Task.isCancelled, revision == expectedRevision, suggestionAttempt == attempt,
+                  (try? withCurrentAccess { }) != nil else { return }
+            citySuggestions = values
+        }
+        suggestionTask = task
+        await task.value
+    }
+
+    /// Resolves the chosen suggestion to a place; the caller saves it explicitly.
+    public func chooseCity(_ suggestion: CitySuggestion) async -> WeatherLocation? {
+        guard prepareForAccess() else { return nil }
+        suggestionTask?.cancel(); suggestionTask = nil; suggestionAttempt = nil
+        searchTask?.cancel()
+        let attempt = UUID(), expectedRevision = revision
+        searchAttempt = attempt; isSearchingCities = true; errorMessage = nil
+        defer { if searchAttempt == attempt { searchAttempt = nil; isSearchingCities = false } }
+        do {
+            let location = try await BriefingSourceDeadline<WeatherLocation?>().run(timeout: sourceTimeout) { [weather] in
+                try await weather.resolveCity(suggestion)
+            }
+            try Task.checkCancellation()
+            guard revision == expectedRevision, searchAttempt == attempt else { return nil }
+            try withCurrentAccess { }
+            if location == nil { errorMessage = WeatherObservationError.searchUnavailable.localizedDescription }
+            return location
+        } catch {
+            guard revision == expectedRevision, searchAttempt == attempt else { return nil }
+            if !(error is CancellationError) { errorMessage = safeMessage(error) }
+            return nil
+        }
+    }
+
+    /// Clears typed suggestions and results when the query is emptied or too short.
+    public func clearCitySearch() {
+        suggestionTask?.cancel(); suggestionTask = nil; suggestionAttempt = nil
+        searchTask?.cancel(); searchTask = nil; searchAttempt = nil
+        isSearchingCities = false; cityResults = []; citySuggestions = []
+    }
+
     /// Same-context callers share one preparation, including a concurrent force
     /// request. Force refresh changes source data only; it has no session effects.
     public func refresh(at date: Date? = nil, force: Bool = false) async -> PreparedMorningBriefing? {
@@ -343,12 +399,12 @@ public final class MorningBriefingController {
 
     private func invalidateWork(clearChoices: Bool) {
         revision = UUID()
-        refreshAttempt = nil; accessAttempt = nil; searchAttempt = nil
-        refreshTask?.cancel(); accessTask?.cancel(); searchTask?.cancel()
-        refreshTask = nil; accessTask = nil; searchTask = nil; preparingKey = nil
+        refreshAttempt = nil; accessAttempt = nil; searchAttempt = nil; suggestionAttempt = nil
+        refreshTask?.cancel(); accessTask?.cancel(); searchTask?.cancel(); suggestionTask?.cancel()
+        refreshTask = nil; accessTask = nil; searchTask = nil; suggestionTask = nil; preparingKey = nil
         isPreparing = false; isConnectingCalendar = false; isSearchingCities = false
         prepared = nil; calendarInput = .notConfigured; weatherInput = .notConfigured
-        cityResults = []
+        cityResults = []; citySuggestions = []
         if clearChoices { calendarChoices = [] }
     }
 

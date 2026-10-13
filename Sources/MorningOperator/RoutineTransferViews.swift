@@ -50,7 +50,7 @@ struct RoutineExportView: View {
     var body: some View {
         let preview = previewResult
         NavigationStack {
-            List {
+            MorningList {
                 Section {
                     Text(includeNotes ? "Your plan and its notes" : "Your plan only")
                         .font(.headline)
@@ -178,7 +178,7 @@ struct RoutineImportView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            MorningList {
                 Section {
                     Text("Review this plan before using it")
                         .font(.headline)

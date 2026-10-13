@@ -59,26 +59,11 @@ struct LearnView: View {
                     Text("Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    #if os(iOS)
-                    if #available(iOS 27.0, *) {
-                        Button { recording = true } label: {
-                            Label("Record a little of my morning", systemImage: "record.circle")
-                        }.buttonStyle(PrimaryButtonStyle())
-                            .disabled(!store.canStartRecording)
-                            .accessibilityIdentifier("learn.record")
+                    // Two compact actions side by side; VoiceOver keeps the full labels.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) { learnActions }
+                        VStack(alignment: .leading, spacing: 12) { learnActions }
                     }
-                    #endif
-                    Button {
-                        guard !store.privacyBlocksWork else { return }
-                        importGeneration = store.dataGeneration
-                        importing = true
-                    } label: {
-                        Label("Choose a recording or file", systemImage: "plus")
-                            .multilineTextAlignment(.leading)
-                    }
-                    .buttonStyle(SecondaryButtonStyle())
-                    .disabled(store.busy || store.sessionActive)
-                    .accessibilityIdentifier("learn.import")
                     Text("A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.")
                         .font(.footnote).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -295,6 +280,30 @@ struct LearnView: View {
         if let id = store.pendingRoutineProposal?.id, id != proposalBeforeRequest { showingProposal = true }
     }
 
+    @ViewBuilder private var learnActions: some View {
+        #if os(iOS)
+        if #available(iOS 27.0, *) {
+            Button { recording = true } label: {
+                Label("Record", systemImage: "record.circle").lineLimit(1)
+            }.buttonStyle(CompactPrimaryButtonStyle())
+                .disabled(!store.canStartRecording)
+                .accessibilityLabel("Record a little of my morning")
+                .accessibilityIdentifier("learn.record")
+        }
+        #endif
+        Button {
+            guard !store.privacyBlocksWork else { return }
+            importGeneration = store.dataGeneration
+            importing = true
+        } label: {
+            Label("Choose", systemImage: "plus").lineLimit(1)
+        }
+        .buttonStyle(SecondaryButtonStyle())
+        .disabled(store.busy || store.sessionActive)
+        .accessibilityLabel("Choose a recording or file")
+        .accessibilityIdentifier("learn.import")
+    }
+
     private func sectionTitle(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
             .font(.title3.weight(.semibold)).foregroundStyle(MorningStyle.ink)
@@ -478,7 +487,7 @@ struct StepEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     TextField("Give this step a name", text: $step.title)
                         .accessibilityLabel("Step name")

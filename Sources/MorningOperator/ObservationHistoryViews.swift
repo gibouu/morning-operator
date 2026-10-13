@@ -39,7 +39,7 @@ struct ObservationHistoryView: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Text(onlyUndated
                      ? "These observations need a day before they can appear in your morning history. The day a file was imported doesn't tell us when it was recorded."
@@ -251,7 +251,7 @@ struct ObservationHistoryDetail: View {
     private var entry: ObservationAcquisition? { store.observationArchive.entry(id: observationID) }
 
     var body: some View {
-        List {
+        MorningList {
             if let entry {
                 Section {
                     Text(entry.sourceLabel).font(.headline)
@@ -394,7 +394,7 @@ struct ObservationDateEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     DatePicker("Observed day", selection: $date, displayedComponents: .date)
                         .environment(\.timeZone, zone).environment(\.calendar, calendar)
@@ -459,7 +459,7 @@ private struct ObservationTimeZonePicker: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Button("Use current time zone: \(TimeZone.current.identifier)") { selection = TimeZone.current.identifier; dismiss() }
             }

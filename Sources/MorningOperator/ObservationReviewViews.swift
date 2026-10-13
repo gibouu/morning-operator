@@ -214,7 +214,7 @@ private struct ObservationSampleDetail: View {
     @ViewState<SampleNarrationSelection?> private var narrationSelection = nil
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                 Text(momentLabel(moment)).font(.headline)

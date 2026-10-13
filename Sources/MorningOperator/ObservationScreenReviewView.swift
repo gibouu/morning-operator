@@ -33,7 +33,7 @@ struct ObservationScreenReviewView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     TextField("What was on this screen?", text: $label)
                         .focused($labelFocused)

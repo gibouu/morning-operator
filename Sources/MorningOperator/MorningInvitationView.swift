@@ -9,7 +9,7 @@ struct MorningInvitationView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     DatePicker("Invite me", selection: $selectedDate, in: Date.now...,
                                displayedComponents: [.date, .hourAndMinute])

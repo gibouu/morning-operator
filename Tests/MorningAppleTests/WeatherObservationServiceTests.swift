@@ -114,6 +114,26 @@ struct WeatherObservationServiceTests {
         #expect(WeatherCityRanking.label(context: "", city: "", country: "", name: "") == nil)
     }
 
+    @Test func typedSuggestionsAreTrimmedDeduplicatedAndResolvedOnlyWhenChosen() async throws {
+        let lyon = try WeatherLocation(latitude: 45.76, longitude: 4.83, displayName: "Lyon, France")
+        var fragments: [String] = []
+        var resolved: [CitySuggestion] = []
+        let suggestion = CitySuggestion(title: "Lyon", subtitle: "France")
+        let service = WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
+            citySearchProvider: { _ in [] },
+            citySuggestionProvider: { fragment in fragments.append(fragment); return [suggestion, suggestion, CitySuggestion(title: "", subtitle: "x")] },
+            citySuggestionResolver: { chosen in resolved.append(chosen); return [lyon] })
+        await #expect(throws: WeatherObservationError.invalidSearchQuery) { try await service.suggestCities("   ") }
+        #expect(try await service.suggestCities("  Ly ") == [suggestion])
+        #expect(fragments == ["Ly"] && resolved.isEmpty, "Typing never resolves coordinates.")
+        #expect(suggestion.label == "Lyon, France")
+        #expect(try await service.resolveCity(suggestion) == lyon)
+        #expect(resolved == [suggestion])
+        let fallback = WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
+            citySearchProvider: { _ in [lyon] })
+        #expect(try await fallback.suggestCities("Lyon").map(\.title) == ["Lyon, France"])
+    }
+
     @Test func cancelledLateResponseCannotProduceWeatherAndRetryIsIndependent() async throws {
         let gate = WeatherFixtureGate()
         let location = try place()

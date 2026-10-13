@@ -28,7 +28,7 @@ struct ObservationNarrationView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            MorningList {
                 Section {
                     Text("Keep a thought from a morning you've saved. Choose the words you want to hear again.")
                         .font(.subheadline).foregroundStyle(.secondary)

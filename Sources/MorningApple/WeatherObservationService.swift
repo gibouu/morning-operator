@@ -114,6 +114,20 @@ public enum WeatherObservationError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// A city name suggested by Apple Maps while a person types. It carries no
+/// coordinates; it is resolved to a `WeatherLocation` only when chosen.
+public struct CitySuggestion: Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let subtitle: String
+    public var label: String { subtitle.isEmpty ? title : "\(title), \(subtitle)" }
+
+    public init(title: String, subtitle: String) {
+        self.title = title; self.subtitle = subtitle
+        id = "\(title)\u{1F}\(subtitle)"
+    }
+}
+
 /// No work is performed by initialization. Search/refresh only when explicitly
 /// requested by the app; there is no location manager, automatic refresh, cache,
 /// telemetry, cloud-model fallback, or dependency on calendar availability.
@@ -121,17 +135,30 @@ public enum WeatherObservationError: LocalizedError, Sendable, Equatable {
 public final class WeatherObservationService {
     public typealias WeatherProvider = @MainActor (WeatherLocation) async throws -> WeatherObservationSnapshot
     public typealias CitySearchProvider = @MainActor (String) async throws -> [WeatherLocation]
+    public typealias CitySuggestionProvider = @MainActor (String) async throws -> [CitySuggestion]
+    public typealias CitySuggestionResolver = @MainActor (CitySuggestion) async throws -> [WeatherLocation]
     private let weatherProvider: WeatherProvider
     private let citySearchProvider: CitySearchProvider
+    private let citySuggestionProvider: CitySuggestionProvider
+    private let citySuggestionResolver: CitySuggestionResolver
 
     public convenience init() {
-        self.init(weatherProvider: Self.nativeWeather, citySearchProvider: Self.nativeCitySearch)
+        self.init(weatherProvider: Self.nativeWeather, citySearchProvider: Self.nativeCitySearch,
+                  citySuggestionProvider: { try await NativeCitySuggestions.shared.suggest($0) },
+                  citySuggestionResolver: { try await NativeCitySuggestions.shared.resolve($0) })
     }
 
     /// Inject providers for deterministic tests; construction never calls them.
-    public init(weatherProvider: @escaping WeatherProvider, citySearchProvider: @escaping CitySearchProvider) {
+    /// Without suggestion providers, typed suggestions reuse the city search.
+    public init(weatherProvider: @escaping WeatherProvider, citySearchProvider: @escaping CitySearchProvider,
+                citySuggestionProvider: CitySuggestionProvider? = nil,
+                citySuggestionResolver: CitySuggestionResolver? = nil) {
         self.weatherProvider = weatherProvider
         self.citySearchProvider = citySearchProvider
+        self.citySuggestionProvider = citySuggestionProvider ?? { query in
+            try await citySearchProvider(query).map { CitySuggestion(title: $0.displayName, subtitle: "") }
+        }
+        self.citySuggestionResolver = citySuggestionResolver ?? { try await citySearchProvider($0.label) }
     }
 
     public func currentWeather(for location: WeatherLocation) async throws -> WeatherObservationSnapshot {
@@ -160,6 +187,38 @@ public final class WeatherObservationService {
             try Task.checkCancellation()
             var seen = Set<String>()
             return Array(values.filter { seen.insert($0.id).inserted }.prefix(8))
+        } catch {
+            try Task.checkCancellation()
+            throw Self.classifiedError(error, searching: true)
+        }
+    }
+
+    /// Typed-ahead city names from Apple Maps, sent only while the person types
+    /// in the city field. No coordinates and no device location are involved.
+    public func suggestCities(_ query: String) async throws -> [CitySuggestion] {
+        try Task.checkCancellation()
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard WeatherLocation.validLabel(query, maximum: 200) else {
+            throw WeatherObservationError.invalidSearchQuery
+        }
+        do {
+            let values = try await citySuggestionProvider(query)
+            try Task.checkCancellation()
+            var seen = Set<String>()
+            return Array(values.filter { !$0.title.isEmpty && seen.insert($0.id).inserted }.prefix(8))
+        } catch {
+            try Task.checkCancellation()
+            throw Self.classifiedError(error, searching: true)
+        }
+    }
+
+    /// Resolves the suggestion the person chose into one place for the weather.
+    public func resolveCity(_ suggestion: CitySuggestion) async throws -> WeatherLocation? {
+        try Task.checkCancellation()
+        do {
+            let values = try await citySuggestionResolver(suggestion)
+            try Task.checkCancellation()
+            return values.first
         } catch {
             try Task.checkCancellation()
             throw Self.classifiedError(error, searching: true)
@@ -216,11 +275,23 @@ public final class WeatherObservationService {
 /// One owner per search prevents an old cancellation from cancelling a newer
 /// request. Convert framework objects to Sendable values on the main queue.
 @MainActor
-private final class NativeWeatherCitySearch {
+final class NativeWeatherCitySearch {
     private let query: String
     private var search: MKLocalSearch?
 
     init(query: String) { self.query = query }
+
+    static func candidates(_ response: MKLocalSearch.Response) -> [(WeatherLocation, String?)] {
+        response.mapItems.compactMap { item -> (WeatherLocation, String?)? in
+            let coordinate = item.location.coordinate
+            let address = item.addressRepresentations
+            guard let label = WeatherCityRanking.label(context: address?.cityWithContext(.full),
+                      city: address?.cityName, country: address?.regionName, name: item.name),
+                  let location = try? WeatherLocation(latitude: coordinate.latitude,
+                      longitude: coordinate.longitude, displayName: label) else { return nil }
+            return (location, address?.region?.identifier)
+        }
+    }
 
     /// Cities first; if MapKit finds none with the place filter (it rejects
     /// "London", for example), retry once without it.
@@ -254,16 +325,7 @@ private final class NativeWeatherCitySearch {
                     guard let response else {
                         continuation.resume(throwing: WeatherObservationError.searchUnavailable); return
                     }
-                    let candidates = response.mapItems.compactMap { item -> (WeatherLocation, String?)? in
-                        let coordinate = item.location.coordinate
-                        let address = item.addressRepresentations
-                        guard let label = WeatherCityRanking.label(context: address?.cityWithContext(.full),
-                                  city: address?.cityName, country: address?.regionName, name: item.name),
-                              let location = try? WeatherLocation(latitude: coordinate.latitude,
-                                  longitude: coordinate.longitude, displayName: label) else { return nil }
-                        return (location, address?.region?.identifier)
-                    }
-                    continuation.resume(returning: WeatherCityRanking.preferringRegion(candidates,
+                    continuation.resume(returning: WeatherCityRanking.preferringRegion(Self.candidates(response),
                         region: Locale.current.region?.identifier))
                 }
             }
@@ -272,6 +334,76 @@ private final class NativeWeatherCitySearch {
         } onCancel: {
             Task { @MainActor [search] in search.cancel() }
         }
+    }
+}
+
+/// Apple Maps' completer is built for typing: "Ly" suggests Lyon, "Tok" Tokyo,
+/// where a full search would match unrelated names. One completer is reused;
+/// a newer fragment supersedes the pending one.
+@MainActor
+final class NativeCitySuggestions: NSObject, MKLocalSearchCompleterDelegate {
+    static let shared = NativeCitySuggestions()
+    private let completer = MKLocalSearchCompleter()
+    private var pending: (id: UUID, continuation: CheckedContinuation<Void, any Error>)?
+    private var completions: [String: MKLocalSearchCompletion] = [:]
+
+    override private init() {
+        super.init()
+        completer.delegate = self
+        completer.resultTypes = .address
+        completer.addressFilter = MKAddressFilter(including: [.locality, .administrativeArea])
+        completer.region = MKCoordinateRegion(.world)
+        completer.regionPriority = .default
+    }
+
+    func suggest(_ query: String) async throws -> [CitySuggestion] {
+        // The completer does not call back for an unchanged fragment.
+        if completer.queryFragment != query || pending != nil {
+            let id = UUID()
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    finish(throwing: CancellationError())
+                    pending = (id, continuation)
+                    completer.queryFragment = query
+                }
+            } onCancel: {
+                Task { @MainActor [weak self] in
+                    guard let self, pending?.id == id else { return }
+                    finish(throwing: CancellationError())
+                }
+            }
+        }
+        var suggestions: [CitySuggestion] = []
+        for completion in completer.results {
+            let suggestion = CitySuggestion(title: completion.title, subtitle: completion.subtitle)
+            completions[suggestion.id] = completion
+            suggestions.append(suggestion)
+        }
+        return suggestions
+    }
+
+    func resolve(_ suggestion: CitySuggestion) async throws -> [WeatherLocation] {
+        guard let completion = completions[suggestion.id] else {
+            return try await NativeWeatherCitySearch(query: suggestion.label).results()
+        }
+        let response = try await MKLocalSearch(request: MKLocalSearch.Request(completion: completion)).start()
+        try Task.checkCancellation()
+        return NativeWeatherCitySearch.candidates(response).map(\.0)
+    }
+
+    private func finish(throwing error: (any Error)? = nil) {
+        guard let pending else { return }
+        self.pending = nil
+        if let error { pending.continuation.resume(throwing: error) } else { pending.continuation.resume() }
+    }
+
+    /// MapKit calls back on the main queue; results are read from the owned completer.
+    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        MainActor.assumeIsolated { finish() }
+    }
+
+    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: any Error) {
+        MainActor.assumeIsolated { finish(throwing: error) }
     }
 }
 

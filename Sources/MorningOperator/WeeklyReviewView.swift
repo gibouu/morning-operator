@@ -110,8 +110,9 @@ struct WeeklyReviewView: View {
             .disabled(weekOffset == 0)
             .accessibilityLabel("Next seven days").accessibilityIdentifier("review.nextWeek")
         }
-        .buttonStyle(.plain).foregroundStyle(MorningStyle.accent)
-        .background(.regularMaterial, in: Capsule())
+        // A dark pill anchors the week, matching the primary buttons.
+        .buttonStyle(.plain).foregroundStyle(MorningStyle.surface)
+        .background(MorningStyle.accent, in: Capsule())
         .simultaneousGesture(DragGesture(minimumDistance: 55).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
             changeWeek(by: value.translation.width > 0 ? -1 : 1)
@@ -311,7 +312,7 @@ private struct RoutineReviewEditor: View {
     var body: some View {
         let pickerGeneration = importGeneration
         NavigationStack {
-            List {
+            MorningList {
                 if let routine = store.routine {
                     Section {
                         ForEach(Array(routine.steps.enumerated()), id: \.element.id) { index, step in
@@ -412,7 +413,7 @@ private struct RoutineReviewEditor: View {
                     .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
                     .disabled(store.busy || store.sessionActive || importLoading || routine.steps.isEmpty || store.routinePreferencesIssue != nil)
                     .accessibilityIdentifier("routine.approve")
-                    .padding(20).background(.regularMaterial)
+                    .padding(20).background(MorningStyle.background)
                 }
             }
             .sheet(item: $editingStep) { step in
@@ -546,7 +547,7 @@ private struct RoutinePreferencesView: View {
     @ViewState<Bool> private var confirmingReset = false
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Text("These are choices you've made for future suggestions. Clearing a choice leaves your current routine unchanged.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -603,7 +604,7 @@ private struct ReviewDayDetail: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             if observations.isEmpty {
                 Section("Observed mornings") {
                     Text("No observation dated to this day.").foregroundStyle(.secondary)

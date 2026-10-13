@@ -11,7 +11,7 @@ struct RoutineEvidenceProposalView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            MorningList {
                 if let proposal = store.pendingRoutineProposal {
                     summary(proposal)
                     if proposal.baseRoutineID != nil, let current = store.routine {

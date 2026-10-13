@@ -8,7 +8,7 @@ struct MorningPrivacyView: View {
     @ViewState<Bool> private var removalApproved = false
 
     var body: some View {
-        List {
+        MorningList {
             // Pending cleanup is the only action available. Keep its progress or
             // retry message at the top even when hiding the inventory changes the
             // list's height and scroll position.
