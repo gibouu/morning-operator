@@ -33,6 +33,20 @@ enum OwnInterfaceWording {
         /// The frame contains this wording as whole words, even wrapped over several lines.
         func isWithin(_ frame: Frame) -> Bool { normalized.contains { frame.text.contains(" \($0) ") } }
 
+        /// Where the frame's words read as this wording, in any of its forms.
+        func occurrences(in frame: Frame) -> [Range<String.Index>] {
+            normalized.flatMap { wording -> [Range<String.Index>] in
+                var ranges: [Range<String.Index>] = []
+                var start = frame.text.startIndex
+                while let match = frame.text.range(of: " \(wording) ", range: start..<frame.text.endIndex) {
+                    // Without the spaces around it, so neighbouring sentences do not touch.
+                    ranges.append(frame.text.index(after: match.lowerBound)..<frame.text.index(before: match.upperBound))
+                    start = frame.text.index(before: match.upperBound)
+                }
+                return ranges
+            }
+        }
+
         /// This wording also occurs, as whole words, inside `other`.
         func isPart(of other: Phrase) -> Bool {
             normalized.contains { mine in other.normalized.contains { " \($0) ".contains(" \(mine) ") } }
@@ -378,18 +392,20 @@ enum OwnInterfaceWording {
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
         return screens.contains { screen in
+            let found = screen.copy.map { $0.occurrences(in: frame) }.filter { !$0.isEmpty }
+            guard !found.isEmpty else { return false }
             // Each sentence needs words of its own: two that share a word are one passage, once.
-            var unclaimed = frame.text
-            let sentences = screen.copy.filter { phrase in
-                guard let found = phrase.normalized.lazy.compactMap({ unclaimed.range(of: " \($0) ") }).first else { return false }
-                unclaimed.replaceSubrange(found, with: " \u{1F} ")
-                return true
+            let twoSentences = found.indices.contains { first in
+                found.indices.contains { second in
+                    first < second && found[first].contains { one in found[second].contains { !$0.overlaps(one) } }
+                }
             }
-            guard let sentence = sentences.first else { return false }
             // A wrapped sentence can leave a line that reads like a label ("your routine,").
             // That line is the same piece, not a second one.
-            return sentences.count >= 2
-                || screen.controls.contains { $0.isLine(of: frame) && !$0.isPart(of: sentence) }
+            let sentences = screen.copy.filter { $0.isWithin(frame) }
+            return twoSentences || screen.controls.contains { control in
+                control.isLine(of: frame) && !sentences.contains { control.isPart(of: $0) }
+            }
         }
     }
 

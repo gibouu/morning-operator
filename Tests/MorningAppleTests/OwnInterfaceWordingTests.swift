@@ -435,6 +435,8 @@ struct OwnInterfaceWordingTests {
                        "ENREGISTRER\nCHOISIR\nUne capture d'écran ou un fichier texte fonctionne\naussi. Seul le fichier choisi est lu"] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
         }
+        // A sentence shown twice still leaves its second reading free to pair with another.
+        #expect(isOwnInterface("Use the audio output picker to choose an available speaker. Output doesn't connect a HomePod microphone.\nUse the audio output picker to choose an available speaker."))
         // Recordings made before the button was shortened, and its French form.
         for button in ["Record a little of my morning", "Enregistrer un peu de ma matinée"] {
             #expect(isOwnInterface("Calendar\n\(button)\n09:00 Team planning meeting"))
