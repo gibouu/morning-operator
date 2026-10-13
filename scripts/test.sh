@@ -12,7 +12,8 @@ while [[ $# -gt 0 ]]; do
             cat <<'USAGE'
 Usage: scripts/test.sh [--with-model] [swift test options...]
 
-Runs the local Swift Testing suites with the selected Apple toolchain's default builder.
+Runs the local Swift Testing suites with the selected Apple toolchain and the Swift Build
+engine, which compiles String Catalogs; pass --build-system to choose another.
   --with-model        Also attempt the optional real on-device Foundation Models test.
   --filter PATTERN    Passed through to swift test (and other Swift test options likewise).
 
