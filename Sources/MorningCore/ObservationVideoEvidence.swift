@@ -220,9 +220,10 @@ public struct ObservationVideoEvidence: Codable, Identifiable, Sendable, Equatab
     /// and the closing note about omitted text are not frames.
     ///
     /// Limit of the saved form: a frame whose own text holds an empty line directly above a
-    /// marker line reads as two frames. Text recognition here never produces an empty line, so
-    /// no screen can cause it; only frames built by hand can. The renderer cannot escape that
-    /// case without changing text that saved observations are checked against.
+    /// marker line reads as two frames. Text recognition here joins the lines it reads, each
+    /// trimmed and none empty, so a screen causes it only if Vision returned one line holding
+    /// an empty line of its own, which was not observed; frames built by hand can. The renderer
+    /// cannot escape that case without changing text that saved observations are checked against.
     public static func frameTexts(inRenderedText text: String) -> [String] {
         // Only the line feed the renderer writes separates lines; any other break is content.
         let lines = text.components(separatedBy: "\n")
@@ -241,15 +242,19 @@ public struct ObservationVideoEvidence: Codable, Identifiable, Sendable, Equatab
         return frames.map { $0.joined(separator: "\n") }
     }
 
-    /// Exactly what `timestamp` prints between the marker's brackets: minutes in two digits or
-    /// more, seconds in two, and one tenth.
+    /// Exactly what `timestamp` can print between the marker's brackets: minutes in two digits,
+    /// or more without a leading zero, then seconds from 00.0 to 59.9 (60.0 when rounded up).
     private static func isFrameMarker(_ line: String) -> Bool {
         guard line.hasPrefix(frameMarkerPrefix), line.hasSuffix("]") else { return false }
-        let time = line.dropFirst(frameMarkerPrefix.count).dropLast().unicodeScalars.map { scalar -> Character in
-            ("0"..."9").contains(scalar) ? "0" : Character(scalar)
-        }
+        let time = Array(line.dropFirst(frameMarkerPrefix.count).dropLast().unicodeScalars)
+        func isDigit(_ scalar: Unicode.Scalar) -> Bool { ("0"..."9").contains(scalar) }
         guard time.count >= 7 else { return false }
-        return String(time.suffix(5)) == ":00.0" && time.dropLast(5).allSatisfy { $0 == "0" }
+        let minutes = time.dropLast(5), seconds = Array(time.suffix(5))
+        guard minutes.allSatisfy(isDigit), minutes.count == 2 || minutes.first != "0",
+              seconds[0] == ":", isDigit(seconds[1]), isDigit(seconds[2]), seconds[3] == ".", isDigit(seconds[4]) else {
+            return false
+        }
+        return seconds[1] < "6" || (seconds[1] == "6" && seconds[2] == "0" && seconds[4] == "0")
     }
 
     /// Decisions identify visible contexts, not OS launches. Missing decisions remain unknown.

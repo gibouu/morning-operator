@@ -838,20 +838,26 @@ struct OwnInterfaceWordingTests {
         }
     }
 
-    @Test("Every date the home can print beside its badge is recognized, in English and French and each region's order",
-          arguments: ["en_US", "en_GB", "en_CA", "en_AU", "en_IN", "en_FR", "en_DE", "fr_FR", "fr_CA", "fr_CH", "fr_BE", "fr_US"])
-    func everyPrintedHomeDateIsRecognized(locale: String) throws {
-        // The home's own format, for each day of a leap year: every weekday, month and day.
+    @Test("Every date the home can print beside its badge is recognized, in English and French with every region",
+          arguments: ["en", "fr"])
+    func everyPrintedHomeDateIsRecognized(language: String) throws {
+        // The home's own format for each day of a leap year, in the app's language with each
+        // region a phone can be set to: every weekday, month, day, order and numeric month.
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
-        var style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
-        style.locale = Locale(identifier: locale)
-        style.timeZone = calendar.timeZone
-        let badge = locale.hasPrefix("fr") ? "MORE · Enregistrement" : "MORE · Recording"
         let start = try #require(calendar.date(from: DateComponents(year: 2028, month: 1, day: 1)))
-        for day in 0..<366 {
-            let date = try #require(calendar.date(byAdding: .day, value: day, to: start)).formatted(style)
-            let unpunctuated = date.filter { $0.isLetter || $0.isNumber || $0 == " " }
+        let days = try (0..<366).map { try #require(calendar.date(byAdding: .day, value: $0, to: start)) }
+        var printed = Set<String>()
+        for region in Locale.Region.isoRegions {
+            var style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+            style.locale = Locale(identifier: "\(language)_\(region.identifier)")
+            style.timeZone = calendar.timeZone
+            printed.formUnion(days.map { $0.formatted(style) })
+        }
+        #expect(printed.count >= 366 * 2)
+        let badge = language == "fr" ? "MORE · Enregistrement" : "MORE · Recording"
+        for date in printed {
+            let unpunctuated = String(date.map { $0.isLetter || $0.isNumber ? $0 : " " })
             // With its punctuation, without it, in capitals, and with the chevron and the dot.
             for row in [date, unpunctuated, date.uppercased(), "\(date) v O"] {
                 #expect(isOwnInterface("Recorder\n\(row) \(badge)\n09:00 Team planning meeting"),
@@ -866,8 +872,9 @@ struct OwnInterfaceWordingTests {
         "Save MORE Recording", "Save 32 MORE Recording", "Take 2 of 5 MORE Recording", "Oct 13 MORE Recording",
         "13 MORE Recording", "Tue MORE Recording", "Tue, Oct MORE Recording", "Tue, Oct 32 MORE Recording",
         "Tue, Feb 30 MORE Recording", "Tue, Oct 0 MORE Recording", "Tue, Oct 013 MORE Recording",
-        "Oct 13, Tue MORE Recording", "13 Tue Oct MORE Recording", "Tue, Oct 13 2026 MORE Recording",
-        "Tue, Oct 13 at 9 MORE Recording", "mar. oct. 13 MORE Enregistrement",
+        "Tue, Oct 13 A B C D MORE Recording", "Tue, Oct 13 0 0 0 MORE Recording", "Tue, Oct 13 v v MORE Recording",
+        "Tue 13 13 MORE Recording", "Tue 31 4 MORE Recording", "Tue 0 5 MORE Recording", "13 Tue Oct MORE Recording", "Tue, Oct 13 2026 MORE Recording",
+        "Tue, Oct 13 at 9 MORE Recording", "Tue, mars 13 MORE Recording", "mar. 13 Feb MORE Enregistrement",
         "mar. 13 Oct 9 MORE Enregistrement", "lun. 31 avr. MORE Enregistrement", "Day 13 Oct MORE Recording",
         "Tue Tue 13 MORE Recording", "Set 1 Tue MORE Recording", "Mon 3 Jan 4 MORE Recording"
     ])

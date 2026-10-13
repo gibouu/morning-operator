@@ -897,46 +897,61 @@ enum OwnInterfaceWording {
         return recordingBadge.wordsBeforeLineEnd(in: frame).contains { $0.isEmpty || $0 == ["0"] || $0 == ["o"] }
     }
 
-    /// The words of a line without what the symbols at its end were read as: the chevron
-    /// beside the date and the badge's own dot, each a single letter or a zero at most.
+    /// The words of a line without what the two symbols at its end were read as: the badge's
+    /// own dot, a zero or an "o", and before it the chevron beside the date, one letter. One of
+    /// each at most; anything more is another app's words.
     private static func withoutSymbols(_ words: [String]) -> [String] {
         var words = words
-        while let last = words.last, last == "0" || (last.count == 1 && last.allSatisfy(\.isLetter)) { words.removeLast() }
+        if let last = words.last, last == "0" || last == "o" { words.removeLast() }
+        if let last = words.last, last.count == 1, last.allSatisfy(\.isLetter) { words.removeLast() }
         return words
     }
 
     /// The home's date row, as the home prints it: `weekday(.abbreviated).month(.abbreviated).day()`
-    /// in the app's language, English or French. That is exactly three words once punctuation
-    /// is set aside, since Vision may drop it: a weekday abbreviation first, then a month
-    /// abbreviation and a day that month has, in the order the language and region write them
-    /// ("Tue, Oct 13", "Tue 13 Oct", « mar. 13 oct. »). Nothing else is a date here: not a
-    /// count beside short words ("Save 1"), not an hour ("9 AM"), not a duration (« 5 min »).
+    /// in the app's language, English or French, with whatever region the phone is set to.
+    /// That is exactly three words once punctuation is set aside, since Vision may drop it: a
+    /// weekday abbreviation, first or last, and beside it a day with its month, in either
+    /// order ("Tue, Oct 13", "Tue 13 Oct", « mar. 13 oct. »). A few regions print the month as
+    /// a number ("Tue 13. 10.", « 10-13, mar. »). Nothing else is a date here: not a count
+    /// beside short words ("Save 1"), not an hour ("9 AM"), not a duration (« 5 min »).
     ///
     /// The words arrive lowercase and without accents. A real date in this form on another
     /// app's line that also ends with the badge's capitals is still read as the home.
     private static func isHomeDate(_ words: [String]) -> Bool {
         guard words.count == 3 else { return false }
         return homeDateNames.contains { language in
-            guard language.weekdays.contains(words[0]) else { return false }
-            return language.dayFirst.contains { dayFirst in
-                let (day, month) = dayFirst ? (words[1], words[2]) : (words[2], words[1])
-                guard let longest = language.months[month], day.count <= 2,
-                      day.allSatisfy({ ("0"..."9").contains($0) }), let number = Int(day) else { return false }
-                return (1...longest).contains(number)
+            let rest: [String]
+            if language.weekdays.contains(words[0]) { rest = Array(words[1...]) }
+            else if language.weekdays.contains(words[2]) { rest = Array(words[..<2]) }
+            else { return false }
+            let numbers = rest.map { $0.count <= 2 && $0.allSatisfy { ("0"..."9").contains($0) } ? Int($0) : nil }
+            func fits(day: Int?, longest: Int?) -> Bool {
+                guard let day, let longest else { return false }
+                return (1...longest).contains(day)
             }
+            func length(ofMonth number: Int?) -> Int? {
+                number.flatMap { (1...12).contains($0) ? monthLengths[$0 - 1] : nil }
+            }
+            return fits(day: numbers[0], longest: language.months[rest[1]])
+                || fits(day: numbers[1], longest: language.months[rest[0]])
+                || fits(day: numbers[0], longest: length(ofMonth: numbers[1]))
+                || fits(day: numbers[1], longest: length(ofMonth: numbers[0]))
         }
     }
 
-    /// Abbreviations as Foundation prints them for English and French in every region tried
-    /// (see the test that formats each day of a leap year), with each month's longest length,
-    /// and whether the day is written before the month.
-    private static let homeDateNames: [(weekdays: Set<String>, months: [String: Int], dayFirst: [Bool])] = [
+    private static let monthLengths = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    /// Abbreviations as Foundation prints them for English and French in every region (see the
+    /// test that formats each day of a leap year for all of them), with each month's longest
+    /// length. « jui » is June or July, depending on the region.
+    private static let homeDateNames: [(weekdays: Set<String>, months: [String: Int])] = [
         (["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
          ["jan": 31, "feb": 29, "mar": 31, "apr": 30, "may": 31, "jun": 30, "jul": 31, "aug": 31,
-          "sep": 30, "sept": 30, "oct": 31, "nov": 30, "dec": 31], [false, true]),
+          "sep": 30, "sept": 30, "oct": 31, "nov": 30, "dec": 31]),
         (["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
-         ["janv": 31, "fevr": 29, "mars": 31, "avr": 30, "mai": 31, "juin": 30, "juil": 31, "juill": 31,
-          "aout": 31, "sept": 30, "oct": 31, "nov": 30, "dec": 31], [true])
+         ["janv": 31, "jan": 31, "fevr": 29, "fev": 29, "mars": 31, "mar": 31, "avr": 30, "mai": 31,
+          "juin": 30, "jui": 31, "juil": 31, "juill": 31, "aout": 31, "aou": 31, "sept": 30, "sep": 30,
+          "oct": 31, "nov": 30, "dec": 31])
     ]
 
     static func containsMarketing(_ frame: Frame) -> Bool {
