@@ -235,4 +235,21 @@ struct MorningHistoryTests {
                                         provenance: .deviceCapture, evidenceReferences: ["frame-1"])
         }
     }
+
+    /// Reading the missing days of such a saved summary used to overflow and end the process.
+    @Test("A saved count of days below zero is refused, and the largest counts are read safely")
+    func decodedCountSummaryCannotOverflow() throws {
+        func decode(evidence: Int, window: Int) throws -> CountSummary {
+            try JSONDecoder().decode(CountSummary.self,
+                from: Data(#"{"total":0,"daysWithEvidence":\#(evidence),"windowDayCount":\#(window)}"#.utf8))
+        }
+        for (evidence, window) in [(Int.min, 0), (-1, 7), (0, Int.min), (0, -1)] {
+            #expect(throws: DecodingError.self) { _ = try decode(evidence: evidence, window: window) }
+        }
+        #expect(try decode(evidence: 0, window: .max).daysMissingEvidence == .max)
+        #expect(try decode(evidence: .max, window: 0).daysMissingEvidence == 0)
+        let ordinary = try decode(evidence: 3, window: 7)
+        #expect(ordinary.daysMissingEvidence == 4)
+        #expect(try JSONDecoder().decode(CountSummary.self, from: JSONEncoder().encode(ordinary)) == ordinary)
+    }
 }

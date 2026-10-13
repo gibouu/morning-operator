@@ -1862,7 +1862,7 @@ final class MorningStore {
     private func installCandidate(_ candidate: RoutineVersion) {
         if let routine, routine.isApproved { previousRoutine = routine }
         var draft = candidate
-        draft.number = (routine?.number ?? 0) + 1
+        draft.number = routine?.nextNumber ?? 1
         draft.isApproved = false
         routine = draft
         session = nil
@@ -2129,6 +2129,14 @@ final class MorningStore {
             try await invitation.forget()
             try privacyControl.withForgetAccess(expectedGeneration: generation) {
                 try recordingRecovery.removeAllOwnedData()
+                // SEGMENTED SESSIONS (#27) ARE NOT FORGOTTEN HERE YET. Nothing in the app
+                // creates one today. The change that first constructs a
+                // `RecordingSessionStore` in this target must add, right here:
+                //   try RecordingSessionStore(directory: <the workspace folder>).forgetAll()
+                // which removes `RecordingSessions/<session>/` manifests and segment files.
+                // The sessions' observations go with the archive, which this forget clears.
+                // A package test (SegmentedSessionForgettingGuardTests) fails if the app
+                // starts using the store without calling `forgetAll`.
                 for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json"] {
                     try removeOwnedPayload(snapshot.url.deletingLastPathComponent().appendingPathComponent(name))
                 }

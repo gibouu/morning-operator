@@ -38,6 +38,35 @@ enum RecordingFileCleanup {
         }
     }
 
+    /// Removes leaf names inside `child`, a folder of `parent`. The parent is opened first
+    /// and the child is opened relative to it, neither through a link, so replacing either
+    /// path while this runs cannot send the removal to another folder. With
+    /// `removingChildIfEmpty`, the child folder itself is removed when nothing is left in it.
+    static func remove(in parent: URL, child: String, names: [String], removingChildIfEmpty: Bool = false) throws {
+        guard !child.isEmpty, child != ".", child != "..", !child.contains("/") else {
+            throw RecordingCleanupError.unsafeDirectory
+        }
+        try withDirectory(parent) { parentDescriptor in
+            let descriptor = child.withCString {
+                openat(parentDescriptor, $0, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            }
+            guard descriptor >= 0 else {
+                if errno == ENOENT { return }
+                if errno == ELOOP || errno == ENOTDIR { throw RecordingCleanupError.unsafeDirectory }
+                throw posixError()
+            }
+            defer { close(descriptor) }
+            for name in names {
+                guard !name.isEmpty, name != ".", name != "..", !name.contains("/") else {
+                    throw RecordingCleanupError.unsafeDirectory
+                }
+                try remove(name: name, descriptor: descriptor)
+            }
+            // AT_REMOVEDIR removes an empty folder only; anything left keeps it in place.
+            if removingChildIfEmpty { _ = child.withCString { unlinkat(parentDescriptor, $0, AT_REMOVEDIR) } }
+        }
+    }
+
     static func removeRecordings(in directory: URL) throws {
         try withDirectory(directory) { descriptor in
             // Enumerate through the same descriptor used for deletion, so replacing
