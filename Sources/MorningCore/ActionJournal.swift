@@ -139,8 +139,9 @@ public struct ActionJournal: Codable, Sendable, Equatable {
     public init(attempts: [ActionAttempt] = []) { self.attempts = attempts }
 }
 
-/// A dispatch whose adapter call outlasted the executor's deadline: what this process, and only
-/// this process, still knows about it. Never written to the journal file.
+/// What this process, and only this process, still knows about a dispatch that the journal shows
+/// as unsettled: its adapter call outlasted the executor's deadline, or answered in time with an
+/// acceptance that could not be saved. Never written to the journal file.
 protocol OverdueDispatch: Sendable {
     /// True while the call is still running, and for good once it has come back saying the
     /// channel took the action. False once it has come back with anything else.

@@ -236,12 +236,28 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
 
     /// Returns at the answer or at the deadline, never later. It does not wait for an adapter
     /// that ignores cancellation, which a task group would.
+    ///
+    /// The deadline is one instant on `clock`, fixed here before the adapter is called. An answer
+    /// counts as in time only if the clock has not reached that instant when the answer comes
+    /// back, so the verdict does not depend on which of two tasks happens to run first.
     func run(deadline: Duration, clock: any Clock<Duration>,
              _ operation: @escaping @Sendable () async throws -> Answer) async -> Result {
-        let work = Task { [self] in settle(.answered(try? await operation())) }
+        // Opens the existential, so that the clock's own instants can be compared.
+        func timed(on clock: some Clock<Duration>) async -> Result { await race(deadline: deadline, clock: clock, operation) }
+        return await timed(on: clock)
+    }
+
+    private func race<C: Clock>(deadline: Duration, clock: C,
+                                _ operation: @escaping @Sendable () async throws -> Answer) async -> Result where C.Duration == Duration {
+        let limit = clock.now.advanced(by: deadline)
+        let work = Task { [self] in
+            let answer = try? await operation()
+            if clock.now >= limit { settle(.overdue) }
+            settle(.answered(answer))
+        }
         state.withLock { $0.work = work }
         let timer = Task { [self] in
-            do { try await clock.sleep(for: deadline) } catch { return }
+            do { try await clock.sleep(until: limit, tolerance: nil) } catch { return }
             settle(.overdue)
         }
         // Cancelling the request reaches the adapter, as it did when the call was made directly,
@@ -279,6 +295,12 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
     }
 }
 
+/// The channel answered in time that it took the action, and that answer could not be saved.
+private struct UnrecordedAcceptance: OverdueDispatch {
+    var mayHaveSent: Bool { true }
+    func returned() async {}
+}
+
 extension AdapterCall: OverdueDispatch where Answer == ActionDispatchOutcome {
     var mayHaveSent: Bool {
         switch late {
@@ -314,7 +336,8 @@ extension AdapterCall: OverdueDispatch where Answer == ActionDispatchOutcome {
 ///    outlasts it settles nothing. The late answer is never written to the journal and never
 ///    causes a call to the adapter. It is taken into account in one place only, `reconcile`:
 ///    while the overdue call is still running, or once it has come back saying the channel took
-///    the action, a "not delivered" answer is not believed, by rule 3. That memory is held by
+///    the action, a "not delivered" answer is not believed, by rule 3. (The same holds for an
+///    acceptance that came in time but could not be saved.) That memory is held by
 ///    the journal store, in memory: it survives a change of executor, and after a relaunch only
 ///    the journal's "unknown" remains (the overdue call itself is gone with the process).
 /// 5. **Receipt and evidence references are constrained** by `ActionReference.constrained`
@@ -359,12 +382,13 @@ public actor ActionExecutor {
     /// Gives the journal store back, so that it can admit another executor. From the moment this
     /// is called, every `dispatch` and `reconcile` that has not started is refused with
     /// `executorReleased`; the one in progress, if any, finishes first, and only then is the store
-    /// free. When this returns the store admits a new executor. Calling it again does nothing.
+    /// free. When this returns the store admits a new executor. Calling it again changes nothing.
     public func release() async {
-        guard let held = seat else { return }
+        let held = seat
         seat = nil
+        // A second call also takes its turn, behind the first, so it too returns with the store free.
         await enter(); defer { leave() }
-        journal.vacate(held)
+        if let held { journal.vacate(held) }
     }
 
     /// The person approved exactly this draft: this intent, account, target and payload.
@@ -450,7 +474,13 @@ public actor ActionExecutor {
             }
         } catch {
             // The adapter ran but the journal still says `dispatching`: that keeps the conversation
-            // blocked until `reconcile`, and becomes outcome-unknown at the next launch.
+            // blocked until `reconcile`, and becomes outcome-unknown at the next launch. If the
+            // channel said it took the action, that is remembered (in memory) like a late
+            // acceptance, so a "not there" cannot close the attempt as failed.
+            switch outcome {
+            case .accepted, .verified: await journal.noteOverdueDispatch(UnrecordedAcceptance(), for: attempt.id)
+            case .failedKnown, .outcomeUnknown: break
+            }
             throw ActionExecutionError.outcomeNotRecorded(attemptID: attempt.id)
         }
         return try await current(attempt.id)

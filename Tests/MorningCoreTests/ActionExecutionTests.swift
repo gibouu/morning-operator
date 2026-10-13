@@ -428,14 +428,17 @@ struct ActionExecutionTests {
         let releasing = Task { await first.release() }
         for _ in 0..<100 { await Task.yield() }
         #expect(second(on: journal) == .journalAlreadyHasExecutor, "The store was freed during a send")
+        // A second, concurrent release returns no earlier than the first: only once the store is free.
+        let releasingAgain = Task { await first.release(); return try? harness.executor(on: journal) }
+        for _ in 0..<100 { await Task.yield() }
         await harness.adapter.release()
         #expect(try await inProgress.value.state == .accepted)
         #expect(await waiting.value == .executorReleased)
         await releasing.value
 
-        // The moment `release()` has returned, the store admits a successor. No waiting on deallocation:
+        // The moment a `release()` has returned, the store admits a successor. No waiting on deallocation:
         // `first` is still alive and referenced here.
-        let successor = try harness.executor(on: journal)
+        let successor = try #require(await releasingAgain.value, "A release returned while the store was still taken")
         #expect(await refusal { try await first.dispatch(three, approvalID: standing.id) } == .executorReleased)
         #expect(await refusal { try await first.reconcile(try #require(await journal.snapshot().attempts.first).id) } == .executorReleased)
         // Releasing the old one again must not unseat the successor.
@@ -890,6 +893,52 @@ struct ActionExecutionTests {
     }
 
     @Test
+    func answerThatComesBackAtOrAfterTheDeadlineIsLateWhicheverTaskRunsFirst() async throws {
+        // With no time allowed at all, the adapter's immediate answer and the timer are both ready
+        // at once. The clock decides, not the scheduler: the answer is late, every time.
+        for _ in 0..<50 {
+            let harness = Harness(); defer { harness.cleanUp() }
+            let (journal, executor) = try harness.launch(adapterDeadline: .zero)
+            await harness.adapter.reply(.outcome(.accepted(receiptReference: "too-late")))
+            let draft = draft()
+            let unknown = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
+            #expect(unknown.state == .outcomeUnknown && unknown.receiptReference == nil)
+            await journal.overdueDispatchesReturned()
+            #expect(try harness.onDisk() == [unknown])
+            await harness.adapter.reconciliation(.notDelivered)
+            #expect(try await executor.reconcile(unknown.id) == unknown)
+            #expect(await harness.adapter.dispatched.count == 1)
+        }
+    }
+
+    @Test
+    func acceptanceThatCouldNotBeSavedIsNotOverriddenByNotThere() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, executor) = try harness.launch()
+        let directory = harness.directory
+        await harness.adapter.duringDispatch {
+            try? FileManager.default.removeItem(at: directory)
+            try? Data("not a directory".utf8).write(to: directory)
+        }
+        let draft = draft()
+        #expect(await refusal { try await executor.dispatch(draft, approvalID: await executor.approve(draft).id) } != nil)
+        let stranded = try #require(await journal.snapshot().attempts.first)
+        #expect(stranded.state == .dispatching)
+        await harness.adapter.duringDispatch(nil)
+        try FileManager.default.removeItem(at: directory)
+        // The channel said it took the message; only the saving failed. "Not there" must not close it as failed.
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await executor.reconcile(stranded.id).state == .outcomeUnknown)
+        #expect(try await executor.reconcile(stranded.id).state == .outcomeUnknown)
+        let retry = self.draft()
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) }
+                == .unreconciledOutcome(attemptID: stranded.id))
+        #expect(await harness.adapter.dispatched.count == 1)
+        await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-6"))
+        #expect(try await executor.reconcile(stranded.id).state == .verified)
+    }
+
+    @Test
     func whatIsKnownAboutAnOverdueCallSurvivesAChangeOfExecutor() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let (journal, first) = try harness.launch()
@@ -980,6 +1029,8 @@ struct ActionExecutionTests {
                 #expect(form.dropFirst(8).utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) })
             }
         }
+        // The stated limit of the rule: one short token with no space cannot be told from an identifier.
+        #expect(stored("4471-ZEBRA") == "4471-ZEBRA")
         // Deterministic, never longer than the maximum, and different inputs keep different forms.
         #expect(stored("has space") == stored("has space") && stored("has space") != stored("has  space"))
         #expect(stored(longestPlain + "a") != stored(longestPlain + "b"))
@@ -988,7 +1039,7 @@ struct ActionExecutionTests {
     }
 
     @Test
-    func messageTextHandedBackAsAReferenceNeverReachesTheJournalFile() async throws {
+    func messageTextWithSpacesHandedBackAsAReferenceNeverReachesTheJournalFile() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let (journal, executor) = try harness.launch()
         let bodyForm = "#sha256:a5e59b1ced36de43f4c398406b68e0691d826c9e94c8d44d71f3e9d7439678dd"
