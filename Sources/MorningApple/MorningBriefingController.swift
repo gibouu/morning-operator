@@ -46,6 +46,10 @@ public enum MorningBriefingControllerError: Error, LocalizedError, Sendable, Equ
     }
 }
 
+/// Why the city field has nothing to offer: Apple Maps answered with no city,
+/// or the typed-ahead lookup failed or timed out.
+public enum CitySearchOutcome: Sendable, Equatable { case noMatch, unavailable }
+
 /// A preparation owner, not a session runner. Refreshing never starts speech,
 /// advances a moment, or asks for Calendar permission. Source payloads remain in
 /// memory and every asynchronous publication checks its attempt and privacy epoch.
@@ -55,6 +59,7 @@ public final class MorningBriefingController {
     public private(set) var calendarChoices: [CalendarChoice] = []
     public private(set) var cityResults: [WeatherLocation] = []
     public private(set) var citySuggestions: [CitySuggestion] = []
+    public private(set) var citySearchOutcome: CitySearchOutcome?
     public private(set) var prepared: PreparedMorningBriefing?
     public private(set) var isPreparing = false
     public private(set) var isConnectingCalendar = false
@@ -99,6 +104,7 @@ public final class MorningBriefingController {
     @ObservationIgnored private let localeIdentifier: String
     @ObservationIgnored private let policy: MorningBriefingFreshnessPolicy
     @ObservationIgnored private let sourceTimeout: Duration
+    @ObservationIgnored private let suggestionDelay: Duration
     @ObservationIgnored private var generation: UUID?
     @ObservationIgnored private var settingsLoaded = false
     @ObservationIgnored private var revision = UUID()
@@ -107,7 +113,8 @@ public final class MorningBriefingController {
     @ObservationIgnored private var accessAttempt: UUID?
     @ObservationIgnored private var accessTask: Task<Void, Never>?
     @ObservationIgnored private var searchAttempt: UUID?
-    @ObservationIgnored private var searchTask: Task<Void, Never>?
+    @ObservationIgnored private var searchTask: Task<WeatherLocation?, Never>?
+    @ObservationIgnored private var cityQuery = ""
     @ObservationIgnored private var suggestionAttempt: UUID?
     @ObservationIgnored private var suggestionTask: Task<Void, Never>?
     @ObservationIgnored private var calendarInput: MorningBriefingInput<CalendarSnapshot> = .notConfigured
@@ -119,7 +126,7 @@ public final class MorningBriefingController {
                 now: @escaping @Sendable () -> Date = { Date() },
                 timeZone: @escaping @Sendable () -> TimeZone = { .current },
                 localeIdentifier: String = "en_US", policy: MorningBriefingFreshnessPolicy = .standard,
-                sourceTimeout: Duration = .seconds(10)) {
+                sourceTimeout: Duration = .seconds(10), suggestionDelay: Duration = .milliseconds(250)) {
         self.calendar = calendar; self.weather = weather
         control = LocalDataControl(directory: directory)
         file = AtomicJSONFile(url: directory.appendingPathComponent("briefing-settings.json"))
@@ -127,6 +134,7 @@ public final class MorningBriefingController {
         self.policy = policy
         // Test injection may shorten the deadline, never extend the public cap.
         self.sourceTimeout = min(max(sourceTimeout, .milliseconds(1)), .seconds(10))
+        self.suggestionDelay = suggestionDelay
         reloadSettings()
     }
 
@@ -185,6 +193,7 @@ public final class MorningBriefingController {
 
     /// Memory-only and synchronous. A noncooperative native request may finish
     /// later, but cannot publish, save settings or repopulate the cleared cache.
+    /// The suggestion source forgets its earlier typing as well.
     public func cancelAndClear() { invalidateWork(clearChoices: true) }
 
     public func requestCalendarAccess() async {
@@ -221,12 +230,14 @@ public final class MorningBriefingController {
     /// Explicit query only; no device-location request or inferred city.
     public func searchCities(_ query: String) async {
         guard prepareForAccess() else { return }
-        searchTask?.cancel()
+        cancelCityLookups()
         let attempt = UUID(), expectedRevision = revision
-        searchAttempt = attempt; isSearchingCities = true; cityResults = []; errorMessage = nil
+        // The explicit search owns the list now; suggestions for earlier typing go.
+        searchAttempt = attempt; isSearchingCities = true; cityResults = []; citySuggestions = []
+        citySearchOutcome = nil; errorMessage = nil
         let service = weather, timeout = sourceTimeout
-        let task = Task { @MainActor [weak self] in
-            guard let self else { return }
+        let task = Task { @MainActor [weak self] () -> WeatherLocation? in
+            guard let self else { return nil }
             defer {
                 if searchAttempt == attempt { searchAttempt = nil; searchTask = nil; isSearchingCities = false }
             }
@@ -235,69 +246,121 @@ public final class MorningBriefingController {
                     try await service.searchCities(query)
                 }
                 try Task.checkCancellation()
-                guard revision == expectedRevision, searchAttempt == attempt else { return }
+                guard revision == expectedRevision, searchAttempt == attempt else { return nil }
                 try withCurrentAccess { }
                 cityResults = values
+                if values.isEmpty { citySearchOutcome = .noMatch }
             } catch {
-                guard revision == expectedRevision, searchAttempt == attempt else { return }
+                guard revision == expectedRevision, searchAttempt == attempt else { return nil }
                 if !(error is CancellationError) { errorMessage = safeMessage(error) }
             }
+            return nil
         }
         searchTask = task
-        await task.value
+        _ = await task.value
+    }
+
+    /// The city field's text changed. Results of an explicit search and a pending
+    /// search or choice belonged to the earlier text, so they are dropped and can
+    /// no longer publish. Suggestions follow after two characters and a short
+    /// pause, so each keystroke doesn't become an Apple Maps request.
+    public func cityQueryChanged(_ text: String) {
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query != cityQuery else { return }
+        guard query.count >= 2 else { clearCitySearch(); cityQuery = query; return }
+        cancelCityLookups()
+        cityResults = []; citySearchOutcome = nil
+        cityQuery = query
+        startSuggestions(query, after: suggestionDelay)
     }
 
     /// Suggestions while typing. Earlier suggestions stay visible until newer ones
-    /// arrive; a failed or superseded request leaves them unchanged and silent,
-    /// since an explicit search still reports errors.
+    /// arrive. A superseded request is silent; a failed or timed-out one is
+    /// reported as unavailable, never as "no match".
     public func suggestCities(_ query: String) async {
-        guard prepareForAccess() else { return }
+        await startSuggestions(query, after: .zero)?.value
+    }
+
+    @discardableResult
+    private func startSuggestions(_ query: String, after delay: Duration) -> Task<Void, Never>? {
+        guard prepareForAccess() else { return nil }
         suggestionTask?.cancel()
         let attempt = UUID(), expectedRevision = revision
         suggestionAttempt = attempt
         let service = weather, timeout = sourceTimeout
         let task = Task { @MainActor [weak self] in
-            guard let self else { return }
+            if delay > .zero { try? await Task.sleep(for: delay) }
+            guard let self, !Task.isCancelled else { return }
             defer { if suggestionAttempt == attempt { suggestionAttempt = nil; suggestionTask = nil } }
-            guard let values = try? await BriefingSourceDeadline<[CitySuggestion]>().run(timeout: timeout, body: {
-                try await service.suggestCities(query)
-            }), !Task.isCancelled, revision == expectedRevision, suggestionAttempt == attempt,
-                  (try? withCurrentAccess { }) != nil else { return }
-            citySuggestions = values
+            do {
+                let values = try await BriefingSourceDeadline<[CitySuggestion]>().run(timeout: timeout) {
+                    try await service.suggestCities(query)
+                }
+                guard !Task.isCancelled, revision == expectedRevision, suggestionAttempt == attempt,
+                      (try? withCurrentAccess { }) != nil else { return }
+                citySuggestions = values
+                citySearchOutcome = values.isEmpty ? .noMatch : nil
+            } catch {
+                guard !(error is CancellationError), !Task.isCancelled,
+                      revision == expectedRevision, suggestionAttempt == attempt else { return }
+                citySearchOutcome = .unavailable
+            }
         }
         suggestionTask = task
-        await task.value
+        return task
     }
 
-    /// Resolves the chosen suggestion to a place; the caller saves it explicitly.
+    /// Resolves the chosen suggestion to a place and saves it as the weather city.
+    /// The last check and the save are one step, so newer typing, a new search or
+    /// leaving the city field either cancels the choice (nil, nothing saved) or
+    /// comes after a completed save.
     public func chooseCity(_ suggestion: CitySuggestion) async -> WeatherLocation? {
         guard prepareForAccess() else { return nil }
-        suggestionTask?.cancel(); suggestionTask = nil; suggestionAttempt = nil
-        searchTask?.cancel()
+        cancelCityLookups()
         let attempt = UUID(), expectedRevision = revision
         searchAttempt = attempt; isSearchingCities = true; errorMessage = nil
-        defer { if searchAttempt == attempt { searchAttempt = nil; isSearchingCities = false } }
-        do {
-            let location = try await BriefingSourceDeadline<WeatherLocation?>().run(timeout: sourceTimeout) { [weather] in
-                try await weather.resolveCity(suggestion)
+        let service = weather, timeout = sourceTimeout
+        let task = Task { @MainActor [weak self] () -> WeatherLocation? in
+            guard let self else { return nil }
+            defer {
+                if searchAttempt == attempt { searchAttempt = nil; searchTask = nil; isSearchingCities = false }
             }
-            try Task.checkCancellation()
-            guard revision == expectedRevision, searchAttempt == attempt else { return nil }
-            try withCurrentAccess { }
-            if location == nil { errorMessage = WeatherObservationError.searchUnavailable.localizedDescription }
-            return location
-        } catch {
-            guard revision == expectedRevision, searchAttempt == attempt else { return nil }
-            if !(error is CancellationError) { errorMessage = safeMessage(error) }
-            return nil
+            do {
+                let location = try await BriefingSourceDeadline<WeatherLocation?>().run(timeout: timeout) {
+                    try await service.resolveCity(suggestion)
+                }
+                try Task.checkCancellation()
+                guard revision == expectedRevision, searchAttempt == attempt else { return nil }
+                try withCurrentAccess { }
+                guard let location else {
+                    errorMessage = WeatherObservationError.searchUnavailable.localizedDescription
+                    return nil
+                }
+                searchAttempt = nil; searchTask = nil; isSearchingCities = false
+                var next = settings; next.weatherLocation = location
+                try updateSettings(next)
+                return location
+            } catch {
+                guard revision == expectedRevision, searchAttempt == attempt else { return nil }
+                if !(error is CancellationError) { errorMessage = safeMessage(error) }
+                return nil
+            }
         }
+        searchTask = task
+        return await task.value
     }
 
-    /// Clears typed suggestions and results when the query is emptied or too short.
+    /// Ends city searching: when the query is emptied or too short, and when the
+    /// city field goes away. Pending lookups are cancelled and cannot publish.
     public func clearCitySearch() {
+        cancelCityLookups()
+        cityQuery = ""; cityResults = []; citySuggestions = []; citySearchOutcome = nil
+    }
+
+    private func cancelCityLookups() {
         suggestionTask?.cancel(); suggestionTask = nil; suggestionAttempt = nil
         searchTask?.cancel(); searchTask = nil; searchAttempt = nil
-        isSearchingCities = false; cityResults = []; citySuggestions = []
+        isSearchingCities = false
     }
 
     /// Same-context callers share one preparation, including a concurrent force
@@ -404,8 +467,8 @@ public final class MorningBriefingController {
         refreshTask = nil; accessTask = nil; searchTask = nil; suggestionTask = nil; preparingKey = nil
         isPreparing = false; isConnectingCalendar = false; isSearchingCities = false
         prepared = nil; calendarInput = .notConfigured; weatherInput = .notConfigured
-        cityResults = []; citySuggestions = []
-        if clearChoices { calendarChoices = [] }
+        cityQuery = ""; cityResults = []; citySuggestions = []; citySearchOutcome = nil
+        if clearChoices { calendarChoices = []; weather.forgetCitySuggestions() }
     }
 
     private func prepareForAccess() -> Bool {

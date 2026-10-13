@@ -164,17 +164,21 @@ struct EmptyMoment: View {
     }
 }
 
-/// Grouped forms and lists with warm rows that match cards, instead of iOS's
-/// white cells on the beige background. Rows that set their own background keep it.
+/// Grouped forms and lists on the app's beige background with warm rows that
+/// match cards, instead of iOS's grey background and white cells. Rows that set
+/// their own background keep it.
 struct MorningForm<Content: View>: View {
     @ViewBuilder var content: Content
-    var body: some View { Form { Group { content }.morningRows() } }
+    var body: some View { Form { Group { content }.morningRows() }.morningListBackground() }
 }
 struct MorningList<Content: View>: View {
     @ViewBuilder var content: Content
-    var body: some View { List { Group { content }.morningRows() } }
+    var body: some View { List { Group { content }.morningRows() }.morningListBackground() }
 }
 extension View {
+    func morningListBackground() -> some View {
+        scrollContentBackground(.hidden).background(MorningStyle.background.ignoresSafeArea())
+    }
     func morningRows() -> some View {
         listRowBackground(MorningStyle.surface).listRowSeparatorTint(MorningStyle.line)
     }

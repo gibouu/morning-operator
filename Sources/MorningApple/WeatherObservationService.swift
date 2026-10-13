@@ -137,28 +137,33 @@ public final class WeatherObservationService {
     public typealias CitySearchProvider = @MainActor (String) async throws -> [WeatherLocation]
     public typealias CitySuggestionProvider = @MainActor (String) async throws -> [CitySuggestion]
     public typealias CitySuggestionResolver = @MainActor (CitySuggestion) async throws -> [WeatherLocation]
+    public typealias CitySuggestionReset = @MainActor () -> Void
     private let weatherProvider: WeatherProvider
     private let citySearchProvider: CitySearchProvider
     private let citySuggestionProvider: CitySuggestionProvider
     private let citySuggestionResolver: CitySuggestionResolver
+    private let citySuggestionReset: CitySuggestionReset
 
     public convenience init() {
         self.init(weatherProvider: Self.nativeWeather, citySearchProvider: Self.nativeCitySearch,
                   citySuggestionProvider: { try await NativeCitySuggestions.shared.suggest($0) },
-                  citySuggestionResolver: { try await NativeCitySuggestions.shared.resolve($0) })
+                  citySuggestionResolver: { try await NativeCitySuggestions.shared.resolve($0) },
+                  citySuggestionReset: { NativeCitySuggestions.shared.reset() })
     }
 
     /// Inject providers for deterministic tests; construction never calls them.
     /// Without suggestion providers, typed suggestions reuse the city search.
     public init(weatherProvider: @escaping WeatherProvider, citySearchProvider: @escaping CitySearchProvider,
                 citySuggestionProvider: CitySuggestionProvider? = nil,
-                citySuggestionResolver: CitySuggestionResolver? = nil) {
+                citySuggestionResolver: CitySuggestionResolver? = nil,
+                citySuggestionReset: CitySuggestionReset? = nil) {
         self.weatherProvider = weatherProvider
         self.citySearchProvider = citySearchProvider
         self.citySuggestionProvider = citySuggestionProvider ?? { query in
             try await citySearchProvider(query).map { CitySuggestion(title: $0.displayName, subtitle: "") }
         }
         self.citySuggestionResolver = citySuggestionResolver ?? { try await citySearchProvider($0.label) }
+        self.citySuggestionReset = citySuggestionReset ?? { }
     }
 
     public func currentWeather(for location: WeatherLocation) async throws -> WeatherObservationSnapshot {
@@ -224,6 +229,10 @@ public final class WeatherObservationService {
             throw Self.classifiedError(error, searching: true)
         }
     }
+
+    /// Drops what the suggestion source remembers of earlier typing: its fragment,
+    /// its results and the suggestions it could still resolve. Memory only.
+    public func forgetCitySuggestions() { citySuggestionReset() }
 
     /// Do not infer a missing entitlement from arbitrary daemon/network errors.
     /// Only WeatherKit's documented permissionDenied maps to the setup guidance.
@@ -337,44 +346,94 @@ final class NativeWeatherCitySearch {
     }
 }
 
+/// Decides when a typed fragment needs the suggestion source and when the
+/// source's last results may be reused. Results belong to a fragment only after
+/// the source completed it successfully. A failure, a reset, or a wait that is
+/// cancelled unanswered (the caller's deadline, for example) discards the
+/// source, so the same fragment is asked again instead of returning older
+/// results or waiting on a stalled request. Kept apart from MapKit so these
+/// rules run in package tests.
+@MainActor
+final class CitySuggestionLookup {
+    private let start: (String) -> Void
+    private let discard: () -> Void
+    private var requested: String?
+    private var completed: String?
+    private var pending: (id: UUID, continuation: CheckedContinuation<Void, any Error>)?
+
+    init(start: @escaping (String) -> Void, discard: @escaping () -> Void) {
+        self.start = start; self.discard = discard
+    }
+
+    /// Returns once the source's results belong to `query`. A newer fragment
+    /// supersedes the waiting one.
+    func wait(for query: String) async throws {
+        guard completed != query else { return }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                finish(throwing: CancellationError())
+                pending = (id, continuation)
+                // A second wait for the fragment in flight joins it: the
+                // source does not call back for an unchanged fragment.
+                if requested != query { requested = query; completed = nil; start(query) }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                guard let self, pending?.id == id else { return }
+                // Nobody waits for this request any more and it may never answer.
+                forget(); finish(throwing: CancellationError())
+            }
+        }
+    }
+
+    func succeeded() { completed = requested; finish() }
+
+    func failed(_ error: any Error) { forget(); finish(throwing: error) }
+
+    func reset() { forget(); finish(throwing: CancellationError()) }
+
+    private func forget() { requested = nil; completed = nil; discard() }
+
+    private func finish(throwing error: (any Error)? = nil) {
+        guard let pending else { return }
+        self.pending = nil
+        if let error { pending.continuation.resume(throwing: error) } else { pending.continuation.resume() }
+    }
+}
+
 /// Apple Maps' completer is built for typing: "Ly" suggests Lyon, "Tok" Tokyo,
-/// where a full search would match unrelated names. One completer is reused;
-/// a newer fragment supersedes the pending one.
+/// where a full search would match unrelated names. One completer is reused
+/// until a query fails or local data is forgotten; it is created on first use.
 @MainActor
 final class NativeCitySuggestions: NSObject, MKLocalSearchCompleterDelegate {
     static let shared = NativeCitySuggestions()
-    private let completer = MKLocalSearchCompleter()
-    private var pending: (id: UUID, continuation: CheckedContinuation<Void, any Error>)?
+    private var completer: MKLocalSearchCompleter?
     private var completions: [String: MKLocalSearchCompletion] = [:]
+    private lazy var lookup = CitySuggestionLookup(
+        start: { [unowned self] in self.activeCompleter().queryFragment = $0 },
+        discard: { [unowned self] in
+            self.completer?.delegate = nil; self.completer?.cancel(); self.completer = nil
+        })
 
-    override private init() {
-        super.init()
+    override private init() { super.init() }
+
+    private func activeCompleter() -> MKLocalSearchCompleter {
+        if let completer { return completer }
+        let completer = MKLocalSearchCompleter()
         completer.delegate = self
         completer.resultTypes = .address
         completer.addressFilter = MKAddressFilter(including: [.locality, .administrativeArea])
         completer.region = MKCoordinateRegion(.world)
         completer.regionPriority = .default
+        self.completer = completer
+        return completer
     }
 
     func suggest(_ query: String) async throws -> [CitySuggestion] {
-        // The completer does not call back for an unchanged fragment.
-        if completer.queryFragment != query || pending != nil {
-            let id = UUID()
-            try await withTaskCancellationHandler {
-                try await withCheckedThrowingContinuation { continuation in
-                    finish(throwing: CancellationError())
-                    pending = (id, continuation)
-                    completer.queryFragment = query
-                }
-            } onCancel: {
-                Task { @MainActor [weak self] in
-                    guard let self, pending?.id == id else { return }
-                    finish(throwing: CancellationError())
-                }
-            }
-        }
+        try await lookup.wait(for: query)
         var suggestions: [CitySuggestion] = []
-        for completion in completer.results {
+        for completion in completer?.results ?? [] {
             let suggestion = CitySuggestion(title: completion.title, subtitle: completion.subtitle)
             completions[suggestion.id] = completion
             suggestions.append(suggestion)
@@ -391,19 +450,22 @@ final class NativeCitySuggestions: NSObject, MKLocalSearchCompleterDelegate {
         return NativeWeatherCitySearch.candidates(response).map(\.0)
     }
 
-    private func finish(throwing error: (any Error)? = nil) {
-        guard let pending else { return }
-        self.pending = nil
-        if let error { pending.continuation.resume(throwing: error) } else { pending.continuation.resume() }
-    }
+    /// Full forgetting: no earlier fragment, result or completion survives.
+    func reset() { lookup.reset(); completions.removeAll() }
 
-    /// MapKit calls back on the main queue; results are read from the owned completer.
+    /// MapKit calls back on the main queue. A discarded completer is ignored.
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        MainActor.assumeIsolated { finish() }
+        let source = ObjectIdentifier(completer)
+        MainActor.assumeIsolated {
+            if self.completer.map(ObjectIdentifier.init) == source { lookup.succeeded() }
+        }
     }
 
     nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: any Error) {
-        MainActor.assumeIsolated { finish(throwing: error) }
+        let source = ObjectIdentifier(completer)
+        MainActor.assumeIsolated {
+            if self.completer.map(ObjectIdentifier.init) == source { lookup.failed(error) }
+        }
     }
 }
 
