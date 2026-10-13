@@ -181,6 +181,32 @@ struct LearningWindowTests {
         #expect(autumnDays[1].expectedEnd.timeIntervalSince(autumnDays[1].expectedStart) == 600)
     }
 
+    @Test func aDayWhoseEndTheClocksSkipHasNoMorningAndNoInstantIsScheduledTwice() throws {
+        // Nuuk enters summer time late on Saturday 28 March 2026: 23:30 does not exist that day
+        // and no later instant of that day is left.
+        let zone = "America/Nuuk"
+        var value = try LearningWindow(startMinuteOfDay: 23 * 60 + 30, durationSeconds: 600, weekdays: everyDay,
+            timeZoneIdentifier: zone, morningCount: 3, createdAt: at(26, 12, month: 3, zone: zone), limits: limits)
+        try value.start(at: at(27, 12, month: 3, zone: zone))
+        let days = try value.schedule(asOf: at(27, 12, month: 3, zone: zone)).mornings
+        #expect(days.map(\.dayKey) == ["2026-03-27", "2026-03-29", "2026-03-30"])
+        #expect(Set(days.map(\.expectedStart)).count == 3)
+        #expect(try days.allSatisfy { try localTime($0.expectedStart, zone: zone) == "23:30" })
+    }
+
+    @Test func aSavedDurationTooLargeToAddIsRefusedWithoutACrash() throws {
+        let json = """
+        {"id":"7B0E6A53-5D0C-4B7E-9C1E-0A6B1F2D3C4E","startMinuteOfDay":420,"durationSeconds":9223372036854775807,
+         "weekdays":[2],"timeZoneIdentifier":"Europe/Paris","morningCount":3,"createdAt":0,"state":"planned"}
+        """
+        #expect(throws: LearningWindowError.invalidRecord) { try JSONDecoder().decode(LearningWindow.self, from: Data(json.utf8)) }
+        let open = LearningWindowLimits(minimumDurationSeconds: 0, maximumDurationSeconds: .max)
+        #expect(throws: LearningWindowError.durationTooLong(maximumSeconds: .max)) {
+            try LearningWindow(startMinuteOfDay: 420, durationSeconds: .max, weekdays: everyDay, timeZoneIdentifier: paris,
+                               morningCount: 3, createdAt: at(1, 12), limits: open)
+        }
+    }
+
     @Test func theWindowKeepsItsOwnTimeZoneWhenThePersonTravels() throws {
         var value = try window(duration: 300, mornings: 2)
         try value.start(at: at(12, 6))
@@ -231,6 +257,14 @@ struct LearningWindowTests {
         #expect(plan.mornings.map(\.disposition) == [.counted, .skipped, .counted])
         #expect(plan.countedMornings.map(\.dayKey) == ["2026-10-12", "2026-10-14"])
         #expect(throws: LearningWindowError.morningAlreadyStarted) { try value.skip(dayKey: "2026-10-12", at: at(12, 8)) }
+        // A clock set back before the last control cannot make Monday a coming morning again.
+        #expect(throws: LearningWindowError.clockWentBack) { try value.skip(dayKey: "2026-10-12", at: at(12, 5)) }
+        var resumed = try window(mornings: 2)
+        try resumed.start(at: at(12, 6))
+        try resumed.pause(at: at(12, 8))
+        try resumed.start(at: at(12, 9))
+        #expect(throws: LearningWindowError.clockWentBack) { try resumed.skip(dayKey: "2026-10-12", at: at(12, 6, 30)) }
+        try #expect(resumed.schedule(asOf: at(12, 9)).mornings.first?.disposition == .counted)
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-10-13", at: at(12, 8)) }
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-11-30", at: at(12, 8)) }
         #expect(throws: LearningWindowError.morningSkipped) {
@@ -327,6 +361,21 @@ struct LearningWindowTests {
         #expect(throws: LearningWindowError.recordedWhilePaused) {
             try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 1_200, declaredAt: at(13, 13))
         }
+
+        // A copy of the window taken before Pause would still accept a recording begun
+        // during the pause. The window that was paused does not count it.
+        var current = try window(mornings: 3)
+        try current.start(at: at(12, 6))
+        let stale = current
+        try current.pause(at: at(12, 7, 0, 30))
+        let during = try stale.capture(recordingStartedAt: at(12, 7, 0, 40), recordingTimeZoneIdentifier: paris,
+                                       recordedSeconds: 300, declaredAt: at(12, 7, 10))
+        #expect(stale.counts(during) && !current.counts(during))
+        // Nor a declaration filed under a day other than the one the recording started on.
+        let wrongDay = try ObservationWindowCapture(windowID: current.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
+            expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(11, 7), actualEnd: at(11, 7, 20),
+            declaredAt: at(12, 6, 30))
+        #expect(!current.counts(wrongDay))
     }
 
     /// Issue #19: "Stop/cancel must end acquisition and prevent later stale data from being

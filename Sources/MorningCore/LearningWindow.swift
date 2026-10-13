@@ -77,7 +77,8 @@ public struct LearningWindowSchedule: Sendable, Equatable {
 /// Daylight saving. A morning starts at the chosen wall-clock time of its local day, so a
 /// 07:00 window stays at 07:00 on both transition days, 23 or 25 hours after the previous
 /// one. A start time the clocks skip (02:30 on the spring day) begins at the first instant
-/// that exists after it (03:00); a start time that occurs twice (02:30 on the autumn day)
+/// that exists after it (03:00), and a day on which no such instant is left (the clocks
+/// skip the end of the day) has no morning; a start time that occurs twice (02:30 on the autumn day)
 /// uses the first occurrence. The duration is elapsed time in every case.
 ///
 /// Nothing translated is stored: states, weekdays and reasons are fixed identifiers.
@@ -115,7 +116,7 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         guard durationSeconds >= limits.minimumDurationSeconds, durationSeconds > 0 else {
             throw LearningWindowError.durationTooShort(minimumSeconds: limits.minimumDurationSeconds)
         }
-        guard durationSeconds <= limits.maximumDurationSeconds else {
+        guard durationSeconds <= limits.maximumDurationSeconds, durationSeconds <= 24 * 60 * 60 else {
             throw LearningWindowError.durationTooLong(maximumSeconds: limits.maximumDurationSeconds)
         }
         guard !weekdays.isEmpty else { throw LearningWindowError.noWeekday }
@@ -212,6 +213,8 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         }
         guard let morning = schedule(asOf: now).mornings.first(where: { $0.dayKey == dayKey }),
               morning.disposition == .counted else { throw LearningWindowError.notAScheduledMorning }
+        // A clock that went back cannot make a morning that has begun look like a coming one.
+        guard now.timeIntervalSinceReferenceDate.isFinite, now >= lastTransitionAt else { throw LearningWindowError.clockWentBack }
         guard morning.expectedStart > now else { throw LearningWindowError.morningAlreadyStarted }
         skippedDayKeys = (skippedDayKeys + [dayKey]).sorted()
     }
@@ -236,9 +239,12 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
                                                 second: 0, of: noon, matchingPolicy: .nextTime,
                                                 repeatedTimePolicy: .first, direction: .forward),
                       start >= startedAt else { continue }
+                let key = Self.dayKey(noon, calendar: calendar)
+                // Where the clocks skip the end of a day, the chosen time has no instant left
+                // on that day and the search lands on the next one. That day has no morning.
+                guard Self.dayKey(start, calendar: calendar) == key else { continue }
                 if let endedAt, start >= endedAt { break }
                 if let openPauseFrom, start >= openPauseFrom, start > now { break }
-                let key = Self.dayKey(noon, calendar: calendar)
                 let disposition: LearningWindowMorning.Disposition
                 if skippedDayKeys.contains(key) { disposition = .skipped }
                 else if pauses.contains(where: { pause in start >= pause.from && (pause.until.map { start < $0 } ?? true) }) {
@@ -286,9 +292,7 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         guard recordingTimeZoneIdentifier == timeZoneIdentifier else { throw LearningWindowError.differentTimeZone }
         guard start >= startedAt else { throw LearningWindowError.recordedBeforeStart }
         if let endedAt, start >= endedAt { throw LearningWindowError.recordedAfterEnd }
-        guard !pauses.contains(where: { pause in start >= pause.from && (pause.until.map { start < $0 } ?? true) }) else {
-            throw LearningWindowError.recordedWhilePaused
-        }
+        guard !startsDuringPause(start) else { throw LearningWindowError.recordedWhilePaused }
         let key = Self.dayKey(start, calendar: calendar)
         guard let morning = schedule(asOf: now).mornings.first(where: { $0.dayKey == key }) else {
             throw LearningWindowError.notAScheduledMorning
@@ -305,11 +309,16 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         } catch { throw LearningWindowError.invalidRecording }
     }
 
-    /// Whether a saved declaration still counts for this window. It is checked again on
-    /// every reading, so a declaration written at or after Stop, by any path, counts for nothing.
+    /// Whether a saved declaration still counts for this window. Every rule of `capture`
+    /// that can be read from the saved value is checked again on every reading, so a
+    /// declaration written at or after Stop, for a recording begun during a pause, or for
+    /// a day other than the one the recording started on counts for nothing, whatever wrote it.
     public func counts(_ capture: ObservationWindowCapture) -> Bool {
         guard capture.windowID == id, capture.timeZoneIdentifier == timeZoneIdentifier,
-              let startedAt, capture.actualStart >= startedAt, capture.declaredAt >= startedAt else { return false }
+              let calendar = Self.calendar(timeZoneIdentifier),
+              Self.dayKey(capture.actualStart, calendar: calendar) == capture.dayKey,
+              let startedAt, capture.actualStart >= startedAt, capture.declaredAt >= capture.actualStart,
+              !startsDuringPause(capture.actualStart) else { return false }
         if let endedAt {
             guard capture.actualStart < endedAt else { return false }
             if state == .stopped, capture.declaredAt >= endedAt { return false }
@@ -329,6 +338,10 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
     }
 
     // MARK: Internals
+
+    private func startsDuringPause(_ instant: Date) -> Bool {
+        pauses.contains { pause in instant >= pause.from && (pause.until.map { instant < $0 } ?? true) }
+    }
 
     private var lastTransitionAt: Date {
         ([createdAt, startedAt, endedAt] + pauses.flatMap { [$0.from, $0.until] }).compactMap { $0 }.max() ?? createdAt
@@ -404,7 +417,7 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         endedAt = try values.decodeIfPresent(Date.self, forKey: .endedAt)
         pauses = try values.decodeIfPresent([LearningWindowPause].self, forKey: .pauses) ?? []
         skippedDayKeys = try values.decodeIfPresent([String].self, forKey: .skippedDayKeys) ?? []
-        guard (0..<24 * 60).contains(startMinuteOfDay), durationSeconds > 0,
+        guard (0..<24 * 60).contains(startMinuteOfDay), durationSeconds > 0, durationSeconds <= 24 * 60 * 60,
               startMinuteOfDay * 60 + durationSeconds <= 24 * 60 * 60, !weekdays.isEmpty,
               (1...Self.maximumMorningCount).contains(morningCount),
               Self.calendar(timeZoneIdentifier) != nil else { throw LearningWindowError.invalidRecord }

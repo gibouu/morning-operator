@@ -67,6 +67,10 @@ public struct LearningWindowReminderPlanner {
         // A reminder that has come due stays until it is answered or expires.
         if let ownReminder, let target = ownReminder.learningTarget, ownReminder.scheduledAt <= moment,
            upcoming.contains(where: { $0.dayKey == target.dayKey }) {
+            // With notifications off there is nothing on screen to answer.
+            guard invitations.settings?.canPresentInvitation == true else {
+                return .notScheduled(dayKey: target.dayKey, at: ownReminder.scheduledAt, obstacle: obstacle)
+            }
             return .awaitingResponse(dayKey: target.dayKey, at: ownReminder.scheduledAt)
         }
         guard let next = upcoming.first(where: { $0.expectedStart > moment }) else {

@@ -213,6 +213,23 @@ struct LearningWindowReportTests {
         #expect(synthetic.mornings.map(\.notCountedReason) == [.observedOutsideWindow, .observedPartly, .severalRecordings, nil])
     }
 
+    @Test func aSampleSavedBesideThePersonsRecordingNeitherJoinsNorBlocksTheMorning() throws {
+        let learning = try window(mornings: 1)
+        let person = try recording(at(12, 7), seconds: 300)
+        let sample = try recording(at(12, 7, 0, 10), seconds: 300, origin: .synthetic)
+        var archive = try ObservationArchive(entries: [person, sample])
+        for entry in [person, sample] { try archive.declareCapture(of: entry.id, to: learning, at: at(12, 8)) }
+        let now = try at(12, 9)
+        // Progress and the comparison agree: one morning of the person's, judged on their recording alone.
+        let report = LearningWindowReport(window: learning, archive: archive, now: now)
+        #expect(report.mornings.map(\.notCountedReason) == [nil])
+        #expect(report.progress.adequateMorningCount == 1)
+        #expect(report.mornings[0].acquisitionIDs == [person.id, sample.id])
+        let profile = try ComparableMorningProfile(window: learning, archive: archive, now: now, maximumSampleGapSeconds: 16)
+        #expect(profile.report.includedDayKeys == [key(12)])
+        #expect(profile.otherOriginAcquisitionIDs == [sample.id])
+    }
+
     @Test func aRecordingThePersonMovedToAnotherDayNoLongerCountsForItsMorning() throws {
         let learning = try window(mornings: 2)
         let monday = try recording(at(12, 7), seconds: 300)

@@ -144,10 +144,11 @@ public struct LearningWindowReport: Sendable, Equatable {
     private static func report(_ morning: LearningWindowMorning, entries: [ObservationAcquisition],
                                window: LearningWindow, now: Date,
                                origin: ObservationAcquisitionOrigin) -> LearningWindowMorningReport {
+        let declaredIDs = entries.map(\.id)
         func result(_ status: LearningWindowMorningStatus, _ coverage: LearningWindowCoverage?,
                     _ reason: LearningWindowNotCountedReason?) -> LearningWindowMorningReport {
             .init(dayKey: morning.dayKey, expectedStart: morning.expectedStart, expectedEnd: morning.expectedEnd,
-                  status: status, coverage: coverage, acquisitionIDs: entries.map(\.id), notCountedReason: reason)
+                  status: status, coverage: coverage, acquisitionIDs: declaredIDs, notCountedReason: reason)
         }
         switch morning.disposition {
         case .paused: return result(.paused, nil, .paused)
@@ -157,6 +158,10 @@ public struct LearningWindowReport: Sendable, Equatable {
         guard !entries.isEmpty else {
             return now < morning.expectedEnd ? result(.notYetDue, nil, .notYetDue) : result(.missed, nil, .missed)
         }
+        // As comparable mornings do: a morning that has a recording of the requested origin
+        // is judged on those alone. One of another origin beside it neither joins nor blocks it.
+        let requested = entries.filter { $0.origin == origin }
+        let entries = requested.isEmpty ? entries : requested
         // The recorded spans inside the expected interval, joined where they touch. Only the
         // total and the outer edges are read from several recordings; they are never one morning.
         let spans = entries.compactMap { entry -> (Date, Date)? in
@@ -179,7 +184,7 @@ public struct LearningWindowReport: Sendable, Equatable {
             .map { core in joined.contains { $0.0 <= core.start && $0.1 >= core.end } } ?? false
         guard whole else { return result(.observedPartly, coverage, .observedPartly) }
         if entries.count > 1 { return result(.observedInWindow, coverage, .severalRecordings) }
-        if entries[0].origin != origin { return result(.observedInWindow, coverage, .originNotConfirmed) }
+        if requested.isEmpty { return result(.observedInWindow, coverage, .originNotConfirmed) }
         return result(.observedInWindow, coverage, nil)
     }
 }

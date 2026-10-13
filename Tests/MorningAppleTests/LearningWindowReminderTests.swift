@@ -100,6 +100,12 @@ struct LearningWindowReminderTests {
         try #expect(outcome == .notScheduled(dayKey: key(12), at: at(12, 7), obstacle: .notificationsQuiet))
         #expect(quiet.client.added.isEmpty && quiet.client.pending == nil)
 
+        // At 07:01 there is still nothing on screen to answer: it is not "awaiting a response".
+        denied.clock.date = try at(12, 7, 1)
+        outcome = await denied.planner.refresh(for: denied.window)
+        try #expect(outcome == .notScheduled(dayKey: key(12), at: at(12, 7), obstacle: .notificationsDenied))
+        denied.clock.date = try at(12, 6)
+
         // Without the person's request nothing prompts, however often the app refreshes.
         let unasked = try setup(.notDetermined)
         for _ in 0..<3 {

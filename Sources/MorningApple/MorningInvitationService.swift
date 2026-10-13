@@ -85,6 +85,8 @@ public final class MorningInvitationService {
         ProcessInfo.processInfo.arguments.contains("--ui-testing") ? testRequestIdentifier : requestIdentifier
     }
     public nonisolated static let categoryIdentifier = "MORE_MORNING_INVITATION"
+    /// A learning window's reminder. It has no action: its tap only opens the app.
+    public nonisolated static let learningReminderCategoryIdentifier = "MORE_LEARNING_WINDOW_REMINDER"
     public nonisolated static let startActionIdentifier = "MORE_START_MORNING"
 
     public private(set) var invitation: MorningInvitation?
@@ -445,6 +447,7 @@ private final class NativeMorningInvitationNotificationClient: MorningInvitation
             // until the person opens MORE and starts the recording themselves.
             content.title = String(localized: "Your learning window is open", bundle: .module)
             content.body = String(localized: "Open MORE and start the recording when you are ready.", bundle: .module)
+            content.categoryIdentifier = MorningInvitationService.learningReminderCategoryIdentifier
         }
         content.userInfo = invitation.payload.dictionary
         content.interruptionLevel = .active
