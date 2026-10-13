@@ -224,6 +224,7 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
         var lateAnswer: Answer??
         var work: Task<Void, Never>?
         var timer: Task<Void, Never>?
+        var cancelRequested = false
     }
     private let state = Mutex(State())
 
@@ -235,39 +236,19 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
         }
     }
 
-    /// Fixes the deadline and invokes the adapter. Synchronous on purpose: the executor calls it
-    /// straight after its last authorization check, with nothing awaited in between.
+    /// Invokes the adapter and returns at its answer or at the deadline, never later. It does not
+    /// wait for an adapter that ignores cancellation, which a task group would.
     ///
-    /// The deadline is one instant on `clock`, read here before the adapter is called. An answer
-    /// that comes back when the clock has reached that instant is late, whichever task runs first.
-    /// (An answer a hair inside it can still lose to the timer; that errs towards "unknown".)
-    func start(deadline: Duration, clock: any Clock<Duration>, _ operation: @escaping @Sendable () async throws -> Answer) {
-        // Opens the existential, so that the clock's own instants can be compared.
-        func begin(on clock: some Clock<Duration>) {
-            let limit = clock.now.advanced(by: deadline)
-            let work = Task { [self] in
-                let answer = try? await operation()
-                if clock.now >= limit { settle(.overdue) }
-                settle(.answered(answer))
-            }
-            let timer = Task { [self] in
-                do { try await clock.sleep(until: limit, tolerance: nil) } catch { return }
-                settle(.overdue)
-            }
-            state.withLock { $0.work = work; $0.timer = timer }
-        }
-        begin(on: clock)
-    }
-
-    /// Returns at the answer or at the deadline, never later. It does not wait for an adapter
-    /// that ignores cancellation, which a task group would.
-    func result() async -> Result {
-        let (work, timer) = state.withLock { ($0.work, $0.timer) }
-        // Cancelling the request reaches the adapter, as it did when the call was made directly,
-        // but the result is still the adapter's answer or the deadline: an adapter told to stop
-        // may already have sent.
+    /// It runs on the caller's actor and awaits nothing before the adapter call is started, so
+    /// the executor's last authorization check is immediately followed by that start. Cancelling
+    /// the request reaches the adapter, as it did when the call was made directly: the forwarding
+    /// is in place before the call can begin. The result is still the adapter's answer or the
+    /// deadline, because an adapter told to stop may already have sent.
+    func run(deadline: Duration, clock: any Clock<Duration>, isolation: isolated (any Actor)? = #isolation,
+             _ operation: @escaping @Sendable () async throws -> Answer) async -> Result {
         let result = await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
+            start(deadline: deadline, clock: clock, operation)
+            return await withCheckedContinuation { continuation in
                 let ready: Result? = state.withLock { state in
                     if let result = state.result { return result }
                     state.waiter = continuation
@@ -275,10 +256,39 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
                 }
                 if let ready { continuation.resume(returning: ready) }
             }
-        } onCancel: { work?.cancel() }
-        timer?.cancel()
-        if case .overdue = result { work?.cancel() }
+        } onCancel: { cancelWork() }
+        state.withLock { $0.timer }?.cancel()
+        if case .overdue = result { cancelWork() }
         return result
+    }
+
+    /// The deadline is one instant on `clock`, read here before the adapter is called. An answer
+    /// that comes back when the clock has reached that instant is late, whichever task runs first.
+    /// (An answer a hair inside it can still lose to the timer; that errs towards "unknown".)
+    private func start(deadline: Duration, clock: any Clock<Duration>, _ operation: @escaping @Sendable () async throws -> Answer) {
+        // Opens the existential, so that the clock's own instants can be compared.
+        func begin(on clock: some Clock<Duration>) {
+            let limit = clock.now.advanced(by: deadline)
+            // Both tasks are created with the lock held, and the work begins by taking it: by then
+            // its handle is stored, so a cancellation is either already noted or will find the handle.
+            state.withLock { state in
+                state.work = Task { [self] in
+                    if self.state.withLock({ $0.cancelRequested }) { withUnsafeCurrentTask { $0?.cancel() } }
+                    let answer = try? await operation()
+                    if clock.now >= limit { settle(.overdue) }
+                    settle(.answered(answer))
+                }
+                state.timer = Task { [self] in
+                    do { try await clock.sleep(until: limit, tolerance: nil) } catch { return }
+                    settle(.overdue)
+                }
+            }
+        }
+        begin(on: clock)
+    }
+
+    private func cancelWork() {
+        state.withLock { state in state.cancelRequested = true; return state.work }?.cancel()
     }
 
     /// Returns once the adapter call itself has returned, however late.
@@ -350,8 +360,10 @@ private func isBlank(_ reference: String) -> Bool {
 /// `dispatch` accepts an approval ID and uses this executor's own copy, so an `ActionApproval`
 /// built or decoded anywhere else carries no authority.
 ///
-/// `dispatch` and `reconcile` run strictly one at a time, including the adapter call: a second
-/// request waits, then sees the journal the first one left behind. `revoke` never waits.
+/// `dispatch` and `reconcile` run strictly one at a time, including the adapter call up to its
+/// deadline: a second request waits, then sees the journal the first one left behind. Only an
+/// adapter call that has outlasted the deadline can still be running when the next one starts.
+/// `revoke` never waits.
 ///
 /// Decided by the owner on 13 October (the open questions of the first version):
 /// 1. **Standing and exact approvals live in memory only.** After a relaunch nothing is approved
@@ -487,8 +499,7 @@ public actor ActionExecutor {
         let prepared = PreparedAction(attemptID: attempt.id, intent: intent, payload: draft.payload)
         let call = AdapterCall<ActionDispatchOutcome>()
         let outcome: ActionDispatchOutcome
-        call.start(deadline: adapterDeadline, clock: clock) { [adapter] in try await adapter.dispatch(prepared) }
-        switch await call.result() {
+        switch await call.run(deadline: adapterDeadline, clock: clock, { [adapter] in try await adapter.dispatch(prepared) }) {
         case .answered(let answer?): outcome = answer
         case .answered(nil): outcome = .outcomeUnknown
         case .overdue:
@@ -533,8 +544,7 @@ public actor ActionExecutor {
         let doubtedBefore = await journal.actionMayHaveBeenSent(attemptID)
         let answer: ActionReconciliation
         let call = AdapterCall<ActionReconciliation>()
-        call.start(deadline: adapterDeadline, clock: clock) { [adapter] in try await adapter.reconcile(attempt) }
-        switch await call.result() {
+        switch await call.run(deadline: adapterDeadline, clock: clock, { [adapter] in try await adapter.reconcile(attempt) }) {
         case .answered(let reply?): answer = reply
         case .answered(nil): answer = .stillUnknown
         case .overdue:

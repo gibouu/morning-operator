@@ -765,6 +765,20 @@ struct ActionExecutionTests {
     }
 
     @Test
+    func cancellingARequestDuringTheAdapterCallReachesTheAdapterAndTheAnswerIsStillRecorded() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (_, executor) = try harness.launch()
+        let draft = draft()
+        let request = await dispatchHeldInTheChannel(draft, approvalID: await executor.approve(draft).id, on: executor, harness)
+        request.cancel()
+        await harness.adapter.release()
+        // The channel was told to stop, and what it then reported is what is recorded: it had sent.
+        #expect(try await request.value.state == .accepted)
+        #expect(await harness.adapter.heldDispatchSawCancellation == true)
+        #expect(await harness.adapter.dispatched.count == 1)
+    }
+
+    @Test
     func adapterCallThatOutlastsTheDeadlineIsUnknownAndItsLateAcceptanceIsNeverApplied() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let (journal, executor) = try harness.launch(adapterDeadline: .seconds(5))
