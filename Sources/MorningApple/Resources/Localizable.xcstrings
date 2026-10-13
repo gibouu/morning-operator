@@ -1581,6 +1581,16 @@
         }
       }
     },
+    "Precipitation is likely before %@. Take an umbrella.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des précipitations sont probables avant %@. Prenez un parapluie."
+          }
+        }
+      }
+    },
     "Premium": {
       "localizations": {
         "fr": {
@@ -1628,16 +1638,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Préparation du micro…"
-          }
-        }
-      }
-    },
-    "Rain is likely before %@. Take an umbrella.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il risque de pleuvoir avant %@. Prenez un parapluie."
           }
         }
       }

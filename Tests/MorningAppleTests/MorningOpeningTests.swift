@@ -24,7 +24,7 @@ struct MorningOpeningTests {
                                                    expiresAt: now.addingTimeInterval(1_800)),
                               unknownSenders: .init(unknownSenders: 1, totalSenders: 4))
         #expect(opening.text == "Bonjour. Météo à Synthetic city : Synthetic sunshine, 20 degrés Celsius. "
-            + "Il risque de pleuvoir avant 12:00. Prenez un parapluie. "
+            + "Des précipitations sont probables avant 12:00. Prenez un parapluie. "
             + "Plus aucun événement aujourd’hui dans les calendriers sélectionnés. "
             + "1 message non lu. 0 e-mail non lu. 2 appels manqués. "
             + "25 % des expéditeurs ne figurent pas dans les contacts partagés avec cette app. "
@@ -112,7 +112,7 @@ struct MorningOpeningTests {
         }
         let said = umbrella(0.5)
         try #require(said.count == 1)
-        #expect(said[0].hasPrefix("Rain is likely before 12:00") && said[0].hasSuffix(". Take an umbrella."))
+        #expect(said[0].hasPrefix("Precipitation is likely before 12:00") && said[0].hasSuffix(". Take an umbrella."))
         #expect(umbrella(0.49).isEmpty && umbrella(.nan).isEmpty && umbrella(1.5).isEmpty)
         #expect(umbrella(0.9, expiresAt: 0).isEmpty, "An expired forecast is not a forecast.")
         #expect(umbrella(0.9, windowEnd: 0).isEmpty, "The window is over.")
@@ -161,7 +161,7 @@ struct MorningOpeningTests {
         #expect(others == [.settingsPreview, .appLaunch, .dataRefresh, .tabSwitch])
         // Nothing but an explicit morning start plays, even before any greeting.
         var played = others.map { plays($0, morning) }
-        #expect(played == [false, false, false, false] && state.greetedSessionID == nil)
+        #expect(played == [false, false, false, false] && state.greetedSessionIDs.isEmpty)
         played = [plays(.morningStart, morning)]
         #expect(played == [true])
         // Same session: no trigger replays it, a second morning start included.
@@ -169,14 +169,15 @@ struct MorningOpeningTests {
         #expect(played == [false, false, false, false, false])
         // A preview, launch, refresh or tab switch that names another session resets nothing.
         played = others.map { plays($0, nextMorning) }
-        #expect(played == [false, false, false, false] && state.greetedSessionID == morning)
-        // Reset 1: a morning start for a different session.
-        played = [plays(.morningStart, nextMorning), plays(.morningStart, nextMorning)]
-        #expect(played == [true, false])
-        // Reset 2: explicit forgetting.
+        #expect(played == [false, false, false, false] && state.greetedSessionIDs == [morning])
+        // A new session is greeted once, and does not make the earlier one new again.
+        played = [plays(.morningStart, nextMorning), plays(.morningStart, nextMorning), plays(.morningStart, morning)]
+        #expect(played == [true, false, false])
+        // The only reset: explicit forgetting.
         state.reset()
-        played = [plays(.tabSwitch, nextMorning), plays(.morningStart, nextMorning)]
-        #expect(played == [false, true])
+        played = [plays(.tabSwitch, nextMorning), plays(.morningStart, nextMorning), plays(.morningStart, morning),
+                  plays(.morningStart, morning)]
+        #expect(played == [false, true, true, false])
     }
 
     @Test func greetedStateIsSavedWithoutAnyLanguage() throws {
@@ -190,7 +191,7 @@ struct MorningOpeningTests {
             let played = state.claimPlayback(for: .morningStart, sessionID: session)
             #expect(played)
             let json = String(decoding: try encoder.encode(state), as: UTF8.self)
-            #expect(json == #"{"greetedSessionID":"0F1E2D3C-4B5A-4978-8695-A4B3C2D1E0F9"}"#)
+            #expect(json == #"{"greetedSessionIDs":["0F1E2D3C-4B5A-4978-8695-A4B3C2D1E0F9"]}"#)
             #expect(!json.contains(opening.segments[0].text))
             saved.append(Data(json.utf8))
         }
@@ -200,7 +201,7 @@ struct MorningOpeningTests {
         let replayed = restored.claimPlayback(for: .morningStart, sessionID: session)
         let next = restored.claimPlayback(for: .morningStart, sessionID: UUID())
         #expect(!replayed && next)
-        #expect(try JSONDecoder().decode(MorningGreetingState.self, from: Data("{}".utf8)) == MorningGreetingState())
+        #expect(try JSONDecoder().decode(MorningGreetingState.self, from: encoder.encode(MorningGreetingState())) == MorningGreetingState())
     }
 
     private func compose(_ briefing: PreparedMorningBriefing, at date: Date? = nil, zone: String = "UTC",

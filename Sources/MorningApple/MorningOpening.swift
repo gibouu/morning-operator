@@ -26,7 +26,8 @@ public enum MorningOpeningCount: Sendable, Equatable {
 }
 
 /// A forecast for the hours ahead, from a source that provides one. The current-conditions
-/// snapshot is not such a source, so the umbrella sentence needs this explicit input.
+/// snapshot is not such a source, so the umbrella sentence needs this explicit input. It
+/// carries no precipitation type, so the sentence says precipitation, not rain.
 public struct MorningPrecipitationForecast: Sendable, Equatable {
     /// Chance of precipitation between retrieval and `windowEnd`, from 0 to 1.
     public let chance: Double
@@ -118,7 +119,7 @@ public enum MorningOpeningComposer {
             formatter.dateStyle = .none; formatter.timeStyle = .short
             let time = formatter.string(from: precipitation.windowEnd)
             add("umbrella", .umbrella,
-                String(localized: "Rain is likely before \(time). Take an umbrella.", bundle: bundle, locale: locale))
+                String(localized: "Precipitation is likely before \(time). Take an umbrella.", bundle: bundle, locale: locale))
         }
         switch calendar {
         case .fresh(let text): add("calendar", .calendar, text)
@@ -184,25 +185,25 @@ public enum MorningOpeningTrigger: String, Sendable, Equatable, CaseIterable {
     case morningStart, settingsPreview, appLaunch, dataRefresh, tabSwitch
 }
 
-/// Remembers which morning session was greeted. It holds a session identifier only, so
+/// Remembers which morning sessions were greeted. It holds session identifiers only, so
 /// saving and reading it back does not depend on the interface language.
 ///
 /// The greeting plays when, and only when, an explicit morning start asks for a session
-/// that was not the last one greeted. A preview, a launch, a refresh or a tab switch never
-/// plays it and never changes this value. Only two things reset it: a morning start with a
-/// different session identifier, or `reset()`.
+/// that was never greeted. A preview, a launch, a refresh or a tab switch never plays it
+/// and never changes this value. A new morning is a new session identifier; an earlier
+/// session stays greeted when a later one starts. Only `reset()` forgets: it is the one
+/// way a session can be greeted a second time. One identifier is kept per greeted morning.
 public struct MorningGreetingState: Codable, Sendable, Equatable {
-    public private(set) var greetedSessionID: UUID?
+    public private(set) var greetedSessionIDs: Set<UUID> = []
 
     public init() {}
 
     /// True exactly once per session. The caller plays the opening only on true.
     public mutating func claimPlayback(for trigger: MorningOpeningTrigger, sessionID: UUID) -> Bool {
-        guard trigger == .morningStart, greetedSessionID != sessionID else { return false }
-        greetedSessionID = sessionID
-        return true
+        guard trigger == .morningStart else { return false }
+        return greetedSessionIDs.insert(sessionID).inserted
     }
 
     /// For local forgetting: the next morning start greets again.
-    public mutating func reset() { greetedSessionID = nil }
+    public mutating func reset() { greetedSessionIDs = [] }
 }
