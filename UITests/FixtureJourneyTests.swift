@@ -530,6 +530,47 @@ enum MorningUITestNavigation {
         XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
     }
 
+    /// The test that is running, so that `isHittable(_:named:)` can let it continue.
+    /// XCTest calls its observers on the main thread, where the UI tests run too.
+    private final class RunningTest: NSObject, XCTestObservation, @unchecked Sendable {
+        static let shared: RunningTest = {
+            let tracker = RunningTest()
+            XCTestObservationCenter.shared.addTestObserver(tracker)
+            return tracker
+        }()
+        weak var current: XCTestCase?
+        func testCaseWillStart(_ testCase: XCTestCase) { current = testCase }
+        func testCaseDidFinish(_ testCase: XCTestCase) { current = nil }
+    }
+
+    /// `element.isHittable`, with one XCTest error treated as "not yet".
+    ///
+    /// On the iOS 27.0 simulator XCTest sometimes cannot compute a control's hit
+    /// point ("Failed to determine hittability … Activation point invalid") and
+    /// records that as a failure instead of answering no. It has happened on a
+    /// sheet that was closing and on screens that looked settled. Only that
+    /// error, by its text, is tolerated here, and the caller asks again.
+    ///
+    /// A tolerated issue still stops a test whose `continueAfterFailure` is
+    /// false, and the test then ends without a failure: its remaining checks
+    /// never run. So the flag is raised for this one question and put back.
+    /// Until the tracker has seen a test start (the first test of a process)
+    /// there is no test to raise it on, and the plain question is asked.
+    static func isHittable(_ element: XCUIElement, named name: String) -> Bool {
+        guard let test = RunningTest.shared.current else { return element.isHittable }
+        let stopsOnFailure = !test.continueAfterFailure
+        test.continueAfterFailure = true
+        defer { test.continueAfterFailure = !stopsOnFailure }
+        let tolerated = XCTExpectedFailure.Options()
+        tolerated.isStrict = false
+        tolerated.issueMatcher = { $0.compactDescription.contains("Failed to determine hittability") }
+        var answer = false
+        XCTExpectFailure("XCTest could not compute a hit point for \(name); asked again.", options: tolerated) {
+            answer = element.isHittable
+        }
+        return answer
+    }
+
     static func tapButton(_ identifier: String, in app: XCUIApplication,
                           file: StaticString = #filePath, line: UInt = #line) {
         if ["run.start", "run.resume", "morning.reviewDraft", "morning.review", "morning.learn", "morning.settings"].contains(identifier) {
@@ -545,24 +586,7 @@ enum MorningUITestNavigation {
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
         // A control on a sheet that is still sliding in exists before it can be
         // touched. Give it a moment before deciding it has to be scrolled to.
-        // On the iOS 27.0 simulator XCTest sometimes cannot compute a control's
-        // hit point ("Failed to determine hittability … Activation point
-        // invalid") and records that as a failure instead of answering no. It
-        // has happened on a sheet that was closing and on screens that looked
-        // settled. Here that one XCTest error counts as "not yet" and the
-        // question is asked again; nothing else is tolerated, and the control
-        // still has to be touchable for the assertion and the tap below.
-        func canBeTouched() -> Bool {
-            guard button.exists else { return false }
-            let tolerated = XCTExpectedFailure.Options()
-            tolerated.isStrict = false
-            tolerated.issueMatcher = { $0.compactDescription.contains("Failed to determine hittability") }
-            var answer = false
-            XCTExpectFailure("XCTest could not compute a hit point for \(identifier); asked again.", options: tolerated) {
-                answer = button.isHittable
-            }
-            return answer
-        }
+        func canBeTouched() -> Bool { button.exists && MorningUITestNavigation.isHittable(button, named: identifier) }
         let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
         _ = XCTWaiter.wait(for: [touchable], timeout: 2)
         for _ in 0..<4 where !canBeTouched() {
