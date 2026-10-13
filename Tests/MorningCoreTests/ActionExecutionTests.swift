@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import MorningCore
 
@@ -192,6 +193,9 @@ struct ActionExecutionTests {
         let cases: [(FakeAdapter.Reply, ActionAttemptState, String?)] = [
             (.outcome(.accepted(receiptReference: nil)), .accepted, nil),
             (.outcome(.verified(evidenceReference: "sent-item-7")), .verified, "sent-item-7"),
+            // A claim of delivery with nothing to point at is recorded as an acceptance only.
+            (.outcome(.verified(evidenceReference: "")), .accepted, nil),
+            (.outcome(.verified(evidenceReference: " \n\t")), .accepted, nil),
             (.outcome(.failedKnown), .failedKnown, nil),
             (.outcome(.outcomeUnknown), .outcomeUnknown, nil),
             (.lostResponse, .outcomeUnknown, nil)
@@ -396,7 +400,81 @@ struct ActionExecutionTests {
         #expect(await harness.adapter.dispatched.count == 1)
     }
 
+    @Test
+    func requestCancelledWhileWaitingItsTurnNeverReachesTheAdapter() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, executor) = try harness.launch()
+        let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
+        let one = draft(body: "one"), two = draft(body: "two")
+        await harness.adapter.holdNextDispatch()
+        let first = Task { try await executor.dispatch(one, approvalID: standing.id) }
+        while await harness.adapter.dispatched.isEmpty { await Task.yield() }
+        let second = Task { try await executor.dispatch(two, approvalID: standing.id) }
+        for _ in 0..<100 { await Task.yield() }
+        second.cancel()
+        await harness.adapter.release()
+        #expect(try await first.value.state == .accepted)
+        do { _ = try await second.value; Issue.record("A cancelled request was dispatched") }
+        catch { #expect(error is CancellationError) }
+        #expect(await harness.adapter.dispatched.map(\.intent.id) == [one.id])
+        // Nothing was journaled for it, so the same draft can still be sent deliberately.
+        #expect(await journal.snapshot().attempts.map(\.intent.id) == [one.id])
+        #expect(try await executor.dispatch(two, approvalID: standing.id).state == .accepted)
+    }
+
+    @Test
+    func requestCancelledWhileDispatchingIsWrittenIsClosedWithoutCallingTheAdapter() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let journal = try ActionJournalStore(fileURL: harness.url)
+        // The clock is read after the first cancellation check, so cancelling from inside it lands
+        // between that check and the one that follows the `dispatching` write.
+        let armed = Mutex(false)
+        let executor = try ActionExecutor(journal: journal, adapter: harness.adapter, now: {
+            if armed.withLock({ $0 }) { withUnsafeCurrentTask { $0?.cancel() } }
+            return Date()
+        })
+        let draft = draft()
+        let approvalID = await executor.approve(draft).id
+        armed.withLock { $0 = true }
+        let request = Task { try await executor.dispatch(draft, approvalID: approvalID) }
+        do { _ = try await request.value; Issue.record("A cancelled request was dispatched") }
+        catch { #expect(error is CancellationError) }
+        armed.withLock { $0 = false }
+        #expect(await harness.adapter.dispatched.isEmpty)
+        // `dispatching` had been written; with the adapter never invoked it is a known non-event, not an unknown.
+        #expect(try AtomicJSONFile<ActionJournal>(url: harness.url).load().attempts.map(\.state) == [.failedKnown])
+        let retry = self.draft()
+        #expect(try await executor.dispatch(retry, approvalID: await executor.approve(retry).id).state == .accepted)
+    }
+
     // MARK: Unknown outcomes
+
+    @Test
+    func notThereAnswerNeverDowngradesAProviderAcceptance() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (_, executor) = try harness.launch()
+        let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
+        let accepted = try await executor.dispatch(draft(body: "first"), approvalID: standing.id)
+        #expect(accepted.state == .accepted)
+        // The sent folder lags: the channel that accepted the message cannot see it yet.
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await executor.reconcile(accepted.id) == accepted)
+        // A "delivered" answer with no evidence settles nothing either.
+        await harness.adapter.reconciliation(.delivered(evidenceReference: " "))
+        #expect(try await executor.reconcile(accepted.id) == accepted)
+        await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-9"))
+        #expect(try await executor.reconcile(accepted.id).state == .verified)
+        #expect(await harness.adapter.reconciled.count == 3)
+
+        // The same answers about an unknown outcome: "not there" does close it, blank evidence does not.
+        await harness.adapter.reply(.lostResponse)
+        let unknown = try await executor.dispatch(draft(body: "second"), approvalID: standing.id)
+        await harness.adapter.reconciliation(.delivered(evidenceReference: ""))
+        #expect(try await executor.reconcile(unknown.id).state == .outcomeUnknown)
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await executor.reconcile(unknown.id).state == .failedKnown)
+        #expect(await harness.adapter.dispatched.count == 2)
+    }
 
     @Test
     func lostResponseStaysUnknownAcrossRelaunchAndBlocksEveryResend() async throws {
@@ -520,7 +598,11 @@ struct ActionExecutionTests {
         do {
             _ = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
             Issue.record("Recording the outcome beneath a regular file unexpectedly succeeded")
-        } catch { #expect(error as? ActionExecutionError == nil) }
+        } catch {
+            // A dedicated error, so the app can say "sent, but the result could not be saved".
+            let attemptID = await journal.snapshot().attempts.first?.id
+            #expect(error as? ActionExecutionError == attemptID.map { .outcomeNotRecorded(attemptID: $0) })
+        }
         let stranded = try #require(await journal.snapshot().attempts.first)
         #expect(stranded.state == .dispatching)
 
@@ -566,7 +648,8 @@ struct ActionExecutionTests {
             .approvalNotIssued(approvalID: id), .approvalRevoked(approvalID: id), .approvalExpired(approvalID: id),
             .fingerprintMismatch(approved: draft.fingerprint, current: changed.fingerprint),
             .outsideApprovedScope(approvalID: id), .duplicateIntent(intentID: id),
-            .unreconciledOutcome(attemptID: id), .attemptNotFound(attemptID: id), .journalAlreadyHasExecutor
+            .unreconciledOutcome(attemptID: id), .attemptNotFound(attemptID: id), .journalAlreadyHasExecutor,
+            .outcomeNotRecorded(attemptID: id)
         ]
         for error in errors { loggable += [error.localizedDescription, "\(error)", String(describing: error.errorDescription)] }
 
@@ -581,6 +664,16 @@ struct ActionExecutionTests {
             #expect(journalText.contains(kept))
         }
         #expect("\(draft)".contains(draft.fingerprint) && "\(prepared)".contains(draft.fingerprint))
+        // Accounts and targets are addresses or handles on a real channel: descriptions of the types
+        // added here, and every error text, leave them out. (The journal file keeps them by design.)
+        var described = ["\(draft)", String(reflecting: draft), "\([draft])", "\(changed)", "\(prepared)",
+                         String(reflecting: prepared), "\([prepared])", "\(draft.payload)"]
+        for error in errors + [mismatch] { described += [error.localizedDescription, "\(error)", String(reflecting: error)] }
+        for text in described {
+            #expect(!text.contains("account-A") && !text.contains("conversation-A"), "Account or target in: \(text.prefix(80))")
+        }
+        #expect("\(draft)".contains(draft.id.uuidString) && "\(prepared)".contains(draft.id.uuidString)
+                && "\(prepared)".contains(receipt.id.uuidString))
         #expect(mismatch.localizedDescription.contains(draft.fingerprint) && mismatch.localizedDescription.contains(changed.fingerprint))
     }
 

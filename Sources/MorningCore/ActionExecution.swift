@@ -74,13 +74,15 @@ public struct ActionDraft: Sendable, Identifiable, Equatable, CustomStringConver
     }
 
     /// The journaled form: identifiers and the fingerprint, never the payload.
+    /// Descriptions leave out the account and target: for a mail or message channel those are
+    /// addresses or handles. (`dump` and the journal's own types still show them.)
     public var intent: ActionIntent {
         ActionIntent(id: id, kind: kind, accountID: accountID, targetID: targetID,
                      payloadFingerprint: fingerprint, createdAt: createdAt)
     }
 
     public var description: String {
-        "ActionDraft(id: \(id), kind: \(kind.rawValue), account: \(accountID), target: \(targetID), fingerprint: \(fingerprint))"
+        "ActionDraft(id: \(id), kind: \(kind.rawValue), fingerprint: \(fingerprint))"
     }
     public var debugDescription: String { description }
 
@@ -109,7 +111,7 @@ public struct PreparedAction: Sendable, Equatable, CustomStringConvertible, Cust
     public let payload: ActionPayload
 
     public var description: String {
-        "PreparedAction(attempt: \(attemptID), intent: \(intent.id), kind: \(intent.kind.rawValue), account: \(intent.accountID), target: \(intent.targetID), fingerprint: \(intent.payloadFingerprint))"
+        "PreparedAction(attempt: \(attemptID), intent: \(intent.id), kind: \(intent.kind.rawValue), fingerprint: \(intent.payloadFingerprint))"
     }
     public var debugDescription: String { description }
 }
@@ -140,7 +142,8 @@ public enum ActionReconciliation: Sendable, Equatable {
 public protocol ActionAdapter: Sendable {
     func dispatch(_ action: PreparedAction) async throws -> ActionDispatchOutcome
     /// Ask the channel what happened to an earlier attempt. The payload is no longer available
-    /// (it is never persisted): use the intent ID, the receipt reference or the fingerprint.
+    /// (it is never persisted). Look the attempt up by its intent ID or receipt reference; the
+    /// fingerprint is a last resort, because a retry of the same content has the same one.
     /// Must not send anything.
     func reconcile(_ attempt: ActionAttempt) async throws -> ActionReconciliation
 }
@@ -155,6 +158,8 @@ public enum ActionExecutionError: Error, LocalizedError, Equatable, Sendable {
     case unreconciledOutcome(attemptID: UUID)
     case attemptNotFound(attemptID: UUID)
     case journalAlreadyHasExecutor
+    /// The adapter was invoked, but what it reported could not be written to the journal.
+    case outcomeNotRecorded(attemptID: UUID)
 
     public var errorDescription: String? {
         switch self {
@@ -169,6 +174,8 @@ public enum ActionExecutionError: Error, LocalizedError, Equatable, Sendable {
             "The outcome of attempt \(id) is still unknown. Check what happened before sending anything else there."
         case .attemptNotFound(let id): "Attempt \(id) could not be found."
         case .journalAlreadyHasExecutor: "This action journal already has an executor."
+        case .outcomeNotRecorded(let id):
+            "Attempt \(id) was handed to the channel, but its result could not be saved. Check what happened before sending anything else there."
         }
     }
 }
@@ -226,6 +233,8 @@ public actor ActionExecutor {
     @discardableResult
     public func dispatch(_ draft: ActionDraft, approvalID: UUID) async throws -> ActionAttempt {
         await acquire(); defer { release() }
+        // A request cancelled while it waited its turn goes no further: nothing exists yet.
+        try Task.checkCancellation()
         let intent = draft.intent
         var date = now()
         var approval = try authorize(intent, approvalID: approvalID, at: date)
@@ -250,10 +259,11 @@ public actor ActionExecutor {
             throw error
         }
 
-        // `dispatching` is on disk, which took time: the approval may have expired or been withdrawn
-        // meanwhile. Check once more, with no suspension between this and the adapter call.
-        // The adapter has not been invoked, so a refusal here is a known non-event.
-        do { _ = try authorize(intent, approvalID: approvalID, at: now()) } catch {
+        // `dispatching` is on disk, which took time: the request may have been cancelled, or the
+        // approval may have expired or been withdrawn meanwhile. Check once more, with no suspension
+        // between this and the adapter call. The adapter has not been invoked, so stopping here is
+        // a known non-event.
+        do { try Task.checkCancellation(); _ = try authorize(intent, approvalID: approvalID, at: now()) } catch {
             try? await journal.recordKnownFailure(attempt.id, at: now())
             throw error
         }
@@ -262,11 +272,19 @@ public actor ActionExecutor {
         let outcome: ActionDispatchOutcome
         do { outcome = try await adapter.dispatch(PreparedAction(attemptID: attempt.id, intent: intent, payload: draft.payload)) }
         catch { outcome = .outcomeUnknown }
-        switch outcome {
-        case .accepted(let reference): try await journal.recordAccepted(attempt.id, receiptReference: reference, at: now())
-        case .verified(let reference): try await journal.recordVerified(attempt.id, evidenceReference: reference, at: now())
-        case .failedKnown: try await journal.recordKnownFailure(attempt.id, at: now())
-        case .outcomeUnknown: try await journal.recordUnknown(attempt.id, at: now())
+        do {
+            switch outcome {
+            case .accepted(let reference): try await journal.recordAccepted(attempt.id, receiptReference: reference, at: now())
+            // "Verified" with nothing to point at is only an acceptance.
+            case .verified(let reference) where Self.isBlank(reference): try await journal.recordAccepted(attempt.id, at: now())
+            case .verified(let reference): try await journal.recordVerified(attempt.id, evidenceReference: reference, at: now())
+            case .failedKnown: try await journal.recordKnownFailure(attempt.id, at: now())
+            case .outcomeUnknown: try await journal.recordUnknown(attempt.id, at: now())
+            }
+        } catch {
+            // The adapter ran but the journal still says `dispatching`: that keeps the conversation
+            // blocked until `reconcile`, and becomes outcome-unknown at the next launch.
+            throw ActionExecutionError.outcomeNotRecorded(attemptID: attempt.id)
         }
         return try await current(attempt.id)
     }
@@ -281,11 +299,19 @@ public actor ActionExecutor {
         let answer: ActionReconciliation
         do { answer = try await adapter.reconcile(attempt) } catch { answer = .stillUnknown }
         switch answer {
-        case .delivered(let reference): try await journal.recordVerified(attemptID, evidenceReference: reference, at: now())
-        case .notDelivered: try await journal.recordKnownFailure(attemptID, at: now())
-        case .stillUnknown: if attempt.state == .dispatching { try await journal.recordUnknown(attemptID, at: now()) }
+        case .delivered(let reference) where !Self.isBlank(reference):
+            try await journal.recordVerified(attemptID, evidenceReference: reference, at: now())
+        // The channel said it took this action. "Not there" may only mean "not there yet", and
+        // failed-known would invite a second send, so an acceptance is never downgraded.
+        case .notDelivered where attempt.state != .accepted: try await journal.recordKnownFailure(attemptID, at: now())
+        // No answer, an unsupported "delivered", or "not there" after an acceptance: nothing is settled.
+        default: if attempt.state == .dispatching { try await journal.recordUnknown(attemptID, at: now()) }
         }
         return try await current(attemptID)
+    }
+
+    private static func isBlank(_ reference: String) -> Bool {
+        reference.unicodeScalars.allSatisfy { $0.properties.isWhitespace }
     }
 
     private func remember(_ approval: ActionApproval) -> ActionApproval {
