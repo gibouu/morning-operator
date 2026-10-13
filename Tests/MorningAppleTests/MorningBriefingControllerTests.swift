@@ -259,16 +259,22 @@ struct MorningBriefingControllerTests {
             weather: { _ in try await gate.value() }, timeout: .milliseconds(30))
         try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: location))
         // Prevent a broken timeout implementation from leaving a continuation live forever.
+        // The margin is wide so a busy machine cannot release the gate before a working
+        // 30 ms deadline has been scheduled; a broken deadline still fails, only later.
         let fallback = Task {
-            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
             gate.release(weather)
         }
+        let started = ContinuousClock.now
         let result = await controller.refresh()
+        let elapsed = ContinuousClock.now - started
         let returnedBeforeRelease = !gate.wasReleased
         fallback.cancel()
         gate.release(weather)
         let prepared = try #require(result)
         #expect(returnedBeforeRelease, "A timeout must not wait for an uncooperative provider to return.")
+        // The injected 30 ms deadline must be the one in force, not the 10-second default.
+        #expect(elapsed < .seconds(8), "The injected deadline was ignored.")
         #expect(prepared.calendar.status == .fresh)
         #expect(prepared.weather.status == .unavailable)
         let preparedID = prepared.id

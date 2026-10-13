@@ -81,9 +81,15 @@ struct CitySuggestionLookupTests {
         try await afterReset.value
     }
 
-    /// Waits for main-actor work that is already scheduled; no timers are involved.
+    /// Waits for main-actor work that is already scheduled.
     private func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
-        for _ in 0..<10_000 where !condition() { await Task.yield() }
+        // Bounded by time, not by a yield count: on a busy machine the awaited work can
+        // need more turns than any fixed number, and a count then fails for no reason.
+        let deadline = ContinuousClock.now + .seconds(30)
+        while !condition(), ContinuousClock.now < deadline {
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(1))
+        }
         #expect(condition(), sourceLocation: sourceLocation)
     }
 }
