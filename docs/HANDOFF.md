@@ -1,6 +1,6 @@
 # Teammate handoff
 
-**10 October 2026 · bounded delivery.** Work on `codex/more-quiet-morning`, the branch behind draft [PR #26](https://github.com/gibouu/morning-operator/pull/26), stacked on [PR #22](https://github.com/gibouu/morning-operator/pull/22). The default-branch README points to development work; default-branch app code is not this implementation. Follow [onboarding](ONBOARDING.md), [verification](PHASE-ONE.md) and the [digest protocol](DIGEST-TEST-PROTOCOL.md) before expanding scope.
+**13 October 2026.** Work on `main`: the app source merged there through [PR #26](https://github.com/gibouu/morning-operator/pull/26), which carried [PR #22](https://github.com/gibouu/morning-operator/pull/22), and pull requests now get a hosted package-test run. What merged that day and how it was checked is in [PHASE-ONE](PHASE-ONE.md); none of it was run on a device or simulator. The sections below describe the 10 October delivery and remain the record of the installed app.
 
 ## Local development paused — 10 October 2026
 

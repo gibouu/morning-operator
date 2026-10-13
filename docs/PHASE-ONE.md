@@ -2,6 +2,37 @@
 
 **Current installed app source: `1952d9f`, 10 October 2026, on `codex/more-quiet-morning`.** Simulator compilation, signed iPhone compilation and deep/strict signature verification passed. Ordinary installation and launch returned success, preserving the owner's data. Design acceptance remains open. This is a testable revision, not evidence of complete morning ingestion, connected inboxes, real speech recognition or HomePod operation.
 
+## Merged to main, shared logic and CI — 13 October 2026
+
+**No device or simulator run was made on this day.** Everything below was checked with Swift package tests, a hosted CI job and a simulator *build* of the app target (Xcode 27.0, no simulator runtime installed). Layout, dark mode, Dynamic Type, haptics, speech and the French interface have not been seen running. The installed iPhone app is still `1952d9f`.
+
+**What merged.** The app source moved from `codex/more-quiet-morning` to `main` (#26, carrying #22), followed by the open interface work: city search and suggestions (#33, #34), tappable Settings cards (#35), warm form rows (#36), Review and Learn polish (#37), the Human Interface Guidelines pass (#39) and the French String Catalogs (#32).
+
+| Area | PR | Issue | What it adds | Package tests |
+|---|---|---|---|---|
+| Time budget, session recap, feedback, reduction goal | #40 | #10 | Reports only; never trims a step | 17 |
+| Typed digest and claim validation | #41 | #23 | Contract version 1; blocked output when no generator | 13 + 1 scorer |
+| Comparable-morning profile | #42, #54 | #11, #21, #48 | Archive to window report, explicit exclusions | 14 |
+| Retention and selective-forget plan | #43 | #8 | A plan across six stores; deletes nothing | 19 |
+| Action approval, journal and adapter contract | #49 | #12 | Fake adapter only | 24 |
+| Opening script | #51 | #28 | English and French, greet once | 10 |
+| Phone-loop messages and session rules | #56 | #7 | Fake phone and transport only | 34 |
+| Recognition of MORE's own screens | #58 | #46, #47 | English and French wording tied to the catalogs by test | 10 |
+| Briefing deadlines on an injectable clock | #57 | #45 | Tests no longer depend on machine load | 2 new, suite converted |
+| CI and String Catalog build check | #44, #53 | #52 | One macOS job; catalogs compiled and proven by a test | 2 |
+| Personal Voice and custom-voice audit | #55 | #20 | [VOICE-AUDIT](VOICE-AUDIT.md), 19 points listed as unverified | none (documentation) |
+
+None of these issues is closed except #45, #47, #48 and #52: each slice is logic that the app does not call yet, and the remainder needs screens, a device or real model output.
+
+**How it was checked.**
+
+- Package tests on `main` after the last merge in this table (`977901f`): 240 + 433 pass under Xcode 27.0; the hosted job runs one test fewer on Xcode 26.6, because that test builds Foundation Models error cases that exist only in the Xcode 27 SDK.
+- `xcodebuild` for `generic/platform=iOS Simulator` with signing disabled: **BUILD SUCCEEDED** on `main` after #26–#39, after #32 and at `977901f`. Before Xcode was reinstalled that afternoon, the app target was only type-checked against the Mac Catalyst SDK.
+- Every change was read by a second model before merge; the contract, deletion-planning and recognition changes (#43, #49, #56, #58) by two. Review found, among others: nine defects in city suggestions, seven places where translated text was used as saved data, a start haptic that only plays on Apple Watch, 268 MB of committed build products, and a run-history store the retention plan did not inspect.
+- With 32 busy loops competing for CPU, the suite in parallel passed 10 runs out of 10 after #57. Before it, the same load failed most runs.
+
+**Known gaps recorded as issues.** MORE's home screen with a running routine, and its observation review, history and suggested-update screens, are still not recognized as its own interface (#59–#62). Real Apple Maps behaviour for city suggestions, offline then online, is proven only against a fake source. The opening script, digest, budget, recap, retention plan, action contract and phone-loop rules are not wired into the app, and the interface questions left open in #49 and #56 are the owner's.
+
 ## Evidence retained during local cleanup — 10 October 2026
 
 At the owner’s request, Xcode, the task runtime/simulator and regenerable builds were removed after the verified Horizon installation. The historical `.xcresult` paths below identify where checks originally ran; 92 result bundles now live in the verified local `work/pause-retained/native-test-results.tar.gz` archive. Simulator app data, recovery media and runner screenshots were separately archived and verified before deleting only MORE Design. Plain test summaries, source, original benchmark recordings and output previews remain. This cleanup adds no new feature or test pass, leaves the iPhone app in place and preserves all open acceptance boundaries.
