@@ -380,10 +380,13 @@ struct ActionExecutionTests {
         let journal = try ActionJournalStore(fileURL: harness.url)
         do {
             let first = try ActionExecutor(journal: journal, adapter: harness.adapter)
-            do {
-                _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
-                Issue.record("A second executor was created for a journal store that already has one")
-            } catch { #expect(error as? ActionExecutionError == .journalAlreadyHasExecutor) }
+            // Twice: a refused attempt must not release the first executor's claim.
+            for _ in 0..<2 {
+                do {
+                    _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
+                    Issue.record("A second executor was created for a journal store that already has one")
+                } catch { #expect(error as? ActionExecutionError == .journalAlreadyHasExecutor) }
+            }
             let draft = draft()
             try await first.dispatch(draft, approvalID: await first.approve(draft).id)
         }
