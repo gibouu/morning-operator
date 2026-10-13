@@ -883,18 +883,18 @@ enum OwnInterfaceWording {
     ///
     /// The badge must end a line in MORE's own capitals, "MORE" then "Recording" or
     /// « Enregistrement ». It sits in the date's row, so it is accepted when that line also
-    /// holds the date, or when it stands alone (at most a misread symbol beside it) and the
-    /// frame shows something else of the home: the date on a line of its own, a line that
-    /// begins with the heading, or a playback label. Alone among another app's lines it is
-    /// not enough, and neither is "more recording" in any other case or place.
+    /// holds the date, or when it stands alone on its line (at most its dot, read as a zero
+    /// or an "o", before it). Nothing else in the product prints these words: not the Live Activity, not a
+    /// notification, not the system's recording indicator. A line holding only the badge can
+    /// therefore only be MORE's home, whatever the other lines of the frame say. After other
+    /// words ("READ MORE · Recording"), or as "more recording" in any other case or place,
+    /// it identifies nothing.
     static func showsRecordingBadge(_ frame: Frame) -> Bool {
         let before = recordingBadge.wordsBeforeLineEnd(in: frame).map(withoutSymbols)
         if before.contains(where: isHomeDate) { return true }
-        guard before.contains(where: \.isEmpty) else { return false }
-        let headings = homeHeadings.flatMap(\.normalized)
-        return frame.shownLines.contains { isHomeDate(withoutSymbols($0.map(LearningEvidencePolicy.normalized))) }
-            || frame.lines.contains { line in headings.contains { line == $0 || line.hasPrefix("\($0) ") } }
-            || [playbackNow, playbackPause, playbackPaused, playbackContinue].contains { $0.isLine(of: frame) }
+        // Alone on its line: nothing before it, or only what the badge's own dot is read as.
+        // Any other word, even one letter ("A MORE Recording"), makes it ordinary text.
+        return recordingBadge.wordsBeforeLineEnd(in: frame).contains { $0.isEmpty || $0 == ["0"] || $0 == ["o"] }
     }
 
     /// The words of a line without what the symbols at its end were read as: the chevron

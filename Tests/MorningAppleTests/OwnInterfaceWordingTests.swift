@@ -784,11 +784,12 @@ struct OwnInterfaceWordingTests {
                 try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
             }
         }
-        // Each other piece of the home is enough beside the badge on its own line.
+        // The badge alone on its line is enough, whatever else the frame shows: only MORE's
+        // home prints it. Its dot may be read as a zero or an "o".
         let step = home[4]
-        for companion in [date, home[2], home[3], home[5], language == "fr" ? "En pause" : "Paused",
-                          language == "fr" ? "Reprendre" : "Continue"] {
-            #expect(isOwnInterface("\(badge)\n\(companion)\n\(step)"), "Passed as evidence with “\(companion)”.")
+        for line in [badge, "0 \(badge)", "O \(badge)"] {
+            #expect(isOwnInterface("\(line)\n\(step)"), "Passed as evidence with “\(line)”.")
+            #expect(isOwnInterface("Calendar\n\(line)\n09:00 Team planning meeting"))
         }
         // The saved step cannot come back as the evidence for a suggested step.
         let screen = home.joined(separator: "\n")
@@ -824,8 +825,11 @@ struct OwnInterfaceWordingTests {
             "News\nTue, Oct 13\nREAD MORE · Recording\nNow\n09:00 Team planning meeting",
             "News\nTue, Oct 13\nMORE · Recording the album took two years\nNow\n09:00 Team planning meeting",
             "Calendar\nTue, Oct 13\n09:00 MORE · Recording\nNow\n10:00 Team planning meeting",
-            // The badge's own form with nothing of the home around it stays evidence, as before.
-            "Calendar\nMORE · Recording\n09:00 Team planning meeting",
+            // One word before the badge, even a single letter, makes it ordinary text.
+            "Notes\nA MORE Recording\n09:00 Team planning meeting",
+            "Notes\nA MORE Enregistrement\n09:00 Réunion de planification de l’équipe",
+            "Recorder\n1 MORE Recording\n09:00 Team planning meeting",
+            // The badge's words inside a sentence are ordinary text.
             "Messages\nPlease discuss MORE · Recording with the design team before 09:00 tomorrow."
         ]
         for screen in screens {
