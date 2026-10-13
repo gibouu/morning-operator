@@ -454,9 +454,11 @@ final class QuietMorningTests: XCTestCase {
 }
 
 /// Run separately with the simulator's content_size set to an accessibility size.
+/// At the standard size it skips itself: the layout under test does not exist there.
 @MainActor
 final class QuietMorningAccessibilityTests: XCTestCase {
-    func testLargeTextKeepsStartAndFullMomentDetailsReachable() {
+    func testLargeTextKeepsStartAndFullMomentDetailsReachable() throws {
+        try LargeTextCondition.require()
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--ui-testing-approved", "--fixture-mode"]

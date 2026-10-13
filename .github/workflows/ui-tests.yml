@@ -1,0 +1,187 @@
+name: UI tests
+
+# Runs the app's UI tests on a hosted iOS simulator: every night that main moved,
+# and on pull requests that touch the app, its resources or the tests. Nothing here
+# needs a device, the on-device model, a microphone or a signing identity; the
+# tests that do skip themselves and say why. Kept apart from ci.yml so the package
+# tests and the app build stay quick.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "UITests/**"
+      - "Sources/MorningOperator/**"
+      - "Sources/MorningActivityWidget/**"
+      - "Resources/**"
+      - "project.yml"
+      - "MorningOperator.xcodeproj/**"
+      - "scripts/ui-tests-ci.py"
+      - ".github/workflows/ui-tests.yml"
+
+concurrency:
+  group: ui-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The suite is split by test class so no simulator runs for hours. Each class
+  # is named once, here. The third shard runs every class not named in the first
+  # two, so a new test class is picked up without touching this file.
+  MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests
+  ROUTINE_CLASSES: RoutineEvidenceProposalTests RoutineTransferTests MorningBriefingTests CompletionCaptureTests PrivacyTests
+
+jobs:
+  guard:
+    name: Anything new to test
+    # A pull request always has something new. The nightly run only works when
+    # main received a commit since the previous night.
+    if: >-
+      (github.event_name == 'schedule' && github.repository == 'gibouu/morning-operator') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'schedule'
+        with:
+          persist-credentials: false
+
+      - name: Decide
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Main only moves through pull requests merged on GitHub, so the newest
+          # commit's committer date is the time it reached main. One hour over
+          # the 24 covers a schedule that starts late: a commit is never missed,
+          # at the price of an occasional second run on the same commit.
+          committed="$(git log -1 --format=%ct)"
+          age=$(( $(date +%s) - committed ))
+          echo "Newest commit on main: $(git log -1 --format='%h %cI'), $(( age / 3600 )) h old."
+          if [ "$age" -le $(( 25 * 3600 )) ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Main did not move in the last day: nothing to test." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  ui-tests:
+    name: UI tests (${{ matrix.shard }})
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
+    # The app uses iOS 27 APIs, so it needs the Xcode 27 image and its iOS 27
+    # simulators. This repository is public: hosted runners only.
+    runs-on: xcode-27
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [morning, routine, everything-else]
+    env:
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The image's default Xcode on purpose: the newest one installed there can be a beta.
+      - name: Show the Xcode in use
+        run: xcodebuild -version
+
+      - name: Choose this shard's tests
+        run: |
+          case "$SHARD" in
+            morning) selection="$(python3 scripts/ui-tests-ci.py select only $MORNING_CLASSES)" ;;
+            routine) selection="$(python3 scripts/ui-tests-ci.py select only $ROUTINE_CLASSES)" ;;
+            everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $ROUTINE_CLASSES)" ;;
+            *) echo "Unknown shard: $SHARD" >&2; exit 1 ;;
+          esac
+          echo "$selection"
+          echo "SELECTION=$selection" >> "$GITHUB_ENV"
+
+      # No device name is written here: the image's simulators change with each
+      # Xcode. The script takes an iPhone on the newest iOS runtime this Xcode supports.
+      - name: Pick and boot an iPhone simulator
+        run: |
+          sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          udid="$(xcrun simctl list devices available -j | python3 scripts/ui-tests-ci.py pick-simulator --max-os "$sdk")"
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+
+      # Every xcodebuild step below fails on xcodebuild's own exit status.
+      - name: Build the app and the UI tests
+        id: build
+        run: |
+          xcodebuild build-for-testing -project MorningOperator.xcodeproj -scheme MorningOperator \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO -quiet
+
+      # One simulator, one test at a time, no retry. A test that hangs is failed
+      # after 15 minutes instead of using up the whole job.
+      - name: Run the UI tests
+        timeout-minutes: 42
+        run: |
+          xcodebuild test-without-building -project MorningOperator.xcodeproj -scheme MorningOperator \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath .build/xcode -resultBundlePath ui-tests.xcresult \
+            -parallel-testing-enabled NO -collect-test-diagnostics never \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 900 \
+            -maximum-test-execution-time-allowance 900 \
+            CODE_SIGNING_ALLOWED=NO $SELECTION
+
+      # The largest-text checks need the simulator's own text size changed, so
+      # they run as a second pass. At the standard size they skip themselves.
+      - name: Run the largest-text checks
+        if: ${{ !cancelled() && matrix.shard == 'everything-else' && steps.build.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large
+          xcodebuild test-without-building -project MorningOperator.xcodeproj -scheme MorningOperator \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath .build/xcode -resultBundlePath ui-tests-largest-text.xcresult \
+            -parallel-testing-enabled NO -collect-test-diagnostics never \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 300 \
+            -maximum-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:MorningOperatorUITests/QuietMorningAccessibilityTests \
+            -only-testing:MorningOperatorUITests/InterfaceTourTests/testLargestTextTourOfHomeLearnReviewAndSettings
+
+      # The summaries can fail the job (nothing ran, a failure in the bundle, a
+      # skip in the largest-text pass) but cannot make a failed run pass.
+      - name: Summarize
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        run: |
+          python3 scripts/ui-tests-ci.py summary ui-tests.xcresult \
+            --title "UI tests ($SHARD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Summarize the largest-text checks
+        if: ${{ always() && matrix.shard == 'everything-else' && steps.build.outcome == 'success' }}
+        run: |
+          python3 scripts/ui-tests-ci.py summary ui-tests-largest-text.xcresult --no-skips \
+            --title "Largest text size" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
+
+      # The bundles hold screenshots of synthetic fixture data on a fresh hosted
+      # simulator, test logs and no system diagnostics. Kept a week.
+      - name: Keep the result bundles
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tests-${{ matrix.shard }}-xcresult
+          path: |
+            ui-tests.xcresult
+            ui-tests-largest-text.xcresult
+          retention-days: 7
+          if-no-files-found: warn
