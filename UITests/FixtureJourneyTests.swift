@@ -543,6 +543,10 @@ enum MorningUITestNavigation {
             for _ in 0..<8 where !button.exists && list.exists { list.swipeUp() }
         }
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
+        // A control on a sheet that is still sliding in exists before it can be
+        // touched. Give it a moment before deciding it has to be scrolled to.
+        let touchable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: button)
+        _ = XCTWaiter.wait(for: [touchable], timeout: 2)
         for _ in 0..<4 where !button.isHittable {
             let collection = app.collectionViews.containing(.button, identifier: identifier).firstMatch
             let table = app.tables.containing(.button, identifier: identifier).firstMatch

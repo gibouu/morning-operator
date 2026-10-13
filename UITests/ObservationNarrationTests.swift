@@ -200,9 +200,10 @@ final class ObservationNarrationTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
         for _ in 0..<10 where !element.isHittable {
+            // A full-screen list can report no hit point of its own on iOS 27.0;
+            // a swipe on the window scrolls the same list.
             let container = app.collectionViews.allElementsBoundByIndex.first(where: { $0.isHittable })
-                ?? app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable })
-            guard let container else { break }
+                ?? app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? app
             if element.exists && element.frame.height > 0 && element.frame.midY < container.frame.midY { container.swipeDown() }
             else { container.swipeUp() }
         }

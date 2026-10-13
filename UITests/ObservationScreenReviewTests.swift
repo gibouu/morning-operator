@@ -224,21 +224,16 @@ final class ObservationScreenReviewTests: XCTestCase {
     }
 
     private func visibleList(in app: XCUIApplication) -> XCUIElement {
-        // A list that is still sliding in exists but cannot be touched yet.
-        // Wait for the screen to settle before deciding that none is visible.
-        func candidates() -> [XCUIElement] {
-            app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
-                + app.scrollViews.allElementsBoundByIndex
-        }
-        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            candidates().contains { $0.exists && $0.isHittable }
-        }, object: nil)
-        _ = XCTWaiter.wait(for: [settled], timeout: 5)
-        guard let list = candidates().first(where: { $0.exists && $0.isHittable }) else {
+        let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+            + app.scrollViews.allElementsBoundByIndex
+        guard lists.contains(where: { $0.exists }) else {
             XCTFail("No visible native list.\n\(app.debugDescription)")
             return app.collectionViews.firstMatch
         }
-        return list
+        // On iOS 27.0 the full-screen list on this page reports no usable hit
+        // point of its own, although it scrolls under the finger. A swipe on the
+        // window reaches the same list, as MorningBriefingTests already does.
+        return app
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

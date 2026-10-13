@@ -28,11 +28,12 @@ permissions:
   contents: read
 
 env:
-  # The suite is split by test class so no simulator runs for hours. Each class
-  # is named once, here. The third shard runs every class not named in the first
-  # two, so a new test class is picked up without touching this file.
-  MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests
-  ROUTINE_CLASSES: RoutineEvidenceProposalTests RoutineTransferTests MorningBriefingTests CompletionCaptureTests PrivacyTests
+  # The whole suite takes about two hours on one hosted simulator, so it is
+  # split by test class into three of roughly forty minutes. Each class is named
+  # once, here. The third shard runs every class not named in the first two, so
+  # a new test class is picked up without touching this file.
+  MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests MorningBriefingTests CompletionCaptureTests PrivacyTests RoutineTransferTests
+  PROPOSAL_CLASSES: RoutineEvidenceProposalTests ObservedMorningOverviewTests
 
 jobs:
   guard:
@@ -82,11 +83,13 @@ jobs:
     # The app uses iOS 27 APIs, so it needs the Xcode 27 image and its iOS 27
     # simulators. This repository is public: hosted runners only.
     runs-on: xcode-27
-    timeout-minutes: 60
+    # 45 minutes was the first guess; measured test time is 40 to 45 minutes a
+    # shard once the tests run to their end, plus the build. A stuck run still stops.
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:
-        shard: [morning, routine, everything-else]
+        shard: [morning, proposals, everything-else]
     env:
       SHARD: ${{ matrix.shard }}
     steps:
@@ -102,8 +105,8 @@ jobs:
         run: |
           case "$SHARD" in
             morning) selection="$(python3 scripts/ui-tests-ci.py select only $MORNING_CLASSES)" ;;
-            routine) selection="$(python3 scripts/ui-tests-ci.py select only $ROUTINE_CLASSES)" ;;
-            everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $ROUTINE_CLASSES)" ;;
+            proposals) selection="$(python3 scripts/ui-tests-ci.py select only $PROPOSAL_CLASSES)" ;;
+            everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $PROPOSAL_CLASSES)" ;;
             *) echo "Unknown shard: $SHARD" >&2; exit 1 ;;
           esac
           echo "$selection"
@@ -130,7 +133,7 @@ jobs:
       # One simulator, one test at a time, no retry. A test that hangs is failed
       # after 15 minutes instead of using up the whole job.
       - name: Run the UI tests
-        timeout-minutes: 42
+        timeout-minutes: 62
         run: |
           xcodebuild test-without-building -project MorningOperator.xcodeproj -scheme MorningOperator \
             -destination "platform=iOS Simulator,id=$UDID" \
