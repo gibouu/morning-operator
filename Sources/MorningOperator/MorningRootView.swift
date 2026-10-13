@@ -1109,11 +1109,9 @@ private struct MorningLightBackdrop: View {
 private struct MorningHaptics: ViewModifier {
     let store: MorningStore
     func body(content: Content) -> some View {
-        // A session exists from approval on; only its "started" event marks a morning starting.
-        let startID: UUID? = store.session?.events.first { $0.kind == .started }?.id
         let completed: Bool = store.session?.status == .completed
         return content
-            .sensoryFeedback(.impact, trigger: startID) { (old: UUID?, new: UUID?) -> Bool in new != nil && old != new }
+            .sensoryFeedback(.impact, trigger: store.morningStartCount)
             .sensoryFeedback(.success, trigger: completed) { (old: Bool, new: Bool) -> Bool in !old && new }
             .sensoryFeedback(.success, trigger: store.approvalCount)
     }
