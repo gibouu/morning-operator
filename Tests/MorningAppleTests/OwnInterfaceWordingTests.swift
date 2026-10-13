@@ -46,7 +46,7 @@ private struct ShippedCatalogs {
             groups.append(cases.flatMap { valueGroups($0).flatMap { $0 } })
         }
         // Only the substitutions the string actually uses reach the screen.
-        let used = groups.flatMap { $0 }.joined(separator: " ")
+        let used = groups.flatMap { $0 }.joined(separator: " ").replacingOccurrences(of: "%%", with: "")
         for (name, substitution) in node["substitutions"] as? [String: Any] ?? [:] where used.contains("%#@\(name)@") {
             groups += valueGroups(substitution as? [String: Any] ?? [:])
         }
