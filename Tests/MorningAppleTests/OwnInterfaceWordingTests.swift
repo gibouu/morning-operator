@@ -460,6 +460,9 @@ struct OwnInterfaceWordingTests {
             // A saved routine's steps under its French heading, with the footer scrolled away.
             "Votre routine\nTerminé\nVotre routine approuvée\nLire les messages de ma famille\n5 min prévues · À votre rythme\nPréparer le petit déjeuner des enfants\n10 min prévues · À votre rythme",
             "Un brouillon à relire\nÉcouter les nouvelles du matin\n5 min prévues · Guidage vocal",
+            // Review with runs whose timing is incomplete, before its links scroll into view.
+            "Vendredi\n9 oct.\nRien d’enregistré\nUne matinée enregistrée. Durée encore inconnue.\n2 sessions enregistrées n’ont pas de durée complète.\nElles n’entrent pas dans la moyenne.",
+            "Friday\nOct 9\nNothing saved\nA morning saved. Time still unknown.\n2 saved runs have no complete timing.\nThey stay out of the average.",
             // Scrolled past the heading: the sheet's title and rows that all read the same.
             "Votre routine\nModifier\nTerminé\nLire les messages de ma famille\n5 min prévues · À votre rythme\nFaire une promenade dans le quartier\n10 min prévues · À votre rythme",
             "Your routine\nEdit\nDone\nRead messages from my family\n5 min planned · Your own pace\nWalk around the neighbourhood\n10 min planned · Your own pace"

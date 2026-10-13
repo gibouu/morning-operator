@@ -64,7 +64,8 @@ enum OwnInterfaceWording {
         Phrase(catalogKey: key, isPart: false, [key, fr] + earlier)
     }
 
-    /// One sentence or clause of a longer catalog string the app shows now.
+    /// One sentence or clause of a longer catalog string the app shows now, with any other
+    /// form of it to recognize: a plural's own wording, or wording shown earlier.
     private static func part(_ en: String, fr: String, of key: String, earlier: String...) -> Phrase {
         Phrase(catalogKey: key, isPart: true, [en, fr] + earlier)
     }
@@ -214,8 +215,22 @@ enum OwnInterfaceWording {
             shown("Sample runs stay out of your personal averages.",
                   fr: "Les sessions d’exemple n’entrent pas dans vos moyennes personnelles."),
             shown("Runs with incomplete timing are excluded from this average.",
-                  fr: "Les sessions à la durée incomplète sont exclues de cette moyenne.")
+                  fr: "Les sessions à la durée incomplète sont exclues de cette moyenne."),
+            shown("A morning saved. Time still unknown.", fr: "Une matinée enregistrée. Durée encore inconnue."),
+            // The words every plural form shares, then the singular's own form.
+            part("have no complete timing", fr: "pas de durée complète",
+                 of: "%lld saved runs have no complete timing. They stay out of the average.",
+                 earlier: "has no complete timing"),
+            part("out of the average", fr: "pas dans la moyenne",
+                 of: "%lld saved runs have no complete timing. They stay out of the average."),
+            part("Routine time begins with a completed run", fr: "Le temps de routine commence avec une session terminée",
+                 of: "Explore the screens you saved below. Routine time begins with a completed run."),
+            part("Days without a saved run stay empty", fr: "Les jours sans session enregistrée restent vides",
+                 of: "Finish a morning to begin your history. Days without a saved run stay empty.")
         ], controls: [
+            shown("A morning, remembered.", fr: "Une matinée, en mémoire."),
+            shown("Nothing saved", fr: "Rien d’enregistré"),
+            shown("App observations", fr: "Observations d’apps"),
             shown("Average routine time", fr: "Durée moyenne de la routine"),
             shown("Routine-run timing", fr: "Durée des sessions"),
             shown("Observed app time", fr: "Temps d’app observé"),
