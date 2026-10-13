@@ -141,6 +141,23 @@ struct SleepObservationTests {
         #expect(french.sleep.sourceLabels == ["Montre"] && french.sleep.statusText == "Lu depuis les données Santé de cet appareil.")
     }
 
+    @Test func aWindowOfADayOrMoreCarriesItsDatesSoTwoClockTimesCannotHideItsLength() throws {
+        // An evening briefing: one span across yesterday 18:00 and a nap this afternoon.
+        let evening = SleepFixtures.date("2026-10-10T19:00:00Z")
+        let samples = [sample(.asleepCore, "2026-10-09T17:30:00Z", "2026-10-09T18:30:00Z"),
+                       sample(.asleepCore, "2026-10-10T16:30:00Z", "2026-10-10T17:45:00Z")]
+        func text(_ locale: String, _ samples: [SleepSample]) throws -> String {
+            try MorningBriefingComposer.prepare(calendar: .notConfigured, weather: .notConfigured,
+                sleep: .snapshot(.init(readAt: evening, samples: samples)), for: evening, at: evening,
+                timeZoneIdentifier: "UTC", localeIdentifier: locale).sleep.text
+        }
+        #expect(try text("en_GB", samples) == "Sleep recorded: 2 hours 15 minutes, between 9 October at 17:30 and 10 October at 17:45.")
+        #expect(try text("fr_FR", samples) == "Sommeil enregistré : 2 heures 15 minutes, entre le 9 octobre à 17:30 et le 10 octobre à 17:45.")
+        let underADay = [sample(.asleepCore, "2026-10-09T17:50:00Z", "2026-10-09T18:30:00Z"),
+                         sample(.asleepCore, "2026-10-10T16:30:00Z", "2026-10-10T17:45:00Z")]
+        #expect(try text("en_GB", underADay) == "Sleep recorded: 1 hour 55 minutes, between 17:50 and 17:45.")
+    }
+
     @Test func durationsAreWordsWithTheRightPlural() throws {
         let english = try #require(MorningBriefingPhrases(locale: Locale(identifier: "en_US")))
         let french = try #require(MorningBriefingPhrases(locale: Locale(identifier: "fr_FR")))

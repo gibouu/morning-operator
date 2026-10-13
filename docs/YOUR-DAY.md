@@ -41,8 +41,8 @@ Sleep duration is the one health observation chosen for [issue #15](https://gith
 What the logic does once a reader is connected:
 
 - **The choice.** Health is included or excluded on its own, apart from calendar and weather. It is off until the person turns it on. While it is off the reader is not called.
-- **The sentence.** One sentence, the same on screen and in speech: the time recorded as asleep and the window it was recorded in, for example "Sleep recorded: 7 hours 20 minutes, between 23:40 and 07:00." No score, no judgement, no advice, no comparison with a recommended amount.
-- **The total.** Samples in an asleep stage that ended after 18:00 yesterday are merged, so a span recorded by two sources counts once, then added. "In bed" and "awake" add nothing. The duration is elapsed time, so a night across a clock change is an hour longer or shorter than its two clock times suggest.
+- **The sentence.** One sentence, the same on screen and in speech: the time recorded as asleep and the window it was recorded in, for example "Sleep recorded: 7 hours 20 minutes, between 23:40 and 07:00." No score, no judgement, no advice, no comparison with a recommended amount. A window of a day or more, possible in a recap prepared in the evening, gives each end its date as well.
+- **The total.** Samples in an asleep stage that ended after 18:00 yesterday are merged, so a span recorded by two sources counts once, then added. "In bed" and "awake" add nothing, and a single span longer than 24 hours is ignored. The duration is elapsed time, so a night across a clock change is an hour longer or shorter than its two clock times suggest.
 - **What the total cannot know.** Whether it was one sleep or several: a nap after 18:00 yesterday is inside the total, and the window shows it. Which source is right when two disagree: a minute counts when any source recorded it as asleep, so the total can exceed the Health app's, which applies a source order that HealthKit does not expose. A night with only "in bed" samples has no asleep record.
 
 | State | On screen | Spoken |

@@ -333,18 +333,26 @@ public enum MorningBriefingComposer {
         let time = DateFormatter()
         time.locale = locale; time.timeZone = zone
         time.dateStyle = .none; time.timeStyle = .short
+        let date = DateFormatter()
+        date.locale = locale; date.timeZone = zone
+        date.setLocalizedDateFormatFromTemplate("dMMMM")
         switch SleepNight.summarize(snapshot.samples, readAt: snapshot.readAt, at: now, calendar: calendar) {
         case .noRecord:
             return plain(.missing, .noRecord, phrases.sleepNoRecord, readAt: snapshot.readAt)
         case .olderRecord(let endedAt):
-            let date = DateFormatter()
-            date.locale = locale; date.timeZone = zone
-            date.setLocalizedDateFormatFromTemplate("dMMMM")
             return plain(.stale, .olderRecord,
                 phrases.sleepOlderRecord(date.string(from: endedAt), time.string(from: endedAt)), readAt: snapshot.readAt)
         case .recorded(let observation):
+            // Two clock times name a window only while it is shorter than a day. A briefing
+            // prepared in the evening can hold a longer one; then each end carries its date.
+            let nextDay = calendar.date(byAdding: .day, value: 1, to: observation.windowStart)
+            let needsDates = nextDay.map { $0 <= observation.windowEnd } ?? true
+            func moment(_ instant: Date) -> String {
+                needsDates ? phrases.sleepMoment(date.string(from: instant), time.string(from: instant))
+                    : time.string(from: instant)
+            }
             let text = phrases.sleep(phrases.duration(minutes: observation.asleepMinutes),
-                from: time.string(from: observation.windowStart), to: time.string(from: observation.windowEnd))
+                from: moment(observation.windowStart), to: moment(observation.windowEnd))
             return (.init(status: .fresh, issue: nil, statusText: phrases.sleepStatus,
                 retrievedAt: snapshot.readAt, observationAt: observation.windowEnd,
                 sourceLabels: observation.sourceKinds.map(phrases.sleepSource), omissionCount: 0,
@@ -467,6 +475,10 @@ struct MorningBriefingPhrases {
     func sleepOlderRecord(_ date: String, _ time: String) -> String {
         french ? "Le dernier relevé de sommeil s’est terminé le \(date) à \(time)."
             : "The latest sleep record ended on \(date) at \(time)."
+    }
+    /// An end of a window that lasts a day or more: its date as well as its clock time.
+    func sleepMoment(_ date: String, _ time: String) -> String {
+        french ? "le \(date) à \(time)" : "\(date) at \(time)"
     }
     func sleep(_ duration: String, from start: String, to end: String) -> String {
         french ? "Sommeil enregistré : \(duration), entre \(start) et \(end)."

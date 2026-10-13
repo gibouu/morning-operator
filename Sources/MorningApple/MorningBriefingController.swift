@@ -450,8 +450,13 @@ public final class MorningBriefingController {
                     if force || cached.sleep.status != .fresh {
                         let service = sleep
                         do {
-                            nextSleep = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) {
-                                try await service.read(at: instant)
+                            nextSleep = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) { [weak self] in
+                                // This closure runs in its own queued task. Health can be turned
+                                // off, or this attempt cancelled, before it gets its turn: check
+                                // again here, or the reader would be called while excluded.
+                                guard let self, self.revision == expectedRevision, self.refreshAttempt == attempt,
+                                      self.settings.includesHealth else { throw CancellationError() }
+                                return try await service.read(at: instant)
                             }
                         } catch is CancellationError { throw CancellationError() }
                         catch { nextSleep = .notReadable }

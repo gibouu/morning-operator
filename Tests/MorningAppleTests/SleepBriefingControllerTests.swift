@@ -176,6 +176,27 @@ struct SleepBriefingControllerTests {
         }
     }
 
+    /// The read is queued behind the refresh. Health turned off before the queued read
+    /// starts must stop it: dropping its result afterwards would be too late.
+    @Test func aReadQueuedBeforeHealthIsTurnedOffNeverReachesTheReader() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.samples(night))
+        let controller = makeController(directory: directory, reader: reader)
+        try controller.updateSettings(.init(includesHealth: true))
+        // Main-actor order: the refresh starts its preparation; that preparation queues the
+        // read; the setting changes; only then does the queued read get its turn.
+        let attempt = Task { @MainActor in await controller.refresh() }
+        await Task.yield()
+        #expect(controller.isPreparing)
+        let change = Task { @MainActor in try controller.updateSettings(.init()) }
+        #expect(await attempt.value == nil)
+        try await change.value
+        for _ in 0..<20 { await Task.yield() }
+        #expect(reader.reads == 0, "Excluded means the reader is not called, even by a read already queued.")
+        #expect(controller.prepared == nil && !controller.settings.includesHealth)
+    }
+
     @Test func aReaderThatDoesNotAnswerIsDroppedAtTheDeadlineOnTheInjectedClock() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
