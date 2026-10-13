@@ -6,7 +6,7 @@ import Testing
 /// Scripted stand-in for a channel. It records what it was handed and, at the moment it is
 /// invoked, what the journal file on disk says about the attempt.
 private actor FakeAdapter: ActionAdapter {
-    enum Reply: Sendable { case outcome(ActionDispatchOutcome), lostResponse }
+    enum Reply: Sendable, Equatable { case outcome(ActionDispatchOutcome), lostResponse }
     struct LostResponse: Error {}
 
     private let journalURL: URL
@@ -15,8 +15,15 @@ private actor FakeAdapter: ActionAdapter {
     private var duringDispatch: (@Sendable () -> Void)?
     private var holding = false
     private var held: CheckedContinuation<Void, Never>?
+    private var holdingReconcile = false
+    private var heldReconcile: CheckedContinuation<Void, Never>?
     private(set) var dispatched: [PreparedAction] = []
     private(set) var reconciled: [ActionAttempt] = []
+    /// Calls that have come back to their caller, as opposed to calls that were started.
+    private(set) var dispatchesReturned = 0
+    private(set) var reconcilesReturned = 0
+    /// Whether the held dispatch found its task cancelled when it was let go.
+    private(set) var heldDispatchSawCancellation: Bool?
     private(set) var statesOnDiskAtDispatch: [ActionAttemptState?] = []
 
     init(journalURL: URL) { self.journalURL = journalURL }
@@ -28,12 +35,20 @@ private actor FakeAdapter: ActionAdapter {
     /// The next dispatch stays inside the channel until `release()`.
     func holdNextDispatch() { holding = true }
     func release() { holding = false; held?.resume(); held = nil }
+    /// The next reconciliation stays inside the channel until `releaseReconcile()`.
+    func holdNextReconcile() { holdingReconcile = true }
+    func releaseReconcile() { holdingReconcile = false; heldReconcile?.resume(); heldReconcile = nil }
 
     func dispatch(_ action: PreparedAction) async throws -> ActionDispatchOutcome {
         dispatched.append(action)
         let onDisk = try? AtomicJSONFile<ActionJournal>(url: journalURL).load()
         statesOnDiskAtDispatch.append(onDisk?.attempts.first { $0.id == action.attemptID }?.state)
-        if holding { holding = false; await withCheckedContinuation { held = $0 } }
+        defer { dispatchesReturned += 1 }
+        if holding {
+            holding = false
+            await withCheckedContinuation { held = $0 }
+            heldDispatchSawCancellation = Task.isCancelled
+        }
         await Task.yield()
         duringDispatch?()
         switch reply {
@@ -44,6 +59,8 @@ private actor FakeAdapter: ActionAdapter {
 
     func reconcile(_ attempt: ActionAttempt) async throws -> ActionReconciliation {
         reconciled.append(attempt)
+        defer { reconcilesReturned += 1 }
+        if holdingReconcile { holdingReconcile = false; await withCheckedContinuation { heldReconcile = $0 } }
         guard let reconciliation else { throw LostResponse() }
         return reconciliation
     }
@@ -63,12 +80,14 @@ private final class SteppingClock: @unchecked Sendable {
 }
 
 /// One journal file and one channel; `launch()` builds a fresh store and executor over them,
-/// which is what a relaunch of the app does.
+/// which is what a relaunch of the app does. The adapter deadline runs on a clock that only a
+/// test moves, so no deadline here ever depends on real time.
 private struct Harness {
     let start = Date(timeIntervalSince1970: 1_800_000_000)
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent("morning-action-tests-\(UUID().uuidString)")
     let adapter: FakeAdapter
     let clock: SteppingClock
+    let deadlineClock = ManualTestClock()
     var url: URL { directory.appendingPathComponent("journal.json") }
 
     init(step: TimeInterval = 0) {
@@ -76,10 +95,17 @@ private struct Harness {
         clock = SteppingClock(start, step: step)
     }
 
-    func launch() throws -> (journal: ActionJournalStore, executor: ActionExecutor) {
+    func launch(adapterDeadline: Duration = ActionExecutor.defaultAdapterDeadline) throws
+        -> (journal: ActionJournalStore, executor: ActionExecutor) {
         let journal = try ActionJournalStore(fileURL: url, recoveringAt: clock.read())
-        return (journal, try ActionExecutor(journal: journal, adapter: adapter, now: { [clock] in clock.read() }))
+        return (journal, try executor(on: journal, adapterDeadline: adapterDeadline))
     }
+    func executor(on journal: ActionJournalStore,
+                  adapterDeadline: Duration = ActionExecutor.defaultAdapterDeadline) throws -> ActionExecutor {
+        try ActionExecutor(journal: journal, adapter: adapter, adapterDeadline: adapterDeadline,
+                           clock: deadlineClock, now: { [clock] in clock.read() })
+    }
+    func onDisk() throws -> [ActionAttempt] { try AtomicJSONFile<ActionJournal>(url: url).load().attempts }
     func cleanUp() { try? FileManager.default.removeItem(at: directory) }
 }
 
@@ -378,26 +404,58 @@ struct ActionExecutionTests {
     }
 
     @Test
-    func journalStoreAcceptsOneExecutorAtATime() async throws {
-        // Dispatch and reconcile are only ordered within one executor, so a second one is refused.
+    func journalStoreAdmitsOneExecutorUntilThatOneIsReleased() async throws {
+        // Dispatch and reconcile are only ordered within one executor, so the store refuses a second.
         let harness = Harness(); defer { harness.cleanUp() }
         let journal = try ActionJournalStore(fileURL: harness.url)
-        do {
-            let first = try ActionExecutor(journal: journal, adapter: harness.adapter)
-            // Twice: a refused attempt must not release the first executor's claim.
-            for _ in 0..<2 {
-                do {
-                    _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
-                    Issue.record("A second executor was created for a journal store that already has one")
-                } catch { #expect(error as? ActionExecutionError == .journalAlreadyHasExecutor) }
-            }
-            let draft = draft()
-            try await first.dispatch(draft, approvalID: await first.approve(draft).id)
+        func second(on store: ActionJournalStore) -> ActionExecutionError? {
+            do { _ = try harness.executor(on: store); Issue.record("A second executor was admitted"); return nil }
+            catch { return error as? ActionExecutionError }
         }
-        // Once the first is gone the store can be handed to another; a different store is never affected.
-        _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
-        _ = try harness.launch()
-        #expect(await harness.adapter.dispatched.count == 1)
+        let first = try harness.executor(on: journal)
+        // Twice: a refused attempt must not weaken the first executor's claim.
+        for _ in 0..<2 { #expect(second(on: journal) == .journalAlreadyHasExecutor) }
+        let standing = await first.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
+        let one = draft(body: "one"), two = draft(body: "two"), three = draft(body: "three")
+        try await first.dispatch(one, approvalID: standing.id)
+
+        // Releasing lets the send in progress finish, refuses what was waiting, and only then frees the store.
+        await harness.adapter.holdNextDispatch()
+        let inProgress = Task { try await first.dispatch(two, approvalID: standing.id) }
+        while await harness.adapter.dispatched.count < 2 { await Task.yield() }
+        let waiting = Task { await refusal { try await first.dispatch(three, approvalID: standing.id) } }
+        for _ in 0..<100 { await Task.yield() }
+        let releasing = Task { await first.release() }
+        for _ in 0..<100 { await Task.yield() }
+        #expect(second(on: journal) == .journalAlreadyHasExecutor, "The store was freed during a send")
+        await harness.adapter.release()
+        #expect(try await inProgress.value.state == .accepted)
+        #expect(await waiting.value == .executorReleased)
+        await releasing.value
+
+        // The moment `release()` has returned, the store admits a successor. No waiting on deallocation:
+        // `first` is still alive and referenced here.
+        let successor = try harness.executor(on: journal)
+        #expect(await refusal { try await first.dispatch(three, approvalID: standing.id) } == .executorReleased)
+        #expect(await refusal { try await first.reconcile(try #require(await journal.snapshot().attempts.first).id) } == .executorReleased)
+        // Releasing the old one again must not unseat the successor.
+        await first.release()
+        #expect(second(on: journal) == .journalAlreadyHasExecutor)
+        // The successor inherits the journal, not the approvals.
+        #expect(await refusal { try await successor.dispatch(three, approvalID: standing.id) } == .approvalNotIssued(approvalID: standing.id))
+        #expect(await refusal { try await successor.dispatch(one, approvalID: await successor.approve(one).id) }
+                == .duplicateIntent(intentID: one.id))
+        #expect(try await successor.dispatch(three, approvalID: await successor.approve(three).id).state == .accepted)
+        #expect(await harness.adapter.dispatched.map(\.intent.id) == [one.id, two.id, three.id])
+
+        // An executor that is dropped without being released frees nothing: admission never depends
+        // on when an object happens to be deallocated. A different store is never affected.
+        let other = try ActionJournalStore(fileURL: harness.directory.appendingPathComponent("other.json"))
+        var dropped: ActionExecutor? = try harness.executor(on: other)
+        weak let gone = dropped
+        dropped = nil
+        #expect(gone == nil)
+        #expect(second(on: other) == .journalAlreadyHasExecutor)
     }
 
     @Test
@@ -429,7 +487,7 @@ struct ActionExecutionTests {
         // The clock is first read just after the first cancellation check. Cancelling from inside it
         // therefore gets past that check, and only the one before the adapter call can stop the request.
         let armed = Mutex(false)
-        let executor = try ActionExecutor(journal: journal, adapter: harness.adapter, now: {
+        let executor = try ActionExecutor(journal: journal, adapter: harness.adapter, clock: harness.deadlineClock, now: {
             if armed.withLock({ $0 }) { withUnsafeCurrentTask { $0?.cancel() } }
             return Date()
         })
@@ -618,6 +676,513 @@ struct ActionExecutionTests {
         #expect(await refusal { try await executor.reconcile(UUID()) } != nil)
     }
 
+    @Test
+    func unknownOutcomeBlocksEveryKindOfActionInThatConversation() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        var (_, executor) = try harness.launch()
+        await harness.adapter.reply(.lostResponse)
+        let send = draft()
+        let unknown = try await executor.dispatch(send, approvalID: await executor.approve(send).id)
+        #expect(unknown.state == .outcomeUnknown)
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
+
+        let blocked = ActionExecutionError.unreconciledOutcome(attemptID: unknown.id)
+        for relaunched in [false, true] {
+            if relaunched { (_, executor) = try harness.launch() }
+            // Every kind of action, each with its own fresh exact approval and with a standing one.
+            for kind in ExternalActionKind.allCases {
+                let other = draft(kind: kind, body: "about \(kind.rawValue)")
+                #expect(await refusal { try await executor.dispatch(other, approvalID: await executor.approve(other).id) } == blocked)
+                let standing = await executor.approveStanding(kind: kind, accountID: "account-A", targetID: "conversation-A")
+                #expect(await refusal { try await executor.dispatch(other, approvalID: standing.id) } == blocked)
+            }
+        }
+        #expect(await harness.adapter.dispatched.count == 1)
+
+        // The block is the conversation: the same target on another account, and another target on
+        // the same account, are other conversations.
+        let otherAccount = draft(kind: .deleteMessage, account: "account-B")
+        #expect(try await executor.dispatch(otherAccount, approvalID: await executor.approve(otherAccount).id).state == .accepted)
+        let otherTarget = draft(kind: .deleteMessage, target: "conversation-B")
+        #expect(try await executor.dispatch(otherTarget, approvalID: await executor.approve(otherTarget).id).state == .accepted)
+
+        // It works the other way round: an unknown delete holds back a send, here under a standing approval.
+        await harness.adapter.reply(.lostResponse)
+        let delete = draft(kind: .deleteMessage, target: "conversation-C")
+        let unknownDelete = try await executor.dispatch(delete, approvalID: await executor.approve(delete).id)
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
+        let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-C")
+        let reply = draft(target: "conversation-C")
+        #expect(await refusal { try await executor.dispatch(reply, approvalID: standing.id) }
+                == .unreconciledOutcome(attemptID: unknownDelete.id))
+        #expect(await harness.adapter.dispatched.count == 4)
+
+        // Reconciling the one attempt in doubt reopens the conversation for every kind.
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await executor.reconcile(unknown.id).state == .failedKnown)
+        let afterwards = draft(kind: .deleteMessage)
+        #expect(try await executor.dispatch(afterwards, approvalID: await executor.approve(afterwards).id).state == .accepted)
+        #expect(await refusal { try await executor.dispatch(reply, approvalID: standing.id) }
+                == .unreconciledOutcome(attemptID: unknownDelete.id))
+    }
+
+    // MARK: The executor's own deadline
+
+    /// Starts a dispatch whose adapter call stays inside the channel, and returns once the
+    /// executor's deadline timer is asleep on the test clock.
+    private func dispatchHeldInTheChannel(_ draft: ActionDraft, approvalID: UUID, on executor: ActionExecutor,
+                                          _ harness: Harness) async -> Task<ActionAttempt, any Error> {
+        let already = await harness.adapter.dispatched.count
+        await harness.adapter.holdNextDispatch()
+        let request = Task { try await executor.dispatch(draft, approvalID: approvalID) }
+        while await harness.adapter.dispatched.count == already { await Task.yield() }
+        await harness.deadlineClock.waitForSleepers()
+        return request
+    }
+
+    @Test
+    func theDeadlineIsAParameterAndAnAnswerInsideItIsRecordedAsBefore() async throws {
+        #expect(ActionExecutor.defaultAdapterDeadline == .seconds(30))
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (_, executor) = try harness.launch()
+        let draft = draft()
+        let request = await dispatchHeldInTheChannel(draft, approvalID: await executor.approve(draft).id, on: executor, harness)
+        harness.deadlineClock.advance(by: .seconds(30) - .nanoseconds(1))
+        for _ in 0..<100 { await Task.yield() }
+        #expect(try harness.onDisk().map(\.state) == [.dispatching], "Decided before the deadline")
+        await harness.adapter.release()
+        let accepted = try await request.value
+        #expect(accepted.state == .accepted && accepted.receiptReference == "provider-receipt-1")
+        // The timer is gone with the call: the deadline passing afterwards changes nothing.
+        #expect(harness.deadlineClock.sleeperCount == 0)
+        harness.deadlineClock.advance(by: .seconds(600))
+        for _ in 0..<100 { await Task.yield() }
+        #expect(try harness.onDisk() == [accepted])
+        #expect(await harness.adapter.heldDispatchSawCancellation == false)
+    }
+
+    @Test
+    func adapterCallThatOutlastsTheDeadlineIsUnknownAndItsLateAcceptanceIsNeverApplied() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, executor) = try harness.launch(adapterDeadline: .seconds(5))
+        let draft = draft()
+        let approval = await executor.approve(draft)
+        let request = await dispatchHeldInTheChannel(draft, approvalID: approval.id, on: executor, harness)
+        harness.deadlineClock.advance(by: .seconds(5) - .nanoseconds(1))
+        for _ in 0..<100 { await Task.yield() }
+        #expect(try harness.onDisk().map(\.state) == [.dispatching], "Decided before the deadline")
+        harness.deadlineClock.advance(by: .nanoseconds(1))
+
+        // Unknown, never failed-known, and on disk; the channel has still not answered.
+        let unknown = try await request.value
+        #expect(unknown.state == .outcomeUnknown && unknown.receiptReference == nil)
+        #expect(try harness.onDisk() == [unknown])
+        #expect(await harness.adapter.dispatchesReturned == 0)
+
+        // The turn is free again while that call is still out: revoke, reconcile and other conversations work.
+        await executor.revoke(approval.id)
+        #expect(await refusal { try await executor.dispatch(draft, approvalID: approval.id) } == .approvalRevoked(approvalID: approval.id))
+        #expect(try await executor.reconcile(unknown.id) == unknown)
+        #expect(await harness.adapter.reconciled.map(\.id) == [unknown.id])
+        let elsewhere = self.draft(target: "conversation-B")
+        #expect(try await executor.dispatch(elsewhere, approvalID: await executor.approve(elsewhere).id).state == .accepted)
+        // The conversation in doubt stays closed, to every kind of action.
+        let blocked = ActionExecutionError.unreconciledOutcome(attemptID: unknown.id)
+        let retry = self.draft(), delete = self.draft(kind: .deleteMessage)
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) } == blocked)
+        #expect(await refusal { try await executor.dispatch(delete, approvalID: await executor.approve(delete).id) } == blocked)
+        // "Not there" while the overdue call can still send is not believed.
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await executor.reconcile(unknown.id) == unknown)
+
+        // Now the channel answers, late: it took the message.
+        let before = try Data(contentsOf: harness.url)
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: "late-receipt")))
+        await harness.adapter.release()
+        await journal.overdueDispatchesReturned()
+        #expect(await harness.adapter.dispatchesReturned == 2)
+        #expect(await harness.adapter.heldDispatchSawCancellation == true, "The overdue call was not told to stop")
+        // Nothing was written: not accepted, no receipt, no invalid transition, the file is the same bytes.
+        #expect(try Data(contentsOf: harness.url) == before)
+        #expect(await journal.snapshot().attempts.first == unknown)
+        #expect(!(try String(contentsOf: harness.url, encoding: .utf8)).contains("late-receipt"))
+        // It did not reopen the conversation and did not cause another call to the channel.
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) } == blocked)
+        #expect(await harness.adapter.dispatched.map(\.intent.id) == [draft.id, elsewhere.id])
+        // Through reconcile it counts for one thing: the channel said it took the message, so
+        // "not there" cannot close the attempt as failed and invite a second send.
+        #expect(try await executor.reconcile(unknown.id) == unknown)
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) } == blocked)
+        // Evidence of delivery settles it, and the intent stays spent.
+        await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-4"))
+        let verified = try await executor.reconcile(unknown.id)
+        #expect(verified.state == .verified && verified.receiptReference == "sent-folder-item-4")
+        #expect(await refusal { try await executor.dispatch(draft, approvalID: await executor.approve(draft).id) }
+                == .duplicateIntent(intentID: draft.id))
+        #expect(await harness.adapter.dispatched.count == 2)
+    }
+
+    @Test
+    func lateAnswerOfNoDeliveryIsNotAppliedAndOnlyReconcileClosesTheAttempt() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, executor) = try harness.launch()
+        let draft = draft()
+        let request = await dispatchHeldInTheChannel(draft, approvalID: await executor.approve(draft).id, on: executor, harness)
+        harness.deadlineClock.advance(by: ActionExecutor.defaultAdapterDeadline)
+        let unknown = try await request.value
+        #expect(unknown.state == .outcomeUnknown)
+
+        // A reconciliation is asked while the overdue call is still out, and is itself slow.
+        await harness.adapter.holdNextReconcile()
+        await harness.adapter.reconciliation(.notDelivered)
+        let asked = Task { try await executor.reconcile(unknown.id) }
+        while await harness.adapter.reconciled.isEmpty { await Task.yield() }
+
+        // The overdue call comes back: nothing was sent. That is not written down by itself.
+        let before = try Data(contentsOf: harness.url)
+        await harness.adapter.reply(.outcome(.failedKnown))
+        await harness.adapter.release()
+        await journal.overdueDispatchesReturned()
+        for _ in 0..<100 { await Task.yield() }
+        #expect(try Data(contentsOf: harness.url) == before)
+        #expect(await journal.snapshot().attempts == [unknown])
+
+        // The "not there" in hand was observed while the call could still send: it settles nothing.
+        await harness.adapter.releaseReconcile()
+        #expect(try await asked.value == unknown)
+        let retry = self.draft()
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) }
+                == .unreconciledOutcome(attemptID: unknown.id))
+        #expect(await harness.adapter.dispatched.count == 1)
+
+        // Asked again now that the call is over, "not there" is the answer of the channel and closes it.
+        #expect(try await executor.reconcile(unknown.id).state == .failedKnown)
+        // Exactly one further send happens, and only because a new draft was approved.
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
+        #expect(try await executor.dispatch(retry, approvalID: await executor.approve(retry).id).state == .accepted)
+        #expect(await harness.adapter.dispatched.map(\.intent.id) == [draft.id, retry.id])
+    }
+
+    @Test
+    func lateAnswerThatThrowsOrIsUnknownLeavesTheJournalAlone() async throws {
+        for late in [FakeAdapter.Reply.lostResponse, .outcome(.outcomeUnknown), .outcome(.verified(evidenceReference: "late-evidence"))] {
+            let harness = Harness(); defer { harness.cleanUp() }
+            let (journal, executor) = try harness.launch()
+            let draft = draft()
+            let request = await dispatchHeldInTheChannel(draft, approvalID: await executor.approve(draft).id, on: executor, harness)
+            harness.deadlineClock.advance(by: ActionExecutor.defaultAdapterDeadline)
+            let unknown = try await request.value
+            let before = try Data(contentsOf: harness.url)
+            await harness.adapter.reply(late)
+            await harness.adapter.release()
+            await journal.overdueDispatchesReturned()
+            for _ in 0..<100 { await Task.yield() }
+            #expect(try Data(contentsOf: harness.url) == before)
+            #expect(try harness.onDisk() == [unknown])
+            #expect(await harness.adapter.dispatched.count == 1)
+            // A late "delivered" is a claim that the channel took it: "not there" is not believed.
+            // A late error or "unknown" claims nothing: "not there" closes the attempt.
+            await harness.adapter.reconciliation(.notDelivered)
+            let lateClaimsDelivery = late == .outcome(.verified(evidenceReference: "late-evidence"))
+            #expect(try await executor.reconcile(unknown.id).state == (lateClaimsDelivery ? .outcomeUnknown : .failedKnown))
+            #expect(!(try String(contentsOf: harness.url, encoding: .utf8)).contains("late-evidence"))
+        }
+    }
+
+    @Test
+    func whatIsKnownAboutAnOverdueCallSurvivesAChangeOfExecutor() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, first) = try harness.launch()
+        let draft = draft()
+        let request = await dispatchHeldInTheChannel(draft, approvalID: await first.approve(draft).id, on: first, harness)
+        harness.deadlineClock.advance(by: ActionExecutor.defaultAdapterDeadline)
+        let unknown = try await request.value
+        // The executor is released and replaced while its overdue call is still inside the channel.
+        await first.release()
+        let successor = try harness.executor(on: journal)
+        await harness.adapter.reconciliation(.notDelivered)
+        #expect(try await successor.reconcile(unknown.id) == unknown, "Believed 'not there' while the old call could still send")
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
+        await harness.adapter.release()
+        await journal.overdueDispatchesReturned()
+        #expect(try await successor.reconcile(unknown.id) == unknown, "Believed 'not there' after a late acceptance")
+        let retry = self.draft()
+        #expect(await refusal { try await successor.dispatch(retry, approvalID: await successor.approve(retry).id) }
+                == .unreconciledOutcome(attemptID: unknown.id))
+        #expect(await harness.adapter.dispatched.count == 1)
+        await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-5"))
+        #expect(try await successor.reconcile(unknown.id).state == .verified)
+    }
+
+    @Test
+    func reconciliationThatOutlastsTheDeadlineSettlesNothingAndFreesTheExecutor() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (_, executor) = try harness.launch(adapterDeadline: .seconds(5))
+        await harness.adapter.reply(.lostResponse)
+        let draft = draft()
+        let unknown = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
+        await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
+
+        await harness.adapter.holdNextReconcile()
+        await harness.adapter.reconciliation(.notDelivered)
+        let asked = Task { try await executor.reconcile(unknown.id) }
+        while await harness.adapter.reconciled.isEmpty { await Task.yield() }
+        await harness.deadlineClock.waitForSleepers()
+        harness.deadlineClock.advance(by: .seconds(5))
+        #expect(try await asked.value == unknown)
+        #expect(await harness.adapter.reconcilesReturned == 0)
+        // The executor answers again: another conversation goes through, this one stays closed.
+        let elsewhere = self.draft(target: "conversation-B")
+        #expect(try await executor.dispatch(elsewhere, approvalID: await executor.approve(elsewhere).id).state == .accepted)
+        let retry = self.draft()
+        let blocked = ActionExecutionError.unreconciledOutcome(attemptID: unknown.id)
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) } == blocked)
+
+        // The late "not there" has no recipient: the attempt is not closed by it.
+        let before = try Data(contentsOf: harness.url)
+        await harness.adapter.releaseReconcile()
+        while await harness.adapter.reconcilesReturned == 0 { await Task.yield() }
+        for _ in 0..<100 { await Task.yield() }
+        #expect(try Data(contentsOf: harness.url) == before)
+        #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) } == blocked)
+        // A reconciliation that answers in time is what closes it.
+        #expect(try await executor.reconcile(unknown.id).state == .failedKnown)
+        #expect(await harness.adapter.dispatched.count == 2)
+    }
+
+    // MARK: References
+
+    @Test
+    func referenceRuleKeepsPlainIdentifiersAndReplacesEverythingElseWithAHash() throws {
+        func stored(_ reference: String?) -> String? { ActionReference.constrained(reference) }
+        // Blank: nothing is stored.
+        for blank in [nil, "", " ", " \n\t", "\u{00A0}\u{2003}"] { #expect(stored(blank) == nil) }
+        // Plain: stored as given, up to and including 128 characters.
+        let longestPlain = String(repeating: "a", count: 128)
+        for plain in ["provider-receipt-1", "E621E1F8-C36C-495A-93FC-0C247A3E6E5F:0B5A5C6E-1F64-4C59-8E0C-3D9D1F3F6A11",
+                      "AZaz09-_.:/+=", "a", "sha256:abc", longestPlain] {
+            #expect(stored(plain) == plain)
+        }
+        // SHA-256 values below were computed outside Swift (Python hashlib) over the UTF-8 bytes.
+        // Plain but too long: the first 48 characters, the marker, the hash of the whole string.
+        #expect(stored(longestPlain + "a") == String(repeating: "a", count: 48)
+                + "#sha256:c12cb024a2e5551cca0e08fce8f1c5e314555cc3fef6329ee994a3db752166ae")
+        // Not plain: the marker and the hash, none of the text.
+        #expect(stored("has space") == "#sha256:47b5c36fc0b017ba576f10f988d0cbcbc78256dab5de0e4689980898e7c715e3")
+        #expect(stored("réunion-1") == "#sha256:e6271cf7432f0f8cf6f25d6e4c6120ca09d8e7f4acfb9cdf5de02d34a1db31dd")
+        #expect(stored("Running ten minutes late.\nDoor code 4471-ZEBRA, do not forward.")
+                == "#sha256:a5e59b1ced36de43f4c398406b68e0691d826c9e94c8d44d71f3e9d7439678dd")
+        // One character outside the list is enough, wherever it is, including in a long string.
+        for outsider in " \n\t#~@<>,;!?\"'\\()[]{}|*&^%$`é\u{200B}\u{0}" {
+            for text in ["id\(outsider)7", "\(outsider)id", "id\(outsider)", String(repeating: "b", count: 200) + "\(outsider)"] {
+                let form = try #require(stored(text))
+                #expect(form.hasPrefix("#sha256:") && form.utf8.count == 72 && !form.dropFirst(8).contains(outsider))
+                #expect(form.dropFirst(8).utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) })
+            }
+        }
+        // Deterministic, never longer than the maximum, and different inputs keep different forms.
+        #expect(stored("has space") == stored("has space") && stored("has space") != stored("has  space"))
+        #expect(stored(longestPlain + "a") != stored(longestPlain + "b"))
+        #expect(stored(String(repeating: "z", count: 10_000))!.utf8.count == 120)
+        #expect(ActionReference.maximumLength == 128)
+    }
+
+    @Test
+    func messageTextHandedBackAsAReferenceNeverReachesTheJournalFile() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        let (journal, executor) = try harness.launch()
+        let bodyForm = "#sha256:a5e59b1ced36de43f4c398406b68e0691d826c9e94c8d44d71f3e9d7439678dd"
+        func send(_ index: Int, _ reply: FakeAdapter.Reply) async throws -> ActionAttempt {
+            await harness.adapter.reply(reply)
+            let draft = draft(target: "conversation-\(index)")
+            return try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
+        }
+        // A careless or hostile adapter hands the message itself back as its "receipt". The send has
+        // happened, so nothing is refused: the attempt is recorded, with the constrained form.
+        let accepted = try await send(0, .outcome(.accepted(receiptReference: Self.body)))
+        #expect(accepted.state == .accepted && accepted.receiptReference == bodyForm)
+        let verified = try await send(1, .outcome(.verified(evidenceReference: Self.body)))
+        #expect(verified.state == .verified && verified.receiptReference == bodyForm)
+        // The same through reconciliation.
+        let unknown = try await send(2, .lostResponse)
+        await harness.adapter.reconciliation(.delivered(evidenceReference: Self.subject))
+        let reconciled = try await executor.reconcile(unknown.id)
+        #expect(reconciled.state == .verified
+                && reconciled.receiptReference == "#sha256:bf724907b7b91ce6f5175ba8b4315f747417533bd64c6781acd74fdfcb56f31b")
+        // A plain identifier far beyond the limit keeps a recognisable start and no more.
+        let endless = String(repeating: "Q", count: 5_000)
+        let long = try await send(3, .outcome(.accepted(receiptReference: endless)))
+        #expect(long.state == .accepted && long.receiptReference?.utf8.count == 120
+                && long.receiptReference?.hasPrefix(String(repeating: "Q", count: 48) + "#sha256:") == true)
+        // An ordinary provider ID is untouched.
+        #expect(try await send(4, .outcome(.accepted(receiptReference: "provider-receipt-1"))).receiptReference == "provider-receipt-1")
+
+        let file = try String(contentsOf: harness.url, encoding: .utf8)
+        var places = [file, String(decoding: try JSONEncoder().encode(await journal.snapshot()), as: UTF8.self)]
+        for attempt in [accepted, verified, reconciled, long] { places += ["\(attempt)", String(reflecting: attempt)] }
+        for text in places {
+            for secret in [Self.body, Self.subject, "4471-ZEBRA", "Running", "ten minutes late", "do not forward", "Door code", "Tonight", "private"] {
+                #expect(!text.contains(secret), "Reference text leaked: \(secret)")
+            }
+            #expect(!text.contains(String(repeating: "Q", count: 49)))
+        }
+        #expect(try harness.onDisk().map(\.receiptReference)
+                == [bodyForm, bodyForm, reconciled.receiptReference, long.receiptReference, "provider-receipt-1"])
+        #expect(try harness.onDisk().allSatisfy { ($0.receiptReference?.utf8.count ?? 0) <= ActionReference.maximumLength })
+    }
+
+    // MARK: The journal file
+
+    /// A journal exactly as the code on main wrote it before these decisions (checked by running
+    /// this test against that code): one attempt in each state that can be at rest on disk, and
+    /// two reference strings that today's rule would constrain.
+    private static let journalWrittenByMain = #"""
+    {
+      "schemaVersion" : 1,
+      "value" : {
+        "attempts" : [
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000001",
+            "createdAt" : 780000000,
+            "id" : "B0000000-0000-4000-8000-000000000001",
+            "intent" : {
+              "accountID" : "account-A",
+              "createdAt" : 779999990,
+              "id" : "C0000000-0000-4000-8000-000000000001",
+              "kind" : "sendMessage",
+              "payloadFingerprint" : "94293875599cb2237b0b53f76c71810323154832169ffe13b7d22f5f071f8f88",
+              "targetID" : "conversation-A"
+            },
+            "receiptReference" : "Sent to the group thread at 08:14, id 7\/A",
+            "state" : "accepted",
+            "updatedAt" : 780000001.5
+          },
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000002",
+            "createdAt" : 780000010,
+            "id" : "B0000000-0000-4000-8000-000000000002",
+            "intent" : {
+              "accountID" : "account-A",
+              "createdAt" : 780000009,
+              "id" : "C0000000-0000-4000-8000-000000000002",
+              "kind" : "deleteMessage",
+              "payloadFingerprint" : "digest-2",
+              "targetID" : "conversation-B"
+            },
+            "receiptReference" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "state" : "verified",
+            "updatedAt" : 780000012
+          },
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000003",
+            "createdAt" : 780000020,
+            "id" : "B0000000-0000-4000-8000-000000000003",
+            "intent" : {
+              "accountID" : "account-A",
+              "createdAt" : 780000019,
+              "id" : "C0000000-0000-4000-8000-000000000003",
+              "kind" : "sendMessage",
+              "payloadFingerprint" : "digest-3",
+              "targetID" : "conversation-C"
+            },
+            "state" : "outcomeUnknown",
+            "updatedAt" : 780000021
+          },
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000004",
+            "createdAt" : 780000030,
+            "id" : "B0000000-0000-4000-8000-000000000004",
+            "intent" : {
+              "accountID" : "account-B",
+              "createdAt" : 780000029,
+              "id" : "C0000000-0000-4000-8000-000000000004",
+              "kind" : "updateCalendar",
+              "payloadFingerprint" : "digest-4",
+              "targetID" : "calendar-A"
+            },
+            "state" : "failedKnown",
+            "updatedAt" : 780000031
+          },
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000005",
+            "createdAt" : 780000040,
+            "id" : "B0000000-0000-4000-8000-000000000005",
+            "intent" : {
+              "accountID" : "account-B",
+              "createdAt" : 780000039,
+              "id" : "C0000000-0000-4000-8000-000000000005",
+              "kind" : "navigate",
+              "payloadFingerprint" : "digest-5",
+              "targetID" : "screen-A"
+            },
+            "state" : "cancelled",
+            "updatedAt" : 780000041
+          },
+          {
+            "approvalID" : "A0000000-0000-4000-8000-000000000006",
+            "createdAt" : 780000050,
+            "id" : "B0000000-0000-4000-8000-000000000006",
+            "intent" : {
+              "accountID" : "account-B",
+              "createdAt" : 780000049,
+              "id" : "C0000000-0000-4000-8000-000000000006",
+              "kind" : "readAloud",
+              "payloadFingerprint" : "digest-6",
+              "targetID" : "speaker"
+            },
+            "state" : "readyToDispatch",
+            "updatedAt" : 780000050
+          }
+        ]
+      }
+    }
+    """#
+
+    @Test
+    func journalFileWrittenBeforeTheseDecisionsLoadsUnchanged() async throws {
+        let harness = Harness(); defer { harness.cleanUp() }
+        try FileManager.default.createDirectory(at: harness.directory, withIntermediateDirectories: true)
+        let bytes = Data(Self.journalWrittenByMain.utf8)
+        try bytes.write(to: harness.url)
+
+        let (journal, executor) = try harness.launch()
+        // Nothing in it was mid-dispatch, so opening it writes nothing.
+        #expect(try Data(contentsOf: harness.url) == bytes)
+        let attempts = await journal.snapshot().attempts
+        #expect(attempts.map(\.state) == [.accepted, .verified, .outcomeUnknown, .failedKnown, .cancelled, .readyToDispatch])
+        #expect(attempts.map(\.intent.kind) == [.sendMessage, .deleteMessage, .sendMessage, .updateCalendar, .navigate, .readAloud])
+        #expect(attempts[0].id == UUID(uuidString: "B0000000-0000-4000-8000-000000000001")
+                && attempts[0].approvalID == UUID(uuidString: "A0000000-0000-4000-8000-000000000001")
+                && attempts[0].intent.id == UUID(uuidString: "C0000000-0000-4000-8000-000000000001")
+                && attempts[0].intent.accountID == "account-A" && attempts[0].intent.targetID == "conversation-A"
+                && attempts[0].intent.createdAt == Date(timeIntervalSinceReferenceDate: 779_999_990)
+                && attempts[0].createdAt == Date(timeIntervalSinceReferenceDate: 780_000_000)
+                && attempts[0].updatedAt == Date(timeIntervalSinceReferenceDate: 780_000_001.5))
+        // References already on disk are history: they are read as they are, not rewritten.
+        #expect(attempts[0].receiptReference == "Sent to the group thread at 08:14, id 7/A")
+        let long = try #require(attempts[1].receiptReference)
+        #expect(long.utf8.count > ActionReference.maximumLength && long.allSatisfy { $0 == "x" })
+        #expect(attempts[2].receiptReference == nil)
+
+        // Today's types write the same bytes back: the format has not moved.
+        let copy = harness.directory.appendingPathComponent("copy.json")
+        try AtomicJSONFile<ActionJournal>(url: copy).save(await journal.snapshot())
+        #expect(try Data(contentsOf: copy) == bytes)
+
+        // And the old file is live state, not a museum piece: its unknown outcome still blocks its conversation.
+        let blocked = draft(target: "conversation-C")
+        #expect(await refusal { try await executor.dispatch(blocked, approvalID: await executor.approve(blocked).id) }
+                == .unreconciledOutcome(attemptID: attempts[2].id))
+        // A new attempt is appended after the old ones, which stay byte for byte what they were.
+        let fresh = draft(target: "conversation-D")
+        let receipt = try await executor.dispatch(fresh, approvalID: await executor.approve(fresh).id)
+        let after = try AtomicJSONFile<ActionJournal>(url: harness.url).load().attempts
+        #expect(Array(after.prefix(6)) == attempts && after.last == receipt && after.count == 7)
+        let text = try String(contentsOf: harness.url, encoding: .utf8)
+        let unchangedPart = Self.journalWrittenByMain.components(separatedBy: "\n").dropFirst(4).dropLast(4).joined(separator: "\n")
+        #expect(text.contains(unchangedPart))
+    }
+
     // MARK: Nothing private in receipts or logs
 
     @Test
@@ -649,7 +1214,7 @@ struct ActionExecutionTests {
             .fingerprintMismatch(approved: draft.fingerprint, current: changed.fingerprint),
             .outsideApprovedScope(approvalID: id), .duplicateIntent(intentID: id),
             .unreconciledOutcome(attemptID: id), .attemptNotFound(attemptID: id), .journalAlreadyHasExecutor,
-            .outcomeNotRecorded(attemptID: id)
+            .executorReleased, .outcomeNotRecorded(attemptID: id)
         ]
         for error in errors { loggable += [error.localizedDescription, "\(error)", String(describing: error.errorDescription)] }
 
