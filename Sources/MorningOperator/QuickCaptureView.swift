@@ -49,17 +49,17 @@ struct CapturesView: View {
                                     Label(capture.kind.shortTitle, systemImage: capture.kind.symbol).font(.caption.weight(.semibold))
                                         .foregroundStyle(MorningStyle.accent)
                                     Spacer()
-                                    Text(capture.createdAt.formatted(.dateTime.month(.abbreviated).day())).font(.caption).foregroundStyle(.secondary)
+                                    Text(capture.createdAt.formatted(.dateTime.month(.abbreviated).day())).font(.caption).foregroundStyle(MorningStyle.muted)
                                 }
                                 Text(capture.text).font(.body).textSelection(.enabled)
                                 if capture.source == .voice {
                                     Label("Spoken with MORE", systemImage: "waveform")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(MorningStyle.muted)
                                         .accessibilityIdentifier("capture.spokenSource")
                                 }
                                 if let date = capture.requestedDate {
                                     Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(MorningStyle.muted)
                                 }
                                 if store.receipts[capture.id.uuidString] != nil {
                                     Label(capture.kind == .reminder ? "Added to Apple Reminders" : "Added to Apple Calendar", systemImage: "checkmark.circle")
@@ -67,7 +67,7 @@ struct CapturesView: View {
                                 } else if store.pendingCaptures[capture.id.uuidString] != nil {
                                     Text("Save unconfirmed · check the Apple app before retrying").font(.caption).foregroundStyle(.orange)
                                 } else if capture.kind == .reminder || capture.kind == .calendarIdea {
-                                    Text("Saved as a note · no system item scheduled").font(.caption).foregroundStyle(.secondary)
+                                    Text("Saved as a note · no system item scheduled").font(.caption).foregroundStyle(MorningStyle.muted)
                                 }
                             }
                         }
@@ -138,16 +138,16 @@ struct QuickCaptureView: View {
                             if hasDate || kind == .calendarIdea {
                                 DatePicker(kind == .reminder ? "Remind me" : "Starts", selection: $date)
                                     .datePickerStyle(.compact)
-                                Text(TimeZone.current.identifier).font(.caption).foregroundStyle(.secondary)
+                                Text(TimeZone.current.identifier).font(.caption).foregroundStyle(MorningStyle.muted)
                             }
                             if kind == .calendarIdea {
                                 Stepper("\(duration) minutes", value: $duration, in: 5...240, step: 5)
                             }
-                            if let explanation { Text(explanation).font(.caption).foregroundStyle(.secondary) }
+                            if let explanation { Text(explanation).font(.caption).foregroundStyle(MorningStyle.muted) }
                         }.font(.subheadline).padding(20).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 22))
                     }
                     Text(!(isSchedule && saveToSystem) ? "Saved privately in Morning Operator on this device." : kind == .reminder ? "Review the text and time. Saving adds one item to your default Apple Reminders list. Your Apple account may sync it to other devices." : "Review the text and time. Saving adds one item to your default Apple calendar. Your Apple account may sync it to other devices.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                     if let notice = store.notice { NoticeView(text: notice, dismiss: { store.notice = nil }) }
                 }.padding(24).frame(maxWidth: 620).frame(maxWidth: .infinity)
             }.background(MorningStyle.background)

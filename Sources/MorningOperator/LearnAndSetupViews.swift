@@ -59,26 +59,11 @@ struct LearnView: View {
                     Text("Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    #if os(iOS)
-                    if #available(iOS 27.0, *) {
-                        Button { recording = true } label: {
-                            Label("Record a little of my morning", systemImage: "record.circle")
-                        }.buttonStyle(PrimaryButtonStyle())
-                            .disabled(!store.canStartRecording)
-                            .accessibilityIdentifier("learn.record")
+                    // Two compact actions side by side; VoiceOver keeps the full labels.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) { learnActions }
+                        VStack(alignment: .leading, spacing: 12) { learnActions }
                     }
-                    #endif
-                    Button {
-                        guard !store.privacyBlocksWork else { return }
-                        importGeneration = store.dataGeneration
-                        importing = true
-                    } label: {
-                        Label("Choose a recording or file", systemImage: "plus")
-                            .multilineTextAlignment(.leading)
-                    }
-                    .buttonStyle(SecondaryButtonStyle())
-                    .disabled(store.busy || store.sessionActive)
-                    .accessibilityIdentifier("learn.import")
                     Text("A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.")
                         .font(.footnote).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -295,6 +280,30 @@ struct LearnView: View {
         if let id = store.pendingRoutineProposal?.id, id != proposalBeforeRequest { showingProposal = true }
     }
 
+    @ViewBuilder private var learnActions: some View {
+        #if os(iOS)
+        if #available(iOS 27.0, *) {
+            Button { recording = true } label: {
+                Label("Record", systemImage: "record.circle").lineLimit(1)
+            }.buttonStyle(CompactPrimaryButtonStyle())
+                .disabled(!store.canStartRecording)
+                .accessibilityLabel("Record a little of my morning")
+                .accessibilityIdentifier("learn.record")
+        }
+        #endif
+        Button {
+            guard !store.privacyBlocksWork else { return }
+            importGeneration = store.dataGeneration
+            importing = true
+        } label: {
+            Label("Choose", systemImage: "plus").lineLimit(1)
+        }
+        .buttonStyle(SecondaryButtonStyle())
+        .disabled(store.busy || store.sessionActive)
+        .accessibilityLabel("Choose a recording or file")
+        .accessibilityIdentifier("learn.import")
+    }
+
     private func sectionTitle(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
             .font(.title3.weight(.semibold)).foregroundStyle(MorningStyle.ink)
@@ -315,49 +324,43 @@ struct SetupView: View {
             PageHeading(eyebrow: String(localized: "Make yourself at home"), title: String(localized: "A few things, your way."),
                 subtitle: String(localized: "Choose what to connect and how you'd like your morning to sound."))
 
-            Card {
-                Button { choosingInvitation = true } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "sun.horizon").font(.title2)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Your next morning").font(.headline)
-                            Text(store.invitation.statusText).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
+            CardButton { choosingInvitation = true } content: {
+                HStack(spacing: 14) {
+                    Image(systemName: "sun.horizon").font(.title2)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Your next morning").font(.headline)
+                        Text(store.invitation.statusText).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
-                }.buttonStyle(.plain).accessibilityIdentifier("setup.invitation")
-            }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+            }.accessibilityIdentifier("setup.invitation")
 
-            Card {
-                Button { choosingBriefing = true } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "sun.max").font(.title2)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Your day").font(.headline)
-                            Text("A little context before your morning begins.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
+            CardButton { choosingBriefing = true } content: {
+                HStack(spacing: 14) {
+                    Image(systemName: "sun.max").font(.title2)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Your day").font(.headline)
+                        Text("A little context before your morning begins.")
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
-                }.buttonStyle(.plain).accessibilityIdentifier("setup.briefing")
-            }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+            }.accessibilityIdentifier("setup.briefing")
 
-            Card {
-                Button { choosingActivity = true } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "platter.filled.top.iphone").font(.title2)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Morning at a glance").font(.headline)
-                            Text("Keep your place on the Lock Screen.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
+            CardButton { choosingActivity = true } content: {
+                HStack(spacing: 14) {
+                    Image(systemName: "platter.filled.top.iphone").font(.title2)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Morning at a glance").font(.headline)
+                        Text("Keep your place on the Lock Screen.")
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
-                }.buttonStyle(.plain).accessibilityIdentifier("setup.activity")
-            }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+            }.accessibilityIdentifier("setup.activity")
 
             Card {
                 VStack(alignment: .leading, spacing: 18) {
@@ -368,11 +371,11 @@ struct SetupView: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text("Companion voice").font(.subheadline.weight(.semibold))
                                 Text(store.speech.selectedVoiceSummary)
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
-                        }
+                        }.contentShape(Rectangle())
                     }.buttonStyle(.plain).disabled(store.sessionActive)
                         .accessibilityIdentifier("setup.voice")
                     Toggle(isOn: $store.readAloud) {
@@ -414,20 +417,18 @@ struct SetupView: View {
                 }
             }
 
-            Card {
-                Button { showingPrivacy = true } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "lock.shield").font(.title2)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Privacy & data").font(.headline)
-                            Text("What stays here, and what you can remove.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
+            CardButton { showingPrivacy = true } content: {
+                HStack(spacing: 14) {
+                    Image(systemName: "lock.shield").font(.title2)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Privacy & data").font(.headline)
+                        Text("What stays here, and what you can remove.")
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
-                }.buttonStyle(.plain).accessibilityIdentifier("setup.privacy")
-            }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+            }.accessibilityIdentifier("setup.privacy")
 
             DisclosureGroup("Availability & device details") {
                 VStack(alignment: .leading, spacing: 18) {
@@ -486,14 +487,14 @@ struct StepEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     TextField("Give this step a name", text: $step.title)
                         .accessibilityLabel("Step name")
                     if step.automation == .savedObservation {
                         Text(step.detail).textSelection(.enabled)
                         Text("Choose a different excerpt from its observation in Review. Switching to Read this text aloud makes it an ordinary note.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     } else {
                         TextField("What would you like to do?", text: $step.detail, axis: .vertical)
                             .lineLimit(3...7).accessibilityLabel("Step details")

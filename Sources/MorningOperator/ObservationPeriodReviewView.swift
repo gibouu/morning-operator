@@ -18,10 +18,10 @@ struct ObservationPeriodReviewLink: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("From your observations").font(.subheadline.weight(.medium))
                     Text("Sampled screens across days")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(MorningStyle.muted)
             }
             .padding(20).foregroundStyle(.primary)
             .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 22))
@@ -43,7 +43,7 @@ private struct ObservationPeriodReviewView: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     if let report, let first = report.dayKeys.first, let last = report.dayKeys.last {
@@ -52,11 +52,11 @@ private struct ObservationPeriodReviewView: View {
                     Text("Screens that appeared across your mornings.")
                         .font(.system(.title2, design: .serif, weight: .medium))
                     Text("These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("--ui-testing-observation-review") {
                         Label("Synthetic review fixture", systemImage: "testtube.2")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     #endif
                 }.padding(.vertical, 6)
@@ -64,7 +64,7 @@ private struct ObservationPeriodReviewView: View {
             if let report {
                 if report.partitions.isEmpty {
                     Section {
-                        Text("No dated observations in this period.").foregroundStyle(.secondary)
+                        Text("No dated observations in this period.").foregroundStyle(MorningStyle.muted)
                     }
                 }
                 ForEach(report.partitions) { partition in
@@ -73,13 +73,13 @@ private struct ObservationPeriodReviewView: View {
                             .font(.subheadline)
                             .accessibilityIdentifier("review.recordings.\(partition.id).coverage")
                         Text("\(partition.unclassifiedDayKeys.count) observed days have no labeled samples. \(partition.missingDayKeys.count) days have no observation.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                         if !partition.daysWithUnknownMoments.isEmpty {
                             Text("\(partition.daysWithUnknownMoments.count) observed days also contain unresolved samples.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                         if partition.recurrence.isEmpty {
-                            Text("No screen labels are available yet.").foregroundStyle(.secondary)
+                            Text("No screen labels are available yet.").foregroundStyle(MorningStyle.muted)
                         }
                         ForEach(partition.recurrence) { context in
                             Button {
@@ -88,23 +88,23 @@ private struct ObservationPeriodReviewView: View {
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(context.context.displayName).font(.subheadline.weight(.medium))
                                     if context.citations.contains(where: { $0.provenance == .userReviewed }) {
-                                        Text("Your label").font(.caption2).foregroundStyle(.secondary)
+                                        Text("Your label").font(.caption2).foregroundStyle(MorningStyle.muted)
                                     }
                                     Text("Seen on \(context.seenDayCount) of \(partition.recognizedDayCount) days with labeled samples")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(MorningStyle.muted)
                                 }.padding(.vertical, 4)
                             }.accessibilityIdentifier(contextAccessibilityID(partition.id, context.id))
                         }
                         if !partition.conflictingContextKeys.isEmpty {
                             Text("Conflicting labels are excluded from this pattern list. Their original samples remain in each observation.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                         DisclosureGroup("The seven days") {
                             ForEach(partition.days.reversed()) { day in
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(day.dayKey).font(.caption.weight(.medium).monospacedDigit())
                                     if day.clips.isEmpty {
-                                        Text("No observation").font(.caption).foregroundStyle(.secondary)
+                                        Text("No observation").font(.caption).foregroundStyle(MorningStyle.muted)
                                     }
                                     ForEach(day.clips) { clip in
                                         NavigationLink {
@@ -113,7 +113,7 @@ private struct ObservationPeriodReviewView: View {
                                             VStack(alignment: .leading, spacing: 4) {
                                                 Text(clip.sourceLabel).font(.subheadline)
                                                 Text(clip.sampleCount == 0 ? "Notes only" : "\(clip.recognizedMomentCount) labeled moments · \(clip.unknownMomentCount) unresolved")
-                                                    .font(.caption).foregroundStyle(.secondary)
+                                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                                             }
                                         }.accessibilityIdentifier("review.recordings.clip.\(clip.id.uuidString)")
                                     }
@@ -174,16 +174,16 @@ private struct ObservationRecurrenceSources: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             if let context {
                 Section {
                     Text(context.context.displayName).font(.system(.title2, design: .serif, weight: .medium))
                     Text("Seen on \(context.seenDayCount) distinct days. Open a quote to inspect the original sampled screen.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     Text(context.citations.contains(where: { $0.provenance == .userReviewed })
                          ? "You supplied this label. It stays separate from model labels and doesn't establish an action you took."
                          : "A proposed visual label doesn't establish an app's identity or an action you took.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                 }
                 ForEach(context.citations) { citation in
                     if let source = store.observationArchive.entry(id: citation.acquisitionID) {
@@ -194,9 +194,9 @@ private struct ObservationRecurrenceSources: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(citation.quote).font(.subheadline).lineLimit(4)
                                     if citation.provenance == .userReviewed {
-                                        Text("Excerpt selected by you").font(.caption2).foregroundStyle(.secondary)
+                                        Text("Excerpt selected by you").font(.caption2).foregroundStyle(MorningStyle.muted)
                                     }
-                                    Text(source.sourceLabel).font(.caption).foregroundStyle(.secondary)
+                                    Text(source.sourceLabel).font(.caption).foregroundStyle(MorningStyle.muted)
                                 }
                             }.accessibilityIdentifier("review.recordings.citation.\(citation.id)")
                         } header: { Text("\(citation.dayKey) · \(citation.timeZoneIdentifier)") }

@@ -8,7 +8,7 @@ The iPhone is the active product. Use the Mac for Xcode, shared package tests an
 
 **These navigation instructions describe the current centered-sunrise source revision, awaiting verification and owner acceptance.** The owner rejected the earlier corner-popover design. The earlier signed `0f94f6d` installation on 10 October 2026 remains historical evidence; it does not verify or approve this revision. [PHASE-ONE](PHASE-ONE.md) identifies the actual installed source and completed results.
 
-Use `codex/more-quiet-morning`. The date opens Review, its home control returns to Morning, and the centered sunrise expands into **Play**, **Learn**, **History** and **Settings**. A draft offers **Review** in place of Play; a running or paused morning offers Pause or Continue. There is no permanent tab bar or separate Update action. See the [design contract](V2-DESIGN.md) and [teammate handoff](HANDOFF.md).
+Use `main`. The date opens Review, its home control returns to Morning, and the centered sunrise expands into **Play**, **Learn**, **History** and **Settings**. A draft offers **Review** in place of Play; a running or paused morning offers Pause or Continue. There is no permanent tab bar or separate Update action. See the [design contract](V2-DESIGN.md) and [teammate handoff](HANDOFF.md).
 
 Tap the sunrise for actions; tap the background to collapse it. **Play → Ready → Start** is deliberate: opening Ready does not start the routine, microphone or recording. The compact “good morning”/“bonjour” header shows total planned minutes, while each tile shows its own duration. Those durations are estimates, not elapsed time or appointments. The dawn/sunset-inspired background follows light/dark appearance, not live weather.
 
@@ -68,7 +68,7 @@ Use your own GitHub account and accept access to the private [repository](https:
 ```sh
 git clone https://github.com/gibouu/morning-operator.git
 cd morning-operator
-git switch codex/more-quiet-morning
+git switch main
 ./scripts/check-environment.sh
 ./scripts/test.sh
 open MorningOperator.xcodeproj

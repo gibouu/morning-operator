@@ -6,13 +6,14 @@ import MorningApple
 struct SavedRecordingRecoveryView: View {
     @Bindable var store: MorningStore
     var onReview: () -> Void
+    @ViewState<Bool> private var confirmingDiscard = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(store.busy ? "Reading your recording" : "Your recording is saved", systemImage: "externaldrive.badge.checkmark")
                 .font(.subheadline.weight(.medium))
             Text(store.busy ? store.analysisStatus : (store.observationIssue ?? String(localized: "Retry understanding it, or discard the recording.")))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(MorningStyle.muted)
             if store.sessionActive {
                 Text("Finish or stop the current morning before retrying.").font(.caption)
             }
@@ -20,9 +21,13 @@ struct SavedRecordingRecoveryView: View {
                 Button("Retry") { store.retryPendingRecording() }
                     .buttonStyle(.glass).disabled(store.busy || store.sessionActive)
                     .accessibilityIdentifier("record.retryImport")
-                Button("Discard recording", role: .destructive) { store.discardPendingRecording() }
+                Button("Discard recording", role: .destructive) { confirmingDiscard = true }
                     .buttonStyle(.borderless).accessibilityIdentifier("record.discardPending")
                     .disabled(store.busy)
+                    .confirmationDialog("Discard this recording?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+                        Button("Discard recording", role: .destructive) { store.discardPendingRecording() }
+                        Button("Cancel", role: .cancel) { }
+                    } message: { Text("The video is deleted from this device. Text already saved from it stays available.") }
             }
             if store.hasImportedObservation {
                 Button("Review text", action: onReview).buttonStyle(.borderless).font(.caption)
@@ -51,7 +56,7 @@ struct MorningRecordingStatus: View {
                             .font(.subheadline.weight(.medium))
                         Text(recording.state == .recording
                              ? String(localized: "Stops in \(remainingTime) · visible screen only")
-                             : recording.message).font(.caption).foregroundStyle(.secondary)
+                             : recording.message).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer(minLength: 4)
                     if recording.state == .recording || recording.needsStopRetry {
@@ -66,7 +71,7 @@ struct MorningRecordingStatus: View {
                     ProgressView()
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Understanding your morning").font(.subheadline.weight(.medium))
-                        Text(store.analysisStatus).font(.caption).foregroundStyle(.secondary)
+                        Text(store.analysisStatus).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer(minLength: 4)
                     Button("Stop") { store.cancelAnalysis() }.buttonStyle(.borderless)
@@ -95,7 +100,7 @@ struct MorningRecordingStatus: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Your observation needs attention", systemImage: "exclamationmark.circle")
                         .font(.subheadline.weight(.medium))
-                    Text(issue).font(.caption).foregroundStyle(.secondary)
+                    Text(issue).font(.caption).foregroundStyle(MorningStyle.muted)
                     HStack {
                         Button(store.hasImportedObservation ? "Review saved text" : "Open learning", action: onReview)
                             .buttonStyle(.glass)

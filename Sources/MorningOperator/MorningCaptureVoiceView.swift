@@ -16,12 +16,12 @@ struct MorningCaptureVoiceView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     Image(systemName: store.voiceCommands.state == .listening ? "waveform" : "mic")
-                        .font(.system(size: 36, weight: .light)).foregroundStyle(MorningStyle.accent)
+                        .scaledFont(36, relativeTo: .largeTitle, weight: .light).foregroundStyle(MorningStyle.accent)
                         .accessibilityHidden(true)
                     Text("What's on your mind?")
                         .font(.system(.largeTitle, design: .serif, weight: .medium))
                     Text("A thought, a dream, something for later. Say it in your own words.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(MorningStyle.muted)
                     Picker("Spoken language", selection: $language) {
                         Text("English").tag(MorningVoiceCommandLanguage.english)
                         Text("Français").tag(MorningVoiceCommandLanguage.french)
@@ -50,10 +50,10 @@ struct MorningCaptureVoiceView: View {
                             .accessibilityIdentifier("captureVoice.retry")
                     }
                     Text("Up to 30 seconds, understood on this device. Review the words before saving anything. No audio recording is kept.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                     if store.usesSyntheticCompletionCapture {
                         Text("Sample speech input · microphone not used")
-                            .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("captureVoice.sample")
+                            .font(.caption).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("captureVoice.sample")
                     }
                 }.padding(24).frame(maxWidth: 600).frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -11,7 +11,7 @@ struct RoutineEvidenceProposalView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            MorningList {
                 if let proposal = store.pendingRoutineProposal {
                     summary(proposal)
                     if proposal.baseRoutineID != nil, let current = store.routine {
@@ -21,7 +21,7 @@ struct RoutineEvidenceProposalView: View {
                                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                                         Text(step.title).font(.subheadline)
                                         Spacer(minLength: 8)
-                                        Text("\(step.durationMinutes) min planned").font(.caption).foregroundStyle(.secondary)
+                                        Text("\(step.durationMinutes) min planned").font(.caption).foregroundStyle(MorningStyle.muted)
                                     }.padding(.vertical, 4)
                                 }
                             }
@@ -31,7 +31,7 @@ struct RoutineEvidenceProposalView: View {
                         Section {
                             DisclosureGroup("Samples not used (\(proposal.omissions.count))") {
                                 Text("These samples weren't used to suggest activities. Missing or unsuitable evidence stays unknown.")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                                 ForEach(proposal.sourceSnapshots, id: \.acquisitionID) { source in
                                     let omitted = proposal.omissions.filter { $0.acquisitionID == source.acquisitionID }
                                     if !omitted.isEmpty {
@@ -40,9 +40,9 @@ struct RoutineEvidenceProposalView: View {
                                             let incomplete = omitted.filter { $0.reason == .unavailableOrTruncatedFrame }.count
                                             let unsupported = omitted.filter { $0.reason == .unsupportedVisualContext }.count
                                             let reviewedUnknown = omitted.filter { $0.reason == .explicitlyReviewedUnknown }.count
-                                            if reviewedUnknown > 0 { Text("\(reviewedUnknown) samples you kept unknown").font(.caption).foregroundStyle(.secondary) }
-                                            if incomplete > 0 { Text("\(incomplete) unavailable or incomplete samples").font(.caption).foregroundStyle(.secondary) }
-                                            if unsupported > 0 { Text("\(unsupported) samples without suitable activity context").font(.caption).foregroundStyle(.secondary) }
+                                            if reviewedUnknown > 0 { Text("\(reviewedUnknown) samples you kept unknown").font(.caption).foregroundStyle(MorningStyle.muted) }
+                                            if incomplete > 0 { Text("\(incomplete) unavailable or incomplete samples").font(.caption).foregroundStyle(MorningStyle.muted) }
+                                            if unsupported > 0 { Text("\(unsupported) samples without suitable activity context").font(.caption).foregroundStyle(MorningStyle.muted) }
                                         }.padding(.vertical, 5)
                                     }
                                 }
@@ -56,18 +56,18 @@ struct RoutineEvidenceProposalView: View {
                                     .accessibilityLabel("Suggested moment \(index + 1)")
                                     .accessibilityValue(step.title)
                                     .accessibilityIdentifier("proposal.step.\(index)")
-                                if !briefDetail(step).isEmpty { Text(briefDetail(step)).font(.subheadline).foregroundStyle(.secondary) }
+                                if !briefDetail(step).isEmpty { Text(briefDetail(step)).font(.subheadline).foregroundStyle(MorningStyle.muted) }
                                 Text("\(step.durationMinutes) minutes planned")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                             }.padding(.vertical, 3)
                             if let support = proposal.support.first(where: { $0.stepID == step.id }) {
                                 if support.reason == .preservedUserDecision {
                             Label("Kept by your choice", systemImage: "heart")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(MorningStyle.muted)
                                 } else {
                                     if support.reason == .inferredEvidenceWithUserPreference {
                                         Label("Your saved timing choice", systemImage: "clock.badge.checkmark")
-                                            .font(.caption).foregroundStyle(.secondary)
+                                            .font(.caption).foregroundStyle(MorningStyle.muted)
                                             .accessibilityIdentifier("proposal.userTiming")
                                     }
                                     DisclosureGroup("Why this suggestion?") {
@@ -77,8 +77,8 @@ struct RoutineEvidenceProposalView: View {
                                                     .accessibilityIdentifier("proposal.quote.\(step.id.uuidString).\(quoteIndex)")
                                                 if let source = proposal.sourceSnapshots.first(where: { $0.acquisitionID == citation.acquisitionID }) {
                                                     Text("\(proposalDateLabel(source.observedDate)) · \(citation.sourceLayer.displayName)")
-                                                        .font(.caption).foregroundStyle(.secondary)
-                                                    Text(source.sourceLabel).font(.caption).foregroundStyle(.secondary)
+                                                        .font(.caption).foregroundStyle(MorningStyle.muted)
+                                                    Text(source.sourceLabel).font(.caption).foregroundStyle(MorningStyle.muted)
                                                 }
                                             }.padding(.vertical, 6)
                                         }
@@ -96,7 +96,7 @@ struct RoutineEvidenceProposalView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(source.sourceLabel).font(.subheadline)
                                     Text("\(proposalDateLabel(source.observedDate)) · \(source.sourceLayer.displayName)")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(MorningStyle.muted)
                                 }
                             }.accessibilityIdentifier("proposal.source.\(source.acquisitionID.uuidString)")
                         }
@@ -106,12 +106,12 @@ struct RoutineEvidenceProposalView: View {
                     Section {
                         DisclosureGroup("About this suggestion") {
                             Text("Minutes are planned, not measured averages. Visible words don't prove an action or a repeated habit.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                             Text("Done saves this suggestion for later. You can edit your current routine under Review → Your routine.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                             if proposal.sourceSnapshots.first?.origin == .synthetic {
                                 Text("Sample observations stay separate from your personal habit history.")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                             }
                         }
                     }
@@ -121,7 +121,7 @@ struct RoutineEvidenceProposalView: View {
                         .accessibilityIdentifier("proposal.unavailable")
                 }
                 if let notice = store.notice {
-                    Section { Text(notice).font(.caption).foregroundStyle(.secondary) }
+                    Section { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
                 }
             }
             .scrollContentBackground(.hidden).background(MorningStyle.background)
@@ -136,7 +136,7 @@ struct RoutineEvidenceProposalView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         if store.sessionActive {
                             Text("Finish or end your current morning before approving an update.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                         HStack(spacing: 12) {
                             Button(store.routine == nil ? "Discard" : "Keep current") {
@@ -173,13 +173,13 @@ struct RoutineEvidenceProposalView: View {
                 Text(isSample ? "Sample morning" : "Your next morning")
                     .font(.system(.title2, design: .serif, weight: .medium))
                 Text("Selected: \(proposal.sourceSnapshots.count) observations across \(dayCount) dated days")
-                    .font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("proposal.sources")
+                    .font(.subheadline).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("proposal.sources")
                 Text(store.routine == nil ? "Review your moments, then approve when ready."
                      : "Your current routine stays ready until you approve.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
                 if store.usesSyntheticProposalFixture {
                     Text("Synthetic suggestion test — no Apple model call")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                         .accessibilityIdentifier("proposal.fixtureMode")
                 }
             }.padding(.vertical, 4)

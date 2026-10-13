@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "runID": "synthetic-swift-shape",
+  "status": "completed",
+  "producer": "hand-authored",
+  "sourceStates": [
+    {"sourceID": "5B0E6C1A-7C1D-4E55-9B7F-0A6C3D2E1F00", "status": "available"},
+    {"sourceID": "mail-inbox", "status": "unavailable"}
+  ],
+  "claims": [
+    {
+      "sourceID": "5B0E6C1A-7C1D-4E55-9B7F-0A6C3D2E1F00",
+      "sourceRevision": "3f1c9a52e0b74d6881a5c2f7096e4b1d3a8c5e7f20914b6d8c3e5a7f1b2d4c60",
+      "field": "sender",
+      "value": "Synthetic Cedar",
+      "evidence": [
+        {"sourceID": "5B0E6C1A-7C1D-4E55-9B7F-0A6C3D2E1F00", "evidenceID": "9D4A2F10-3B6E-4C8A-A1D2-7E5F6A4B3C21", "quote": "Synthetic Cedar"}
+      ]
+    },
+    {
+      "sourceID": "5B0E6C1A-7C1D-4E55-9B7F-0A6C3D2E1F00",
+      "sourceRevision": "3f1c9a52e0b74d6881a5c2f7096e4b1d3a8c5e7f20914b6d8c3e5a7f1b2d4c60",
+      "field": "body",
+      "value": "Meet beside the library.",
+      "evidence": [
+        {"sourceID": "5B0E6C1A-7C1D-4E55-9B7F-0A6C3D2E1F00", "evidenceID": "9D4A2F10-3B6E-4C8A-A1D2-7E5F6A4B3C21", "quote": "Meet beside the library."}
+      ]
+    }
+  ],
+  "spokenText": "sender: Synthetic Cedar\nbody: Meet beside the library."
+}

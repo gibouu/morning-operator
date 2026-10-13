@@ -6,7 +6,7 @@ struct MorningActivitySettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     Toggle("Show on Lock Screen", isOn: Binding(
                         get: { store.showMorningOnLockScreen },

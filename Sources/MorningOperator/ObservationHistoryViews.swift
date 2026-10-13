@@ -40,12 +40,12 @@ struct ObservationHistoryView: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Text(onlyUndated
                      ? "These observations need a day before they can appear in your morning history. The day a file was imported doesn't tell us when it was recorded."
                      : "Saved glimpses of your morning. Observations and routine runs stay separate; sampled screens don't measure complete phone use.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(MorningStyle.muted)
             }
             if store.pendingRoutineProposal != nil {
                 Section {
@@ -57,15 +57,15 @@ struct ObservationHistoryView: View {
             if choosingMornings {
                 Section {
                     Text("Choose dated observations from your own mornings, or a separate set of samples. Nothing is selected automatically.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     if store.usesSyntheticProposalFixture {
                         Text("Synthetic suggestion test — no Apple model call")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("observations.fixtureMode")
                     }
                     if !store.canSuggestSavedObservations {
                         Text("\(store.intelligence.capabilitySummary) Your saved observations remain available.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("observations.modelUnavailable")
                     }
                     if store.busy {
@@ -100,7 +100,7 @@ struct ObservationHistoryView: View {
                 }
             }
             if let notice = store.notice {
-                Section { Text(notice).font(.caption).foregroundStyle(.secondary) }
+                Section { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
             }
         }
         .scrollContentBackground(.hidden).background(MorningStyle.background)
@@ -151,7 +151,7 @@ struct ObservationHistoryView: View {
                 else { selectedIDs.insert(entry.id) }
             } label: {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3).frame(width: 36, height: 44)
+                    .font(.title3).frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .disabled(store.busy || store.sessionActive || (!selected && (issue != nil || selectedIDs.count >= 5)))
@@ -163,7 +163,7 @@ struct ObservationHistoryView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     ObservationHistoryRow(entry: entry)
-                    if let issue { Text(issue).font(.caption).foregroundStyle(.secondary) }
+                    if let issue { Text(issue).font(.caption).foregroundStyle(MorningStyle.muted) }
                 }
             }.accessibilityIdentifier("observation.row.\(entry.id.uuidString)")
         }
@@ -172,7 +172,7 @@ struct ObservationHistoryView: View {
     private var suggestionControls: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(selectionSummary).font(.caption).foregroundStyle(.secondary)
+                Text(selectionSummary).font(.caption).foregroundStyle(MorningStyle.muted)
                     .accessibilityIdentifier("observations.selectionSummary")
                 Spacer()
                 if !selectedIDs.isEmpty {
@@ -180,7 +180,7 @@ struct ObservationHistoryView: View {
                         .font(.caption).disabled(store.busy).accessibilityIdentifier("observations.clearSelection")
                 }
             }
-            if let selectionIssue { Text(selectionIssue).font(.caption).foregroundStyle(.secondary) }
+            if let selectionIssue { Text(selectionIssue).font(.caption).foregroundStyle(MorningStyle.muted) }
             Button {
                 proposalBeforeRequest = store.pendingRoutineProposal?.id
                 awaitingSuggestion = true
@@ -227,13 +227,13 @@ struct ObservationHistoryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(entry.sourceLabel).font(.subheadline.weight(.medium)).lineLimit(2)
-            Text(observationDateLabel(entry)).font(.caption).foregroundStyle(.secondary)
+            Text(observationDateLabel(entry)).font(.caption).foregroundStyle(MorningStyle.muted)
             if let zone = entry.observedDate?.timeZoneIdentifier {
                 Text(zone.replacingOccurrences(of: "_", with: " "))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
             }
             if entry.origin != .human {
-                Text(observationOriginLabel(entry.origin)).font(.caption).foregroundStyle(.secondary)
+                Text(observationOriginLabel(entry.origin)).font(.caption).foregroundStyle(MorningStyle.muted)
             }
         }.padding(.vertical, 4)
     }
@@ -252,7 +252,7 @@ struct ObservationHistoryDetail: View {
     private var entry: ObservationAcquisition? { store.observationArchive.entry(id: observationID) }
 
     var body: some View {
-        List {
+        MorningList {
             if let entry {
                 Section {
                     Text(entry.sourceLabel).font(.headline)
@@ -264,7 +264,7 @@ struct ObservationHistoryDetail: View {
                     if let date = entry.observedDate {
                         LabeledContent("Time zone", value: date.timeZoneIdentifier)
                         Text(date.provenance == .recordingSession ? "Day recorded by this recording session." : "Day assigned by you.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     LabeledContent("Origin", value: observationOriginLabel(entry.origin))
                         .accessibilityElement(children: .ignore)
@@ -294,7 +294,7 @@ struct ObservationHistoryDetail: View {
                             LabeledContent("Recording time zone", value: context.timeZoneIdentifier)
                                 .accessibilityIdentifier("observation.recordingTimeZone")
                             Text("Saved when recording began. Changing the observed day keeps this information. It doesn't measure time spent in apps.")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                     }
                 }
@@ -333,7 +333,7 @@ struct ObservationHistoryDetail: View {
                 if !entry.warnings.isEmpty {
                     Section {
                         ForEach(entry.warnings, id: \.rawValue) { warning in
-                            Text(warning.message).font(.caption).foregroundStyle(.secondary)
+                            Text(warning.message).font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                     }
                 }
@@ -342,7 +342,7 @@ struct ObservationHistoryDetail: View {
                     Button("Delete this observation", role: .destructive) { confirmingDelete = true }
                         .disabled(store.busy || store.sessionActive)
                         .accessibilityIdentifier("observation.delete")
-                    if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary) }
+                    if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
                 }
             } else {
                 ContentUnavailableView("Observation removed", systemImage: "doc", description: Text("Your routines and saved runs are still available."))
@@ -395,7 +395,7 @@ struct ObservationDateEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            MorningForm {
                 Section {
                     DatePicker("Observed day", selection: $date, displayedComponents: .date)
                         .environment(\.timeZone, zone).environment(\.calendar, calendar)
@@ -425,7 +425,7 @@ struct ObservationDateEditor: View {
                             .accessibilityIdentifier("observation.removeDate")
                     } footer: { Text("Moves this observation to Date needed without deleting its evidence.") }
                 }
-                if let notice = store.notice { Section { Text(notice).font(.caption).foregroundStyle(.secondary) } }
+                if let notice = store.notice { Section { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) } }
             }
             .navigationTitle("Observed day")
             .toolbar {
@@ -460,7 +460,7 @@ private struct ObservationTimeZonePicker: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Button("Use current time zone: \(TimeZone.current.identifier)") { selection = TimeZone.current.identifier; dismiss() }
             }

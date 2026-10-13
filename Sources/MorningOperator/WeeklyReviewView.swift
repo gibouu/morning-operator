@@ -8,6 +8,7 @@ struct WeeklyReviewView: View {
     var onLearn: () -> Void
     var onSettings: () -> Void
     @Binding var showingRoutineEditor: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ViewState<Int> private var weekOffset = 0
     @ViewState<Date> private var today = Date()
     @ViewState<Bool> private var showingDays = false
@@ -52,7 +53,7 @@ struct WeeklyReviewView: View {
                     observedAppTimes(week)
                 } else {
                     Text("This period couldn't be displayed. Your saved mornings are unchanged.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                 }
                 observationArchiveLinks
                 reviewActions
@@ -95,7 +96,7 @@ struct WeeklyReviewView: View {
             }
             .accessibilityLabel("Previous seven days").accessibilityIdentifier("review.previousWeek")
             Button {
-                withAnimation(.snappy) { showingDays.toggle() }
+                withAnimation(reduceMotion ? nil : .snappy) { showingDays.toggle() }
             } label: {
                 HStack(spacing: 6) {
                     Text(periodTitle).font(.subheadline.weight(.medium)).multilineTextAlignment(.center)
@@ -110,8 +111,9 @@ struct WeeklyReviewView: View {
             .disabled(weekOffset == 0)
             .accessibilityLabel("Next seven days").accessibilityIdentifier("review.nextWeek")
         }
-        .buttonStyle(.plain).foregroundStyle(MorningStyle.accent)
-        .background(.regularMaterial, in: Capsule())
+        // A dark pill anchors the week, matching the primary buttons.
+        .buttonStyle(.plain).foregroundStyle(MorningStyle.surface)
+        .background(MorningStyle.accent, in: Capsule())
         .simultaneousGesture(DragGesture(minimumDistance: 55).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
             changeWeek(by: value.translation.width > 0 ? -1 : 1)
@@ -129,14 +131,14 @@ struct WeeklyReviewView: View {
     private func weekSummary(_ week: SevenDaySummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let average = week.averageActiveDurationSeconds {
-                Text("Average routine time").font(.subheadline).foregroundStyle(.secondary)
+                Text("Average routine time").font(.subheadline).foregroundStyle(MorningStyle.muted)
                 Text(MorningStyle.duration(average))
-                    .font(.system(size: 44, weight: .regular, design: .serif))
+                    .scaledFont(44, relativeTo: .largeTitle, weight: .regular, design: .serif)
                     .accessibilityIdentifier("review.average")
                 Text("Across \(week.timedRunCount) timed runs")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(MorningStyle.muted)
                 Text("Time in your routine, excluding pauses. Other app use isn't measured here.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
             } else {
                 Text(week.runCount == 0 ? (hasObservationsInPeriod ? "A morning, remembered." : "Your mornings will find their shape.") : "A morning saved. Time still unknown.")
                     .font(.system(.title2, design: .serif, weight: .medium))
@@ -145,15 +147,15 @@ struct WeeklyReviewView: View {
                         ? "Explore the screens you saved below. Routine time begins with a completed run."
                         : "Finish a morning to begin your history. Days without a saved run stay empty.")
                      : "\(week.runCount) saved runs have no complete timing. They stay out of the average.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(MorningStyle.muted)
             }
             if week.runCount > week.timedRunCount, week.timedRunCount > 0 {
                 Text("Runs with incomplete timing are excluded from this average.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
             }
             if hasSampleRunsInPeriod {
                 Label("Sample runs stay out of your personal averages.", systemImage: "sparkles")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -182,11 +184,11 @@ struct WeeklyReviewView: View {
                     HStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(day.date.formatted(.dateTime.weekday(.wide))).font(.subheadline.weight(.medium))
-                            Text(day.date.formatted(.dateTime.month(.abbreviated).day())).font(.caption).foregroundStyle(.secondary)
+                            Text(day.date.formatted(.dateTime.month(.abbreviated).day())).font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                         Spacer()
                         Text(daySummaryText(day))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                         Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                     }.padding(.vertical, 13).contentShape(Rectangle())
                 }
@@ -270,7 +272,7 @@ struct WeeklyReviewView: View {
             Image(systemName: symbol).font(.body).foregroundStyle(MorningStyle.accent).frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.subheadline.weight(.medium))
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+                Text(detail).font(.caption).foregroundStyle(MorningStyle.muted)
             }
             Spacer(minLength: 8)
             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
@@ -281,12 +283,12 @@ struct WeeklyReviewView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack { Text(app.appName); Spacer(); Text(MorningStyle.duration(app.averageObservedDurationSeconds)) }
             Text("Average across \(app.daysWithDurationEvidence) days with time evidence. \(app.partialWindowDayCount) partial windows; \(app.unknownCoverageDayCount) with unknown coverage.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(MorningStyle.muted)
         }.padding(.top, 12)
     }
 
     private func changeWeek(by offset: Int) {
-        withAnimation(.snappy) {
+        withAnimation(reduceMotion ? nil : .snappy) {
             weekOffset = min(0, weekOffset + offset)
             showingRoutineTiming = false
         }
@@ -311,7 +313,7 @@ private struct RoutineReviewEditor: View {
     var body: some View {
         let pickerGeneration = importGeneration
         NavigationStack {
-            List {
+            MorningList {
                 if let routine = store.routine {
                     Section {
                         ForEach(Array(routine.steps.enumerated()), id: \.element.id) { index, step in
@@ -350,12 +352,12 @@ private struct RoutineReviewEditor: View {
                     }
                     if routine.isSynthetic {
                         Label("Sample routine · not observed behavior", systemImage: "sparkles")
-                            .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("routine.source")
+                            .font(.caption).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("routine.source")
                     }
                 } else {
                     Section {
                         Text("Start with a small part of your morning. You can change every step before approving it.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(MorningStyle.muted)
                         Button("Learn my morning", systemImage: "sparkles", action: onLearn)
                             .disabled(importLoading)
                             .accessibilityIdentifier("learn.begin")
@@ -381,13 +383,13 @@ private struct RoutineReviewEditor: View {
                     #endif
                     if importLoading { ProgressView("Opening your routine…") }
                     if let importError {
-                        Text(importError).font(.footnote).foregroundStyle(.secondary)
+                        Text(importError).font(.footnote).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("routine.importError")
                     }
                 } footer: {
                     Text("Open a saved MORE plan and review it before making any changes.")
                 }
-                if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary) }
+                if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
             }
             .scrollContentBackground(.hidden).background(MorningStyle.background)
             .navigationTitle("Your routine")
@@ -412,7 +414,7 @@ private struct RoutineReviewEditor: View {
                     .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
                     .disabled(store.busy || store.sessionActive || importLoading || routine.steps.isEmpty || store.routinePreferencesIssue != nil)
                     .accessibilityIdentifier("routine.approve")
-                    .padding(20).background(.regularMaterial)
+                    .padding(20).background(MorningStyle.background)
                 }
             }
             .sheet(item: $editingStep) { step in
@@ -516,7 +518,7 @@ private struct RoutineReviewEditor: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(step.title).font(.subheadline.weight(.medium))
                 Text(step.automation == nil ? "\(step.durationMinutes) min planned · Your own pace" : "\(step.durationMinutes) min planned · Spoken guidance")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
             }
             Spacer(minLength: 4)
             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
@@ -546,10 +548,10 @@ private struct RoutinePreferencesView: View {
     @ViewState<Bool> private var confirmingReset = false
 
     var body: some View {
-        List {
+        MorningList {
             Section {
                 Text("These are choices you've made for future suggestions. Clearing a choice leaves your current routine unchanged.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(MorningStyle.muted)
             }
             if let issue = store.routinePreferencesIssue {
                 Section {
@@ -580,7 +582,7 @@ private struct RoutinePreferencesView: View {
                         .accessibilityIdentifier("preferences.empty")
                 }
             }
-            if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary) }
+            if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
         }
         .scrollContentBackground(.hidden).background(MorningStyle.background)
         .navigationTitle("Saved choices").navigationBarTitleDisplayMode(.inline)
@@ -603,10 +605,10 @@ private struct ReviewDayDetail: View {
     }
 
     var body: some View {
-        List {
+        MorningList {
             if observations.isEmpty {
                 Section("Observed mornings") {
-                    Text("No observation dated to this day.").foregroundStyle(.secondary)
+                    Text("No observation dated to this day.").foregroundStyle(MorningStyle.muted)
                 }
             } else {
                 ObservedMorningDaySections(store: store, dayKey: day.dayKey, onLearn: onLearn)
@@ -615,7 +617,7 @@ private struct ReviewDayDetail: View {
                 Section {
                     Text("No routine saved for this day.").font(.headline)
                     Text("A missing run stays unknown. It isn't counted as a zero-minute morning.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                 } header: { Text("Routine runs") }
             }
             ForEach(Array(day.runs.enumerated()), id: \.element.id) { index, run in
@@ -624,19 +626,19 @@ private struct ReviewDayDetail: View {
                     LabeledContent("Planned time", value: String(localized: "\(run.plannedDurationMinutes) min"))
                     if run.activeDurationSeconds == nil {
                         Text("Timing is incomplete or unavailable; this run is excluded from time averages.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     ForEach(run.routine.steps) { step in
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: run.completedStepIDs.contains(step.id) ? "checkmark.circle" : run.skippedStepIDs.contains(step.id) ? "forward.end.circle" : "circle")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(MorningStyle.muted)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(step.title).font(.subheadline)
                                 Text(run.completedStepIDs.contains(step.id) ? "Marked complete" : run.skippedStepIDs.contains(step.id) ? "Skipped" : "Not completed")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                             }
                             Spacer()
-                            Text("\(step.durationMinutes) min planned").font(.caption).foregroundStyle(.secondary)
+                            Text("\(step.durationMinutes) min planned").font(.caption).foregroundStyle(MorningStyle.muted)
                         }.padding(.vertical, 4)
                     }
                 } header: {
@@ -651,7 +653,7 @@ private struct ReviewDayDetail: View {
                         VStack(alignment: .leading, spacing: 6) {
                             LabeledContent(observation.appName, value: MorningStyle.duration(observation.observedDurationSeconds))
                             Text(observation.coverage == .completeWindow ? "Complete for the declared observation window" : observation.coverage == .partialWindow ? "Partial observation window" : "Coverage unknown")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                         }
                     }
                 }

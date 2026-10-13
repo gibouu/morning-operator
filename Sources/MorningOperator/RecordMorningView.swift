@@ -46,13 +46,14 @@ private struct RecordMorningContent: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable private var recording = ScreenRecordingService.shared
     @ViewState<ScreenRecordingDuration> private var duration = .twentyMinutes
+    @ViewState<Bool> private var confirmingDiscard = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     Image(systemName: recording.state == .recording ? "record.circle" : "rectangle.on.rectangle")
-                        .font(.system(size: 42, weight: .light))
+                        .scaledFont(42, relativeTo: .largeTitle, weight: .light)
                         .foregroundStyle(recording.state == .recording ? Color.red : MorningStyle.accent)
                     Text(title).font(.system(.largeTitle, design: .serif))
                         .fixedSize(horizontal: false, vertical: true)
@@ -61,7 +62,7 @@ private struct RecordMorningContent: View {
 
                     if recording.state == .recording {
                         Text(String(format: "%02d:%02d", recording.elapsedSeconds / 60, recording.elapsedSeconds % 60))
-                            .font(.system(size: 44, weight: .medium, design: .rounded)).monospacedDigit()
+                            .scaledFont(44, relativeTo: .largeTitle, weight: .medium, design: .rounded).monospacedDigit()
                             .accessibilityLabel("Recording duration")
                         Button { recording.stopRecording() } label: {
                             Label("Stop recording", systemImage: "stop.fill")
@@ -76,8 +77,12 @@ private struct RecordMorningContent: View {
                             Label("Use this recording", systemImage: "checkmark")
                         }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("record.use")
-                        Button("Discard recording", role: .destructive) { recording.discard() }
+                        Button("Discard recording", role: .destructive) { confirmingDiscard = true }
                             .buttonStyle(.borderless)
+                            .confirmationDialog("Discard this recording?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+                                Button("Discard recording", role: .destructive) { recording.discard() }
+                                Button("Cancel", role: .cancel) { }
+                            } message: { Text("The video is deleted from this device. Nothing from it has been saved yet.") }
                     } else if recording.state == .starting || recording.state == .stopping {
                         if recording.needsStopRetry {
                             Button("Try stopping again") { recording.stopRecording() }.buttonStyle(PrimaryButtonStyle())

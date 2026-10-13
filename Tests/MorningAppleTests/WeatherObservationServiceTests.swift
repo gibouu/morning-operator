@@ -91,6 +91,49 @@ struct WeatherObservationServiceTests {
         #expect(try await empty.searchCities("Unknown synthetic place").isEmpty, "No results must not invent a default city.")
     }
 
+    @Test func citySearchRanksTheDeviceRegionFirstWithoutDroppingOtherCountries() throws {
+        let texas = try WeatherLocation(latitude: 33.66, longitude: -95.56, displayName: "Paris, TX, United States")
+        let france = try WeatherLocation(latitude: 48.86, longitude: 2.35, displayName: "Paris, France")
+        let ontario = try WeatherLocation(latitude: 43.2, longitude: -80.38, displayName: "Paris, ON, Canada")
+        let unknown = try WeatherLocation(latitude: 1, longitude: 1, displayName: "Synthetic place")
+        let candidates: [(WeatherLocation, String?)] = [(texas, "US"), (france, "FR"), (ontario, "CA"), (unknown, nil)]
+        #expect(WeatherCityRanking.preferringRegion(candidates, region: "FR") == [france, texas, ontario, unknown])
+        #expect(WeatherCityRanking.preferringRegion(candidates, region: "fr") == [france, texas, ontario, unknown])
+        #expect(WeatherCityRanking.preferringRegion(candidates, region: nil) == [texas, france, ontario, unknown],
+            "Without a device region, MapKit's relevance order is kept.")
+        #expect(WeatherCityRanking.preferringRegion(candidates, region: "JP") == [texas, france, ontario, unknown])
+    }
+
+    @Test func cityLabelFallsBackWhenMapKitContextIsEmpty() {
+        #expect(WeatherCityRanking.label(context: "New York, NY, United States", city: "New York", country: "United States", name: "New York")
+            == "New York, NY, United States")
+        #expect(WeatherCityRanking.label(context: "", city: "Lyon", country: "France", name: "Lyon") == "Lyon, France",
+            "MapKit returns an empty context for Lyon; the city must not be dropped.")
+        #expect(WeatherCityRanking.label(context: " ", city: "Lille", country: nil, name: "Lille") == "Lille")
+        #expect(WeatherCityRanking.label(context: nil, city: nil, country: "France", name: "Marseille") == "Marseille")
+        #expect(WeatherCityRanking.label(context: "", city: "", country: "", name: "") == nil)
+    }
+
+    @Test func typedSuggestionsAreTrimmedDeduplicatedAndResolvedOnlyWhenChosen() async throws {
+        let lyon = try WeatherLocation(latitude: 45.76, longitude: 4.83, displayName: "Lyon, France")
+        var fragments: [String] = []
+        var resolved: [CitySuggestion] = []
+        let suggestion = CitySuggestion(title: "Lyon", subtitle: "France")
+        let service = WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
+            citySearchProvider: { _ in [] },
+            citySuggestionProvider: { fragment in fragments.append(fragment); return [suggestion, suggestion, CitySuggestion(title: "", subtitle: "x")] },
+            citySuggestionResolver: { chosen in resolved.append(chosen); return [lyon] })
+        await #expect(throws: WeatherObservationError.invalidSearchQuery) { try await service.suggestCities("   ") }
+        #expect(try await service.suggestCities("  Ly ") == [suggestion])
+        #expect(fragments == ["Ly"] && resolved.isEmpty, "Typing never resolves coordinates.")
+        #expect(suggestion.label == "Lyon, France")
+        #expect(try await service.resolveCity(suggestion) == lyon)
+        #expect(resolved == [suggestion])
+        let fallback = WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
+            citySearchProvider: { _ in [lyon] })
+        #expect(try await fallback.suggestCities("Lyon").map(\.title) == ["Lyon, France"])
+    }
+
     @Test func cancelledLateResponseCannotProduceWeatherAndRetryIsIndependent() async throws {
         let gate = WeatherFixtureGate()
         let location = try place()
