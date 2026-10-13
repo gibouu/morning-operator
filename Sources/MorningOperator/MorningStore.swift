@@ -2051,12 +2051,13 @@ final class MorningStore {
             let validProposal = routinePreferencesIssue == nil ? pendingRoutineProposal.flatMap {
                 $0.isCurrent(archive: observationArchive, baseRoutine: routine, preferences: routinePreferences) ? $0 : nil
             } : nil
+            let currentBudget = budgetAndFeedback.droppingAcceptance(unlessFor: routine)
             try privacyControl.withReadyAccess { _ in
                 try snapshot.save(WorkspaceSnapshot(routine: routine, session: session, previousRoutine: previousRoutine,
                 history: history, captures: captures, receipts: receipts, sessionTimeZone: sessionTimeZone,
                 automatic: automatic, readAloud: readAloud, showMorningOnLockScreen: showMorningOnLockScreen,
                 sessionTimingInterrupted: sessionTimingInterrupted,
-                budgetAndFeedback: budgetAndFeedback,
+                budgetAndFeedback: currentBudget,
                 pendingCaptures: pendingCaptures, voiceIdentifier: speech.voiceIdentifier,
                 observationNotes: notes.isEmpty ? nil : notes,
                 observationSource: notes.isEmpty && observationVideoEvidence == nil ? nil : notesSourceLabel,
@@ -2070,6 +2071,7 @@ final class MorningStore {
             pendingRoutineProposal = validProposal
             savedCompletionSessionID = session?.status == .completed ? session?.id : nil
             savedEndedSessionIDs = endedSessionIDsInMemory
+            if budgetAndFeedback != currentBudget { budgetAndFeedback = currentBudget }
             observationEditsNeedSave = false
             projectObservation(selectedObservationID)
             if let observationSaveIssue, notice == observationSaveIssue { notice = nil }

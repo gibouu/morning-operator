@@ -10822,6 +10822,26 @@
         }
       }
     },
+    "The routine is still going.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La routine est encore en cours."
+          }
+        }
+      }
+    },
+    "The routine was not started.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La routine n’a pas été commencée."
+          }
+        }
+      }
+    },
     "The sampled interpretation can't be displayed. Original evidence remains available below.": {
       "localizations": {
         "fr": {
@@ -11058,26 +11078,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cette matinée n’est pas encore enregistrée."
-          }
-        }
-      }
-    },
-    "This morning is still going.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette matinée est encore en cours."
-          }
-        }
-      }
-    },
-    "This morning was not started.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette matinée n’a pas été commencée."
           }
         }
       }
@@ -12092,16 +12092,6 @@
         }
       }
     },
-    "You finished this morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vous avez terminé cette matinée."
-          }
-        }
-      }
-    },
     "You kept this longer plan. This note returns when the routine changes.": {
       "localizations": {
         "fr": {
@@ -12118,6 +12108,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vous avez laissé cet écran inconnu. Il est exclu des prochaines suggestions d’activités."
+          }
+        }
+      }
+    },
+    "You reached the end of the routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez atteint la fin de la routine."
           }
         }
       }
@@ -12192,12 +12192,12 @@
         }
       }
     },
-    "You stopped while the morning was paused.": {
+    "You stopped while the routine was paused.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous avez arrêté pendant que la matinée était en pause."
+            "value": "Vous avez arrêté pendant que la routine était en pause."
           }
         }
       }

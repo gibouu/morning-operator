@@ -227,7 +227,8 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
     }
 }
 
-private func preferenceTitleKey(_ title: String) -> String {
+/// Shared with the time budget, which must match a choice to a step exactly as the journal does.
+func preferenceTitleKey(_ title: String) -> String {
     title.folding(options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX"))
         .components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
 }

@@ -47,24 +47,29 @@ public struct RoutineTimeBudget: Sendable, Equatable {
         requiredStepIDs = required.map(\.id)
     }
 
-    /// The journal's own matching rule, read without changing the journal. A choice whose
-    /// step is in the routine belongs to that step alone. Otherwise it reaches a step by
-    /// category and title only when exactly one step matches it and that step has no choice
-    /// of its own; anything ambiguous protects nothing, as the journal refuses to guess.
+    /// The journal's own matching rule (`RoutinePreferenceJournal.reconcile`), read without
+    /// changing the journal. Each choice claims the step with its identity or, when no step
+    /// has it, the single step with its category and title. A choice that matches several
+    /// steps claims none, and a step claimed by two choices is protected by neither: where
+    /// the journal refuses to guess about a step, the budget does not protect that step.
+    /// The rule is applied choice by choice. A refusal about one activity does not hide a
+    /// keep the person made for another step by its identity: the report would then leave
+    /// out minutes they did ask to keep.
     private static func keptStepIDs(in steps: [RoutineStep], preferences: RoutinePreferenceJournal) -> Set<UUID> {
-        let stepIDs = Set(steps.map(\.id))
-        var matchedSteps: [UUID: [UUID]] = [:]
-        for step in steps {
-            guard let match = try? preferences.matchingPreference(for: step) else { continue }
-            if match.targetID == step.id || !stepIDs.contains(match.targetID) {
-                matchedSteps[match.id, default: []].append(step.id)
+        var claims: [UUID: [RoutinePreference]] = [:]
+        for entry in preferences.entries {
+            if steps.contains(where: { $0.id == entry.targetID }) {
+                claims[entry.targetID, default: []].append(entry)
+                continue
             }
+            let matches = steps.filter {
+                $0.kind == entry.targetKind && preferenceTitleKey($0.title) == entry.normalizedTitle
+            }
+            if matches.count == 1 { claims[matches[0].id, default: []].append(entry) }
         }
-        var kept = Set<UUID>()
-        for entry in preferences.entries where entry.presence == .keep {
-            if let matched = matchedSteps[entry.id], matched.count == 1 { kept.insert(matched[0]) }
-        }
-        return kept
+        return Set(claims.compactMap { stepID, entries in
+            entries.count == 1 && entries[0].presence == .keep ? stepID : nil
+        })
     }
 
     public var minutesOverTarget: Int { max(0, totalMinutes - targetMinutes) }

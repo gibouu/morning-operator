@@ -62,6 +62,17 @@ public struct RoutineBudgetAndFeedback: Codable, Sendable, Equatable {
         return RoutineTimeBudget(routine: routine, targetMinutes: targetMinutes, preferences: preferences)
     }
 
+    /// The same state without an acceptance made for another routine version. The store
+    /// saves this form with every write, so an edit, a reorder, an import or an approved
+    /// suggestion ends the acceptance for good: restoring the earlier routine afterwards
+    /// brings the note back. Approving keeps the version, and so keeps the acceptance.
+    public func droppingAcceptance(unlessFor routine: RoutineVersion?) -> RoutineBudgetAndFeedback {
+        guard let acceptedLongerPlan, acceptedLongerPlan.routineVersionID != routine?.id else { return self }
+        var copy = self
+        copy.acceptedLongerPlan = nil
+        return copy
+    }
+
     /// True while the person's acceptance still describes this exact report.
     public func hasAccepted(_ budget: RoutineTimeBudget) -> Bool {
         acceptedLongerPlan?.covers(budget) == true
@@ -107,7 +118,8 @@ public struct RoutineBudgetAndFeedback: Codable, Sendable, Equatable {
             targetMinutes = minutes
         }
         if let acceptance = try? values.decodeIfPresent(RoutineTimeBudgetAcceptance.self, forKey: .acceptedLongerPlan),
-           acceptance.targetMinutes == targetMinutes {
+           acceptance.targetMinutes == targetMinutes, acceptance.totalMinutes > acceptance.targetMinutes {
+            // Only a plan longer than its target can have been accepted.
             acceptedLongerPlan = acceptance
         }
         let records = (try? values.decodeIfPresent([Recoverable<RoutineSessionFeedback>].self, forKey: .feedback)) ?? []

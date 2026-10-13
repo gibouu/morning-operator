@@ -72,6 +72,33 @@ struct RoutineBudgetAndFeedbackTests {
         #expect(!state.hasAccepted(try #require(state.report(for: version))))
     }
 
+    @Test("An acceptance does not survive a change of routine, even when the earlier routine is restored")
+    func acceptanceEndsWhenTheRoutineChanges() throws {
+        let version = routine([briefing, messages, chess])
+        var state = RoutineBudgetAndFeedback()
+        state.setTarget(10)
+        state.acceptLongerPlan(try #require(state.report(for: version)))
+
+        // Saved again with the same version, approved or not: kept.
+        #expect(state.droppingAcceptance(unlessFor: version) == state)
+        #expect(state.droppingAcceptance(unlessFor: version.approved()) == state)
+
+        // Saved with an edited version, or with no routine: dropped, and only the acceptance.
+        let edited = version.revised(steps: [chess, messages, briefing])
+        let afterEdit = state.droppingAcceptance(unlessFor: edited)
+        #expect(afterEdit.acceptedLongerPlan == nil)
+        #expect(afterEdit.targetMinutes == 10)
+        #expect(state.droppingAcceptance(unlessFor: nil).acceptedLongerPlan == nil)
+
+        // Restoring the earlier routine afterwards brings the note back.
+        let afterRestore = afterEdit.droppingAcceptance(unlessFor: version)
+        #expect(!afterRestore.hasAccepted(try #require(afterRestore.report(for: version))))
+
+        // With nothing accepted there is nothing to drop.
+        let plain = RoutineBudgetAndFeedback()
+        #expect(plain.droppingAcceptance(unlessFor: edited) == plain)
+    }
+
     @Test("A plan that fits, or a report for another target, cannot be accepted")
     func acceptanceNeedsAnOverTargetReportForTheCurrentTarget() throws {
         let version = routine([briefing, messages, chess])
@@ -232,6 +259,48 @@ struct RoutineTimeBudgetKeepMatchingTests {
         try journal.upsert(RoutinePreference(target: first, durationMinutes: 4))
         #expect(RoutineTimeBudget(routine: routine([first]), targetMinutes: 5,
                                   preferences: journal).requiredStepIDs.isEmpty)
+    }
+
+    @Test("A keep reaches its step by title although another choice shares that title")
+    func keepIsResolvedPerChoiceAsTheJournalDoes() throws {
+        // A's choice keeps its identity after A is renamed; B's keep then reaches the new C by title.
+        let a = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 2)
+        let b = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 8)
+        var journal = RoutinePreferenceJournal()
+        try journal.upsert(RoutinePreference(target: a, durationMinutes: 2))
+        try journal.upsert(RoutinePreference(target: b, presence: .keep))
+        var renamed = a
+        renamed.title = "Other"
+        let c = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 8)
+        let steps = [renamed, c]
+        // The journal applies B's keep to C without refusing.
+        #expect(try journal.reconcile(steps: steps).retainedStepIDs == [b.id])
+        let budget = RoutineTimeBudget(routine: routine(steps), targetMinutes: 5, preferences: journal)
+        #expect(budget.requiredStepIDs == [c.id])
+        #expect(budget.requiredMinutes == 8)
+        #expect(budget.fit == .requiredAloneOverTarget)
+    }
+
+    @Test("Where the journal refuses two choices for one step, the budget protects nothing")
+    func conflictingChoicesProtectNothing() throws {
+        let saved = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 8)
+        let current = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 4)
+        var journal = RoutinePreferenceJournal()
+        try journal.upsert(RoutinePreference(target: saved, presence: .keep))
+        try journal.upsert(RoutinePreference(target: current, durationMinutes: 4))
+        #expect(throws: RoutinePreferenceError.conflictingMatch(current.id)) { try journal.reconcile(steps: [current]) }
+        #expect(RoutineTimeBudget(routine: routine([current]), targetMinutes: 2,
+                                  preferences: journal).requiredStepIDs.isEmpty)
+
+        // Two keeps for the same title cannot both belong to the one step that has it.
+        let other = RoutineStep(title: "chess", kind: .entertainment, durationMinutes: 6)
+        var twoKeeps = RoutinePreferenceJournal()
+        try twoKeeps.upsert(RoutinePreference(target: saved, presence: .keep))
+        try twoKeeps.upsert(RoutinePreference(target: other, presence: .keep))
+        let fresh = RoutineStep(title: "Chess", kind: .entertainment, durationMinutes: 5)
+        #expect(throws: RoutinePreferenceError.self) { try twoKeeps.reconcile(steps: [fresh]) }
+        #expect(RoutineTimeBudget(routine: routine([fresh]), targetMinutes: 2,
+                                  preferences: twoKeeps).requiredStepIDs.isEmpty)
     }
 
     @Test("Exclusions and timing-only choices matched by title protect nothing")

@@ -72,7 +72,7 @@ final class BudgetAndRecapTests: XCTestCase {
 
         MorningUITestNavigation.selectTab("Review", in: app)
         reveal("recap.completed", in: app)
-        XCTAssertEqual(element("recap.ending", in: app).label, "You finished this morning.")
+        XCTAssertEqual(element("recap.ending", in: app).label, "You reached the end of the routine.")
         XCTAssertTrue(element("recap.completed", in: app).label.hasPrefix("4 moments completed"))
         XCTAssertFalse(element("recap.skipped", in: app).exists)
         XCTAssertFalse(element("recap.unfinished", in: app).exists)
@@ -103,12 +103,9 @@ final class BudgetAndRecapTests: XCTestCase {
                                                 object: element("recap.feedbackSaved", in: app))
         XCTAssertEqual(XCTWaiter.wait(for: [cleared], timeout: 5), .completed)
 
-        // The same recap is available from the day in history.
-        tap("review.period", in: app)
-        tap("review.day.\(todayKey())", in: app)
-        XCTAssertTrue(element("recap.completed", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(element("recap.completed", in: app).label.hasPrefix("4 moments completed"))
-        attach("recap-in-history-day", app)
+        // Not checked here: the recap on the day's own page. The fixture run is a sample, and
+        // sample runs are left out of history days on purpose, so that page shows no run.
+        XCTAssertTrue(element("recap.sample", in: app).exists, "A sample run must be labelled as one.")
     }
 
     func testStoppedMorningRecapNamesWhatWasNotReached() {
@@ -232,15 +229,6 @@ final class BudgetAndRecapTests: XCTestCase {
 
     private func stepLabels(in app: XCUIApplication) -> [String] {
         (0..<8).map { app.buttons["routine.step.\($0)"] }.filter(\.exists).map(\.label)
-    }
-
-    private func todayKey() -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {

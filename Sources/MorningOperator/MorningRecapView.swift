@@ -21,6 +21,9 @@ struct MorningRecapView: View {
                 if let title = stoppedAtTitle(recap) {
                     line("It stopped at “\(title)”.")
                 }
+                if session.routine.isSynthetic {
+                    line("Sample routine · not observed behavior").accessibilityIdentifier("recap.sample")
+                }
             }
             VStack(alignment: .leading, spacing: 10) {
                 group("\(recap.completedSteps.count) moments completed", recap.completedSteps, id: "recap.completed")
@@ -41,11 +44,11 @@ struct MorningRecapView: View {
 
     private func endingText(_ ending: RoutineSessionEnding) -> LocalizedStringKey {
         switch ending {
-        case .completed: "You finished this morning."
+        case .completed: "You reached the end of the routine."
         case .stopped: "You stopped before the end."
-        case .stoppedWhilePaused: "You stopped while the morning was paused."
-        case .neverStarted: "This morning was not started."
-        case .inProgress: "This morning is still going."
+        case .stoppedWhilePaused: "You stopped while the routine was paused."
+        case .neverStarted: "The routine was not started."
+        case .inProgress: "The routine is still going."
         }
     }
 
@@ -91,15 +94,23 @@ struct MorningRecapView: View {
     }
 }
 
-/// The recap of the morning that just ended, at the top of Review. A morning that was
-/// never started has nothing to recap here; its day in history still shows it.
+/// The recap of the run that ended today, at the top of Review. A run that was never
+/// started has nothing to recap here; its day in history still shows it.
 struct MorningRecapCard: View {
     @Bindable var store: MorningStore
 
     var body: some View {
-        if let session = store.endedSession, store.recap(for: session).ending != .neverStarted {
+        if let session = store.endedSession, endedToday(session),
+           store.recap(for: session).ending != .neverStarted {
             Card { MorningRecapView(store: store, session: session) }
         }
+    }
+}
+
+private extension MorningRecapCard {
+    /// An earlier day's run is read from its day in history, not announced here again.
+    func endedToday(_ session: RoutineSession) -> Bool {
+        session.events.last.map { Calendar.current.isDateInToday($0.occurredAt) } ?? false
     }
 }
 
