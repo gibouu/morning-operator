@@ -1175,6 +1175,14 @@ struct PhoneLoopProtocolTests {
             _ = try Harness(mode: .manualIntervention)
         }
 
+        // A start date that is not a number would make the record impossible to store.
+        for bad in [Double.nan, .infinity] {
+            #expect(throws: PhoneLoopProtocolError.valueOutOfRange(field: "startedAt")) {
+                _ = try PhoneLoopSession(policy: try Harness.policy(), mode: .tetheredController,
+                                         startedAt: Date(timeIntervalSinceReferenceDate: bad))
+            }
+        }
+
         let shortcut = try Harness(maxSteps: 1, mode: .configuredShortcut)
         _ = try shortcut.startAndObserve()
         _ = try shortcut.exchange(try shortcut.propose(.openApp(bundleID: mailApp)))

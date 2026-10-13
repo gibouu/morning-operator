@@ -299,6 +299,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     public init(runID: UUID = UUID(), policy: PhoneLoopPolicy, mode: PhoneStepExecutionMode, startedAt: Date) throws {
         // Manual intervention is something that happens to a step, not a way to send commands.
         guard mode != .manualIntervention else { throw PhoneLoopProtocolError.valueOutOfRange(field: "mode") }
+        guard startedAt.timeIntervalSinceReferenceDate.isFinite else { throw PhoneLoopProtocolError.valueOutOfRange(field: "startedAt") }
         self.runID = runID; self.policy = policy; self.mode = mode
         record = PhoneRunRecord(id: runID, protocolVersion: PhoneLoopWire.version, startedAt: startedAt,
                                 authorship: .assistantExecuted, steps: [], reconnectCount: 0, stopReason: nil)
