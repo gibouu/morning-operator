@@ -398,12 +398,15 @@ final class QuietMorningTests: XCTestCase {
         let expected = ["The weather", "Today's calendar", "Your morning", "Your reminders", "People and messages",
                         "A little reading", "Make some tea", "A moment to move", "A little time to play", "One thought for later"]
         // Quarantined, issue #72: on the iOS 27.0 simulator the tile lifts but
-        // does not follow the drag, at either speed. The quarantine covers this
-        // one check only. When the drag does reorder the tiles, every check
-        // below runs with no quarantine and any failure there is a real one.
-        let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", expected[0]),
+        // does not follow the drag, at either speed. The quarantine covers that
+        // one outcome only: the order exactly as it was before the drag. Any
+        // other order, right or wrong, goes through every check below with no
+        // quarantine.
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "Your morning"),
                                               object: app.buttons["morning.step.0"])
-        guard XCTWaiter.wait(for: [moved], timeout: 5) == .completed else {
+        if XCTWaiter.wait(for: [moved], timeout: 5) != .completed,
+           app.buttons["morning.step.0"].label.contains("Your morning"),
+           app.buttons["morning.step.2"].label.contains("Today's calendar") {
             attach("more-native-drag-did-not-move", app)
             XCTExpectFailure("A dragged tile lifts but does not move on the iOS 27.0 simulator (issue #72).") {
                 XCTFail("The dragged tile did not move: the first tile is still \"\(app.buttons["morning.step.0"].label)\".")

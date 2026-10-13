@@ -16,7 +16,9 @@ final class ObservationNarrationTests: XCTestCase {
 
         tap("narration.hear", in: app)
         let playback = app.descendants(matching: .any).matching(identifier: "narration.playback").firstMatch
-        wait(playback, predicate: "value == %@", argument: "speaking", timeout: 10,
+        // Thirty seconds: the simulator's first speech request has taken more
+        // than ten to start on a slow hosted runner.
+        wait(playback, predicate: "value == %@", argument: "speaking", timeout: 30,
              message: "The real native speech delegate must enter speaking, not merely accept a request.", in: app)
         attach("saved-excerpt-native-preview-speaking", app)
         tap("narration.stop", in: app)

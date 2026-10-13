@@ -64,7 +64,10 @@ final class CompletionCaptureTests: XCTestCase {
         let app = launch(sample: "--ui-testing-capture-late")
         completeMorning(in: app)
         openLateTurn(in: app)
-        tap("captureVoice.cancel", in: app)
+        // Tapped directly: openLateTurn has just checked that Cancel can be
+        // touched, and the shared helper's own waits have used up the whole
+        // window before the fixture's late text on a slow simulator.
+        app.buttons["captureVoice.cancel"].tap()
         waitAbsent(app.buttons["captureVoice.cancel"])
         assertNoReviewAppears(for: lateCallbackWait, in: app)
         XCTAssertEqual(app.staticTexts["run.state"].value as? String, "completed")

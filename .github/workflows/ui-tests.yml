@@ -29,13 +29,13 @@ permissions:
 
 env:
   # The whole suite takes about two hours on one hosted simulator, so it is
-  # split by test class into three of roughly forty minutes (measured: 40, up to
-  # 47 on a slow runner, and 41), well under the 62-minute limit of the test
-  # step. Each class is named once, here. The third shard runs every class not
+  # split by test class into three of roughly forty-five minutes. The same
+  # shard has taken 26 minutes on one runner and 52 on another, so the test
+  # step is allowed 80. Each class is named once, here. The third shard runs every class not
   # named in the first two, so a new test class is picked up without touching
   # this file.
   MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests MorningBriefingTests CompletionCaptureTests PrivacyTests RoutineTransferTests
-  PROPOSAL_CLASSES: RoutineEvidenceProposalTests
+  PROPOSAL_CLASSES: RoutineEvidenceProposalTests ObservationReviewJourneyTests
 
 jobs:
   guard:
@@ -85,9 +85,10 @@ jobs:
     # The app uses iOS 27 APIs, so it needs the Xcode 27 image and its iOS 27
     # simulators. This repository is public: hosted runners only.
     runs-on: xcode-27
-    # 45 minutes was the first guess; measured test time is 40 to 45 minutes a
-    # shard once the tests run to their end, plus the build. A stuck run still stops.
-    timeout-minutes: 80
+    # 45 minutes was the first guess; measured test time is 40 to 52 minutes a
+    # shard once the tests run to their end, plus about 8 for the build and 3
+    # for the largest-text pass. A stuck run still stops.
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix:
@@ -135,7 +136,7 @@ jobs:
       # One simulator, one test at a time, no retry. A test that hangs is failed
       # after 15 minutes instead of using up the whole job.
       - name: Run the UI tests
-        timeout-minutes: 62
+        timeout-minutes: 80
         run: |
           xcodebuild test-without-building -project MorningOperator.xcodeproj -scheme MorningOperator \
             -destination "platform=iOS Simulator,id=$UDID" \

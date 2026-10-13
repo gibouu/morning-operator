@@ -93,7 +93,10 @@ def xcresulttool(*arguments):
     try:
         output = subprocess.run(["xcrun", "xcresulttool", "get", "test-results", *arguments],
                                 check=True, capture_output=True, text=True).stdout
-        return json.loads(output)
+        report = json.loads(output)
+        if not isinstance(report, dict):
+            raise ValueError(f"xcresulttool printed {type(report).__name__}, not a report")
+        return report
     except (subprocess.CalledProcessError, OSError, ValueError) as error:
         detail = getattr(error, "stderr", None) or str(error)
         raise UnreadableBundle(" ".join(detail.split())[:300]) from error
