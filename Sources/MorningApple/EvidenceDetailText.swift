@@ -47,6 +47,9 @@ public enum EvidenceDetailText {
     }
 
     // The current pair is included so a reworded translation cannot reject its own new proposals.
+    /// Every evidence label to look for when reading a saved step detail.
+    public static var readableLabels: [String] { readableLanguages.map(\.label) }
+
     private static var readableLanguages: [(label: String, note: String)] {
         let saved = zip(savedLabels, savedTentativeNotes).map { (label: $0, note: $1) }
         let current = (label: label, note: tentativeNote)

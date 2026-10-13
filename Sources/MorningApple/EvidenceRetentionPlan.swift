@@ -180,7 +180,8 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 return result
             }
             let newline = Data([0x0A])
-            let starts = offsets(of: "Evidence: “").map(\.upperBound)
+            // A detail keeps the label of the language it was written in.
+            let starts = EvidenceDetailText.readableLabels.flatMap { offsets(of: "\($0) “") }.map(\.upperBound).sorted()
             let ends = starts.isEmpty ? [] : offsets(of: "”").map(\.lowerBound)
             // Byte-exact throughout: two spellings of the same letters are two quotations.
             var seenLines = Set<Data>()

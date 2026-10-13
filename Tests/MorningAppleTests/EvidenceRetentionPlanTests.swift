@@ -275,6 +275,20 @@ struct EvidenceRetentionPlanTests {
             .dependentCopies.isEmpty)
     }
 
+    @Test("An edited evidence line is found under every label a detail was saved with",
+          arguments: EvidenceDetailText.savedLabels)
+    func evidenceLinesAreFoundInEverySavedLanguage(label: String) throws {
+        let learned = try morning()
+        var step = try #require(try proposal(from: [learned]).routine.steps.first)
+        // Not a whole line of the observation, so only the label can find it.
+        let quote = String(learned.originalText.dropLast(2))
+        #expect(quote.count >= 8)
+        step.detail = "\(label) “\(quote)”\nRemember “coffee” too."
+        let copies = try plan([learned], current: RoutineVersion(sourceLabel: "Your morning", steps: [step]))
+            .dependents(of: learned.id)
+        #expect(copies.contains { $0.quote == quote })
+    }
+
     @Test func aKeptLearnedStepInsideANewSuggestionFromTheSameMorningIsListed() throws {
         let learned = try morning()
         let approved = try proposal(from: [learned]).routine.approved()
