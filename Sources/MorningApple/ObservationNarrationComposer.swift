@@ -34,6 +34,13 @@ public struct PreparedObservationNarration: Sendable, Equatable {
     public let sourceDateLabel: String
 }
 
+/// The language of a composed introduction and date. An approved moment keeps the
+/// language it was composed in; it never follows a later interface language change.
+public enum ObservationNarrationLanguage: String, Sendable, Equatable, CaseIterable {
+    case english = "en", french = "fr"
+    public static var current: Self { AppLanguage.isFrench ? .french : .english }
+}
+
 public enum ObservationNarrationComposer {
     public static let maximumCandidates = 24
 
@@ -71,17 +78,17 @@ public enum ObservationNarrationComposer {
 
     /// Direct sample handoff preserves the exact selected line and frame. A
     /// substring, different frame or unavailable source never chooses a fallback.
-    public static func prepare(acquisition: ObservationAcquisition, frameID: UUID,
-                               quote: String) throws -> PreparedObservationNarration {
+    public static func prepare(acquisition: ObservationAcquisition, frameID: UUID, quote: String,
+                               language: ObservationNarrationLanguage = .current) throws -> PreparedObservationNarration {
         try validateEligibility(acquisition)
         guard let candidate = candidates(for: acquisition).first(where: {
             $0.frameID == frameID && $0.text.utf8.elementsEqual(quote.utf8)
         }) else { throw ObservationNarrationError.invalidExcerpt }
-        return try prepare(acquisition: acquisition, candidate: candidate)
+        return try prepare(acquisition: acquisition, candidate: candidate, language: language)
     }
 
-    public static func prepare(acquisition: ObservationAcquisition,
-                               candidate: ObservationNarrationCandidate) throws -> PreparedObservationNarration {
+    public static func prepare(acquisition: ObservationAcquisition, candidate: ObservationNarrationCandidate,
+                               language: ObservationNarrationLanguage = .current) throws -> PreparedObservationNarration {
         try validateEligibility(acquisition)
         let choices = candidates(for: acquisition)
         guard !choices.isEmpty else { throw ObservationNarrationError.noUsableExcerpt }
@@ -90,13 +97,33 @@ public enum ObservationNarrationComposer {
         let reference = try RoutineObservationReference(acquisitionID: acquisition.id,
             revisionSHA256: revision(acquisition), frameID: candidate.frameID, quote: candidate.text,
             isSynthetic: acquisition.origin == .synthetic)
-        return try document(acquisition: acquisition, reference: reference)
+        return try document(acquisition: acquisition, reference: reference, language: language)
     }
 
     /// Recomputes the approved sentence without changing it. A source mutation
     /// requires a new preview/draft/approval, never an automatic text replacement.
-    public static func resolve(reference: RoutineObservationReference,
-                               archive: ObservationArchive) throws -> PreparedObservationNarration {
+    public static func resolve(reference: RoutineObservationReference, archive: ObservationArchive,
+                               language: ObservationNarrationLanguage = .current) throws -> PreparedObservationNarration {
+        try document(acquisition: validatedSource(of: reference, in: archive), reference: reference, language: language)
+    }
+
+    /// Resolves a saved, approved moment in the language its sentence was composed in.
+    /// The interface language may have changed since approval (and moments approved
+    /// before French existed are English), so the saved sentence selects the composition;
+    /// the current language never rewrites it. A sentence that matches no composition of
+    /// the unchanged source was edited or forged and requires a new approval.
+    public static func resolve(reference: RoutineObservationReference, archive: ObservationArchive,
+                               approvedText: String) throws -> PreparedObservationNarration {
+        let acquisition = try validatedSource(of: reference, in: archive)
+        for language in ObservationNarrationLanguage.allCases {
+            let candidate = try document(acquisition: acquisition, reference: reference, language: language)
+            if candidate.spokenText.utf8.elementsEqual(approvedText.utf8) { return candidate }
+        }
+        throw ObservationNarrationError.sourceChanged
+    }
+
+    private static func validatedSource(of reference: RoutineObservationReference,
+                                        in archive: ObservationArchive) throws -> ObservationAcquisition {
         guard let acquisition = archive.entry(id: reference.acquisitionID) else { throw ObservationNarrationError.sourceMissing }
         try validateEligibility(acquisition)
         guard reference.isSynthetic == (acquisition.origin == .synthetic),
@@ -104,7 +131,7 @@ public enum ObservationNarrationComposer {
         guard candidates(for: acquisition).contains(where: {
             $0.frameID == reference.frameID && $0.text.utf8.elementsEqual(reference.quote.utf8)
         }) else { throw ObservationNarrationError.invalidExcerpt }
-        return try document(acquisition: acquisition, reference: reference)
+        return acquisition
     }
 
     private static func validateEligibility(_ acquisition: ObservationAcquisition) throws {
@@ -116,10 +143,10 @@ public enum ObservationNarrationComposer {
         }
     }
 
-    private static func document(acquisition: ObservationAcquisition,
-                                 reference: RoutineObservationReference) throws -> PreparedObservationNarration {
+    private static func document(acquisition: ObservationAcquisition, reference: RoutineObservationReference,
+                                 language: ObservationNarrationLanguage) throws -> PreparedObservationNarration {
         guard let observed = acquisition.observedDate else { throw ObservationNarrationError.dateRequired }
-        let french = AppLanguage.isFrench
+        let french = language == .french
         let formatter = DateFormatter()
         formatter.locale = french ? Locale(identifier: "fr_FR") : Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)

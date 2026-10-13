@@ -175,7 +175,9 @@ final class MorningStore {
         resolveObservation: { [weak self] step in
             guard let self, self.storageIsAvailable, let reference = step.observationReference,
                   !self.observationEditsNeedSave,
-                  let prepared = try? ObservationNarrationComposer.resolve(reference: reference, archive: self.observationArchive) else { return nil }
+                  // The approved sentence, not the current interface language, selects the composition.
+                  let prepared = try? ObservationNarrationComposer.resolve(reference: reference,
+                      archive: self.observationArchive, approvedText: step.detail) else { return nil }
             return prepared.spokenText
         })
     @ObservationIgnored lazy var automation = MorningAutomationCoordinator(executor: stepExecutor)
