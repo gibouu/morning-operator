@@ -26,6 +26,8 @@ struct MorningOpeningPresentation: Equatable {
     var speechRequested = false
     /// The opening's own utterance, so ending the opening stops nothing else.
     var playbackID: UUID?
+    /// The recap was asked for and could not be read; it is no longer offered.
+    var briefWithdrawn = false
 }
 
 extension MorningStore {
@@ -133,29 +135,47 @@ extension MorningStore {
     }
 
     private func playOpeningBrief(_ presentation: MorningOpeningPresentation) {
-        guard presentation.phase == .choosing, session?.status == .running, !voiceInputBlocksPlayback,
-              let document = presentation.document else { return }
-        // The same admission checks as a briefing moment, on the document the opening quoted.
-        let now = Date(), zone = TimeZone.current.identifier
-        guard document.isCurrent(at: now, timeZoneIdentifier: zone), briefing.permitsPlayback(of: document) else {
-            // The opening waited past its facts. Compose it again from the same document:
-            // it now says what is out of date, and offers the recap only if one remains.
-            // Shown, not spoken: a morning is greeted aloud once.
-            openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: now, timeZoneIdentifier: zone)
-            notice = String(localized: "This recap needs an update before playback.")
-            return
-        }
-        let text = MorningAppStepExecutor.text(for: .morningBriefing, in: document)
-        guard !text.isEmpty else { return }
+        guard presentation.phase == .choosing, !presentation.briefWithdrawn, session?.status == .running,
+              !voiceInputBlocksPlayback, let quoted = presentation.document else { return }
         let sessionID = presentation.sessionID
         openingTask?.cancel()
+        // The answer ends the opening sentence if it is still being read.
+        if let id = presentation.playbackID, id == speech.playbackID { speech.stop() }
         openingPresentation?.phase = .brief
-        openingPresentation?.briefText = text
         openingPresentation?.playbackID = nil
         openingTask = Task { [weak self] in
             guard let self else { return }
+            @MainActor func stillAsked() -> Bool {
+                !Task.isCancelled && openingPresentation?.sessionID == sessionID && openingPresentation?.phase == .brief
+            }
+            // The same admission checks as a briefing moment.
+            @MainActor func playable(_ document: PreparedMorningBriefing) -> Bool {
+                document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier)
+                    && briefing.permitsPlayback(of: document)
+            }
+            var document = quoted
+            if !playable(document) {
+                // The opening waited past one of its facts. Prepare again, as a briefing moment does.
+                let fresh = await briefing.refresh()
+                guard stillAsked() else { return }
+                if let fresh { document = fresh }
+            }
+            let text = playable(document) ? MorningAppStepExecutor.text(for: .morningBriefing, in: document) : ""
+            guard !text.isEmpty else {
+                // No recap can be read. Say so, show what is out of date, and stop offering it.
+                // Shown, not spoken: a morning is greeted aloud once.
+                openingTask = nil
+                openingPresentation?.phase = .choosing
+                openingPresentation?.briefWithdrawn = true
+                openingPresentation?.document = document
+                openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: Date(),
+                    timeZoneIdentifier: TimeZone.current.identifier)
+                notice = String(localized: "This recap needs an update before playback.")
+                return
+            }
+            openingPresentation?.document = document
+            openingPresentation?.briefText = text
             do {
-                // Replaces the opening sentence if it is still being read.
                 try await speech.speakAndWait(text)
             } catch {
                 // Stopped or failed. If the opening is still up, offer the choice again.

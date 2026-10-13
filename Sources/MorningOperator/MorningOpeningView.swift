@@ -45,8 +45,8 @@ struct MorningOpeningView: View {
     }
 
     @ViewBuilder private func choices(_ opening: MorningOpening) -> some View {
-        // The recap is not offered again while it is being read.
-        let offered = opening.choices.filter { $0 != .brief || presentation.phase == .choosing }
+        // The recap is not offered while it is being read, or once it could not be read.
+        let offered = opening.choices.filter { $0 != .brief || (presentation.phase == .choosing && !presentation.briefWithdrawn) }
         Group {
             if dynamicType.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 12) { buttons(offered) }
