@@ -395,12 +395,21 @@ final class QuietMorningTests: XCTestCase {
         // Slow, with a hold before the drop: a fast synthetic drag on a busy
         // machine lifts the tile and lets go before the list has moved it.
         lift.press(forDuration: 1.2, thenDragTo: afterThird, withVelocity: .slow, thenHoldForDuration: 0.6)
-        // Quarantined, issue #72: on the iOS 27.0 simulator the tile lifts but
-        // does not follow the drag, at either speed. Every check below is kept;
-        // the test turns red again as soon as a drag reorders the tiles.
-        XCTExpectFailure("A dragged tile lifts but does not move on the iOS 27.0 simulator (issue #72).")
         let expected = ["The weather", "Today's calendar", "Your morning", "Your reminders", "People and messages",
                         "A little reading", "Make some tea", "A moment to move", "A little time to play", "One thought for later"]
+        // Quarantined, issue #72: on the iOS 27.0 simulator the tile lifts but
+        // does not follow the drag, at either speed. The quarantine covers this
+        // one check only. When the drag does reorder the tiles, every check
+        // below runs with no quarantine and any failure there is a real one.
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", expected[0]),
+                                              object: app.buttons["morning.step.0"])
+        guard XCTWaiter.wait(for: [moved], timeout: 5) == .completed else {
+            attach("more-native-drag-did-not-move", app)
+            XCTExpectFailure("A dragged tile lifts but does not move on the iOS 27.0 simulator (issue #72).") {
+                XCTFail("The dragged tile did not move: the first tile is still \"\(app.buttons["morning.step.0"].label)\".")
+            }
+            return
+        }
         for (index, title) in expected.enumerated() {
             assertTitle(title, on: app.buttons["morning.step.\(index)"], in: app)
         }

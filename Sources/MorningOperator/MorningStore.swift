@@ -1146,7 +1146,10 @@ final class MorningStore {
               let workspace = args.first(where: { $0.hasPrefix("--ui-testing-workspace=") }),
               UUID(uuidString: String(workspace.dropFirst("--ui-testing-workspace=".count))) != nil else { return nil }
         if args.contains("--ui-testing-capture-late") {
-            return ("I dreamed of a blue garden. SYNTHETIC_LATE_CAPTURE", 5)
+            // Twelve seconds: the test has to open the turn and cancel it (or
+            // leave the app) before this returns, and on a slow hosted simulator
+            // those few steps alone have taken five.
+            return ("I dreamed of a blue garden. SYNTHETIC_LATE_CAPTURE", 12)
         }
         if args.contains("--ui-testing-capture-dream") {
             return ("I dreamed of a blue garden. SYNTHETIC_VOICE_CAPTURE", 1)

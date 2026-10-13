@@ -69,9 +69,10 @@ final class OnDeviceLearningTests: XCTestCase {
         #if targetEnvironment(simulator)
         // One exception, on a simulator only: a simulator without the model's
         // files still reports the model as available, then refuses the request
-        // with a model-manager error. That is a missing capability, not a result.
+        // with model-manager error 1019. That is a missing capability, not a
+        // result. Any other model-manager error (an invalid schema, say) fails.
         let refusal = app.staticTexts.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@",
-                                                            "app.notice", "ModelManagerError")).firstMatch
+                                                            "app.notice", "ModelManagerError error 1019")).firstMatch
         let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in proposal.exists || refusal.exists },
                                                 object: nil)
         _ = XCTWaiter.wait(for: [settled], timeout: 120)

@@ -148,7 +148,9 @@ final class ObservationScreenReviewTests: XCTestCase {
     private func tapContext(_ label: String, in app: XCUIApplication) {
         tap(context(label, in: app), in: app)
         XCTAssertTrue(app.navigationBars["Source moments"].waitForExistence(timeout: 5), app.debugDescription)
-        let count = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Seen on 1 distinct day.")).firstMatch
+        // The catalog's singular form has read "Seen on 1 day." since the French
+        // work (#32); only the plural keeps "distinct".
+        let count = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Seen on 1 day.")).firstMatch
         XCTAssertTrue(count.waitForExistence(timeout: 5), app.debugDescription)
     }
 

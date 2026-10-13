@@ -6,6 +6,8 @@ import XCTest
 final class CompletionCaptureTests: XCTestCase {
     private let dream = "I dreamed of a blue garden. SYNTHETIC_VOICE_CAPTURE"
     private let lateDream = "I dreamed of a blue garden. SYNTHETIC_LATE_CAPTURE"
+    /// One second longer than the late fixture's final callback (twelve seconds, in MorningStore).
+    private let lateCallbackWait: TimeInterval = 13
 
     func testSpokenCompletionNeedsReviewAndExplicitSaveThenSurvivesRelaunch() {
         let app = launch(sample: "--ui-testing-capture-dream")
@@ -64,7 +66,7 @@ final class CompletionCaptureTests: XCTestCase {
         openLateTurn(in: app)
         tap("captureVoice.cancel", in: app)
         waitAbsent(app.buttons["captureVoice.cancel"])
-        assertNoReviewAppears(for: 6, in: app)
+        assertNoReviewAppears(for: lateCallbackWait, in: app)
         XCTAssertEqual(app.staticTexts["run.state"].value as? String, "completed")
         XCTAssertTrue(app.buttons["morning.speakReflection"].isHittable)
         openThoughts(in: app)
@@ -83,13 +85,13 @@ final class CompletionCaptureTests: XCTestCase {
         XCUIDevice.shared.press(.home)
         XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5),
                       "The app must actually leave the foreground before checking invalidation.")
-        // Longer than the fixture's five-second final callback. This wait observes
+        // Longer than the fixture's twelve-second final callback. This wait observes
         // the background state; it does not cancel or cooperate with that task.
         let foreground = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             app.state == .runningForeground
         }, object: app)
         foreground.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [foreground], timeout: 6), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [foreground], timeout: lateCallbackWait), .completed)
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
         assertNoReviewAppears(for: 2, in: app)

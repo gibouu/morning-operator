@@ -6,6 +6,9 @@ import XCTest
 /// No test invokes the Apple model or starts playback.
 @MainActor
 final class RoutineTransferTests: XCTestCase {
+    /// The Files panel runs in another process. On a hosted simulator its first
+    /// appearance has taken more than ten seconds while the export sheet waits, disabled.
+    private let nativePanelWait: TimeInterval = 40
     private let currentTitle = "Your morning"
     private let importedTitle = "Imported calm"
     private let privateExportNote = "SYNTHETIC_PRIVATE_EXPORT_NOTE"
@@ -134,7 +137,7 @@ final class RoutineTransferTests: XCTestCase {
         let nativeBar = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
         XCTAssertFalse(nativeBar.exists)
         tap("export.save", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "Expected the actual native document export panel.\n\(app.debugDescription)")
         attach("native-file-export-panel-before-dismissal-no-file-saved", app)
         // On this iOS 27 panel, AX includes a non-hittable Other named Cancel
@@ -153,7 +156,7 @@ final class RoutineTransferTests: XCTestCase {
 
         XCTAssertFalse(nativeBar.exists)
         tap("routine.import", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "Expected the actual native document import panel.\n\(app.debugDescription)")
         XCTAssertFalse(app.buttons["import.use"].exists,
                        "Opening a file panel must not create a decoded routine preview.")
@@ -190,7 +193,7 @@ final class RoutineTransferTests: XCTestCase {
         XCTAssertEqual(includeNotes.value as? String, "0")
         tap("export.save", in: app)
         let nativeBar = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "A real native export panel must appear.\n\(app.debugDescription)")
         let nameField = app.textFields["DOCPicker.filenameTextField"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
@@ -217,7 +220,7 @@ final class RoutineTransferTests: XCTestCase {
 
         // Enter the actual file importer, not the explicit staged-file seam.
         tap("routine.import", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "A real native import panel must appear.\n\(app.debugDescription)")
         let filenamePredicate = NSPredicate(format: "label CONTAINS %@", filename)
         let cells = app.cells.matching(filenamePredicate)
@@ -382,6 +385,15 @@ final class RoutineTransferTests: XCTestCase {
     private func assertRoutine(_ title: String, count: Int, approved: Bool, in app: XCUIApplication) {
         XCTAssertTrue(app.navigationBars["Your routine"].waitForExistence(timeout: 5))
         let first = app.buttons["routine.step.0"]
+        // The list creates its rows as they scroll into view. After a scroll down
+        // to Import or Export the first row no longer exists, and reveal() cannot
+        // tell which way to go for a row that does not exist: go back up here.
+        if !first.waitForExistence(timeout: 3) {
+            let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+            if let list = lists.first(where: { $0.isHittable }) {
+                for _ in 0..<4 where !first.exists { list.swipeDown() }
+            }
+        }
         reveal(first, in: app)
         XCTAssertTrue(first.label.contains(title))
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "routine.step.")).count, count)
