@@ -3,6 +3,10 @@ import Foundation
 // The pure policy of the tethered phone loop (#7): one writer that decides what is sent next,
 // what counts as evidence and when a step is done. No transport, no XCTest, no model call and no
 // timer live here; the caller passes the controller's monotonic time into every call.
+//
+// Owner's decisions of 13 October applied here: an external effect pauses the run and resumes
+// it once the #12 executor has settled; the recommended age limit is 15 seconds; a runner's
+// refusal reason is recorded and decides nothing; the session is an actor.
 
 /// How a step was carried out. A session issues commands in one of the three automated modes
 /// and records that mode on each step. `manualIntervention` names a step the person carried out
@@ -44,6 +48,13 @@ public enum PhoneLoopStopReason: String, Codable, Sendable, CaseIterable {
     /// The expected result was not observed in the same app after the action, or it already held
     /// before the action so nothing could have proved it.
     case postconditionNotVerified
+    /// The executor could not establish what an external effect did (`outcomeUnknown`, or an
+    /// attempt left `dispatching`). The run never continues past that: reconcile the attempt
+    /// with the executor, then start a new run.
+    case externalEffectUnknown
+    /// The executor did not settle an external effect within the policy's wait. The effect is
+    /// not recalled by this; its attempt stays in the executor's journal to be reconciled there.
+    case externalEffectTimeout
 }
 
 public enum PhoneRoundTripResult: String, Codable, Sendable { case answered, timedOut, lostOnDisconnect, abandoned }
@@ -54,6 +65,14 @@ public struct PhoneRoundTrip: Codable, Sendable, Equatable {
     public let kind: PhoneCommandKind
     public let seconds: TimeInterval
     public let result: PhoneRoundTripResult
+    /// The reason the runner gave for not carrying this command out, if its accepted answer had
+    /// one. Kept for diagnosis; no decision reads it.
+    public let refusal: PhoneRunnerRefusal?
+
+    init(sequence: Int, kind: PhoneCommandKind, seconds: TimeInterval, result: PhoneRoundTripResult,
+         refusal: PhoneRunnerRefusal? = nil) {
+        self.sequence = sequence; self.kind = kind; self.seconds = seconds; self.result = result; self.refusal = refusal
+    }
 }
 
 public enum PhoneStepOutcome: String, Codable, Sendable {
@@ -61,7 +80,8 @@ public enum PhoneStepOutcome: String, Codable, Sendable {
     case verified
     /// The run was finished at this step after looking only.
     case observedOnly
-    /// The step asked for an external effect, which this loop does not perform.
+    /// The step asked for an external effect, which this loop does not perform, and the executor
+    /// settled it. What the executor established is in `externalEffectState`.
     case handedToActionExecutor
     case stopped
 }
@@ -74,7 +94,9 @@ public enum PhoneVerificationKind: String, Codable, Sendable, CaseIterable {
     case expectedElementAppeared
     /// The tab was not selected before and is the only selected tab after.
     case tabSelected
-    /// The row labels on screen differ from before, with one list still shown. Weak: on a feed
+    /// The row labels on screen differ from before, with one list still shown. The scroll command
+    /// is kept on these terms (owner's decision, 13 October): a scroll is recorded as weakly
+    /// verified, never as more. Weak: on a feed
     /// that refreshes by itself this happens without any scroll, and rows of other lists on the
     /// screen are included because an observation does not say which list a row belongs to.
     /// It shows that the screen changed, not that the swipe changed it.
@@ -102,6 +124,9 @@ public struct PhoneStepRecord: Codable, Sendable, Equatable, Identifiable {
     public let proposalWaitSeconds: TimeInterval?
     public let roundTrips: [PhoneRoundTrip]
     public let externalIntentID: UUID?
+    /// What the #12 executor reported for `externalIntentID`, in its own words. Absent while
+    /// nothing was reported: a step stopped during the pause has an intent and no state.
+    public let externalEffectState: ActionAttemptState?
 }
 
 /// The run as it can be stored and read later. `authorship` is the marker for #11.
@@ -124,8 +149,20 @@ public struct PhoneScreenExpectation: Sendable, Equatable {
 
 /// What the application allows this run to do, and how patient it is. Written by the
 /// application, fixed for the run, and not Codable: no message can carry or change one.
-/// There are no default numbers; whoever starts a run chooses them.
+/// There are no default numbers; whoever starts a run chooses them. One value is offered by
+/// name, `recommendedMaxEvidenceAgeSeconds`, so callers do not each invent their own.
 public struct PhoneLoopPolicy: Sendable, Equatable {
+    /// The recommended `maxEvidenceAgeSeconds` (owner's decision, 13 October): 15 seconds on the
+    /// controller's clock, counted from when the command was issued, so it covers the answer's
+    /// travel and the planner's thinking. Any other value in range may still be passed.
+    ///
+    /// This is not the runner's own re-check, which stays a separate obligation of the runner:
+    /// immediately before acting it looks its target up again and refuses if more than 2 seconds
+    /// passed since its own look or the element moved (the driver's `tapFreshNavigation`). The
+    /// session cannot see that check and does not replace it. A runner that vouches for less
+    /// (`validForSeconds`) also still wins: the shorter of the two windows applies.
+    public static let recommendedMaxEvidenceAgeSeconds: TimeInterval = 15
+
     public let allowedBundleIDs: Set<String>
     /// Per app (bundle ID), the navigation labels that may be tapped there, each with the result
     /// that proves the tap worked. A label approved for one app is not valid in another.
@@ -146,11 +183,15 @@ public struct PhoneLoopPolicy: Sendable, Equatable {
     public let maxActionResendsPerStep: Int
     public let maxReconnects: Int
     public let maxSteps: Int
+    /// How long a run may stay paused for the #12 executor to settle one external effect, on the
+    /// controller's clock from the moment the effect was proposed. It includes the person's
+    /// approval. When it runs out the run stops as `externalEffectTimeout`.
+    public let maxExternalEffectWaitSeconds: TimeInterval
 
     public init(allowedBundleIDs: Set<String>, navigation: [String: [String: PhoneScreenExpectation]], tabLabels: Set<String>,
                 allowsListScroll: Bool, maxEvidenceAgeSeconds: TimeInterval, commandTimeoutSeconds: TimeInterval,
                 reconnectWindowSeconds: TimeInterval, maxExtraLooksPerStep: Int, maxActionResendsPerStep: Int,
-                maxReconnects: Int, maxSteps: Int) throws {
+                maxReconnects: Int, maxSteps: Int, maxExternalEffectWaitSeconds: TimeInterval) throws {
         func require(_ condition: Bool, _ field: String) throws {
             if !condition { throw PhoneLoopProtocolError.valueOutOfRange(field: field) }
         }
@@ -169,11 +210,13 @@ public struct PhoneLoopPolicy: Sendable, Equatable {
         try require(maxActionResendsPerStep >= 0, "maxActionResendsPerStep")
         try require(maxReconnects >= 0, "maxReconnects")
         try require(maxSteps >= 1, "maxSteps")
+        try require(maxExternalEffectWaitSeconds.isFinite && maxExternalEffectWaitSeconds > 0, "maxExternalEffectWaitSeconds")
         self.allowedBundleIDs = allowedBundleIDs; self.navigation = navigation; self.tabLabels = tabLabels
         self.allowsListScroll = allowsListScroll; self.maxEvidenceAgeSeconds = maxEvidenceAgeSeconds
         self.commandTimeoutSeconds = commandTimeoutSeconds; self.reconnectWindowSeconds = reconnectWindowSeconds
         self.maxExtraLooksPerStep = maxExtraLooksPerStep; self.maxActionResendsPerStep = maxActionResendsPerStep
         self.maxReconnects = maxReconnects; self.maxSteps = maxSteps
+        self.maxExternalEffectWaitSeconds = maxExternalEffectWaitSeconds
     }
 }
 
@@ -212,15 +255,20 @@ public enum PhoneLoopPhase: Sendable, Equatable {
     /// An action was sent and what it did is not known; an `observe` is outstanding to find out.
     case reconcilingAction
     case disconnected
+    /// Paused: an external effect is with the #12 executor. No command is issued, no observation
+    /// is accepted and no proposal is considered until `externalEffectSettled` reports it.
+    case awaitingExternalEffect(PhoneExternalEffectReference)
     case stopped(PhoneLoopStopReason)
-    /// Ended by handing an external effect to the #12 executor. This loop did not perform it.
-    case handedToActionExecutor(PhoneExternalEffectReference)
     case completed
 }
 
 /// Why an input was set aside. The session is unchanged by an ignored input.
 public enum PhoneLoopRejection: Sendable, Equatable {
     case notExpectedInThisPhase, foreignRun, wrongStep, outOfSequence, replayedObservation, notDerivedFromLatestObservation
+    /// A report about another intent than the one the run is paused for.
+    case notTheAwaitedEffect
+    /// The executor has not invoked its adapter yet (`readyToDispatch`): that is not an outcome.
+    case effectNotSettled
 }
 
 /// What the caller does next. A command exists only as the payload of `send`.
@@ -231,7 +279,8 @@ public enum PhoneLoopDirective: Sendable, Equatable {
     /// intervention made the session look again), cancel it: its answer names an observation
     /// that is no longer the latest and would only be ignored.
     case requestProposal(stepID: UUID, observationID: UUID)
-    /// Take this to `ActionExecutor`, under its own approval. The run has ended.
+    /// Take this to `ActionExecutor`, under its own approval. The run is paused: send nothing to
+    /// the phone, and report what the executor's journal says with `externalEffectSettled`.
     case routeToActionExecutor(PhoneExternalEffectReference)
     case wait
     case ignored(PhoneLoopRejection)
@@ -240,21 +289,40 @@ public enum PhoneLoopDirective: Sendable, Equatable {
 }
 
 /// The one writer of a run. Every command comes out of it and every observation, proposal,
-/// timeout and stop goes into it; nothing else advances the run. It cannot be copied, so two
-/// copies of one run cannot each issue the next sequence number.
+/// timeout and stop goes into it; nothing else advances the run.
+///
+/// It is an actor (owner's decision, 13 October), so several tasks may feed it and there is
+/// still one writer: a run is one instance, every holder of it shares one state, and two inputs
+/// are never processed at the same time, so two callers cannot each be given the next sequence
+/// number. No method here is `async` and none awaits: each input is judged and applied in one
+/// uninterrupted turn of the actor, and another input cannot slip in halfway through. Keep it
+/// that way. A caller that needs two reads to agree must take them from one directive, not from
+/// two separate `await`s.
 ///
 /// A step is: observe, accept a proposal validated against that observation, send the action,
 /// and see the expected result in a new observation. Sending an action or receiving its answer
 /// does not complete a step; only the evidence does. Every step starts with its own observation.
 ///
+/// An external effect is not a command. Proposing one pauses the run (`awaitingExternalEffect`)
+/// and returns `routeToActionExecutor`; the #12 executor performs it under its own approval.
+/// The caller then reports the attempt's state from the executor's journal:
+/// - `verified`, `accepted`, `failedKnown` or `cancelled`: the effect is settled. The step is
+///   closed and the next step starts with a new observation. The effect changed the world, so
+///   nothing captured before it is used again: the evidence was dropped when the run paused.
+/// - `outcomeUnknown` or `dispatching`: what happened is not known. The run stops as
+///   `externalEffectUnknown` and is never continued.
+/// A pause lasts at most `maxExternalEffectWaitSeconds`. If the executor refuses the draft
+/// before any attempt exists (no approval, a duplicate intent), there is no state to report:
+/// end the run with `userStopped`, or let the pause expire.
+///
 /// `now` is the controller's monotonic time in seconds, from one clock. A `now` that is not a
 /// finite number, or is earlier than one already given, stops the run as stale evidence:
 /// nothing can be aged against such a clock.
-public struct PhoneLoopSession: ~Copyable, Sendable {
-    public let runID: UUID
-    public let policy: PhoneLoopPolicy
+public actor PhoneLoopSession {
+    public nonisolated let runID: UUID
+    public nonisolated let policy: PhoneLoopPolicy
     /// How this session's commands are carried out.
-    public let mode: PhoneStepExecutionMode
+    public nonisolated let mode: PhoneStepExecutionMode
     public private(set) var phase: PhoneLoopPhase = .ready
     public private(set) var record: PhoneRunRecord
 
@@ -280,6 +348,9 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         var proposalRequestedAt: TimeInterval?
         var proposalWaitSeconds: TimeInterval?
         var externalIntentID: UUID?
+        /// When the run paused for the effect, on the controller's clock.
+        var effectRequestedAt: TimeInterval?
+        var externalEffectState: ActionAttemptState?
     }
     private struct Outstanding: Sendable { let sequence: Int; let kind: PhoneCommandKind; let issuedAt: TimeInterval }
     /// `anchor` is when the command this observation answers was issued: the capture cannot be older.
@@ -307,7 +378,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     // MARK: Inputs
 
-    public mutating func start(now: TimeInterval) -> PhoneLoopDirective {
+    public func start(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .ready else { return .ignored(.notExpectedInThisPhase) }
         return beginStep(now: now)
@@ -315,7 +386,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// An observation is accepted only as the answer to the one outstanding command of the
     /// current step of this run, and only once.
-    public mutating func receive(_ observation: PhoneObservationMessage, now: TimeInterval) -> PhoneLoopDirective {
+    public func receive(_ observation: PhoneObservationMessage, now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard let outstanding, let current = step else { return .ignored(.notExpectedInThisPhase) }
         guard observation.runID == runID else { return .ignored(.foreignRun) }
@@ -328,7 +399,8 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             return recover(orStopWith: .transportTimeout, now: now)
         }
         acceptedObservationIDs.insert(observation.observationID)
-        closeRoundTrip(.answered, now: now)
+        // The runner's stated reason goes into the record here and is not read again.
+        closeRoundTrip(.answered, refusal: observation.refusal, now: now)
 
         // The run belongs to the runner that answered first. An answer from another clock is
         // another runner; one whose capture is not later than the last accepted is old evidence.
@@ -376,7 +448,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// A proposal is only a request. It is carried out if it is about the latest observation,
     /// that observation is still fresh, and the application's policy allows the action on the
     /// one element the target identifies there.
-    public mutating func propose(_ proposal: PhoneActionProposal, now: TimeInterval) -> PhoneLoopDirective {
+    public func propose(_ proposal: PhoneActionProposal, now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal, let current = step, let evidence else { return .ignored(.notExpectedInThisPhase) }
         guard proposal.runID == runID else { return .ignored(.foreignRun) }
@@ -388,10 +460,12 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
         switch proposal.action {
         case .externalEffect(let reference):
+            // Nothing is sent. The run pauses, and what was observed before the effect is given
+            // up now: whatever the executor does, that screen is no longer a basis for anything.
             step?.externalIntentID = reference.intentID
-            closeStep(.handedToActionExecutor, now: now)
+            step?.effectRequestedAt = now
             self.evidence = nil
-            phase = .handedToActionExecutor(reference)
+            phase = .awaitingExternalEffect(reference)
             return .routeToActionExecutor(reference)
         case .readOnly(let action):
             switch rule(on: action, in: evidence.observation.screen) {
@@ -404,15 +478,44 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         }
     }
 
+    /// What the #12 executor established about the effect the run is paused for: the `state` of
+    /// its attempt, as `ActionExecutor.dispatch` or `reconcile` returned it, and the intent it
+    /// belongs to. A settled state resumes the run with a new observation; an unknown one stops
+    /// it. Past the pause's limit a report is the timeout it is, whatever it says.
+    public func externalEffectSettled(intentID: UUID, state: ActionAttemptState, now: TimeInterval) -> PhoneLoopDirective {
+        if let halted = haltOnUnsoundClock(now) { return halted }
+        guard case .awaitingExternalEffect(let reference) = phase, let current = step, let pausedAt = current.effectRequestedAt
+        else { return .ignored(.notExpectedInThisPhase) }
+        guard intentID == reference.intentID else { return .ignored(.notTheAwaitedEffect) }
+        guard now - pausedAt < policy.maxExternalEffectWaitSeconds else { return stop(.externalEffectTimeout, now: now) }
+        switch state {
+        case .readyToDispatch:
+            return .ignored(.effectNotSettled)
+        case .dispatching, .outcomeUnknown:
+            // `dispatching` after the adapter ran means its result could not be written down.
+            step?.externalEffectState = state
+            return stop(.externalEffectUnknown, now: now)
+        case .accepted, .verified, .failedKnown, .cancelled:
+            step?.externalEffectState = state
+            closeStep(.handedToActionExecutor, now: now)
+            guard record.steps.count < policy.maxSteps else { phase = .completed; return .completed }
+            // The next step looks first, as every step does. With the channel down it waits for
+            // the reconnect, which observes.
+            step = Step(id: UUID(), startedAt: now, mode: mode)
+            if disconnectedAt != nil { phase = .disconnected; return .wait }
+            return observe(now: now)
+        }
+    }
+
     /// The planner produced nothing usable.
-    public mutating func modelFailed(now: TimeInterval) -> PhoneLoopDirective {
+    public func modelFailed(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal else { return .ignored(.notExpectedInThisPhase) }
         return stop(.modelFailure, now: now)
     }
 
     /// The plan has nothing further to do. Allowed only between an observation and an action.
-    public mutating func finish(now: TimeInterval) -> PhoneLoopDirective {
+    public func finish(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard phase == .awaitingProposal else { return .ignored(.notExpectedInThisPhase) }
         closeStep(.observedOnly, now: now)
@@ -422,15 +525,16 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     }
 
     /// Stops at once, whatever is outstanding. An answer that arrives afterwards is ignored.
-    public mutating func userStopped(now: TimeInterval) -> PhoneLoopDirective {
+    public func userStopped(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard !isTerminal else { return .ignored(.notExpectedInThisPhase) }
         return stop(.userStop, now: now)
     }
 
-    /// Call whenever time has passed. Applies the command timeout, the reconnect window and the
-    /// age limit on evidence a planner is still thinking about.
-    public mutating func checkDeadlines(now: TimeInterval) -> PhoneLoopDirective {
+    /// Call whenever time has passed. Applies the command timeout, the limit on a pause for an
+    /// external effect, the reconnect window and the age limit on evidence a planner is still
+    /// thinking about.
+    public func checkDeadlines(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         if let outstanding {
             guard now - outstanding.issuedAt >= policy.commandTimeoutSeconds else { return .wait }
@@ -438,7 +542,10 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             // No answer says nothing about whether an action was carried out: look again first.
             return recover(orStopWith: .transportTimeout, now: now)
         }
-        if phase == .disconnected, let disconnectedAt, now - disconnectedAt >= policy.reconnectWindowSeconds {
+        if isPaused, let pausedAt = step?.effectRequestedAt, now - pausedAt >= policy.maxExternalEffectWaitSeconds {
+            return stop(.externalEffectTimeout, now: now)
+        }
+        if phase == .disconnected || isPaused, let disconnectedAt, now - disconnectedAt >= policy.reconnectWindowSeconds {
             return stop(.transportDisconnected, now: now)
         }
         if phase == .awaitingProposal, let evidence, !isFresh(evidence, now: now) { return stop(.staleEvidence, now: now) }
@@ -448,9 +555,19 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// The channel went away. Whatever was outstanding is lost and what the phone shows is no
     /// longer known; a proposal about the earlier screen will not be accepted, so a planner
     /// request still in progress should be cancelled.
-    public mutating func transportDisconnected(now: TimeInterval) -> PhoneLoopDirective {
+    ///
+    /// While the run is paused for an external effect it stays paused: the executor does not use
+    /// this channel. The same reconnect budget and window apply, and running out of either stops
+    /// the run; the effect itself stays with the executor and its journal.
+    public func transportDisconnected(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard isUnderway else { return .ignored(.notExpectedInThisPhase) }
+        if isPaused {
+            guard disconnectedAt == nil else { return .ignored(.notExpectedInThisPhase) }
+            guard record.reconnectCount < policy.maxReconnects else { return stop(.transportDisconnected, now: now) }
+            disconnectedAt = now
+            return .wait
+        }
         closeRoundTrip(.lostOnDisconnect, now: now)
         evidence = nil
         guard record.reconnectCount < policy.maxReconnects else { return stop(.transportDisconnected, now: now) }
@@ -461,13 +578,15 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// The channel is back. The run, its completed steps and the current step resume; the screen
     /// must be observed again before anything else, and an action that was outstanding is
-    /// settled from that new observation, not sent again blindly.
-    public mutating func transportReconnected(now: TimeInterval) -> PhoneLoopDirective {
+    /// settled from that new observation, not sent again blindly. A paused run stays paused and
+    /// sends nothing: it observes when the effect is settled.
+    public func transportReconnected(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
-        guard phase == .disconnected, let disconnectedAt else { return .ignored(.notExpectedInThisPhase) }
+        guard phase == .disconnected || isPaused, let disconnectedAt else { return .ignored(.notExpectedInThisPhase) }
         guard now - disconnectedAt < policy.reconnectWindowSeconds else { return stop(.transportDisconnected, now: now) }
         self.disconnectedAt = nil
         record.reconnectCount += 1
+        if isPaused { return .wait }
         return observe(now: now)
     }
 
@@ -475,13 +594,16 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
     /// captured before this moment is used: evidence in hand is dropped, an outstanding command is
     /// abandoned (its answer will be ignored) and the screen is observed again (after a reconnect,
     /// if the channel is down). Every intervention spends one of the step's extra looks; with
-    /// none left the run stops as `userStop`.
-    public mutating func recordManualIntervention(now: TimeInterval) -> PhoneLoopDirective {
+    /// none left the run stops as `userStop`. While the run is paused for an external effect the
+    /// intervention is counted and nothing is sent or spent: there is no evidence to drop, and
+    /// the run observes anew when the effect is settled.
+    public func recordManualIntervention(now: TimeInterval) -> PhoneLoopDirective {
         if let halted = haltOnUnsoundClock(now) { return halted }
         guard isUnderway || phase == .disconnected else { return .ignored(.notExpectedInThisPhase) }
         step?.interventions += 1
         record.authorship = .mixed
         evidence = nil
+        if isPaused { return .wait }
         closeRoundTrip(.abandoned, now: now)
         guard phase == .disconnected else { return recover(orStopWith: .userStop, now: now) }
         // Reconnecting observes again anyway; the intervention still counts.
@@ -492,20 +614,23 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     // MARK: Transitions
 
-    private mutating func haltOnUnsoundClock(_ now: TimeInterval) -> PhoneLoopDirective? {
+    private func haltOnUnsoundClock(_ now: TimeInterval) -> PhoneLoopDirective? {
         if now.isFinite, now >= lastNow { lastNow = now; return nil }
         return isTerminal ? .ignored(.notExpectedInThisPhase) : stop(.staleEvidence, now: lastNow.isFinite ? lastNow : 0)
     }
 
     private var isTerminal: Bool {
         switch phase {
-        case .stopped, .handedToActionExecutor, .completed: true
+        case .stopped, .completed: true
         default: false
         }
     }
+    private var isPaused: Bool {
+        if case .awaitingExternalEffect = phase { true } else { false }
+    }
     private var isUnderway: Bool {
         switch phase {
-        case .awaitingObservation, .awaitingProposal, .awaitingPostObservation, .reconcilingAction: true
+        case .awaitingObservation, .awaitingProposal, .awaitingPostObservation, .reconcilingAction, .awaitingExternalEffect: true
         default: false
         }
     }
@@ -515,17 +640,17 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return age >= 0 && age <= min(policy.maxEvidenceAgeSeconds, evidence.observation.freshness.validForSeconds)
     }
 
-    private mutating func beginStep(now: TimeInterval) -> PhoneLoopDirective {
+    private func beginStep(now: TimeInterval) -> PhoneLoopDirective {
         step = Step(id: UUID(), startedAt: now, mode: mode)
         return observe(now: now)
     }
 
-    private mutating func observe(now: TimeInterval) -> PhoneLoopDirective {
+    private func observe(now: TimeInterval) -> PhoneLoopDirective {
         phase = step?.pending == nil ? .awaitingObservation : .reconcilingAction
         return issue(.observe, basedOn: nil, now: now)
     }
 
-    private mutating func issue(_ command: PhoneCommand, basedOn observationID: UUID?, now: TimeInterval) -> PhoneLoopDirective {
+    private func issue(_ command: PhoneCommand, basedOn observationID: UUID?, now: TimeInterval) -> PhoneLoopDirective {
         guard let current = step else { return .wait }
         let message = PhoneCommandMessage(runID: runID, stepID: current.id, sequence: nextSequence,
                                           basedOnObservationID: observationID,
@@ -537,21 +662,21 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// One more observation, if the step still has a look left. A step therefore sends at most
     /// `2 + maxExtraLooksPerStep + maxActionResendsPerStep` commands, plus one per reconnect.
-    private mutating func recover(orStopWith reason: PhoneLoopStopReason, now: TimeInterval) -> PhoneLoopDirective {
+    private func recover(orStopWith reason: PhoneLoopStopReason, now: TimeInterval) -> PhoneLoopDirective {
         guard let current = step, current.extraLooks < policy.maxExtraLooksPerStep else { return stop(reason, now: now) }
         step?.extraLooks += 1
         evidence = nil
         return observe(now: now)
     }
 
-    private mutating func completeStep(_ outcome: PhoneStepOutcome, now: TimeInterval) -> PhoneLoopDirective {
+    private func completeStep(_ outcome: PhoneStepOutcome, now: TimeInterval) -> PhoneLoopDirective {
         closeStep(outcome, now: now)
         evidence = nil
         guard record.steps.count < policy.maxSteps else { phase = .completed; return .completed }
         return beginStep(now: now)
     }
 
-    private mutating func stop(_ reason: PhoneLoopStopReason, now: TimeInterval) -> PhoneLoopDirective {
+    private func stop(_ reason: PhoneLoopStopReason, now: TimeInterval) -> PhoneLoopDirective {
         closeRoundTrip(.abandoned, now: now)
         closeStep(.stopped, now: now)
         evidence = nil
@@ -565,13 +690,14 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         min(max(end - start, 0), .greatestFiniteMagnitude)
     }
 
-    private mutating func closeRoundTrip(_ result: PhoneRoundTripResult, now: TimeInterval) {
+    private func closeRoundTrip(_ result: PhoneRoundTripResult, refusal: PhoneRunnerRefusal? = nil, now: TimeInterval) {
         guard let sent = outstanding else { return }
-        step?.roundTrips.append(PhoneRoundTrip(sequence: sent.sequence, kind: sent.kind, seconds: Self.elapsed(from: sent.issuedAt, to: now), result: result))
+        step?.roundTrips.append(PhoneRoundTrip(sequence: sent.sequence, kind: sent.kind, seconds: Self.elapsed(from: sent.issuedAt, to: now),
+                                               result: result, refusal: refusal))
         outstanding = nil
     }
 
-    private mutating func closeStep(_ outcome: PhoneStepOutcome, now: TimeInterval) {
+    private func closeStep(_ outcome: PhoneStepOutcome, now: TimeInterval) {
         guard let current = step else { return }
         record.steps.append(PhoneStepRecord(
             id: current.id, mode: current.mode, action: current.pending?.action.kind, outcome: outcome,
@@ -579,7 +705,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             extraLookCount: current.extraLooks, actionResendCount: current.resends,
             manualInterventionCount: current.interventions, durationSeconds: Self.elapsed(from: current.startedAt, to: now),
             proposalWaitSeconds: current.proposalWaitSeconds, roundTrips: current.roundTrips,
-            externalIntentID: current.externalIntentID))
+            externalIntentID: current.externalIntentID, externalEffectState: current.externalEffectState))
         step = nil
     }
 
