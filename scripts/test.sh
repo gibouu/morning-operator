@@ -51,9 +51,18 @@ else
     printf 'No separate TestingMacros plugin found; using toolchain automatic discovery.\n'
 fi
 
+# Ask for the Swift Build engine by name. Older toolchains default to the native
+# engine, which copies Localizable.xcstrings into the bundle without compiling it:
+# every lookup then returns its English key and French or plural checks prove nothing.
+# The native engine in the observed CLT setup also could not resolve the Testing module.
+# A caller may still pass its own --build-system. This package has no third-party plugins.
+build_system_chosen="0"
+for option in "${test_options[@]}"; do
+    if [[ "$option" == "--build-system" || "$option" == --build-system=* ]]; then build_system_chosen="1"; fi
+done
+if [[ "$build_system_chosen" == "0" ]]; then test_options+=(--build-system swiftbuild); fi
+
 cd "$repo_dir"
-# Keep the default swiftbuild engine: the native engine in the observed CLT setup
-# could not resolve the Testing module. This package has no third-party plugins.
 "$swift_tool" test \
     --scratch-path "$repo_dir/.build/testing" \
     --cache-path "$repo_dir/.build/testing-cache" \
