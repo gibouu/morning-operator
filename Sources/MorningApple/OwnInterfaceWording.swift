@@ -464,7 +464,14 @@ enum OwnInterfaceWording {
                  fr: "Les échantillons peuvent manquer de l’activité et ne mesurent ni le temps passé, ni les touchers, lectures ou défilements",
                  of: "Labels come from recognition or your review. Samples can miss activity and don't measure time spent, taps, reads or scrolls."),
             shown("No sampled recording is attached to this observation.",
-                  fr: "Aucun enregistrement échantillonné n’est lié à cette observation.")
+                  fr: "Aucun enregistrement échantillonné n’est lié à cette observation."),
+            // Under a sampled moment's label in the list.
+            shown("Requested sample time; exact frame time unavailable.",
+                  fr: "Heure d’échantillon demandée ; heure exacte de l’image indisponible."),
+            shown("Text was limited; identity remains unknown.", fr: "Le texte était limité ; l’identité reste inconnue."),
+            part("samples share this time; their order is unknown", fr: "échantillons partagent ce moment ; leur ordre est inconnu",
+                 of: "%lld samples share this time; their order is unknown.",
+                 earlier: "sample shares this time; its order is unknown", "échantillon à ce moment ; son ordre est inconnu")
         ], controls: [
             shown("Observation", fr: "Observation"),
             shown("Sampled moments", fr: "Moments échantillonnés"),
@@ -517,6 +524,33 @@ enum OwnInterfaceWording {
             shown("Source sample", fr: "Échantillon source"),
             shown("Read this saved moment", fr: "Lire ce moment enregistré")
         ]),
+        // The observed-mornings cards of Review, below their heading (the heading has its own rule).
+        Screen(name: "Observed overview", copy: [
+            part("A recorded glimpse, not time spent", fr: "Un aperçu enregistré, pas un temps passé",
+                 of: "A recorded glimpse, not time spent. These samples don't establish app opens, reads or scrolls."),
+            part("These samples don't establish app opens, reads or scrolls",
+                 fr: "Ces échantillons n’établissent ni ouvertures d’apps, ni lectures, ni défilements",
+                 of: "A recorded glimpse, not time spent. These samples don't establish app opens, reads or scrolls."),
+            // The same words as the seven-day review's caption, which is the string they are tied to.
+            part("days with labeled samples", fr: "jours avec échantillons identifiés",
+                 of: "Seen on %lld of %lld days with labeled samples",
+                 earlier: "day with labeled samples", "jour avec échantillons identifiés"),
+            part("All labels and quotations are below", fr: "Tous les libellés et citations sont ci-dessous",
+                 of: "Showing 3 of %lld labels. All labels and quotations are below."),
+            part("Unresolved samples remain on", fr: "Des échantillons non résolus restent sur",
+                 of: "Unresolved samples remain on %lld observed days."),
+            part("Your saved sources remain available", fr: "Vos sources enregistrées restent disponibles",
+                 of: "No screen labels yet. Your saved sources remain available."),
+            part("Open all observations below", fr: "Ouvrez toutes les observations ci-dessous",
+                 of: "Showing 3 of %lld separate time-zone and origin groups. Open all observations below.")
+        ], controls: [
+            shown("Your observed mornings", fr: "Vos matinées observées"),
+            shown("From your observations", fr: "D’après vos observations"),
+            shown("Sampled screens across days", fr: "Écrans échantillonnés au fil des jours"),
+            shown("Samples & tests", fr: "Exemples et tests"),
+            shown("My mornings", fr: "Mes matinées"),
+            shown("Your label", fr: "Votre libellé")
+        ]),
         // Seven days of observations: the screen labels derived from them, and each day's clips.
         Screen(name: "Observed mornings", copy: [
             shown("Screens that appeared across your mornings.", fr: "Les écrans apparus au fil de vos matinées."),
@@ -537,6 +571,12 @@ enum OwnInterfaceWording {
             part("Separate clips are never joined into one continuous timeline",
                  fr: "Les clips séparés ne sont jamais fusionnés en une chronologie continue",
                  of: "Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline."),
+            part("days with labeled samples", fr: "jours avec échantillons identifiés",
+                 of: "Seen on %lld of %lld days with labeled samples",
+                 earlier: "day with labeled samples", "jour avec échantillons identifiés"),
+            part("observed days also contain unresolved samples", fr: "jours observés contiennent aussi des échantillons non résolus",
+                 of: "%lld observed days also contain unresolved samples.",
+                 earlier: "observed day also contains unresolved samples", "jour observé contient aussi des échantillons non résolus"),
             // Under samples, tests and automated activity, in place of the sentence above.
             part("This evidence stays separate from personal mornings", fr: "Ces éléments restent séparés des matinées personnelles",
                  of: "This evidence stays separate from personal mornings. Dates and origins can be reviewed in the source observation."),
@@ -563,7 +603,10 @@ enum OwnInterfaceWording {
                   fr: "Un libellé visuel proposé n’établit ni l’identité d’une app ni une action de votre part."),
             part("It stays separate from model labels and doesn't establish an action you took",
                  fr: "Il reste séparé des libellés du modèle et n’établit pas une action de votre part",
-                 of: "You supplied this label. It stays separate from model labels and doesn't establish an action you took.")
+                 of: "You supplied this label. It stays separate from model labels and doesn't establish an action you took."),
+            part("Return to observed mornings to see the current patterns",
+                 fr: "Revenez aux matinées observées pour voir les tendances actuelles",
+                 of: "The sources changed. Return to observed mornings to see the current patterns.")
         ], controls: [
             shown("Source moments", fr: "Moments sources"),
             shown("Excerpt selected by you", fr: "Extrait choisi par vous"),

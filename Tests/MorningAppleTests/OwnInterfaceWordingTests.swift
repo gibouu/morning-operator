@@ -263,6 +263,8 @@ private enum OwnScreenFixtures {
         case shown(String)
         /// An earlier observation's text, a derived label, a date or the model's words.
         case other(String, String)
+        /// A line of MORE's own with a count in it, written out because its catalog string is a plural.
+        case counted(String, String)
     }
 
     /// A screen whose content is mostly an earlier observation or a suggestion from the model.
@@ -279,7 +281,8 @@ private enum OwnScreenFixtures {
             try pieces.flatMap { piece -> [String] in
                 switch piece {
                 case .shown(let key): return wrapped(try catalogs.text(key, language), width: width)
-                case .other(let english, let french): return wrapped(language == "fr" ? french : english, width: width)
+                case .other(let english, let french), .counted(let english, let french):
+                    return wrapped(language == "fr" ? french : english, width: width)
                 }
             }
         }
@@ -355,9 +358,9 @@ private enum OwnScreenFixtures {
         .other("2026-10-07 – 2026-10-13", "2026-10-07 – 2026-10-13"), .shown("Screens that appeared across your mornings."),
         .shown("These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown."),
         .other("My mornings · Europe/Paris", "Mes matinées · Europe/Paris"),
-        .other("2 days with labeled samples · 2 days with observations", "2 jours avec échantillons identifiés · 2 jours avec observations"),
-        .other("Team planning workshop", "Atelier de planification de l’équipe"),
-        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .counted("2 days with labeled samples · 2 days with observations", "2 jours avec échantillons identifiés · 2 jours avec observations"),
+        .other("Weekly team planning workshop", "Atelier hebdomadaire de planification de l’équipe"),
+        .counted("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
         .shown("Conflicting labels are excluded from this pattern list. Their original samples remain in each observation."),
         .shown("The seven days"), .other("2026-10-09", "2026-10-09"),
         .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
@@ -367,17 +370,28 @@ private enum OwnScreenFixtures {
     ])
     /// The same review of samples or tests, scrolled to its labels and its other closing sentence.
     static let observedSamples = ContentScreen(name: "Observed mornings, samples", top: [.shown("Observed mornings")], body: [
-        .other("Team planning workshop", "Atelier de planification de l’équipe"),
-        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .other("Weekly team planning workshop", "Atelier hebdomadaire de planification de l’équipe"),
+        .counted("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
         .other("Reply to family messages", "Répondre aux messages de la famille"),
-        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .counted("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
         .shown("The seven days"),
         .shown("This evidence stays separate from personal mornings. Dates and origins can be reviewed in the source observation.")
+    ])
+    /// A lower card of Review's observed mornings, its heading scrolled away.
+    static let observedOverview = ContentScreen(name: "Observed overview", body: [
+        .shown("Samples & tests"), .other("Europe/Paris", "Europe/Paris"),
+        .counted("2 days with labeled samples · 2 days with observations", "2 jours avec échantillons identifiés · 2 jours avec observations"),
+        .other("Weekly team planning workshop", "Atelier hebdomadaire de planification de l’équipe"), .counted("2 of 2 labeled days", "2 sur 2 jours identifiés"),
+        .other("Reply to family messages", "Répondre aux messages de la famille"), .counted("2 of 2 labeled days", "2 sur 2 jours identifiés"),
+        .counted("Showing 3 of 4 labels. All labels and quotations are below.", "3 libellés affichés sur 4. Tous les libellés et citations sont ci-dessous."),
+        .counted("Unresolved samples remain on 2 observed days.", "Des échantillons non résolus restent sur 2 jours observés."),
+        .shown("A recorded glimpse, not time spent. These samples don't establish app opens, reads or scrolls."),
+        .shown("From your observations"), .shown("Sampled screens across days")
     ])
     /// The quotations behind one screen label, as its first screen shows them.
     static let sourceMoments = ContentScreen(name: "Source moments", top: [.shown("Source moments")], body: [
         .other("Calendar", "Calendrier"),
-        .other("Seen on 2 distinct days. Open a quote to inspect the original sampled screen.",
+        .counted("Seen on 2 distinct days. Open a quote to inspect the original sampled screen.",
                "Vu sur 2 jours distincts. Ouvrez une citation pour examiner l’écran échantillonné d’origine."),
         .shown("A proposed visual label doesn't establish an app's identity or an action you took."),
         .other("2026-10-09 · Europe/Paris", "2026-10-09 · Europe/Paris"), meeting,
@@ -462,7 +476,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [learnReview, observation, unorderedObservation, sampledMoment, observedMornings, observedSamples, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
+    static let contentScreens = [learnReview, observation, unorderedObservation, sampledMoment, observedOverview, observedMornings, observedSamples, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
