@@ -132,7 +132,10 @@ public struct LearningWindowReport: Sendable, Equatable {
         }
         let adequate = mornings.filter(\.countsTowardProgress).count
         let open = window.state == .planned || window.state == .active || window.state == .paused
-        let upcoming = mornings.filter { $0.status == .notYetDue }.count + schedule.undatedMorningCount
+        // Mornings without a date can still come only before Start or during a pause. On a
+        // running window they lie beyond its longest span and will never be scheduled.
+        let datable = window.state == .planned || window.state == .paused ? schedule.undatedMorningCount : 0
+        let upcoming = mornings.filter { $0.status == .notYetDue }.count + datable
         progress = .init(askedMorningCount: window.morningCount, adequateMorningCount: adequate,
                          remainingMorningCount: open ? upcoming : 0)
         windowID = window.id

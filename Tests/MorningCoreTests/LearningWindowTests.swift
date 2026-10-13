@@ -192,6 +192,33 @@ struct LearningWindowTests {
         #expect(days.map(\.dayKey) == ["2026-03-27", "2026-03-29", "2026-03-30"])
         #expect(Set(days.map(\.expectedStart)).count == 3)
         #expect(try days.allSatisfy { try localTime($0.expectedStart, zone: zone) == "23:30" })
+
+        // 22:59 for five minutes would end after midnight on the 28th only: that day is dropped
+        // too, so a recording begun in its last minute is never dated on the next day.
+        var edge = try LearningWindow(startMinuteOfDay: 22 * 60 + 59, durationSeconds: 300, weekdays: everyDay,
+            timeZoneIdentifier: zone, morningCount: 2, createdAt: at(26, 12, month: 3, zone: zone), limits: limits)
+        try edge.start(at: at(27, 12, month: 3, zone: zone))
+        try #expect(edge.schedule(asOf: at(27, 12, month: 3, zone: zone)).mornings.map(\.dayKey) == ["2026-03-27", "2026-03-29"])
+    }
+
+    @Test func aRecordingStillRunningCannotBeDeclaredAndPausesAreBounded() throws {
+        var value = try window(mornings: 2)
+        try value.start(at: at(12, 6))
+        #expect(throws: LearningWindowError.invalidRecording) {
+            try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
+                              recordedSeconds: 300, declaredAt: at(12, 7, 0, 30))
+        }
+        #expect(throws: ObservationWindowCaptureError.invalid) {
+            try ObservationWindowCapture(windowID: value.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
+                expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(12, 7), actualEnd: at(12, 7, 5),
+                declaredAt: at(12, 7, 0, 30))
+        }
+        for _ in 0..<LearningWindow.maximumPauseCount {
+            try value.pause(at: at(12, 6))
+            try value.start(at: at(12, 6))
+        }
+        #expect(throws: LearningWindowError.tooManyPauses) { try value.pause(at: at(12, 6)) }
+        try #expect(JSONDecoder().decode(LearningWindow.self, from: JSONEncoder().encode(value)) == value)
     }
 
     @Test func aSavedDurationTooLargeToAddIsRefusedWithoutACrash() throws {
@@ -265,6 +292,12 @@ struct LearningWindowTests {
         try resumed.start(at: at(12, 9))
         #expect(throws: LearningWindowError.clockWentBack) { try resumed.skip(dayKey: "2026-10-12", at: at(12, 6, 30)) }
         try #expect(resumed.schedule(asOf: at(12, 9)).mornings.first?.disposition == .counted)
+        // Nor before an earlier Skip: Tuesday, missed by 08:00, cannot be skipped at a rolled-back 06:30.
+        var skipped = try window(mornings: 3)
+        try skipped.start(at: at(12, 6))
+        try skipped.skip(dayKey: "2026-10-14", at: at(13, 8))
+        #expect(throws: LearningWindowError.clockWentBack) { try skipped.skip(dayKey: "2026-10-13", at: at(13, 6, 30)) }
+        try #expect(JSONDecoder().decode(LearningWindow.self, from: JSONEncoder().encode(skipped)) == skipped)
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-10-13", at: at(12, 8)) }
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-11-30", at: at(12, 8)) }
         #expect(throws: LearningWindowError.morningSkipped) {

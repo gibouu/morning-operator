@@ -19,8 +19,12 @@ public enum LearningWindowReminderObstacle: String, Sendable, Equatable {
 public enum LearningWindowReminderOutcome: Sendable, Equatable {
     /// The system holds one reminder, for this morning.
     case scheduled(dayKey: String, at: Date)
-    /// This morning's reminder has come due and can still be answered. Nothing replaces it.
-    case awaitingResponse(dayKey: String, at: Date)
+    /// This morning's reminder time has passed and it has not been used or expired. Whether
+    /// the system showed it is not known here. Nothing replaces it until then.
+    case reminderTimePassed(dayKey: String, at: Date)
+    /// Pause, Stop or the last morning should have removed the reminder and the removal
+    /// did not go through: it may still be shown.
+    case removalFailed(dayKey: String, at: Date)
     case notScheduled(dayKey: String, at: Date, obstacle: LearningWindowReminderObstacle)
     /// The window is not running (not started, paused, stopped or completed), or has no
     /// morning left to announce. Any reminder it had is removed.
@@ -64,18 +68,23 @@ public struct LearningWindowReminderPlanner {
         let upcoming = window.state == .active
             ? window.schedule(asOf: moment).countedMornings.filter { !observedDayKeys.contains($0.dayKey) } : []
 
-        // A reminder that has come due stays until it is answered or expires.
+        // A reminder whose time has come stays until it is used or expires.
         if let ownReminder, let target = ownReminder.learningTarget, ownReminder.scheduledAt <= moment,
            upcoming.contains(where: { $0.dayKey == target.dayKey }) {
             // With notifications off there is nothing on screen to answer.
             guard invitations.settings?.canPresentInvitation == true else {
                 return .notScheduled(dayKey: target.dayKey, at: ownReminder.scheduledAt, obstacle: obstacle)
             }
-            return .awaitingResponse(dayKey: target.dayKey, at: ownReminder.scheduledAt)
+            return .reminderTimePassed(dayKey: target.dayKey, at: ownReminder.scheduledAt)
         }
         guard let next = upcoming.first(where: { $0.expectedStart > moment }) else {
             // Stop, Pause and the last morning all end here: the pending reminder goes.
-            if ownReminder != nil { await invitations.cancel() }
+            if let ownReminder, let target = ownReminder.learningTarget {
+                await invitations.cancel()
+                if invitations.invitation?.disposition == .enabled {
+                    return .removalFailed(dayKey: target.dayKey, at: ownReminder.scheduledAt)
+                }
+            }
             return .nothingToSchedule
         }
         if let current, current.learningTarget == nil {

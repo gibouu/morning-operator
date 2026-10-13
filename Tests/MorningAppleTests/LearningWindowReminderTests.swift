@@ -56,10 +56,10 @@ struct LearningWindowReminderTests {
         try #expect(outcome == .scheduled(dayKey: key(12), at: at(12, 7)))
         #expect(test.client.added.count == 1)
 
-        // 07:01: delivered and not yet answered. It is left alone.
+        // 07:01: its time has passed and it is neither used nor expired. It is left alone.
         test.clock.date = try at(12, 7, 1)
         outcome = await test.planner.refresh(for: test.window)
-        try #expect(outcome == .awaitingResponse(dayKey: key(12), at: at(12, 7)))
+        try #expect(outcome == .reminderTimePassed(dayKey: key(12), at: at(12, 7)))
         #expect(test.client.added.count == 1)
 
         // The person taps it. The app learns it was a learning reminder, not a morning start.
@@ -100,7 +100,7 @@ struct LearningWindowReminderTests {
         try #expect(outcome == .notScheduled(dayKey: key(12), at: at(12, 7), obstacle: .notificationsQuiet))
         #expect(quiet.client.added.isEmpty && quiet.client.pending == nil)
 
-        // At 07:01 there is still nothing on screen to answer: it is not "awaiting a response".
+        // At 07:01 there is still nothing on screen to answer, and it says so.
         denied.clock.date = try at(12, 7, 1)
         outcome = await denied.planner.refresh(for: denied.window)
         try #expect(outcome == .notScheduled(dayKey: key(12), at: at(12, 7), obstacle: .notificationsDenied))
@@ -156,6 +156,18 @@ struct LearningWindowReminderTests {
         outcome = await test.planner.refresh(for: test.window, personRequested: true)
         #expect(outcome == .nothingToSchedule)
         #expect(test.client.pending == nil && test.client.added.count == 2)
+    }
+
+    @Test func aReminderThatCouldNotBeRemovedIsReportedAsStillThere() async throws {
+        var test = try setup()
+        _ = await test.planner.refresh(for: test.window, personRequested: true)
+        test.window.stop(at: test.clock.date)
+        test.storage.failSave = true
+        var outcome = await test.planner.refresh(for: test.window)
+        try #expect(outcome == .removalFailed(dayKey: key(12), at: at(12, 7)))
+        test.storage.failSave = false
+        outcome = await test.planner.refresh(for: test.window)
+        #expect(outcome == .nothingToSchedule && test.client.pending == nil)
     }
 
     @Test func thePersonsOwnInvitationIsNeverReplacedOrCancelledByAWindow() async throws {
@@ -220,7 +232,11 @@ struct LearningWindowReminderTests {
 @MainActor private final class ReminderMemoryStorage: MorningInvitationStorage {
     var value: MorningInvitation?
     func load() throws -> MorningInvitation? { value }
-    func save(_ invitation: MorningInvitation?) throws { value = invitation }
+    var failSave = false
+    func save(_ invitation: MorningInvitation?) throws {
+        if failSave { throw CocoaError(.fileWriteNoPermission) }
+        value = invitation
+    }
 }
 
 @MainActor private final class ReminderNotificationFixture: MorningInvitationNotificationClient {

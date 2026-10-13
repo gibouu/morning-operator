@@ -19,7 +19,7 @@ public struct ObservationWindowCapture: Codable, Equatable, Sendable {
     public let expectedEnd: Date
     public let actualStart: Date
     public let actualEnd: Date
-    /// When the window accepted the recording. A window that was stopped at or before this
+    /// When the window accepted the recording, never before the recording ended. A window that was stopped at or before this
     /// instant does not count it, whatever else this value says.
     public let declaredAt: Date
 
@@ -27,7 +27,7 @@ public struct ObservationWindowCapture: Codable, Equatable, Sendable {
                 expectedEnd: Date, actualStart: Date, actualEnd: Date, declaredAt: Date) throws {
         let instants = [expectedStart, expectedEnd, actualStart, actualEnd, declaredAt]
         guard instants.allSatisfy({ $0.timeIntervalSinceReferenceDate.isFinite }),
-              expectedEnd > expectedStart, actualEnd > actualStart,
+              expectedEnd > expectedStart, actualEnd > actualStart, declaredAt >= actualEnd,
               expectedEnd.timeIntervalSince(expectedStart) <= 24 * 60 * 60,
               actualEnd.timeIntervalSince(actualStart) <= 24 * 60 * 60,
               dayKey.utf8.count == 10, TimeZone(identifier: timeZoneIdentifier) != nil else {
