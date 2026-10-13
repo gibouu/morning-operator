@@ -85,6 +85,8 @@ public final class MorningInvitationService {
         ProcessInfo.processInfo.arguments.contains("--ui-testing") ? testRequestIdentifier : requestIdentifier
     }
     public nonisolated static let categoryIdentifier = "MORE_MORNING_INVITATION"
+    /// A learning window's reminder. It has no action: its tap only opens the app.
+    public nonisolated static let learningReminderCategoryIdentifier = "MORE_LEARNING_WINDOW_REMINDER"
     public nonisolated static let startActionIdentifier = "MORE_START_MORNING"
 
     public private(set) var invitation: MorningInvitation?
@@ -131,13 +133,21 @@ public final class MorningInvitationService {
 
     /// Call only from the person's explicit Schedule action. This is the only prompt path.
     /// A denied request remains a saved, unscheduled preference that can be retried later.
-    public func schedule(at date: Date, timeZone: TimeZone = .current) async {
+    ///
+    /// A learning window's reminder uses the same single occurrence, with `learningTarget`
+    /// set. Only the reminder the person asks for by starting the window may pass
+    /// `mayRequestPermission`; the ones that follow it are scheduled without a tap and so
+    /// never prompt. With permission missing they stay saved and unscheduled, like any other.
+    public func schedule(at date: Date, timeZone: TimeZone = .current,
+                         learningTarget: MorningInvitationLearningTarget? = nil,
+                         mayRequestPermission: Bool = true) async {
         guard storageAvailable, !isForgetting else { return }
         do {
-            let desired = try MorningInvitation(scheduledAt: date, timeZoneIdentifier: timeZone.identifier, now: now())
+            let desired = try MorningInvitation(scheduledAt: date, timeZoneIdentifier: timeZone.identifier, now: now(),
+                                                learningTarget: learningTarget)
             try withReadyStorage { try storage.save(desired) }
             invitation = desired
-            pendingPermissionOccurrenceID = desired.id
+            pendingPermissionOccurrenceID = mayRequestPermission ? desired.id : nil
             errorMessage = nil
             isScheduled = false
             await enqueueReconciliation().value
@@ -211,6 +221,13 @@ public final class MorningInvitationService {
         errorMessage = nil
         _ = enqueueReconciliation()
         return current
+    }
+
+    /// Whether the system still holds this feature's notification, pending or delivered.
+    /// Read from the system at the time of the call; nothing is assumed from saved state.
+    public func systemHoldsInvitation() async -> Bool {
+        if await notifications.pendingInvitation() != nil { return true }
+        return await notifications.hasDeliveredInvitation()
     }
 
     public nonisolated static func payload(from userInfo: [AnyHashable: Any]) -> MorningInvitationPayload? {
@@ -428,9 +445,17 @@ private final class NativeMorningInvitationNotificationClient: MorningInvitation
 
     func add(_ invitation: MorningInvitation, sound: Bool) async throws {
         let content = UNMutableNotificationContent()
-        content.title = String(localized: "Ready for your morning?", bundle: .module)
-        content.body = String(localized: "Tap to begin with MORE.", bundle: .module)
-        content.categoryIdentifier = MorningInvitationService.categoryIdentifier
+        if invitation.learningTarget == nil {
+            content.title = String(localized: "Ready for your morning?", bundle: .module)
+            content.body = String(localized: "Tap to begin with MORE.", bundle: .module)
+            content.categoryIdentifier = MorningInvitationService.categoryIdentifier
+        } else {
+            // A reminder to record, without the Start morning action: nothing begins
+            // until the person opens MORE and starts the recording themselves.
+            content.title = String(localized: "Your learning window is open", bundle: .module)
+            content.body = String(localized: "Open MORE and start the recording when you are ready.", bundle: .module)
+            content.categoryIdentifier = MorningInvitationService.learningReminderCategoryIdentifier
+        }
         content.userInfo = invitation.payload.dictionary
         content.interruptionLevel = .active
         content.sound = sound ? .default : nil
