@@ -17,6 +17,10 @@ public extension ObservationArchive {
     /// has neither and is refused, as is everything the window refuses (see
     /// `LearningWindow.capture`), first among them a window that was stopped.
     ///
+    /// The zone the session was saved under is not read: a morning recorded at the
+    /// window's instant from another time zone is declared like any other. The observation
+    /// keeps the date and zone it was saved with; the declaration carries the window's day.
+    ///
     /// This is the only way a recording joins a window. It is called after a recording is
     /// saved; it starts nothing and changes no other field of the observation.
     @discardableResult
@@ -27,10 +31,45 @@ public extension ObservationArchive {
             throw LearningWindowError.recordingStartUnknown
         }
         let capture = try window.capture(recordingStartedAt: context.startedAt,
-            recordingTimeZoneIdentifier: context.timeZoneIdentifier,
             recordedSeconds: evidence.durationSeconds, declaredAt: now)
         try attachWindowCapture(capture, to: id)
         return capture
+    }
+}
+
+/// How one saved observation stands with one learning window. The report and comparable
+/// mornings both read it here, so they cannot disagree about which morning it counts for.
+enum LearningWindowDeclarationStanding: Equatable {
+    /// Never declared to this window.
+    case notDeclared
+    /// Declared, but the window does not count the declaration (see `LearningWindow.counts`).
+    case ignored
+    /// Declared to a morning, then given another day or no day by the person in review.
+    case reassigned
+    /// Counts for the morning the declaration names, and for no other day.
+    case counted(ObservationWindowCapture)
+}
+
+extension LearningWindow {
+    /// The day-key rule. A declared observation counts under the window's morning it was
+    /// declared to, `capture.dayKey`, a day of the WINDOW's calendar. It never counts under
+    /// the date the archive filed it under, which is a day of the calendar the phone was
+    /// on: a 05:00 Paris morning recorded from New York is filed there under the evening
+    /// before, and a second count under that date would both double the morning and land
+    /// on the previous morning's day.
+    ///
+    /// The observation's own date is read for one thing only: to see whether the person
+    /// moved the observation in review. It is untouched as long as it still names the day
+    /// the recording started on, in whatever zone that date is written in. Any other day,
+    /// or no date, is the person's choice, and the declaration no longer counts.
+    func standing(of entry: ObservationAcquisition) -> LearningWindowDeclarationStanding {
+        guard let capture = entry.windowCapture, capture.windowID == id else { return .notDeclared }
+        guard counts(capture) else { return .ignored }
+        guard let observed = entry.observedDate,
+              let recordedDay = try? ObservationObservedDate(date: capture.actualStart,
+                  timeZoneIdentifier: observed.timeZoneIdentifier, provenance: observed.provenance),
+              observed.dayKey == recordedDay.dayKey else { return .reassigned }
+        return .counted(capture)
     }
 }
 
@@ -41,7 +80,9 @@ public enum LearningWindowMorningStatus: String, Sendable, Equatable {
     case observedInWindow
     /// Recorded for part of the window: started late, ended early, or interrupted.
     case observedPartly
-    /// A recording was made that day, entirely outside the window.
+    /// A recording was made on that day of the window's calendar, entirely outside the
+    /// window: in the evening, or at 07:00 on a traveller's clock when the window's 07:00
+    /// was another instant. The person did record, so the morning is not `missed`.
     case observedOutsideWindow
     /// The window ended with no recording declared for that morning. Not a morning without activity.
     case missed
@@ -78,6 +119,8 @@ public struct LearningWindowMorningReport: Sendable, Equatable, Identifiable {
     public let status: LearningWindowMorningStatus
     /// Nil when no recording was declared for the morning.
     public let coverage: LearningWindowCoverage?
+    /// Recordings declared to this morning, wherever the phone was. Each is listed under
+    /// this one morning, even when the archive files it under another date.
     public let acquisitionIDs: [UUID]
     /// Nil when the morning counts toward the number of mornings asked.
     public let notCountedReason: LearningWindowNotCountedReason?
@@ -121,11 +164,13 @@ public struct LearningWindowReport: Sendable, Equatable {
         var ignored: [UUID] = []
         var reassigned: [UUID] = []
         for entry in archive.entries {
-            guard let capture = entry.windowCapture, capture.windowID == window.id else { continue }
-            guard window.counts(capture) else { ignored.append(entry.id); continue }
-            guard let observed = entry.observedDate, observed.dayKey == capture.dayKey,
-                  observed.timeZoneIdentifier == window.timeZoneIdentifier else { reassigned.append(entry.id); continue }
-            byDay[capture.dayKey, default: []].append(entry)
+            switch window.standing(of: entry) {
+            case .notDeclared: continue
+            case .ignored: ignored.append(entry.id)
+            case .reassigned: reassigned.append(entry.id)
+            // One key per observation, the window's: never also the archive's own date.
+            case .counted(let capture): byDay[capture.dayKey, default: []].append(entry)
+            }
         }
         mornings = schedule.mornings.map { morning in
             Self.report(morning, entries: byDay[morning.dayKey] ?? [], window: window, now: now, origin: origin)
@@ -211,18 +256,20 @@ public extension ComparableMorningProfile {
     ///   its samples; one that started late or ended early is excluded as partial capture.
     /// - A recording never declared to this window, or declared after Stop, has no known
     ///   capture and is excluded as unknown capture, as before.
+    /// - A declared recording counts on the morning it was declared to and on no other day
+    ///   (`LearningWindow.standing(of:)`), exactly as in `LearningWindowReport`. Its own
+    ///   archive date, written on the calendar of wherever the phone was, is not used.
     init(window: LearningWindow, archive: ObservationArchive, now: Date,
          origin: ObservationAcquisitionOrigin = .human, maximumSampleGapSeconds: Double) throws {
         let due = window.schedule(asOf: now).countedMornings.filter { $0.expectedEnd <= now }
         let coreSeconds = Double(window.durationSeconds - window.lateStartAllowanceSeconds - window.earlyEndAllowanceSeconds)
         var scopes: [UUID: ObservationCaptureScope] = [:]
+        var mornings: [UUID: Date] = [:]
         for entry in archive.entries {
             // A recording the person moved to another day in review is judged there, without
             // the declaration it was given for the morning it was recorded on.
-            guard let capture = entry.windowCapture, window.counts(capture),
-                  let observed = entry.observedDate, observed.dayKey == capture.dayKey,
-                  observed.timeZoneIdentifier == window.timeZoneIdentifier,
-                  due.contains(where: { $0.dayKey == capture.dayKey }),
+            guard case .counted(let capture) = window.standing(of: entry),
+                  let morning = due.first(where: { $0.dayKey == capture.dayKey }),
                   let core = window.comparableInterval(expectedStart: capture.expectedStart,
                                                        expectedEnd: capture.expectedEnd) else { continue }
             // The two ends are exact when the recording reaches them, so a morning recorded
@@ -234,11 +281,12 @@ public extension ComparableMorningProfile {
             scopes[entry.id] = try ObservationCaptureScope(
                 startOffsetSeconds: core.start.timeIntervalSince(capture.actualStart),
                 durationSeconds: coreSeconds, capturedIntervals: captured)
+            mornings[entry.id] = morning.expectedStart
         }
         try self.init(archive: archive, scheduledDays: due.map(\.expectedStart),
                       timeZoneIdentifier: window.timeZoneIdentifier, origin: origin,
                       comparisonKey: "learning-window:\(window.id.uuidString)",
                       policy: .init(expectedWindowSeconds: coreSeconds, maximumSampleGapSeconds: maximumSampleGapSeconds),
-                      captureScopes: scopes)
+                      captureScopes: scopes, scheduledDayByObservation: mornings)
     }
 }

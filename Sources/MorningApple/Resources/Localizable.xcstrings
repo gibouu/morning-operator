@@ -2548,6 +2548,16 @@
         }
       }
     },
+    "This learning-window record does not match the recording it was saved with.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce relevé de fenêtre d’apprentissage ne correspond pas à l’enregistrement avec lequel il a été sauvegardé."
+          }
+        }
+      }
+    },
     "This local file could not be read.": {
       "localizations": {
         "fr": {

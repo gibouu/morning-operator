@@ -3,6 +3,8 @@ import MorningCore
 
 public enum ObservationArchiveError: Error, LocalizedError, Sendable, Equatable {
     case invalidSource, invalidDate, invalidDigest, invalidRecordingContext, duplicateAcquisition, duplicateDigest
+    /// A learning window's declaration that does not describe the recording it is written on.
+    case invalidWindowCapture
     case archiveFull, archiveTooLarge, unknownAcquisition, invalidClassification, correctedObservation, invalidFrameReview
     public var errorDescription: String? {
         switch self {
@@ -10,6 +12,7 @@ public enum ObservationArchiveError: Error, LocalizedError, Sendable, Equatable 
         case .invalidDate: String(localized: "Choose a valid observed date and time zone.", bundle: .module)
         case .invalidDigest: String(localized: "The observation file fingerprint is invalid.", bundle: .module)
         case .invalidRecordingContext: String(localized: "The recording-start metadata is invalid for this observation.", bundle: .module)
+        case .invalidWindowCapture: String(localized: "This learning-window record does not match the recording it was saved with.", bundle: .module)
         case .duplicateAcquisition: String(localized: "Two observations use the same acquisition identifier.", bundle: .module)
         case .duplicateDigest: String(localized: "The archive contains the same file more than once.", bundle: .module)
         case .archiveFull: String(localized: "The observation archive is full. Delete an observation before adding another.", bundle: .module)
@@ -158,7 +161,7 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             throw ObservationArchiveError.invalidRecordingContext
         }
         if let windowCapture, !Self.windowCaptureIsValid(windowCapture, context: recordingContext, evidence: videoEvidence) {
-            throw ObservationArchiveError.invalidRecordingContext
+            throw ObservationArchiveError.invalidWindowCapture
         }
         guard importedAt.map(archiveDateIsValid) ?? true else { throw ObservationArchiveError.invalidDate }
         guard !sourceLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -238,12 +241,17 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
     }
 
     /// A declaration is only as good as its source: the native recording session of this
-    /// very observation. Its start and zone must be that session's, and its length the
-    /// saved movie's. An imported file has no session and can carry no declaration.
+    /// very observation. Its start must be that session's, and its length the saved
+    /// movie's. An imported file has no session and can carry no declaration.
+    ///
+    /// Only instants are compared. The declaration's zone is the learning window's and the
+    /// session's is the phone's; they differ whenever the morning was recorded while
+    /// travelling, and that is not a fault. That the declaration's day is the day of its
+    /// own instants is checked by `ObservationWindowCapture` itself.
     private static func windowCaptureIsValid(_ capture: ObservationWindowCapture,
         context: ObservationRecordingContext?, evidence: ObservationVideoEvidence?) -> Bool {
         guard let context, let evidence else { return false }
-        return capture.actualStart == context.startedAt && capture.timeZoneIdentifier == context.timeZoneIdentifier &&
+        return capture.actualStart == context.startedAt &&
             capture.actualEnd == context.startedAt.addingTimeInterval(evidence.durationSeconds)
     }
 

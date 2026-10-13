@@ -62,7 +62,9 @@ public struct ComparableMorningProfile: Sendable, Equatable {
     public let acquisitionIDsByDayKey: [String: [UUID]]
     /// Observations on a scheduled date with another origin. They never contribute.
     public let otherOriginAcquisitionIDs: [UUID]
-    /// Dated in another time zone, whatever the date. Not moved onto this calendar.
+    /// Dated in another time zone, whatever the date. Not moved onto this calendar. An
+    /// observation given a scheduled day through `scheduledDayByObservation` is not listed
+    /// here: it is on this calendar by that day, whatever zone its own date is written in.
     public let otherTimeZoneAcquisitionIDs: [UUID]
     public let undatedAcquisitionIDs: [UUID]
 
@@ -78,34 +80,54 @@ public struct ComparableMorningProfile: Sendable, Equatable {
     ///     window, the part of its movie that scope covers. It takes precedence over
     ///     `declaredCapture` for that observation. `init(window:archive:now:)` builds these
     ///     from the declarations saved on the observations themselves.
+    ///   - scheduledDayByObservation: for an observation a planned scope declared to one
+    ///     scheduled day, that day, as one of `scheduledDays`. The observation is then
+    ///     counted on that day and on no other: its own date is not read, so it can neither
+    ///     be counted a second time under the date of the calendar it was recorded on, nor
+    ///     be refused for being dated in another zone. A day that is not scheduled is an error.
     public init(archive: ObservationArchive, scheduledDays: [Date], timeZoneIdentifier: String,
                 origin: ObservationAcquisitionOrigin, comparisonKey: String,
                 policy: ObservationComparisonPolicy,
                 declaredCapture: [UUID: [ObservationTraceInterval]] = [:],
-                captureScopes: [UUID: ObservationCaptureScope] = [:]) throws {
+                captureScopes: [UUID: ObservationCaptureScope] = [:],
+                scheduledDayByObservation: [UUID: Date] = [:]) throws {
         let traceOrigin: ObservationTraceOrigin
         switch origin {
         case .human: traceOrigin = .human
         case .synthetic: traceOrigin = .synthetic
         case .automated, .unknown: throw ObservationTraceError.invalidPolicy
         }
-        let scheduledKeys = try scheduledDays.map { day -> String in
+        func dayKey(_ day: Date) throws -> String {
             guard let value = try? ObservationObservedDate(date: day, timeZoneIdentifier: timeZoneIdentifier,
                                                            provenance: .userAssigned) else {
                 throw ObservationTraceError.invalidDay
             }
             return value.dayKey
         }
+        let scheduledKeys = try scheduledDays.map(dayKey)
         var matching: [String: [ObservationAcquisition]] = [:]
         var others: [String: [ObservationAcquisition]] = [:]
         var otherZone: [UUID] = []
         var undated: [UUID] = []
+        // The instant that places each kept observation on this calendar.
+        var dateByID: [UUID: Date] = [:]
         for entry in archive.entries {
-            guard let observed = entry.observedDate else { undated.append(entry.id); continue }
-            guard observed.timeZoneIdentifier == timeZoneIdentifier else { otherZone.append(entry.id); continue }
-            guard scheduledKeys.contains(observed.dayKey) else { continue }
-            if entry.origin == origin { matching[observed.dayKey, default: []].append(entry) }
-            else { others[observed.dayKey, default: []].append(entry) }
+            let key: String
+            if let day = scheduledDayByObservation[entry.id] {
+                // Placed by its declaration. Its own date and zone are not consulted, so it
+                // has exactly one day here.
+                key = try dayKey(day)
+                guard scheduledKeys.contains(key) else { throw ObservationTraceError.invalidDay }
+                dateByID[entry.id] = day
+            } else {
+                guard let observed = entry.observedDate else { undated.append(entry.id); continue }
+                guard observed.timeZoneIdentifier == timeZoneIdentifier else { otherZone.append(entry.id); continue }
+                guard scheduledKeys.contains(observed.dayKey) else { continue }
+                key = observed.dayKey
+                dateByID[entry.id] = observed.date
+            }
+            if entry.origin == origin { matching[key, default: []].append(entry) }
+            else { others[key, default: []].append(entry) }
         }
 
         // One extraction saved as two observations is still one recording. Its dates are
@@ -135,7 +157,7 @@ public struct ComparableMorningProfile: Sendable, Equatable {
             }) else {
                 exclusions.append(.init(dayKey: key, reason: .repeatedRecording)); continue
             }
-            guard clips.count == 1, let entry = clips.first, let observed = entry.observedDate else {
+            guard clips.count == 1, let entry = clips.first, let date = dateByID[entry.id] else {
                 exclusions.append(.init(dayKey: key, reason: .duplicateDay)); continue
             }
             guard let evidence = entry.videoEvidence else {
@@ -169,7 +191,7 @@ public struct ComparableMorningProfile: Sendable, Equatable {
                 trace = try ObservationTrace(id: evidence.id, durationSeconds: evidence.durationSeconds,
                     capturedIntervals: declaredCapture[entry.id], origin: traceOrigin, samples: samples)
             }
-            days.append(try ObservationTraceDay(date: observed.date, timeZoneIdentifier: timeZoneIdentifier,
+            days.append(try ObservationTraceDay(date: date, timeZoneIdentifier: timeZoneIdentifier,
                                                 comparisonKey: comparisonKey, trace: trace))
         }
         report = try ObservationTraceWindowReport(days: days, scheduledDays: scheduledDays,
