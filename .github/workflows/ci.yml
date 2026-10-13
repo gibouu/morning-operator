@@ -41,9 +41,9 @@ jobs:
           DEVELOPER_DIR="$newest/Contents/Developer" xcodebuild -version
 
       - name: Swift package tests
-        # Serial: several tests race a real deadline against main-actor work, and
-        # parallel suites on a small runner can hold the main actor long enough to lose it.
-        run: ./scripts/test.sh --no-parallel
+        # Parallel: the briefing deadline and typing pause sleep on an injected clock,
+        # and the tests advance it by hand, so a slow runner cannot make a deadline fire.
+        run: ./scripts/test.sh
 
       - name: Scorer tests
         run: python3 -m unittest discover -s scripts/tests

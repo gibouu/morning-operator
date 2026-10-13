@@ -105,6 +105,7 @@ public final class MorningBriefingController {
     @ObservationIgnored private let policy: MorningBriefingFreshnessPolicy
     @ObservationIgnored private let sourceTimeout: Duration
     @ObservationIgnored private let suggestionDelay: Duration
+    @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private var generation: UUID?
     @ObservationIgnored private var settingsLoaded = false
     @ObservationIgnored private var revision = UUID()
@@ -126,7 +127,8 @@ public final class MorningBriefingController {
                 now: @escaping @Sendable () -> Date = { Date() },
                 timeZone: @escaping @Sendable () -> TimeZone = { .current },
                 localeIdentifier: String = AppLanguage.localeIdentifier, policy: MorningBriefingFreshnessPolicy = .standard,
-                sourceTimeout: Duration = .seconds(10), suggestionDelay: Duration = .milliseconds(250)) {
+                sourceTimeout: Duration = .seconds(10), suggestionDelay: Duration = .milliseconds(250),
+                clock: any Clock<Duration> = ContinuousClock()) {
         self.calendar = calendar; self.weather = weather
         control = LocalDataControl(directory: directory)
         file = AtomicJSONFile(url: directory.appendingPathComponent("briefing-settings.json"))
@@ -135,6 +137,9 @@ public final class MorningBriefingController {
         // Test injection may shorten the deadline, never extend the public cap.
         self.sourceTimeout = min(max(sourceTimeout, .milliseconds(1)), .seconds(10))
         self.suggestionDelay = suggestionDelay
+        // The source deadline and the typing pause both sleep on this clock. The app
+        // keeps the continuous clock; tests pass one they advance by hand.
+        self.clock = clock
         reloadSettings()
     }
 
@@ -235,14 +240,14 @@ public final class MorningBriefingController {
         // The explicit search owns the list now; suggestions for earlier typing go.
         searchAttempt = attempt; isSearchingCities = true; cityResults = []; citySuggestions = []
         citySearchOutcome = nil; errorMessage = nil
-        let service = weather, timeout = sourceTimeout
+        let service = weather, timeout = sourceTimeout, clock = clock
         let task = Task { @MainActor [weak self] () -> WeatherLocation? in
             guard let self else { return nil }
             defer {
                 if searchAttempt == attempt { searchAttempt = nil; searchTask = nil; isSearchingCities = false }
             }
             do {
-                let values = try await BriefingSourceDeadline<[WeatherLocation]>().run(timeout: timeout) {
+                let values = try await BriefingSourceDeadline<[WeatherLocation]>(clock: clock).run(timeout: timeout) {
                     try await service.searchCities(query)
                 }
                 try Task.checkCancellation()
@@ -287,13 +292,13 @@ public final class MorningBriefingController {
         suggestionTask?.cancel()
         let attempt = UUID(), expectedRevision = revision
         suggestionAttempt = attempt
-        let service = weather, timeout = sourceTimeout
+        let service = weather, timeout = sourceTimeout, clock = clock
         let task = Task { @MainActor [weak self] in
-            if delay > .zero { try? await Task.sleep(for: delay) }
+            if delay > .zero { try? await clock.sleep(for: delay) }
             guard let self, !Task.isCancelled else { return }
             defer { if suggestionAttempt == attempt { suggestionAttempt = nil; suggestionTask = nil } }
             do {
-                let values = try await BriefingSourceDeadline<[CitySuggestion]>().run(timeout: timeout) {
+                let values = try await BriefingSourceDeadline<[CitySuggestion]>(clock: clock).run(timeout: timeout) {
                     try await service.suggestCities(query)
                 }
                 guard !Task.isCancelled, revision == expectedRevision, suggestionAttempt == attempt,
@@ -319,14 +324,14 @@ public final class MorningBriefingController {
         cancelCityLookups()
         let attempt = UUID(), expectedRevision = revision
         searchAttempt = attempt; isSearchingCities = true; errorMessage = nil
-        let service = weather, timeout = sourceTimeout
+        let service = weather, timeout = sourceTimeout, clock = clock
         let task = Task { @MainActor [weak self] () -> WeatherLocation? in
             guard let self else { return nil }
             defer {
                 if searchAttempt == attempt { searchAttempt = nil; searchTask = nil; isSearchingCities = false }
             }
             do {
-                let location = try await BriefingSourceDeadline<WeatherLocation?>().run(timeout: timeout) {
+                let location = try await BriefingSourceDeadline<WeatherLocation?>(clock: clock).run(timeout: timeout) {
                     try await service.resolveCity(suggestion)
                 }
                 try Task.checkCancellation()
@@ -410,7 +415,7 @@ public final class MorningBriefingController {
                     if force || cached.weather.status != .fresh {
                         let service = weather
                         do {
-                            let value = try await BriefingSourceDeadline<WeatherObservationSnapshot>().run(timeout: sourceTimeout) {
+                            let value = try await BriefingSourceDeadline<WeatherObservationSnapshot>(clock: clock).run(timeout: sourceTimeout) {
                                 try await service.currentWeather(for: location)
                             }
                             nextWeather = .snapshot(value)
@@ -527,6 +532,9 @@ private final class BriefingSourceDeadline<Value: Sendable> {
     private var operation: Task<Void, Never>?
     private var timer: Task<Void, Never>?
     private var finished = false
+    private let clock: any Clock<Duration>
+
+    init(clock: any Clock<Duration>) { self.clock = clock }
 
     func run(timeout: Duration, body: @escaping @MainActor () async throws -> Value) async throws -> Value {
         try Task.checkCancellation()
@@ -538,7 +546,7 @@ private final class BriefingSourceDeadline<Value: Sendable> {
                     catch { finish(.failure(error)) }
                 }
                 timer = Task { @MainActor [self] in
-                    do { try await Task.sleep(for: timeout) }
+                    do { try await clock.sleep(for: timeout) }
                     catch { return }
                     finish(.failure(MorningBriefingControllerError.timedOut))
                 }

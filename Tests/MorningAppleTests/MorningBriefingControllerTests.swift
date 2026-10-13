@@ -3,7 +3,8 @@ import Testing
 import MorningCore
 @testable import MorningApple
 
-@Suite("Prepared briefing ownership and settings")
+// The time limit and the trait are a safety net for a hang; see `BriefingHangRescueTrait`.
+@Suite("Prepared briefing ownership and settings", .timeLimit(.minutes(1)), .endsControllerWorkOnCancellation)
 @MainActor
 struct MorningBriefingControllerTests {
     @Test func settingsSurviveRelaunchWithoutSavingPreparedFacts() async throws {
@@ -248,33 +249,36 @@ struct MorningBriefingControllerTests {
         #expect(gate.calls == 1)
     }
 
-    @Test func weatherDeadlineReturnsUsefulCalendarBeforeUncooperativeProviderFinishes() async throws {
+    /// The deadline is counted on the injected clock, so only `advance` can make it fire.
+    @Test(arguments: [
+        BriefingDeadlineExample(requested: .seconds(10), effective: .seconds(10)),
+        BriefingDeadlineExample(requested: .milliseconds(30), effective: .milliseconds(30)),
+        BriefingDeadlineExample(requested: .seconds(60), effective: .seconds(10)),
+        BriefingDeadlineExample(requested: .zero, effective: .milliseconds(1))
+    ])
+    func weatherDeadlineReturnsUsefulCalendarBeforeUncooperativeProviderFinishes(_ example: BriefingDeadlineExample) async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let gate = BriefingWeatherGate()
         let calendar = BriefingCalendarFixture()
+        let clock = ManualTestClock()
         let location = try syntheticLocation()
         let weather = try syntheticWeather(location: location)
         let controller = makeController(directory: directory, calendar: calendar,
-            weather: { _ in try await gate.value() }, timeout: .milliseconds(30))
+            weather: { _ in try await gate.value() }, timeout: example.requested, clock: clock)
         try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: location))
-        // Prevent a broken timeout implementation from leaving a continuation live forever.
-        // The margin is wide so a busy machine cannot release the gate before a working
-        // 30 ms deadline has been scheduled; a broken deadline still fails, only later.
-        let fallback = Task {
-            do { try await Task.sleep(for: .seconds(30)) } catch { return }
-            gate.release(weather)
-        }
-        let started = ContinuousClock.now
-        let result = await controller.refresh()
-        let elapsed = ContinuousClock.now - started
+        let attempt = Task { await controller.refresh() }
+        await gate.waitUntilCalled()
+        await clock.waitForSleepers()
+        clock.advance(by: example.effective - .milliseconds(1))
+        #expect(clock.sleeperCount == 1 && controller.isPreparing, "The deadline fired before its time.")
+        clock.advance(by: .milliseconds(1))
+        #expect(clock.sleeperCount == 0, "The deadline is longer than the cap allows.")
+        let result = await attempt.value
         let returnedBeforeRelease = !gate.wasReleased
-        fallback.cancel()
         gate.release(weather)
         let prepared = try #require(result)
         #expect(returnedBeforeRelease, "A timeout must not wait for an uncooperative provider to return.")
-        // The injected 30 ms deadline must be the one in force, not the 10-second default.
-        #expect(elapsed < .seconds(8), "The injected deadline was ignored.")
         #expect(prepared.calendar.status == .fresh)
         #expect(prepared.weather.status == .unavailable)
         let preparedID = prepared.id
@@ -283,15 +287,39 @@ struct MorningBriefingControllerTests {
         #expect(controller.prepared?.weather.status == .unavailable)
     }
 
+    @Test func answeredSourceLeavesNoDeadlineBehind() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let gate = BriefingWeatherGate()
+        let clock = ManualTestClock()
+        let location = try syntheticLocation()
+        let weather = try syntheticWeather(location: location)
+        let controller = makeController(directory: directory, calendar: BriefingCalendarFixture(),
+            weather: { _ in try await gate.value() }, clock: clock)
+        try controller.updateSettings(.init(weatherLocation: location))
+        let attempt = Task { await controller.refresh() }
+        await gate.waitUntilCalled()
+        await clock.waitForSleepers()
+        gate.release(weather)
+        let prepared = try #require(await attempt.value)
+        #expect(prepared.weather.status == .fresh)
+        #expect(clock.sleeperCount == 0, "An answer in time cancels its deadline.")
+        clock.advance(by: .seconds(10))
+        await Task.yield()
+        #expect(controller.prepared?.id == prepared.id && controller.errorMessage == nil)
+    }
+
+    /// Every controller sleeps on a test clock. A test that does not advance it has
+    /// no deadline that can fire, however long the machine takes.
     private func makeController(directory: URL, calendar: BriefingCalendarFixture,
         weather: @escaping WeatherObservationService.WeatherProvider,
-        timeout: Duration = .seconds(10)) -> MorningBriefingController {
+        timeout: Duration = .seconds(10), clock: ManualTestClock = ManualTestClock()) -> MorningBriefingController {
         let date = referenceDate
         return MorningBriefingController(directory: directory,
             calendar: CalendarObservationService(provider: calendar, now: { date }),
             weather: WeatherObservationService(weatherProvider: weather, citySearchProvider: { _ in [] }),
             now: { date }, timeZone: { TimeZone(identifier: "UTC")! }, localeIdentifier: "en_US",
-            sourceTimeout: timeout)
+            sourceTimeout: timeout, clock: clock).watchedForHangs()
     }
 
     private var referenceDate: Date { Date(timeIntervalSince1970: 1_791_619_200) }
@@ -331,14 +359,29 @@ private final class BriefingCalendarFixture: CalendarObservationProviding {
 @MainActor
 private final class BriefingCallCounter { var count = 0 }
 
+/// The timeout a test asks for, and the one the controller must apply.
+struct BriefingDeadlineExample: Sendable, CustomTestStringConvertible {
+    let requested: Duration
+    let effective: Duration
+    var testDescription: String { "asked \(requested), applied \(effective)" }
+}
+
 @MainActor
 private final class BriefingAsyncSignal {
     private var signalled = false
     private var continuation: CheckedContinuation<Void, Never>?
     func signal() { signalled = true; continuation?.resume(); continuation = nil }
+    /// Also returns when the calling task is cancelled, so a test time limit can
+    /// end a wait for a signal that never comes.
     func wait() async {
         if signalled { return }
-        await withCheckedContinuation { continuation = $0 }
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { waiting in
+                if signalled || Task.isCancelled { waiting.resume() } else { continuation = waiting }
+            }
+        } onCancel: {
+            Task { @MainActor in self.continuation?.resume(); self.continuation = nil }
+        }
     }
 }
 

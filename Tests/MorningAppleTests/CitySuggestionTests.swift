@@ -3,7 +3,8 @@ import Testing
 import MorningCore
 @testable import MorningApple
 
-@Suite("City field lookups — injected sources only")
+// The time limit and the trait are a safety net for a hang; see `BriefingHangRescueTrait`.
+@Suite("City field lookups — injected sources only", .timeLimit(.minutes(1)), .endsControllerWorkOnCancellation)
 @MainActor
 struct CitySuggestionTests {
     @Test func failedOrTimedOutSuggestionsAreNotReportedAsNoMatch() async throws {
@@ -26,10 +27,17 @@ struct CitySuggestionTests {
         #expect(controller.citySuggestions == [tokyo], "Earlier suggestions stay until newer ones arrive.")
 
         let gate = CityGate<[CitySuggestion]>()
-        let slow = makeController(directory: temporaryDirectory(), suggestions: { _ in try await gate.value() },
-                                  timeout: .milliseconds(20))
-        await slow.suggestCities("To")
-        #expect(slow.citySearchOutcome == .unavailable)
+        let clock = ManualTestClock()
+        let slowDirectory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: slowDirectory) }
+        let slow = makeController(directory: slowDirectory, suggestions: { _ in try await gate.value() }, clock: clock)
+        let lookup = Task { await slow.suggestCities("To") }
+        await clock.waitForSleepers()
+        clock.advance(by: .seconds(10) - .milliseconds(1))
+        #expect(clock.sleeperCount == 1 && slow.citySearchOutcome == nil, "The deadline fired before its time.")
+        clock.advance(by: .milliseconds(1))
+        await lookup.value
+        #expect(gate.calls == 1 && slow.citySearchOutcome == .unavailable)
         gate.release([tokyo])
         await settle()
         #expect(slow.citySuggestions.isEmpty, "A result after the deadline has no recipient.")
@@ -177,6 +185,41 @@ struct CitySuggestionTests {
         await until { controller.citySuggestions == [tokyo] }
     }
 
+    /// The pause after typing and the lookup deadline are both counted on the injected clock.
+    @Test func typingPauseAndLookupDeadlineFollowTheInjectedClock() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let gate = CityGate<[CitySuggestion]>()
+        let clock = ManualTestClock()
+        var fragments: [String] = []
+        let controller = makeController(directory: directory, suggestions: { fragment in
+            fragments.append(fragment); return try await gate.value()
+        }, delay: .milliseconds(250), clock: clock)
+        controller.cityQueryChanged("Pa")
+        await clock.waitForSleepers()
+        clock.advance(by: .milliseconds(249))
+        #expect(clock.sleeperCount == 1, "The pause ended before its time.")
+        controller.cityQueryChanged("Par")
+        #expect(clock.sleeperCount == 0, "Newer typing cancels the earlier pause.")
+        await clock.waitForSleepers()
+        clock.advance(by: .milliseconds(249))
+        #expect(clock.sleeperCount == 1, "Newer typing starts its own full pause.")
+        await settle()
+        #expect(fragments.isEmpty, "Nothing is sent to Apple Maps during the pause.")
+        clock.advance(by: .milliseconds(1))
+        await until { gate.calls == 1 }
+        #expect(fragments == ["Par"])
+
+        await clock.waitForSleepers()
+        clock.advance(by: .seconds(10) - .milliseconds(1))
+        #expect(clock.sleeperCount == 1 && controller.citySearchOutcome == nil, "The deadline fired before its time.")
+        clock.advance(by: .milliseconds(1))
+        await until { controller.citySearchOutcome == .unavailable }
+        gate.release([tokyo])
+        await settle()
+        #expect(controller.citySuggestions.isEmpty, "A result after the deadline has no recipient.")
+    }
+
     @Test func forgettingResetsTheSuggestionSource() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -198,28 +241,32 @@ struct CitySuggestionTests {
     private var tokyo: CitySuggestion { CitySuggestion(title: "Tokyo", subtitle: "Japan") }
     private var paris: CitySuggestion { CitySuggestion(title: "Paris", subtitle: "France") }
 
+    /// Every controller sleeps on a test clock. A test that does not advance it has
+    /// no pause or deadline that can fire, however long the machine takes.
     private func makeController(directory: URL,
         suggestions: @escaping WeatherObservationService.CitySuggestionProvider,
         resolver: WeatherObservationService.CitySuggestionResolver? = nil,
         search: @escaping WeatherObservationService.CitySearchProvider = { _ in [] },
         reset: WeatherObservationService.CitySuggestionReset? = nil,
-        timeout: Duration = .seconds(10)) -> MorningBriefingController {
+        delay: Duration = .zero, clock: ManualTestClock = ManualTestClock()) -> MorningBriefingController {
         MorningBriefingController(directory: directory,
             calendar: CalendarObservationService(provider: CitySuggestionCalendarFixture()),
             weather: WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
                 citySearchProvider: search, citySuggestionProvider: suggestions,
                 citySuggestionResolver: resolver, citySuggestionReset: reset),
-            sourceTimeout: timeout, suggestionDelay: .zero)
+            suggestionDelay: delay, clock: clock).watchedForHangs()
     }
 
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("CitySuggestionTests-\(UUID().uuidString)")
     }
 
-    /// Waits for main-actor work that is already scheduled.
+    /// Waits for main-actor work that is already scheduled. Nothing it waits for needs
+    /// real time to pass: the condition becomes true after a number of main-actor turns.
     private func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
-        // Bounded by time, not by a yield count: on a busy machine the awaited work can
-        // need more turns than any fixed number, and a count then fails for no reason.
+        // The 30 seconds are a safety bound only. They end a wait whose condition can
+        // never become true, so a real defect fails here and does not hang the suite.
+        // A count of yields is not used: a busy machine can need more turns than any number.
         let deadline = ContinuousClock.now + .seconds(30)
         while !condition(), ContinuousClock.now < deadline {
             await Task.yield()

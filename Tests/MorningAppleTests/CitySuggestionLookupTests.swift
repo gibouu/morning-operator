@@ -81,10 +81,12 @@ struct CitySuggestionLookupTests {
         try await afterReset.value
     }
 
-    /// Waits for main-actor work that is already scheduled.
+    /// Waits for main-actor work that is already scheduled. Nothing it waits for needs
+    /// real time to pass: the condition becomes true after a number of main-actor turns.
     private func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
-        // Bounded by time, not by a yield count: on a busy machine the awaited work can
-        // need more turns than any fixed number, and a count then fails for no reason.
+        // The 30 seconds are a safety bound only. They end a wait whose condition can
+        // never become true, so a real defect fails here and does not hang the suite.
+        // A count of yields is not used: a busy machine can need more turns than any number.
         let deadline = ContinuousClock.now + .seconds(30)
         while !condition(), ContinuousClock.now < deadline {
             await Task.yield()
