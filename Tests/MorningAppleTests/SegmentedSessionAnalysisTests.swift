@@ -12,6 +12,11 @@ private actor FakeWorkspace {
     private var cancelWhenReached: Int?
     private var cancelAfterSaving: Int?
     private var missingRawAtSaveTime: [Int] = []
+    private var blank: Set<Int> = []
+    private var archiveFull: Set<Int> = []
+
+    func readNoText(in indexes: Set<Int>) { blank = indexes }
+    func refuseAsFull(_ indexes: Set<Int>) { archiveFull = indexes }
 
     func fail(_ indexes: Set<Int>) { failing = indexes }
     func cancel(whenReached index: Int?) { cancelWhenReached = index }
@@ -32,7 +37,16 @@ private actor FakeWorkspace {
             throw CancellationError()
         }
         if failing.contains(index) { throw ObservationFileFingerprintError.unreadableFile }
-        let acquisition = try fakeAcquisition(for: work)
+        if archiveFull.contains(index) { throw ObservationArchiveError.archiveFull }
+        let duration = work.reference.endSeconds - work.reference.startSeconds
+        let evidence = blank.contains(index) ? try blankEvidence(duration: duration)
+            : try fakeEvidence(segment: index, duration: duration)
+        let acquisition: ObservationAcquisition
+        switch try SegmentedSessionEvidence.outcome(for: work, evidence: evidence, origin: .synthetic,
+            sourceLabel: "Synthetic segment \(index)", importedAt: FakeSegmentedSession.start.addingTimeInterval(7_000)) {
+        case .noReadableText(let derivation): return derivation
+        case .observation(let value): acquisition = value
+        }
         // The raw file must still be there while its text is being saved.
         if !FileManager.default.fileExists(atPath: work.fileURL.path) { missingRawAtSaveTime.append(index) }
         // Describe the entry the archive holds, by the identifier it returned.
@@ -52,6 +66,14 @@ private func fakeEvidence(segment index: Int, times: [Double] = [60, 180], durat
     return try ObservationVideoEvidence(durationSeconds: duration, frames: times.enumerated().map { offset, time in
         try ObservationFrameEvidence(requestedTimeSeconds: time, actualTimeSeconds: time, outcome: .observed,
                                      text: lines[offset % lines.count] + " (frame \(offset))")
+    })
+}
+
+/// Frames that were decoded and read, and held no text: a lock screen, a photo.
+private func blankEvidence(duration: Double = 300, outcome: ObservationSampleOutcome = .blank) throws -> ObservationVideoEvidence {
+    try ObservationVideoEvidence(durationSeconds: duration, frames: [60, 180].map {
+        try ObservationFrameEvidence(requestedTimeSeconds: $0, actualTimeSeconds: outcome == .decodeFailed ? nil : $0,
+                                     outcome: outcome)
     })
 }
 
@@ -219,6 +241,73 @@ struct SegmentedSessionAnalysisTests {
         #expect(result.manifest.segments.map(\.lossReason) == [nil, .rawMediaChanged, .rawMediaMissing])
         #expect(result.coverage.missing.map(\.reason) == [.rawMediaChanged, .rawMediaMissing])
         #expect(try session.names() == ["session-manifest.json"])
+    }
+
+    @Test("A segment whose frames hold no text is analysed and released, not failed or missing")
+    func blankSegment() async throws {
+        var session = try FakeSegmentedSession()
+        defer { session.cleanUp() }
+        try await session.recordSegments(3)
+        try session.manifest.end(reason: .stoppedByPerson, atSeconds: 900)
+        try session.store.save(session.manifest)
+        let workspace = FakeWorkspace()
+        await workspace.readNoText(in: [1])
+
+        let result = try await run(session, workspace)
+        #expect(result.analysedSegments == [0, 1, 2])
+        #expect(result.failedSegments.isEmpty)
+        #expect(result.manifest.segments.map(\.state) == [.rawExpired, .rawExpired, .rawExpired])
+        #expect(result.manifest.segments[1].derivation?.acquisitionID == nil)
+        #expect(result.manifest.segments[1].derivation?.sampledFrameCount == 2)
+        #expect(result.manifest.segments[1].derivation?.textCharacterCount == 0)
+        #expect(result.manifest.segments[1].failure == nil)
+        #expect(!session.fileExists(1), "Its raw file is released like any analysed segment's.")
+        #expect(result.coverage.missing.isEmpty && result.coverage.waiting.isEmpty)
+        #expect(result.coverage.isComplete)
+        #expect(result.coverage.analysed.map(\.hasReadableText) == [true, false, true])
+        #expect(result.manifest.segmentsNeedingADecision.isEmpty)
+        #expect(await workspace.archive.entries(ofSession: session.id).count == 2, "Nothing is saved for it.")
+        // A second run does not take it again.
+        _ = try await run(session, workspace)
+        #expect(await workspace.extracted == [0, 1, 2])
+
+        // Frames that could not be read at all say nothing: that is a failure to retry.
+        var other = try FakeSegmentedSession()
+        defer { other.cleanUp() }
+        try await other.recordSegments(1)
+        let work = try SegmentedSessionEvidence.work(forSegment: 0, in: other.manifest, store: other.store)
+        for unread in [ObservationSampleOutcome.decodeFailed, .ocrFailed] {
+            #expect(throws: SegmentedSessionEvidenceError.noFrameCouldBeRead) {
+                try SegmentedSessionEvidence.outcome(for: work, evidence: blankEvidence(outcome: unread),
+                    origin: .synthetic, sourceLabel: "Synthetic", importedAt: FakeSegmentedSession.start)
+            }
+        }
+        // Blank evidence is held to the same bounds as any other.
+        #expect(throws: SegmentedSessionEvidenceError.evidenceOutsideSegment) {
+            try SegmentedSessionEvidence.outcome(for: work, evidence: blankEvidence(duration: 600),
+                origin: .synthetic, sourceLabel: "Synthetic", importedAt: FakeSegmentedSession.start)
+        }
+    }
+
+    @Test("A segment the archive has no room for is listed, with that reason, for Retry or Discard")
+    func archiveFullIsItsOwnReason() async throws {
+        var session = try FakeSegmentedSession()
+        defer { session.cleanUp() }
+        try await session.recordSegments(2)
+        let workspace = FakeWorkspace()
+        await workspace.refuseAsFull([1])
+        await workspace.fail([0])
+        var result = try await run(session, workspace)
+        #expect(result.manifest.segments.map { $0.failure?.reason } == [.extractionFailed, .archiveFull])
+        #expect(result.manifest.segmentsNeedingADecision.isEmpty, "Two attempts remain.")
+        for _ in 0..<2 { result = try await run(session, workspace) }
+        let waiting = result.manifest.segmentsNeedingADecision
+        #expect(waiting.map(\.index) == [0, 1])
+        #expect(waiting.map { $0.failure?.reason } == [.extractionFailed, .archiveFull])
+        #expect(waiting.map { $0.failure?.attempts } == [3, 3])
+        #expect(session.fileExists(0) && session.fileExists(1), "Their raw files are kept until a person decides.")
+        #expect(result.manifest.retainedRawByteCount == waiting.reduce(0) { $0 + ($1.byteCount ?? 0) })
+        #expect(result.manifest.segmentsAwaitingAnalysis.isEmpty)
     }
 
     @Test("A segment whose bytes are already an ordinary observation fails; it is not merged into it")
@@ -440,5 +529,28 @@ struct SegmentedSessionEvidenceTests {
         let damaged = try JSONDecoder().decode(ObservationArchive.self, from: JSONSerialization.data(withJSONObject: object))
         #expect(damaged.entries[0].sessionSegment == nil)
         #expect(damaged.entries[0].originalText == archive.entries[0].originalText, "The text is not lost with the reference.")
+    }
+}
+
+/// A check of the app's source text, not of its behaviour: the app target cannot be loaded
+/// by the package tests, so full forgetting itself is not exercised here.
+@Suite("Segmented sessions and full forgetting")
+struct SegmentedSessionForgettingGuardTests {
+    @Test("The app does not use the session store without forgetting its sessions")
+    func appForgetsSessionsOnceItCreatesThem() throws {
+        let app = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../Sources/MorningOperator").standardizedFileURL
+        let files = try FileManager.default.contentsOfDirectory(at: app, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+        #expect(files.contains { $0.lastPathComponent == "MorningStore.swift" })
+        let code = try files.map { url in
+            // Comments may name the store; only code that uses it counts.
+            try String(contentsOf: url, encoding: .utf8).components(separatedBy: .newlines)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
+        }.joined(separator: "\n")
+        let usesStore = code.contains("RecordingSessionStore") || code.contains("RecordingSessionManifest")
+            || code.contains("SegmentedSessionAnalysis")
+        #expect(!usesStore || code.contains(".forgetAll()"),
+                "The app now creates or analyses recording sessions: full forgetting in MorningStore must call RecordingSessionStore.forgetAll().")
     }
 }

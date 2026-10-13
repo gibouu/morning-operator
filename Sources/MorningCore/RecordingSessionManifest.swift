@@ -62,6 +62,8 @@ public enum RecordingSegmentLossReason: String, Codable, Sendable {
 
 public enum RecordingSegmentFailureReason: String, Codable, Sendable {
     case extractionFailed
+    /// The observation archive had no room for the segment's text. The file is intact.
+    case archiveFull
     /// The analysis returned more than the segment's budget allows.
     case derivedEvidenceRejected
 }
@@ -282,6 +284,15 @@ public struct RecordingSessionManifest: Codable, Equatable, Sendable, Identifiab
         }
     }
 
+    /// Failed segments that analysis no longer retries by itself. Each keeps its raw file,
+    /// up to a full segment of disk, until the person retries or discards it: this is the
+    /// list a screen needs to offer that choice, with `failure.reason` saying why (an
+    /// extraction that failed, or an archive with no room). No policy removes these by
+    /// itself yet; that decision is a follow-up.
+    public var segmentsNeedingADecision: [RecordingSegment] {
+        segments.filter { $0.state == .failed && ($0.failure?.attempts ?? 0) >= policy.maximumAnalysisAttempts }
+    }
+
     /// Sealed segments whose raw file is still expected on disk.
     public var unreleasedSealedSegmentCount: Int {
         segments.filter { $0.state == .sealed || $0.state == .analysed || $0.state == .failed }.count
@@ -373,7 +384,9 @@ public struct RecordingSessionManifest: Codable, Equatable, Sendable, Identifiab
                 consistent = sealed && segment.derivation == nil && segment.failure == nil && segment.lossReason == nil
             case .failed:
                 consistent = sealed && segment.derivation == nil && segment.lossReason == nil
-                    && (segment.failure.map { $0.attempts >= 1 } ?? false)
+                    && (segment.failure.map {
+                        $0.attempts >= 1 && $0.failedAt.timeIntervalSinceReferenceDate.isFinite
+                    } ?? false)
             case .analysed, .rawExpired:
                 consistent = sealed && segment.derivation != nil && segment.failure == nil && segment.lossReason == nil
             case .discarded:

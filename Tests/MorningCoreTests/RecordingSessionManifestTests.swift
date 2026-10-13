@@ -349,6 +349,14 @@ struct RecordingSessionManifestTests {
         }
         #expect(manifest.segmentsAwaitingAnalysis.map(\.index) == [1])
         #expect(manifest.coverage.missing.first?.canRetry == false)
+        // Past its attempts it is listed for the person to retry or discard; its file stays.
+        #expect(manifest.segmentsNeedingADecision.map(\.index) == [0])
+        #expect(manifest.segmentsNeedingADecision.first?.failure?.reason == .extractionFailed)
+        #expect(manifest.segments[0].state.expectsRawMedia)
+        #expect(manifest.segmentsWithReleasableRaw(at: .distantFuture).isEmpty)
+        #expect(throws: RecordingSessionManifestError.inconsistentSegment(1)) {
+            try manifest.markFailed(index: 1, reason: .archiveFull, at: Date(timeIntervalSinceReferenceDate: .infinity))
+        }
         // A later explicit retry that succeeds clears the failure.
         try manifest.markAnalysed(index: 0, derivation: derivation())
         #expect(manifest.segments[0].failure == nil)
@@ -529,6 +537,21 @@ struct RecordingSessionTimelineTests {
                 }
             }
         }
+        // A file may run past its segment by the timing tolerance. Frames in that band are
+        // still judged as on the session's clock, here inside the span that starts at 598.
+        let tolerant = try sealedSession([(0, 300), (300, 597), (605, 900)], intervals: spans)
+        let middle = try #require(tolerant.ownInterfaceIntervals(forSegment: 1))
+        for media in [297.25, 297.5, 298, 298.75, 299] {
+            let instant = try #require(tolerant.sessionSeconds(forSegment: 1, mediaSeconds: media))
+            #expect(instant == 300 + media)
+            for margin in [0.0, 1, 30] {
+                #expect(middle.contains(mediaSeconds: media, marginSeconds: margin)
+                        == spans.contains(mediaSeconds: instant, marginSeconds: margin), "media \(media), margin \(margin)")
+            }
+        }
+        #expect(middle.contains(mediaSeconds: 298.75, marginSeconds: 0))
+        #expect(!middle.contains(mediaSeconds: 297.5, marginSeconds: 0))
+        #expect(tolerant.sessionSeconds(forSegment: 1, mediaSeconds: 299.001) == nil)
         // The case a cut at the boundary would get wrong: MORE left the front a quarter of a
         // second before the second file began, and that file's first frames are still within
         // the margin of it.
