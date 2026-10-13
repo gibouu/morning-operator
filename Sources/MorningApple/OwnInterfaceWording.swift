@@ -531,10 +531,12 @@ enum OwnInterfaceWording {
             part("These samples don't establish app opens, reads or scrolls",
                  fr: "Ces échantillons n’établissent ni ouvertures d’apps, ni lectures, ni défilements",
                  of: "A recorded glimpse, not time spent. These samples don't establish app opens, reads or scrolls."),
-            // The same words as the seven-day review's caption, which is the string they are tied to.
             part("days with labeled samples", fr: "jours avec échantillons identifiés",
-                 of: "Seen on %lld of %lld days with labeled samples",
+                 of: "%lld days with labeled samples · %lld days with observations",
                  earlier: "day with labeled samples", "jour avec échantillons identifiés"),
+            part("observed days without labels", fr: "jours observés sans libellé",
+                 of: "%lld observed days without labels · %lld dates without observations",
+                 earlier: "observed day without labels", "jour observé sans libellé"),
             part("All labels and quotations are below", fr: "Tous les libellés et citations sont ci-dessous",
                  of: "Showing 3 of %lld labels. All labels and quotations are below."),
             part("Unresolved samples remain on", fr: "Des échantillons non résolus restent sur",
@@ -549,6 +551,8 @@ enum OwnInterfaceWording {
             shown("Sampled screens across days", fr: "Écrans échantillonnés au fil des jours"),
             shown("Samples & tests", fr: "Exemples et tests"),
             shown("My mornings", fr: "Mes matinées"),
+            shown("Automated activity", fr: "Activité automatisée"),
+            shown("Origin unsure", fr: "Origine incertaine"),
             shown("Your label", fr: "Votre libellé")
         ]),
         // Seven days of observations: the screen labels derived from them, and each day's clips.

@@ -383,6 +383,7 @@ private enum OwnScreenFixtures {
         .counted("2 days with labeled samples · 2 days with observations", "2 jours avec échantillons identifiés · 2 jours avec observations"),
         .other("Weekly team planning workshop", "Atelier hebdomadaire de planification de l’équipe"), .counted("2 of 2 labeled days", "2 sur 2 jours identifiés"),
         .other("Reply to family messages", "Répondre aux messages de la famille"), .counted("2 of 2 labeled days", "2 sur 2 jours identifiés"),
+        .counted("0 observed days without labels · 5 dates without observations", "0 jour observé sans libellé · 5 dates sans observation"),
         .counted("Showing 3 of 4 labels. All labels and quotations are below.", "3 libellés affichés sur 4. Tous les libellés et citations sont ci-dessous."),
         .counted("Unresolved samples remain on 2 observed days.", "Des échantillons non résolus restent sur 2 jours observés."),
         .shown("A recorded glimpse, not time spent. These samples don't establish app opens, reads or scrolls."),
@@ -613,14 +614,15 @@ struct OwnInterfaceWordingTests {
             text = text.replacingOccurrences(of: "%arg jours avec échantillons identifiés", with: "%arg jours identifiés")
             entry = try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
         }
-        #expect(plural.drift(of: phrases).count == 1)
+        // Reported once for each phrase that rests on those words: the overview's rule and its cards.
+        #expect(plural.drift(of: phrases).count == 2)
         // The counted line stops using the part that holds the recognized words.
         let unused = try catalogs.changing(counted) { entry in
             var text = String(decoding: try! JSONSerialization.data(withJSONObject: entry), as: UTF8.self)
             text = text.replacingOccurrences(of: "%#@a@ · %#@b@", with: "%#@b@")
             entry = try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
         }
-        #expect(unused.drift(of: phrases).count == 2)
+        #expect(unused.drift(of: phrases).count == 4)
     }
 
     @Test("Every recognized catalog string is one the app's source still shows")
