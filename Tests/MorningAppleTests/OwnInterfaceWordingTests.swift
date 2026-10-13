@@ -214,23 +214,182 @@ private enum OwnScreenFixtures {
         "In Settings → Accessibility → Read & Speak → Voices, choose your language and download an Enhanced or Premium voice if offered. Return here after the download finishes.",
         "Refresh installed voices"
     ]
+    static let step = [
+        "Make it yours", "Your moment", "Keep it simple. You can change the order of your steps back in your routine.",
+        "How it fits", "The category organizes your routine. Choose an action below to decide what Morning Operator does.",
+        "Keep in future suggestions", "Keep this duration", "Future mornings",
+        "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review.",
+        "User-led moment", "What Morning Operator does", "Remove this step"
+    ]
+    static let privacy = [
+        "Your mornings stay close.",
+        "MORE keeps its learning on this device. You choose when to connect Apple apps and what to keep.",
+        "Saved in MORE", "Current routine", "Previous routine", "Saved mornings", "Saved choices",
+        "Save app activity from Shortcuts", "App activity",
+        "Only Shortcuts you configure can log app names and entry/exit times. This doesn't record taps or read messages. Removing local data turns this off until you enable it again.",
+        "Your day",
+        "Calendar events and prepared recaps stay in memory. MORE saves only the calendars you select, your chosen weather city and temperature unit.",
+        "City searches go to Apple Maps. Weather requests send the selected city’s coordinates to Apple Weather. Screen content and learning aren't sent with these requests.",
+        "Outside MORE",
+        "Originals in Photos or Files, exported copies, and items already saved in Calendar or Reminders stay where they are.",
+        "Apple permissions, installed voices, Shortcuts and device backups are managed separately. Removing local data doesn't change them or erase copies outside this app.",
+        "Forget MORE’s local data"
+    ]
     static let all = [("Learn", learn), ("Review", review), ("Settings", settings),
-                      ("Routine", routine), ("Recording", recording), ("Voice", voice)]
+                      ("Routine", routine), ("Recording", recording), ("Voice", voice),
+                      ("Step", step), ("Privacy", privacy)]
 
     /// Recognized lines for a screen: each string on its own lines, long ones wrapped.
     static func lines(_ keys: [String], _ language: String, from catalogs: ShippedCatalogs, width: Int = 38) throws -> [String] {
-        try keys.flatMap { key -> [String] in
-            var lines: [String] = []
-            for paragraph in try catalogs.text(key, language).components(separatedBy: .newlines) {
-                var line = ""
-                for word in paragraph.split(separator: " ") {
-                    if !line.isEmpty, line.count + 1 + word.count > width { lines.append(line); line = "" }
-                    line += (line.isEmpty ? "" : " ") + word
-                }
-                lines.append(line)
+        try keys.flatMap { wrapped(try catalogs.text($0, language), width: width) }
+    }
+
+    static func wrapped(_ text: String, width: Int) -> [String] {
+        var lines: [String] = []
+        for paragraph in text.components(separatedBy: .newlines) {
+            var line = ""
+            for word in paragraph.split(separator: " ") {
+                if !line.isEmpty, line.count + 1 + word.count > width { lines.append(line); line = "" }
+                line += (line.isEmpty ? "" : " ") + word
             }
-            return lines
+            lines.append(line)
         }
+        return lines
+    }
+
+    /// One piece of a screen that also displays text MORE did not write.
+    enum Piece {
+        /// A catalog string, by key.
+        case shown(String)
+        /// An earlier observation's text, a derived label, a date or the model's words.
+        case other(String, String)
+    }
+
+    /// A screen whose content is mostly an earlier observation or a suggestion from the model.
+    struct ContentScreen {
+        let name: String
+        /// What stays while the content scrolls: the navigation bar above, any bar below.
+        var top: [Piece] = []
+        var bottom: [Piece] = []
+        let body: [Piece]
+        /// Every scroll position is recognized even when neither bar is read.
+        var recognizedWithoutBars = true
+
+        func lines(_ pieces: [Piece], _ language: String, from catalogs: ShippedCatalogs, width: Int) throws -> [String] {
+            try pieces.flatMap { piece -> [String] in
+                switch piece {
+                case .shown(let key): return wrapped(try catalogs.text(key, language), width: width)
+                case .other(let english, let french): return wrapped(language == "fr" ? french : english, width: width)
+                }
+            }
+        }
+    }
+
+    private static let meeting = Piece.other("09:00 Team planning meeting with the design group",
+                                             "09:00 Réunion de planification avec l’équipe de design")
+    private static let reply = Piece.other("Reply to Paul about the printed meeting notes before lunch",
+                                           "Répondre à Paul au sujet des notes imprimées avant le déjeuner")
+    private static let sampleRows: [Piece] = [
+        .other("00:00", "00:00"), .other("Calendar", "Calendrier"), .other("00:05", "00:05"), .shown("Unknown screen"),
+        .other("00:10", "00:10"), .other("Messages", "Messages"), .other("00:15", "00:15"), .other("Calendar", "Calendrier")
+    ]
+    private static let observationDates: [Piece] = [
+        .shown("Observed day"), .other("Oct 9, 2026", "9 oct. 2026"), .shown("Time zone"), .other("Europe/Paris", "Europe/Paris"),
+        .shown("Day recorded by this recording session."), .shown("Origin"), .other("My morning", "Ma matinée"),
+        .shown("Imported"), .other("Oct 9, 2026 at 8:12 AM", "9 oct. 2026 à 08:12"), .shown("Change day or origin"),
+        .shown("Import time is separate from the day you observed. These dates don't establish how long you used your phone."),
+        .shown("Recording details"), .shown("Read a saved moment"), .shown("Edit in Learn"),
+        // Both disclosures open: the notes in use, then the text read from the recording.
+        .shown("Current notes"), meeting, reply, .shown("Original extracted text"), meeting, reply,
+        .shown("Corrections change the notes used for suggestions. The original evidence stays available here."),
+        .shown("Recording evidence")
+    ]
+    /// One saved observation with its sampled moments in order.
+    static let observation = ContentScreen(name: "Observation", top: [.shown("Observation")], body: observationDates + [
+        .shown("Sampled moments"), .other("3 of 4 sampled moments labeled · 1 unresolved", "3 sur 4 moments échantillonnés identifiés · 1 non résolu"),
+        .other("Calendar → Messages → Calendar", "Calendrier → Messages → Calendrier"),
+        .shown("No return is established by these samples."), .shown("View sampled screens"),
+        .shown("Activity between these sampled moments is unknown.")
+    ] + sampleRows + [
+        .shown("Labels come from recognition or your review. Samples can miss activity and don't measure time spent, taps, reads or scrolls."),
+        .shown("Delete this observation")
+    ])
+    /// The same observation when its frame times are not in order.
+    static let unorderedObservation = ContentScreen(name: "Observation, samples unordered", top: [.shown("Observation")],
+                                                    body: observationDates + [
+        .shown("Saved samples"), .other("4 source samples · chronology unresolved", "4 échantillons sources · chronologie non résolue"),
+        .shown("These samples have not been interpreted."), .shown("View sampled screens"),
+        .shown("Original samples in extraction order")
+    ] + sampleRows + [
+        .shown("Labels come from recognition or your review. Samples can miss activity and don't measure time spent, taps, reads or scrolls."),
+        .shown("Delete this observation")
+    ])
+    /// One sampled screen. Under its original text nothing of MORE is left but the title.
+    static let sampledMoment = ContentScreen(name: "Sampled moment", top: [.shown("Sampled moment"), .shown("Done")], body: [
+        .shown("A visual label is a proposal about what's visible. It doesn't establish which app was open or what you did."),
+        .shown("Times are offsets into this recording, rounded to a millisecond."),
+        .shown("Requested sample"), .other("00:05.000", "00:05,000"), .shown("Actual frame"), .other("00:05.012", "00:05,012"),
+        .shown("Proposed visual label"), .other("Calendar", "Calendrier"), .shown("Exact evidence quote"), meeting,
+        .shown("Read this saved moment"), .shown("Correct label"), .shown("Original extracted text"),
+        .other("Friday, October 9", "vendredi 9 octobre"), meeting, reply,
+        .other("12:30 Lunch with the product team at the corner café", "12:30 Déjeuner avec l’équipe produit au café du coin"),
+        .other("15:00 Review the quarterly budget with finance", "15:00 Revue du budget trimestriel avec la finance"),
+        .other("17:30 Pick up the children from football practice", "17:30 Aller chercher les enfants à l’entraînement de football"),
+        .shown("Source sample")
+    ], recognizedWithoutBars: false)
+    private static let historyRows: [Piece] = (9...14).flatMap { day -> [Piece] in
+        [.other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"), .other("Oct \(day), 2026", "\(day) oct. 2026"),
+         .other("Europe/Paris", "Europe/Paris")]
+    }
+    /// The list of saved observations. Its rows are names and dates.
+    static let observations = ContentScreen(name: "Observations", top: [.shown("Observations"), .shown("Choose mornings")], body: [
+        .shown("Saved glimpses of your morning. Observations and routine runs stay separate; sampled screens don't measure complete phone use.")
+    ] + historyRows + [.shown("Delete all observations")], recognizedWithoutBars: false)
+    static let choosingObservations = ContentScreen(
+        name: "Observations, choosing", top: [.shown("Observations"), .shown("Done choosing")],
+        bottom: [.shown("Choose one to five observations."), .shown("Suggest an update")], body: [
+            .shown("Saved glimpses of your morning. Observations and routine runs stay separate; sampled screens don't measure complete phone use."),
+            .shown("Choose dated observations from your own mornings, or a separate set of samples. Nothing is selected automatically.")
+        ] + historyRows, recognizedWithoutBars: false)
+    private static func suggestedStep(_ title: (String, String), _ detail: (String, String), quoted: Bool = false) -> [Piece] {
+        [.other(title.0, title.1), .other(detail.0, detail.1), .other("5 minutes planned", "5 minutes prévues"), .shown("Why this suggestion?")]
+            + (quoted ? [.other("“09:00 Team planning meeting with the design group”", "« 09:00 Réunion de planification avec l’équipe de design »"),
+                         .other("Oct 9, 2026 · Original text", "9 oct. 2026 · Texte d’origine"),
+                         .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")] : [])
+    }
+    /// A suggestion from the model, one "Why this suggestion?" open on its quotation.
+    static let suggestedUpdate = ContentScreen(
+        name: "Suggested update", top: [.shown("Suggested update"), .shown("Done")],
+        bottom: [.shown("Keep current"), .shown("Approve update")], body: [
+            .shown("Your next morning"), .other("Selected: 2 observations across 2 dated days", "Sélection : 2 observations sur 2 jours datés"),
+            .shown("Your current routine stays ready until you approve."), .shown("Compare with current routine")
+        ] + suggestedStep(("Review today’s calendar", "Consulter le calendrier du jour"),
+                          ("Look through the meetings planned for this morning and prepare the first one.",
+                           "Parcourir les réunions prévues ce matin et préparer la première."), quoted: true)
+          + suggestedStep(("Reply to family messages", "Répondre aux messages de la famille"),
+                          ("Answer the messages that arrived overnight from the family group.",
+                           "Répondre aux messages arrivés pendant la nuit dans le groupe de la famille."))
+          + suggestedStep(("Read the morning news", "Lire les nouvelles du matin"),
+                          ("Read the headlines and one longer article over breakfast.",
+                           "Lire les titres et un article plus long pendant le petit déjeuner."))
+          + suggestedStep(("Plan the afternoon", "Préparer l’après-midi"),
+                          ("Write down the three tasks that matter most after lunch.",
+                           "Noter les trois tâches qui comptent le plus après le déjeuner."))
+          + [.shown("Selected observations"), .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
+             .other("Oct 9, 2026 · Original text", "9 oct. 2026 · Texte d’origine"),
+             .shown("Correct a source in Learn to request a new suggestion."), .shown("About this suggestion")])
+    static let contentScreens = [observation, unorderedObservation, sampledMoment, observations, choosingObservations, suggestedUpdate]
+
+    /// The home while MORE records and a saved routine runs: the date and the badge, the heading
+    /// read as one line with the invitation time and the planned minutes, then the person's steps.
+    static func runningHome(_ language: String, dateRow: [String]? = nil) -> [String] {
+        language == "fr"
+            ? (dateRow ?? ["mar. 13 oct.", "MORE · Enregistrement"]) + [
+                "bonjour 07:30 25 min", "Maintenant", "Lire les messages de ma famille", "Pause",
+                "Préparer le petit déjeuner des enfants", "10 min", "Faire une promenade dans le quartier", "10 min"]
+            : (dateRow ?? ["Tue, Oct 13", "MORE · Recording"]) + [
+                "good morning 7:30 AM 25 min", "Now", "Read messages from my family", "Pause",
+                "Prepare breakfast for the children", "10 min", "Walk around the neighbourhood", "10 min"]
     }
 
     // Written out by hand from the French interface, independent of the table and the catalogs.
@@ -302,9 +461,15 @@ struct OwnInterfaceWordingTests {
         let catalogs = try ShippedCatalogs.load()
         #expect(catalogs.languages == ["en", "fr"], "A new language needs its wording in OwnInterfaceWording.")
         #expect(catalogs.drift(of: OwnInterfaceWording.all) == [])
-        // The comparison is not empty: most recognition depends on current catalog strings.
+        // The comparison is not empty: every screen is recognized through wording the catalogs
+        // still hold, sentences and labels both, and so are the badge and each pair of labels.
         let linked = OwnInterfaceWording.all.filter { $0.catalogKey != nil }
-        #expect(linked.count >= 100, "\(linked.count)")
+        for screen in OwnInterfaceWording.screens {
+            #expect(screen.copy.contains { $0.catalogKey != nil }, "\(screen.name) has no sentence tied to a catalog.")
+            #expect(screen.controls.contains { $0.catalogKey != nil }, "\(screen.name) has no label tied to a catalog.")
+        }
+        #expect(OwnInterfaceWording.recordingBadge.catalogKey == "MORE · Recording")
+        #expect(OwnInterfaceWording.labelPairs.allSatisfy { pair in pair.count == 2 && pair.allSatisfy { $0.catalogKey != nil } })
         #expect(linked.allSatisfy { $0.wordings.count >= catalogs.languages.count })
         let record = try #require(OwnInterfaceWording.screens.first { $0.name == "Learn" }?
             .controls.first { $0.catalogKey == "Record" })
@@ -488,6 +653,147 @@ struct OwnInterfaceWordingTests {
         }
     }
 
+    // MARK: The home while MORE records
+
+    @Test("The home with a routine running is rejected by its recording badge", arguments: ["en", "fr"])
+    func runningHomeIsRejectedByItsBadge(language: String) throws {
+        let badge = language == "fr" ? "MORE · Enregistrement" : "MORE · Recording"
+        let date = language == "fr" ? "mar. 13 oct." : "Tue, Oct 13"
+        let home = OwnScreenFixtures.runningHome(language)
+        // Without the badge this frame is what a recording of another app looks like: nothing
+        // else on it is recognized, and the saved step titles read as real activity.
+        #expect(!isOwnInterface(home.filter { $0 != badge }.joined(separator: "\n")))
+        let dateRows: [[String]] = [
+            [date, badge],                          // read as two lines
+            ["\(date) \(badge)"],                   // read as one line
+            ["\(date) v \(badge)"],                 // with the chevron beside the date
+            [date, "O \(badge)"], [date, badge.replacingOccurrences(of: "·", with: "•")],
+            [date, badge.replacingOccurrences(of: " ·", with: "")], ["\(date) \(badge.replacingOccurrences(of: " ·", with: ""))"],
+            [badge],                                // the date not read: the heading and the playback labels remain
+            [badge, date]
+        ]
+        for row in dateRows {
+            let screen = OwnScreenFixtures.runningHome(language, dateRow: row).joined(separator: "\n")
+            #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
+            #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+            }
+        }
+        // Each other piece of the home is enough beside the badge on its own line.
+        let step = home[4]
+        for companion in [date, home[2], home[3], home[5], language == "fr" ? "En pause" : "Paused",
+                          language == "fr" ? "Reprendre" : "Continue"] {
+            #expect(isOwnInterface("\(badge)\n\(companion)\n\(step)"), "Passed as evidence with “\(companion)”.")
+        }
+        // The saved step cannot come back as the evidence for a suggested step.
+        let screen = home.joined(separator: "\n")
+        #expect(ProposalValidation.step(title: step, detail: "", kind: "messages", durationMinutes: 5,
+            evidenceQuote: step, source: screen, sourceContext: screen,
+            sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
+        // The frame after it, in another app, is still read.
+        let next = "Calendar\n09:00 Team planning meeting"
+        let units = try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n\(screen)\n[Observed frame at 00:10.0]\n\(next)")
+        #expect(units.map(\.text) == [next])
+    }
+
+    @Test("Another app's “more” and “recording” are not the badge")
+    func otherAppsRecordingWordsAreKept() throws {
+        let screens = [
+            // The two words apart, on one line or on neighbouring lines.
+            "Voice Memos\nShow more\nRecording 12\n09:00 Team planning meeting",
+            "Voice Memos\nTue, Oct 13\nMore\nRecording\n09:00 Team planning meeting",
+            "Recorder\nRecording saved. Tap for more.\n09:00 Team planning meeting",
+            "Dictaphone\nVoir plus\nEnregistrement 12\n09:00 Réunion de planification de l’équipe",
+            "Dictaphone\nmar. 13 oct.\nPlus\nEnregistrement\n09:00 Réunion de planification de l’équipe",
+            // The words together, as other apps write them.
+            "Recorder\nTue, Oct 13\nmore recording options\nNow\nPause\n09:00 Team planning meeting",
+            "Recorder\nTue, Oct 13\nMore recording options\n09:00 Team planning meeting",
+            "Recorder\nTue, Oct 13\nMore Recording\nNow\nPause\n09:00 Team planning meeting",
+            "Recorder\nTue, Oct 13\nNo more recording\nPause\n09:00 Team planning meeting",
+            "Recorder\nOct 13 more recording\nPause\n09:00 Team planning meeting",
+            "Recorder\nTue, Oct 13\nADD 1 MORE RECORDING\nPause\n09:00 Team planning meeting",
+            "Recorder\nTue, Oct 13\nYou can save 1 more recording\nPause\n09:00 Team planning meeting",
+            "Dictaphone\nmar. 13 oct.\nPlus d’enregistrement\nPause\n09:00 Réunion de planification de l’équipe",
+            "Dictaphone\nmar. 13 oct.\nmore enregistrement\nMaintenant\n09:00 Réunion de planification de l’équipe",
+            // The badge's own form after other words, or before them.
+            "News\nTue, Oct 13\nREAD MORE · Recording\nNow\n09:00 Team planning meeting",
+            "News\nTue, Oct 13\nMORE · Recording the album took two years\nNow\n09:00 Team planning meeting",
+            "Calendar\nTue, Oct 13\n09:00 MORE · Recording\nNow\n10:00 Team planning meeting",
+            // The badge's own form with nothing of the home around it stays evidence, as before.
+            "Calendar\nMORE · Recording\n09:00 Team planning meeting",
+            "Messages\nPlease discuss MORE · Recording with the design team before 09:00 tomorrow."
+        ]
+        for screen in screens {
+            #expect(!isOwnInterface(screen), "Wrongly rejected:\n\(screen)")
+            #expect(try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen).count == 1)
+        }
+    }
+
+    // MARK: Screens that display an earlier observation or a suggestion
+
+    @Test("Observation, sampled moment, observations list and suggested update are not evidence, wherever they are scrolled",
+          arguments: ["en", "fr"])
+    func screensShowingEarlierTextAreRejected(language: String) throws {
+        let catalogs = try ShippedCatalogs.load()
+        for screen in OwnScreenFixtures.contentScreens {
+            for width in [34, 42, 52] {
+                let top = try screen.lines(screen.top, language, from: catalogs, width: width)
+                let bottom = try screen.lines(screen.bottom, language, from: catalogs, width: width)
+                let body = try screen.lines(screen.body, language, from: catalogs, width: width)
+                let whole = (top + body + bottom).joined(separator: "\n")
+                #expect(isOwnInterface(whole), "\(screen.name) in \(language) passed as evidence.")
+                // The fixture holds text that would be learned from if the screen were not recognized.
+                #expect(!isOwnInterface(try screen.lines(screen.body.filter { if case .other = $0 { true } else { false } },
+                                                         language, from: catalogs, width: width).joined(separator: "\n")),
+                        "\(screen.name) in \(language) has no text of its own to protect.")
+                // Any fourteen consecutive lines of the content, between the bars that stay.
+                for start in 0...max(0, body.count - 14) {
+                    let visible = Array(body[start..<min(body.count, start + 14)])
+                    let framed = (top + visible + bottom).joined(separator: "\n")
+                    #expect(isOwnInterface(framed), "\(screen.name) in \(language), from line \(start) at width \(width):\n\(framed)")
+                    if screen.recognizedWithoutBars {
+                        let bare = visible.joined(separator: "\n")
+                        #expect(isOwnInterface(bare), "\(screen.name) in \(language) without its bars, from line \(start) at width \(width):\n\(bare)")
+                    }
+                }
+            }
+        }
+    }
+
+    @Test("Two labels that sit together are recognized together, read alone or as one line; one of them is not enough")
+    func labelPairsNeedBothPieces() {
+        let content = "09:00 Team planning meeting"
+        for pair in OwnInterfaceWording.labelPairs {
+            for language in [0, 1] {
+                // The counted line as the app shows it.
+                let pieces = pair.map { $0.isPartOfCatalogString ? "5 \($0.wordings[language])" : $0.wordings[language] }
+                #expect(isOwnInterface("\(pieces[0])\n\(content)\n\(pieces[1])"))
+                #expect(isOwnInterface("\(pieces[0]) \(pieces[1])\n\(content)"))
+                for piece in pieces {
+                    #expect(!isOwnInterface("\(piece)\n\(content)"), "“\(piece)” alone rejected a screen.")
+                }
+                // Inside a longer line they are ordinary words.
+                #expect(!isOwnInterface("Please see the \(pieces[0]) today\nThen press \(pieces[1]) again\n\(content)"))
+            }
+        }
+        // The title of one sampled screen stays above its original text and identifies it alone.
+        for title in ["Sampled moment", "Moment échantillonné"] {
+            #expect(isOwnInterface("\(title)\n\(content)\n12:30 Lunch with the product team"))
+        }
+    }
+
+    @Test("One day of Review is rejected in English and French")
+    func dayDetailIsRejected() {
+        for screen in [
+            "Friday, October 9\nObserved mornings\nNo observation dated to this day.\nRoutine runs\nNo routine saved for this day.\nA missing run stays unknown. It isn't counted as a\nzero-minute morning.",
+            "vendredi 9 octobre\nMatinées observées\nAucune observation datée de ce jour.\nSessions de routine\nAucune routine enregistrée pour ce jour.\nUne session manquante reste inconnue. Elle n’est pas\ncomptée comme une matinée de zéro minute.",
+            "Active routine time\n18 min\nPlanned time\n25 min\nRead messages from my family\nMarked complete\n5 min planned\nSaved routine version 3. Active time excludes pauses and\ndoesn't measure activity in other apps.",
+            "Temps de routine actif\n18 min\nDurée prévue\n25 min\nLire les messages de ma famille\nMarqué comme terminé\n5 min prévues\nVersion 3 de la routine enregistrée. Le temps actif exclut les\npauses et ne mesure pas l’activité dans d’autres apps."
+        ] {
+            #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
+        }
+    }
+
     // MARK: Other apps' screens are kept
 
     @Test("A screen that only shares ordinary words with MORE stays evidence")
@@ -526,6 +832,23 @@ struct OwnInterfaceWordingTests {
             "Messages\nGardez votre progression sur l’écran verrouillé.\nPlease bring the printed meeting notes tomorrow.",
             // A control from one MORE screen does not confirm a sentence from another.
             "Messages\nA few things, your way.\nRecord\nPlease bring the printed meeting notes tomorrow.",
+            // Words of the observation, sampled-moment and suggestion screens, as other apps show them.
+            "Scanner\nOriginal extracted text\nSaved samples\nInvoice 2026-114 for the team planning workshop",
+            "Scanner\nTexte extrait d’origine\nÉchantillons enregistrés\nFacture 2026-114 pour l’atelier de planification",
+            "Audio\nSampled moments\nSaved samples\nView sampled screens\nRecording details\n09:00 Team planning meeting",
+            "Nature\nObservations\nSélection terminée\nEffacer la sélection\n09:00 Sortie d’observation des oiseaux du parc",
+            "Nature\nObservations\nObserved day\nCurrent notes\nTwo herons seen near the northern pond at sunrise",
+            "Updates\nSuggested update\nKeep current\nVersion 4.2 improves the calendar and fixes meeting reminders",
+            "Mises à jour\nMise à jour suggérée\nGarder l’actuelle\nLa version 4.2 améliore le calendrier et les rappels",
+            "Updates\nApprove update\nKeep current\n09:00 Team planning meeting",
+            "Music\nWhy this suggestion?\nBecause you listened to the morning jazz playlist four times",
+            "Musique\nPourquoi cette suggestion ?\nParce que vous avez écouté la playlist jazz du matin",
+            "Fitness\n45 minutes planned\nMorning mobility and strength session with the group",
+            "Messages\nGaps may hide others\nPlease bring the printed meeting notes tomorrow.",
+            "Notes\nKept by your choice\nPlease bring the printed meeting notes tomorrow.",
+            // A label of one of these screens beside a sentence of another is not either screen.
+            "Messages\nYour current routine stays ready until you approve.\nObservations\nPlease bring the printed meeting notes tomorrow.",
+            "Messages\nNo return is established by these samples.\nYour label\nPlease bring the printed meeting notes tomorrow.",
             // The words inside a longer line are not the control.
             "Calendar\nRecord the team planning meeting notes\nA screenshot or text file works too\n09:00 Team planning meeting"
         ]
@@ -544,7 +867,8 @@ struct OwnInterfaceWordingTests {
         let screen = try #require(OwnInterfaceWording.screens.first { $0.name == screenName })
         let content = "09:00 Team planning meeting"
         // A few titles identify a screen by one complete line; leave those to their own tests.
-        let titles = Set(OwnInterfaceWording.distinctiveLines.flatMap(\.normalized))
+        // Two labels that sit together identify their screen; that has its own tests too.
+        let titles = Set((OwnInterfaceWording.distinctiveLines + OwnInterfaceWording.labelPairs.flatMap { $0 }).flatMap(\.normalized))
         func isTitle(_ wording: String) -> Bool { titles.contains(LearningEvidencePolicy.normalized(wording)) }
         let controls = screen.controls.map { $0.wordings[language] }.filter { !isTitle($0) }
         let copy = screen.copy.map { $0.wordings[language] }

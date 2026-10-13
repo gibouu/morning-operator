@@ -47,12 +47,30 @@ enum OwnInterfaceWording {
             }
         }
 
-        /// A line of the frame reads as this wording without being words of a `sentence`
-        /// found in the same frame.
-        func isLine(of frame: Frame, apartFrom sentences: [Phrase]) -> Bool {
-            let present = sentences.flatMap(\.normalized).filter { frame.text.contains(" \($0) ") }
-            return normalized.contains { line in
-                frame.lines.contains(line) && !present.contains { " \($0) ".contains(" \(line) ") }
+        /// A line of the frame reads as this wording without being words of a sentence found
+        /// in the same frame. `present` is `Frame.sentences(among:)`, worked out once per frame.
+        func isLine(of frame: Frame, apartFrom present: [String]) -> Bool {
+            normalized.contains { line in
+                frame.lines.contains(line) && !present.contains { $0.contains(" \(line) ") }
+            }
+        }
+
+        /// A line begins or ends with this wording: the title or a button of a bar, read alone
+        /// or merged with its neighbour in that bar, or a counted line such as "5 minutes planned".
+        func isAtLineEdge(of frame: Frame) -> Bool {
+            normalized.contains { wording in
+                frame.lines.contains { $0 == wording || $0.hasPrefix("\(wording) ") || $0.hasSuffix(" \(wording)") }
+            }
+        }
+
+        /// For every line that ends with this wording in the letter case MORE shows it, the
+        /// words read before it on that line. The mark between its words may be read as any
+        /// sign or not at all, so only the words and their case are compared.
+        func wordsBeforeLineEnd(in frame: Frame) -> [[String]] {
+            let shown = wordings.map(Frame.words)
+            return frame.shownLines.compactMap { line in
+                shown.first { line.count >= $0.count && Array(line.suffix($0.count)) == $0 }
+                    .map { line.dropLast($0.count).map(LearningEvidencePolicy.normalized) }
             }
         }
     }
@@ -61,10 +79,24 @@ enum OwnInterfaceWording {
     struct Frame: Sendable {
         let lines: Set<String>
         let text: String
+        /// Each line's words as recognized, in their own letter case.
+        let shownLines: [[String]]
 
         init(_ source: String) {
-            lines = Set(source.components(separatedBy: .newlines).map(LearningEvidencePolicy.normalized))
+            let recognized = source.components(separatedBy: .newlines)
+            lines = Set(recognized.map(LearningEvidencePolicy.normalized))
             text = " \(LearningEvidencePolicy.normalized(source)) "
+            shownLines = recognized.map(Self.words).filter { !$0.isEmpty }
+        }
+
+        /// Split the way `LearningEvidencePolicy.normalized` splits, keeping case and accents.
+        static func words(_ line: String) -> [String] {
+            line.split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        }
+
+        /// The wordings of `sentences` this frame contains, each between spaces.
+        func sentences(among sentences: [Phrase]) -> [String] {
+            sentences.flatMap(\.normalized).filter { text.contains(" \($0) ") }.map { " \($0) " }
         }
     }
 
@@ -106,6 +138,8 @@ enum OwnInterfaceWording {
         shown("Sample morning, not your observed activity", fr: "Matinée d’exemple, pas votre activité observée"),
         shown("Your mornings will find their shape.", fr: "Vos matinées vont prendre forme."),
         shown("Your morning voice", fr: "La voix de votre matinée"),
+        // The title that stays above one sampled screen's original text, however far it scrolls.
+        shown("Sampled moment", fr: "Moment échantillonné"),
         // These English lines have always identified a screen by themselves, so they still do.
         // Their translations are ordinary French that other apps also show (« Votre rythme »,
         // « Un brouillon à relire »): those only confirm a sentence of their screen, below.
@@ -150,6 +184,10 @@ enum OwnInterfaceWording {
         earlier("Sample morning Hold to arrange"), earlier("Your rhythm, at your pace Hold to arrange")
     ]
     static let homeReviewPrompt = earlier("A new rhythm. Ready to review.")
+    /// The red badge beside the date while MORE records. Without its mark it reads "more
+    /// recording", words another app can show ("more recording options", "Show more" above
+    /// "Recording 12"), so it is not looked for anywhere in the frame: it must end a line in
+    /// MORE's own capitals. See `showsRecordingBadge`.
     static let recordingBadge = shown("MORE · Recording", fr: "MORE · Enregistrement")
     static let playbackNow = shown("Now", fr: "Maintenant")
     static let playbackPause = shown("Pause", fr: "Pause")
@@ -168,7 +206,26 @@ enum OwnInterfaceWording {
               of: "Show us a little of your morning.\nWe’ll find the rhythm together.")]
     ]
 
-    /// The Learn, Review, Settings, routine, recording and voice screens as they read today.
+    /// Screens that show text MORE did not write (an earlier observation, a suggestion from
+    /// the model) with no sentence of MORE's in view: two labels that always sit together, in
+    /// the bars that stay while the text scrolls or around the text itself. Both pieces must
+    /// begin or end a line.
+    static let labelPairs: [[Phrase]] = [
+        // The suggested update: its title above, its approval below.
+        [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Approve update", fr: "Approuver la mise à jour")],
+        // Under each suggested step, whatever the model wrote above them.
+        [shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"),
+         part("minutes planned", fr: "minutes prévues", of: "%lld minutes planned", earlier: "minute planned", "minute prévue")],
+        // The list of saved observations: its title and the button beside it.
+        [shown("Observations", fr: "Observations"), shown("Choose mornings", fr: "Choisir des matinées")],
+        // One saved observation: the two rows above its notes, and the headings of its notes
+        // and of the text first read from the recording.
+        [shown("Read a saved moment", fr: "Lire un moment enregistré"), shown("Edit in Learn", fr: "Modifier dans Apprendre")],
+        [shown("Current notes", fr: "Notes actuelles"), shown("Original extracted text", fr: "Texte extrait d’origine")]
+    ]
+
+    /// The Learn, Review, Settings, routine, recording and voice screens as they read today,
+    /// then the screens that display an earlier observation or a suggestion.
     static let screens: [Screen] = [
         Screen(name: "Learn", copy: [
             shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
@@ -353,6 +410,230 @@ enum OwnInterfaceWording {
             shown("Installed voices", fr: "Voix installées"),
             shown("Preview selected voice", fr: "Écouter la voix choisie"),
             shown("Refresh installed voices", fr: "Actualiser les voix installées")
+        ]),
+        // One saved observation: its dates, its notes and original text, its sampled moments.
+        Screen(name: "Observation", copy: [
+            part("Import time is separate from the day you observed", fr: "L’heure d’import est distincte du jour observé",
+                 of: "Import time is separate from the day you observed. These dates don't establish how long you used your phone."),
+            part("These dates don't establish how long you used your phone",
+                 fr: "Ces dates n’indiquent pas combien de temps vous avez utilisé votre téléphone",
+                 of: "Import time is separate from the day you observed. These dates don't establish how long you used your phone."),
+            shown("Day recorded by this recording session.", fr: "Jour enregistré par cette session d’enregistrement."),
+            part("Changing the observed day keeps this information", fr: "Changer le jour observé conserve cette information",
+                 of: "Saved when recording began. Changing the observed day keeps this information. It doesn't measure time spent in apps."),
+            part("Corrections change the notes used for suggestions",
+                 fr: "Les corrections modifient les notes utilisées pour les suggestions",
+                 of: "Corrections change the notes used for suggestions. The original evidence stays available here."),
+            part("The original evidence stays available here", fr: "Les éléments d’origine restent disponibles ici",
+                 of: "Corrections change the notes used for suggestions. The original evidence stays available here."),
+            shown("Activity between these sampled moments is unknown.", fr: "L’activité entre ces moments échantillonnés est inconnue."),
+            shown("Original samples in extraction order", fr: "Échantillons d’origine dans l’ordre d’extraction"),
+            shown("No return is established by these samples.", fr: "Ces échantillons n’établissent aucun retour."),
+            part("Gaps may hide others", fr: "Des trous peuvent en cacher d’autres",
+                 of: "At least %lld visible returns in this clip. Gaps may hide others."),
+            shown("These samples have not been interpreted.", fr: "Ces échantillons n’ont pas été interprétés."),
+            part("Labels come from recognition or your review", fr: "Les libellés viennent de la reconnaissance ou de votre relecture",
+                 of: "Labels come from recognition or your review. Samples can miss activity and don't measure time spent, taps, reads or scrolls."),
+            part("Samples can miss activity and don't measure time spent, taps, reads or scrolls",
+                 fr: "Les échantillons peuvent manquer de l’activité et ne mesurent ni le temps passé, ni les touchers, lectures ou défilements",
+                 of: "Labels come from recognition or your review. Samples can miss activity and don't measure time spent, taps, reads or scrolls."),
+            shown("No sampled recording is attached to this observation.",
+                  fr: "Aucun enregistrement échantillonné n’est lié à cette observation.")
+        ], controls: [
+            shown("Sampled moments", fr: "Moments échantillonnés"),
+            shown("Saved samples", fr: "Échantillons enregistrés"),
+            shown("View sampled screens", fr: "Voir les écrans échantillonnés"),
+            // What a sampled moment is called when recognition could not name it.
+            shown("Unknown screen", fr: "Écran inconnu"),
+            shown("Ambiguous screen", fr: "Écran ambigu"),
+            shown("Unresolved at this timestamp", fr: "Non résolu à cet instant"),
+            shown("Observed day", fr: "Jour observé"),
+            shown("Change day or origin", fr: "Changer le jour ou l’origine"),
+            shown("Recording details", fr: "Détails de l’enregistrement"),
+            shown("Read a saved moment", fr: "Lire un moment enregistré"),
+            shown("Edit in Learn", fr: "Modifier dans Apprendre"),
+            shown("Current notes", fr: "Notes actuelles"),
+            shown("Original extracted text", fr: "Texte extrait d’origine"),
+            shown("Recording evidence", fr: "Éléments enregistrés"),
+            shown("Delete this observation", fr: "Supprimer cette observation")
+        ]),
+        // One sampled screen of an observation, with the text read from it at the time.
+        Screen(name: "Sampled moment", copy: [
+            part("A visual label is a proposal about what's visible", fr: "Un libellé visuel est une proposition sur ce qui est visible",
+                 of: "A visual label is a proposal about what's visible. It doesn't establish which app was open or what you did."),
+            part("It doesn't establish which app was open or what you did",
+                 fr: "Il n’établit ni quelle app était ouverte, ni ce que vous avez fait",
+                 of: "A visual label is a proposal about what's visible. It doesn't establish which app was open or what you did."),
+            shown("Times are offsets into this recording, rounded to a millisecond.",
+                  fr: "Les heures sont des positions dans cet enregistrement, arrondies à la milliseconde."),
+            shown("Your description stays separate from the model's interpretation.",
+                  fr: "Votre description reste séparée de l’interprétation du modèle."),
+            part("It is left out of later activity suggestions", fr: "Il est exclu des prochaines suggestions d’activités",
+                 of: "You kept this screen unknown. It is left out of later activity suggestions."),
+            shown("The original interpretation supported more than one possible context.",
+                  fr: "L’interprétation d’origine permettait plusieurs contextes possibles."),
+            shown("No original interpretation quote is attached to this sample.",
+                  fr: "Aucune citation d’interprétation d’origine n’est liée à cet échantillon."),
+            shown("This text was limited during extraction and cannot support a screen identity.",
+                  fr: "Ce texte a été tronqué à l’extraction et ne peut pas appuyer l’identité d’un écran.")
+        ], controls: [
+            shown("Requested sample", fr: "Échantillon demandé"),
+            shown("Actual frame", fr: "Image réelle"),
+            shown("Your label", fr: "Votre libellé"),
+            shown("Proposed visual label", fr: "Libellé visuel proposé"),
+            shown("Original proposed label", fr: "Libellé proposé à l’origine"),
+            shown("Exact evidence quote", fr: "Citation exacte de la source"),
+            shown("Excerpt you selected", fr: "Extrait que vous avez choisi"),
+            shown("Correct label", fr: "Corriger le libellé"),
+            shown("Edit your label", fr: "Modifier votre libellé"),
+            shown("Original extracted text", fr: "Texte extrait d’origine"),
+            shown("Source sample", fr: "Échantillon source"),
+            shown("Read this saved moment", fr: "Lire ce moment enregistré")
+        ]),
+        // The list of saved observations, and choosing some of them for an update.
+        Screen(name: "Observations", copy: [
+            part("Saved glimpses of your morning", fr: "Des aperçus enregistrés de votre matinée",
+                 of: "Saved glimpses of your morning. Observations and routine runs stay separate; sampled screens don't measure complete phone use."),
+            part("Observations and routine runs stay separate; sampled screens don't measure complete phone use",
+                 fr: "Les observations et les sessions restent séparées ; les écrans échantillonnés ne mesurent pas toute l’utilisation du téléphone",
+                 of: "Saved glimpses of your morning. Observations and routine runs stay separate; sampled screens don't measure complete phone use."),
+            part("These observations need a day before they can appear in your morning history",
+                 fr: "Ces observations doivent avoir un jour avant d’apparaître dans l’historique de vos matinées",
+                 of: "These observations need a day before they can appear in your morning history. The day a file was imported doesn't tell us when it was recorded."),
+            part("The day a file was imported doesn't tell us when it was recorded",
+                 fr: "Le jour d’import d’un fichier n’indique pas quand il a été enregistré",
+                 of: "These observations need a day before they can appear in your morning history. The day a file was imported doesn't tell us when it was recorded."),
+            shown("Your current routine stays in place until you approve the update.",
+                  fr: "Votre routine actuelle reste en place jusqu’à ce que vous approuviez la mise à jour."),
+            part("Choose dated observations from your own mornings, or a separate set of samples",
+                 fr: "Choisissez des observations datées de vos propres matinées, ou un ensemble d’exemples séparé",
+                 of: "Choose dated observations from your own mornings, or a separate set of samples. Nothing is selected automatically."),
+            shown("Choose one to five observations.", fr: "Choisissez entre une et cinq observations."),
+            shown("Record or import a little of your morning in Learn.",
+                  fr: "Enregistrez ou importez un peu de votre matinée dans Apprendre.")
+        ], controls: [
+            shown("Observations", fr: "Observations"),
+            shown("Date needed", fr: "Date requise"),
+            shown("Choose mornings", fr: "Choisir des matinées"),
+            shown("Done choosing", fr: "Sélection terminée"),
+            shown("Delete all observations", fr: "Supprimer toutes les observations"),
+            shown("No saved observations", fr: "Aucune observation enregistrée"),
+            shown("Review suggested update", fr: "Relire la mise à jour suggérée"),
+            shown("Clear selection", fr: "Effacer la sélection"),
+            shown("Suggest an update", fr: "Suggérer une mise à jour")
+        ]),
+        // A suggestion from the model, with the quotations it rests on.
+        Screen(name: "Suggested update", copy: [
+            shown("Your current routine stays ready until you approve.", fr: "Votre routine actuelle reste prête jusqu’à votre approbation."),
+            shown("Review your moments, then approve when ready.", fr: "Relisez vos moments, puis approuvez quand vous le souhaitez."),
+            shown("Compare with current routine", fr: "Comparer avec la routine actuelle"),
+            part("These samples weren't used to suggest activities", fr: "Ces échantillons n’ont pas servi à suggérer des activités",
+                 of: "These samples weren't used to suggest activities. Missing or unsuitable evidence stays unknown."),
+            part("Missing or unsuitable evidence stays unknown", fr: "Les éléments manquants ou inadaptés restent inconnus",
+                 of: "These samples weren't used to suggest activities. Missing or unsuitable evidence stays unknown."),
+            shown("Kept by your choice", fr: "Gardé selon votre choix"),
+            shown("Your saved timing choice", fr: "Votre choix de durée enregistré"),
+            shown("Correct a source in Learn to request a new suggestion.",
+                  fr: "Corrigez une source dans Apprendre pour demander une nouvelle suggestion."),
+            part("Minutes are planned, not measured averages", fr: "Les minutes sont prévues, pas des moyennes mesurées",
+                 of: "Minutes are planned, not measured averages. Visible words don't prove an action or a repeated habit."),
+            part("Visible words don't prove an action or a repeated habit",
+                 fr: "Des mots visibles ne prouvent ni une action ni une habitude répétée",
+                 of: "Minutes are planned, not measured averages. Visible words don't prove an action or a repeated habit."),
+            part("You can edit your current routine under Review → Your routine",
+                 fr: "Vous pouvez modifier votre routine actuelle dans Historique → Votre routine",
+                 of: "Done saves this suggestion for later. You can edit your current routine under Review → Your routine."),
+            shown("Sample observations stay separate from your personal habit history.",
+                  fr: "Les observations d’exemple restent séparées de votre historique personnel."),
+            shown("Finish or end your current morning before approving an update.",
+                  fr: "Terminez ou arrêtez votre matinée en cours avant d’approuver une mise à jour."),
+            part("The observations or your routine may have changed", fr: "Les observations ou votre routine ont peut-être changé",
+                 of: "The observations or your routine may have changed. Choose the mornings again to make a fresh suggestion.")
+        ], controls: [
+            shown("Suggested update", fr: "Mise à jour suggérée"),
+            shown("Approve update", fr: "Approuver la mise à jour"),
+            shown("Keep current", fr: "Garder l’actuelle"),
+            shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"),
+            shown("Selected observations", fr: "Observations sélectionnées"),
+            shown("About this suggestion", fr: "À propos de cette suggestion"),
+            shown("Suggestion no longer available", fr: "Suggestion plus disponible"),
+            shown("Your next morning", fr: "Votre prochaine matinée")
+        ]),
+        // The step editor shows a step's own saved wording.
+        Screen(name: "Step", copy: [
+            part("You can change the order of your steps back in your routine",
+                 fr: "Vous pourrez changer l’ordre des étapes dans votre routine",
+                 of: "Keep it simple. You can change the order of your steps back in your routine."),
+            part("Choose an action below to decide what Morning Operator does",
+                 fr: "Choisissez une action ci-dessous pour décider de ce que fait Morning Operator",
+                 of: "The category organizes your routine. Choose an action below to decide what Morning Operator does."),
+            part("Keeping a moment preserves its wording, time and action",
+                 fr: "Garder un moment conserve son texte, sa durée et son action",
+                 of: "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review."),
+            part("Saving only its duration lets the other details vary",
+                 fr: "N’enregistrer que sa durée laisse varier les autres détails",
+                 of: "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review."),
+            shown("Keep in future suggestions", fr: "Garder dans les futures suggestions")
+        ], controls: [
+            shown("What Morning Operator does", fr: "Ce que fait Morning Operator"),
+            shown("Make it yours", fr: "Personnalisez-la"),
+            shown("Your moment", fr: "Votre moment"),
+            shown("How it fits", fr: "Comment ça s’intègre"),
+            shown("Keep this duration", fr: "Garder cette durée"),
+            shown("Future mornings", fr: "Prochaines matinées"),
+            shown("User-led moment", fr: "Moment mené par vous"),
+            shown("Read this text aloud", fr: "Lire ce texte à voix haute"),
+            shown("Remove this step", fr: "Retirer cette étape")
+        ]),
+        Screen(name: "Privacy", copy: [
+            shown("Your mornings stay close.", fr: "Vos matinées restent à portée de main."),
+            part("MORE keeps its learning on this device", fr: "MORE garde son apprentissage sur cet appareil",
+                 of: "MORE keeps its learning on this device. You choose when to connect Apple apps and what to keep."),
+            part("You choose when to connect Apple apps and what to keep",
+                 fr: "Vous choisissez quand connecter les apps Apple et ce que vous gardez",
+                 of: "MORE keeps its learning on this device. You choose when to connect Apple apps and what to keep."),
+            part("Only Shortcuts you configure can log app names and entry/exit times",
+                 fr: "Seuls les raccourcis que vous configurez peuvent enregistrer les noms d’apps et les heures d’entrée et de sortie",
+                 of: "Only Shortcuts you configure can log app names and entry/exit times. This doesn't record taps or read messages. Removing local data turns this off until you enable it again."),
+            part("Calendar events and prepared recaps stay in memory", fr: "Les événements et les récaps préparés restent en mémoire",
+                 of: "Calendar events and prepared recaps stay in memory. MORE saves only the calendars you select, your chosen weather city and temperature unit."),
+            part("Screen content and learning aren't sent with these requests",
+                 fr: "Le contenu de l’écran et l’apprentissage ne sont pas envoyés avec ces demandes",
+                 of: "City searches go to Apple Maps. Weather requests send the selected city’s coordinates to Apple Weather. Screen content and learning aren't sent with these requests."),
+            part("Apple permissions, installed voices, Shortcuts and device backups are managed separately",
+                 fr: "Les autorisations Apple, les voix installées, Raccourcis et les sauvegardes de l’appareil sont gérés séparément",
+                 of: "Apple permissions, installed voices, Shortcuts and device backups are managed separately. Removing local data doesn't change them or erase copies outside this app."),
+            shown("Forget MORE’s local data", fr: "Oublier les données locales de MORE"),
+            shown("Save app activity from Shortcuts", fr: "Enregistrer l’activité des apps depuis Raccourcis")
+        ], controls: [
+            shown("Saved in MORE", fr: "Enregistré dans MORE"),
+            shown("Outside MORE", fr: "Hors de MORE"),
+            shown("Current routine", fr: "Routine actuelle"),
+            shown("Previous routine", fr: "Routine précédente"),
+            shown("Saved mornings", fr: "Matinées enregistrées"),
+            shown("Saved choices", fr: "Choix enregistrés"),
+            shown("App activity", fr: "Activité des apps"),
+            shown("Your day", fr: "Votre journée")
+        ]),
+        // One day of Review: the runs saved for it.
+        Screen(name: "Day", copy: [
+            shown("No routine saved for this day.", fr: "Aucune routine enregistrée pour ce jour."),
+            part("It isn't counted as a zero-minute morning", fr: "Elle n’est pas comptée comme une matinée de zéro minute",
+                 of: "A missing run stays unknown. It isn't counted as a zero-minute morning."),
+            shown("No observation dated to this day.", fr: "Aucune observation datée de ce jour."),
+            shown("Timing is incomplete or unavailable; this run is excluded from time averages.",
+                  fr: "La durée est incomplète ou indisponible ; cette session est exclue des moyennes."),
+            part("Active time excludes pauses and doesn't measure activity in other apps",
+                 fr: "Le temps actif exclut les pauses et ne mesure pas l’activité dans d’autres apps",
+                 of: "Saved routine version %lld. Active time excludes pauses and doesn't measure activity in other apps.")
+        ], controls: [
+            shown("Observed mornings", fr: "Matinées observées"),
+            shown("Routine runs", fr: "Sessions de routine"),
+            shown("Active routine time", fr: "Temps de routine actif"),
+            shown("Planned time", fr: "Durée prévue"),
+            shown("Marked complete", fr: "Marqué comme terminé"),
+            shown("Not completed", fr: "Non terminé"),
+            shown("App observations", fr: "Observations d’apps")
         ])
     ]
 
@@ -361,19 +642,21 @@ enum OwnInterfaceWording {
         distinctiveLines + marketing + marketingPair + earlierReviewHeadings + [earlierReviewNote]
             + [overviewHeading] + overviewCopy + homeHeadings + homeFooters
             + [homeReviewPrompt, recordingBadge, playbackNow, playbackPause, playbackPaused, playbackContinue]
-            + pairs.flatMap { $0 } + screens.flatMap { $0.copy + $0.controls }
+            + pairs.flatMap { $0 } + labelPairs.flatMap { $0 } + screens.flatMap { $0.copy + $0.controls }
     }
 
     // MARK: - Recognition
 
     /// True when the frame is one of MORE's own screens.
     ///
-    /// One complete line that is a distinctive MORE title or control is enough. Otherwise the
-    /// frame must hold two different pieces of the same MORE screen, at least one of them a
-    /// sentence or heading specific to MORE. Short ordinary labels such as "Record" or
-    /// « Enregistrer » never identify a screen alone or together; they only confirm such a sentence.
+    /// One complete line that is a distinctive MORE title or control is enough, and so is the
+    /// recording badge read beside the home's date. Otherwise the frame must hold two different
+    /// pieces of the same MORE screen, at least one of them a sentence or heading specific to
+    /// MORE. Short ordinary labels such as "Record" or « Enregistrer » never identify a screen
+    /// alone or together; they only confirm such a sentence.
     static func identifies(_ frame: Frame) -> Bool {
         if distinctiveLines.contains(where: { $0.isLine(of: frame) }) || containsMarketing(frame) { return true }
+        if showsRecordingBadge(frame) { return true }
         // Generic labels such as "Average routine" must not exclude a real calendar entry.
         let reviewMarkers = earlierReviewHeadings.filter { $0.isLine(of: frame) }.count
             + (earlierReviewNote.isWithin(frame) ? 1 : 0)
@@ -384,8 +667,8 @@ enum OwnInterfaceWording {
         let hasHeading = homeHeadings.contains { $0.isLine(of: frame) }
         let hasFooter = homeFooters.contains { $0.isLine(of: frame) }
         if hasHeading, hasFooter || homeReviewPrompt.isLine(of: frame) { return true }
-        // While native capture runs, the heading is paired with the branded recording control,
-        // on its own line or merged into the heading's row. Neither alone is a guard.
+        // The earlier forms of the badge rule, kept for recordings read in another letter case:
+        // the heading with the badge, on its own line or merged into the heading's row.
         let headingWithBadge = homeHeadings.flatMap(\.normalized).contains { heading in
             recordingBadge.normalized.contains { frame.lines.contains("\(heading) \($0)") }
         }
@@ -395,11 +678,18 @@ enum OwnInterfaceWording {
            (playbackNow.isLine(of: frame) && playbackPause.isLine(of: frame))
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
-        let everySentence = screens.flatMap(\.copy)
+        if labelPairs.contains(where: { pair in pair.allSatisfy { $0.isAtLineEdge(of: frame) } }) { return true }
+        // Every recognized sentence on this frame, once: a label that is words of one of them
+        // is not a second piece, whichever screen the sentence belongs to.
+        let present = frame.sentences(among: screens.flatMap(\.copy))
         return screens.contains { screen in
             let found = screen.copy.map { $0.occurrences(in: frame) }.filter { !$0.isEmpty }
             guard !found.isEmpty else { return false }
             // Each sentence needs words of its own: two that share a word are one passage, once.
+            // The frame that asked for this was a message reading "Use the audio output picker
+            // to choose an available speaker. Output doesn't connect a HomePod microphone.":
+            // Settings ends one sentence with "speaker" and begins the next with "Speaker
+            // output", so both were found in it through that one word, and it was rejected.
             let twoSentences = found.indices.contains { first in
                 found.indices.contains { second in
                     first < second && found[first].contains { one in found[second].contains { !$0.overlaps(one) } }
@@ -407,8 +697,38 @@ enum OwnInterfaceWording {
             }
             // A wrapped sentence can leave a line that reads like a label ("your routine,").
             // That line is the same piece, not a second one.
-            return twoSentences || screen.controls.contains { $0.isLine(of: frame, apartFrom: everySentence) }
+            return twoSentences || screen.controls.contains { $0.isLine(of: frame, apartFrom: present) }
         }
+    }
+
+    /// True when the frame shows the home's recording badge, which MORE shows only while it
+    /// records: the most common own frame of a recording is the home with a routine running,
+    /// where the step titles are the person's saved routine and read like real activity.
+    ///
+    /// The badge must end a line in MORE's own capitals, "MORE" then "Recording" or
+    /// « Enregistrement ». It sits in the date's row, so it is accepted when that line also
+    /// holds the date, or when it stands alone (at most a misread symbol before it) and the
+    /// frame shows something else of the home: the date on a line of its own, a line that
+    /// begins with the heading, or a playback label. Alone among another app's lines it is
+    /// not enough, and neither is "more recording" in any other case or place.
+    static func showsRecordingBadge(_ frame: Frame) -> Bool {
+        let before = recordingBadge.wordsBeforeLineEnd(in: frame)
+        if before.contains(where: isHomeDate) { return true }
+        // The badge's own symbol can be read as a letter or two.
+        guard before.contains(where: { $0.count <= 2 && $0.allSatisfy { $0.count == 1 } }) else { return false }
+        let headings = homeHeadings.flatMap(\.normalized)
+        return frame.shownLines.contains { isHomeDate($0.map(LearningEvidencePolicy.normalized)) }
+            || frame.lines.contains { line in headings.contains { line == $0 || line.hasPrefix("\($0) ") } }
+            || [playbackNow, playbackPause, playbackPaused, playbackContinue].contains { $0.isLine(of: frame) }
+    }
+
+    /// The home's date as any locale abbreviates it ("Tue, Oct 13", « mar. 13 oct. »): a day of
+    /// the month among at most three short words, one of them the chevron beside it if read.
+    private static func isHomeDate(_ words: [String]) -> Bool {
+        let days = words.filter { Int($0).map { (1...31).contains($0) } ?? false }
+        let names = words.filter { $0.allSatisfy(\.isLetter) }
+        return days.count == 1 && (1...3).contains(names.count) && days.count + names.count == words.count
+            && names.contains { $0.count >= 2 } && names.allSatisfy { $0.count <= 5 }
     }
 
     static func containsMarketing(_ frame: Frame) -> Bool {
