@@ -1,0 +1,49 @@
+name: CI
+
+# Shared-logic package tests only. The app target, UI tests and anything that
+# needs a simulator runtime, a device or the on-device model stay local.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package-tests:
+    name: Package tests
+    # The package imports Apple frameworks, so it cannot build on Linux.
+    # macOS minutes cost about ten times Linux ones: keep this job small.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ${{ vars.CI_RUNNER || 'macos-26' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest installed Xcode
+        run: |
+          newest="$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)"
+          echo "DEVELOPER_DIR=$newest/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$newest/Contents/Developer" xcodebuild -version
+
+      - name: Swift package tests
+        # Serial: several tests race a real deadline against main-actor work, and
+        # parallel suites on a small runner can hold the main actor long enough to lose it.
+        run: ./scripts/test.sh --no-parallel
+
+      - name: Scorer tests
+        run: python3 -m unittest discover -s scripts/tests
