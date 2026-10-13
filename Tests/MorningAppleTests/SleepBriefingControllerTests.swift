@@ -176,25 +176,49 @@ struct SleepBriefingControllerTests {
         }
     }
 
-    /// The read is queued behind the refresh. Health turned off before the queued read
-    /// starts must stop it: dropping its result afterwards would be too late.
-    @Test func aReadQueuedBeforeHealthIsTurnedOffNeverReachesTheReader() async throws {
+    /// Health turned off while the refresh is still waiting on an earlier source must stop
+    /// the sleep read that follows: dropping its result afterwards would be too late. The
+    /// weather gate holds the refresh at a known point, so the order does not depend on how
+    /// the main actor happens to schedule two tasks.
+    @Test func healthTurnedOffWhileAnEarlierSourceIsReadStopsTheSleepRead() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let reader = SleepReaderFixture(.samples(night))
-        let controller = makeController(directory: directory, reader: reader)
-        try controller.updateSettings(.init(includesHealth: true))
-        // Main-actor order: the refresh starts its preparation; that preparation queues the
-        // read; the setting changes; only then does the queued read get its turn.
+        let weather = SleepSuiteWeatherGate()
+        let controller = makeController(directory: directory, reader: reader, weather: { _ in try await weather.value() })
+        let location = try WeatherLocation(latitude: 48, longitude: 2, displayName: "Synthetic town")
+        try controller.updateSettings(.init(weatherLocation: location, includesHealth: true))
         let attempt = Task { @MainActor in await controller.refresh() }
-        await Task.yield()
-        #expect(controller.isPreparing)
-        let change = Task { @MainActor in try controller.updateSettings(.init()) }
+        await weather.waitUntilCalled()
+        #expect(controller.isPreparing && reader.reads == 0)
+        try controller.updateSettings(.init(weatherLocation: location))
+        weather.fail()
         #expect(await attempt.value == nil)
-        try await change.value
-        for _ in 0..<20 { await Task.yield() }
-        #expect(reader.reads == 0, "Excluded means the reader is not called, even by a read already queued.")
+        #expect(reader.reads == 0, "Excluded means the reader is not called.")
         #expect(controller.prepared == nil && !controller.settings.includesHealth)
+    }
+
+    /// The narrow case: the read itself is already queued when health is turned off. Which
+    /// of the two gets its turn first is the scheduler's choice, so the test asserts what
+    /// must hold either way: the reader is never called at a moment when health is excluded.
+    /// Repeated, because only one of the two orders can expose a missing check.
+    @Test func aQueuedReadNeverReachesTheReaderWhileHealthIsExcluded() async throws {
+        for _ in 0..<50 {
+            let directory = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let reader = SleepReaderFixture(.samples(night))
+            let controller = makeController(directory: directory, reader: reader)
+            reader.isExcludedNow = { [weak controller] in controller?.settings.includesHealth == false }
+            try controller.updateSettings(.init(includesHealth: true))
+            let attempt = Task { @MainActor in await controller.refresh() }
+            await Task.yield()
+            let change = Task { @MainActor in try controller.updateSettings(.init()) }
+            _ = await attempt.value
+            try await change.value
+            for _ in 0..<20 { await Task.yield() }
+            #expect(reader.readsWhileExcluded == 0, "The reader was called while health was excluded.")
+            #expect(!controller.settings.includesHealth)
+        }
     }
 
     @Test func aReaderThatDoesNotAnswerIsDroppedAtTheDeadlineOnTheInjectedClock() async throws {
@@ -222,12 +246,14 @@ struct SleepBriefingControllerTests {
     }
 
     private func makeController(directory: URL, reader: SleepReaderFixture, calendar: SleepSuiteCalendar = .init(),
-                                clock: ManualTestClock = ManualTestClock()) -> MorningBriefingController {
+                                clock: ManualTestClock = ManualTestClock(),
+                                weather: @escaping WeatherObservationService.WeatherProvider = { _ in
+                                    throw WeatherObservationError.serviceUnavailable
+                                }) -> MorningBriefingController {
         let date = now
         return MorningBriefingController(directory: directory,
             calendar: CalendarObservationService(provider: calendar, now: { date }),
-            weather: WeatherObservationService(weatherProvider: { _ in throw WeatherObservationError.serviceUnavailable },
-                                               citySearchProvider: { _ in [] }),
+            weather: WeatherObservationService(weatherProvider: weather, citySearchProvider: { _ in [] }),
             sleep: SleepObservationService(provider: reader),
             now: { date }, timeZone: { TimeZone(identifier: "UTC")! }, localeIdentifier: "en_GB",
             clock: clock).watchedForHangs()
@@ -244,6 +270,9 @@ private final class SleepReaderFixture: SleepObservationProviding {
     struct Failure: Error {}
 
     var answer: Answer
+    /// Asked at the moment of each read: was health excluded just then?
+    var isExcludedNow: () -> Bool = { false }
+    private(set) var readsWhileExcluded = 0
     private(set) var reads = 0
     private(set) var prompts = 0
     private(set) var intervals: [DateInterval] = []
@@ -256,6 +285,7 @@ private final class SleepReaderFixture: SleepObservationProviding {
 
     func sleepSamples(in interval: DateInterval) async throws -> SleepReadOutcome {
         reads += 1; intervals.append(interval)
+        if isExcludedNow() { readsWhileExcluded += 1 }
         switch answer {
         case .samples(let samples): return .samples(samples)
         case .unavailableOnDevice: return .unavailableOnDevice
@@ -288,4 +318,27 @@ private final class SleepSuiteCalendar: CalendarObservationProviding {
     func requestAccess() async throws -> Bool { true }
     func calendarChoices() throws -> [CalendarChoice] { [choice] }
     func events(in interval: DateInterval, calendarIDs: Set<String>) throws -> [CalendarObservationEvent] { [] }
+}
+
+/// Holds the weather read until the test lets it fail, so a test can act while a refresh
+/// is suspended at a known point.
+@MainActor
+private final class SleepSuiteWeatherGate {
+    private var waiting: [CheckedContinuation<WeatherObservationSnapshot, any Error>] = []
+    private var watchers: [CheckedContinuation<Void, Never>] = []
+    func value() async throws -> WeatherObservationSnapshot {
+        try await withCheckedThrowingContinuation { continuation in
+            waiting.append(continuation)
+            let called = watchers; watchers = []
+            for watcher in called { watcher.resume() }
+        }
+    }
+    func waitUntilCalled() async {
+        guard waiting.isEmpty else { return }
+        await withCheckedContinuation { watchers.append($0) }
+    }
+    func fail() {
+        let held = waiting; waiting = []
+        for continuation in held { continuation.resume(throwing: WeatherObservationError.serviceUnavailable) }
+    }
 }
