@@ -85,6 +85,11 @@ private struct ShippedCatalogs {
                 problems.append("“\(key)” is no longer in a String Catalog. Keep it as earlier wording and add what replaced it.")
                 continue
             }
+            // The screens are the app's: a copy in a shared module does not stand in for its entry.
+            if catalogs.first?[key] == nil {
+                problems.append("“\(key)” is no longer in the app's String Catalog. Keep it as earlier wording and add what replaced it.")
+                continue
+            }
             if entries.contains(where: { $0["extractionState"] as? String == "stale" }) {
                 problems.append("“\(key)” is stale: the app no longer shows it. Keep it as earlier wording and add what replaced it.")
             }
@@ -320,6 +325,9 @@ struct OwnInterfaceWordingTests {
         for index in removed.catalogs.indices { removed.catalogs[index]["Record"] = nil }
         #expect(removed.drift(of: phrases).count == 1)
         #expect(try catalogs.changing("Record") { $0["extractionState"] = "stale" }.drift(of: phrases).count == 1)
+        var appOnly = catalogs
+        appOnly.catalogs[0]["Paused"] = nil
+        #expect(appOnly.drift(of: phrases).count == 1)
         // A translation is dropped, or a third language ships without its wording.
         #expect(try catalogs.changing("Record") { $0["localizations"] = [String: Any]() }.drift(of: phrases).count == 1)
         let german = try catalogs.changing("Choose") { entry in
@@ -440,6 +448,8 @@ struct OwnInterfaceWordingTests {
         }
         // A label is judged against the wording actually on screen, not its other translation.
         #expect(isOwnInterface("Time in your routine, excluding pauses.\nVotre routine"))
+        // A line of a wrapped sentence from another screen is not this screen's label.
+        #expect(!isOwnInterface("A recording is sampled at up to 24 moments\nRecord,\ndescribe or refine"))
         // A sentence shown twice still leaves its second reading free to pair with another.
         #expect(isOwnInterface("Use the audio output picker to choose an available speaker. Output doesn't connect a HomePod microphone.\nUse the audio output picker to choose an available speaker."))
         // Recordings made before the button was shortened, and its French form.

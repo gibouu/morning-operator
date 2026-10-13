@@ -395,6 +395,7 @@ enum OwnInterfaceWording {
            (playbackNow.isLine(of: frame) && playbackPause.isLine(of: frame))
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
+        let everySentence = screens.flatMap(\.copy)
         return screens.contains { screen in
             let found = screen.copy.map { $0.occurrences(in: frame) }.filter { !$0.isEmpty }
             guard !found.isEmpty else { return false }
@@ -406,7 +407,7 @@ enum OwnInterfaceWording {
             }
             // A wrapped sentence can leave a line that reads like a label ("your routine,").
             // That line is the same piece, not a second one.
-            return twoSentences || screen.controls.contains { $0.isLine(of: frame, apartFrom: screen.copy) }
+            return twoSentences || screen.controls.contains { $0.isLine(of: frame, apartFrom: everySentence) }
         }
     }
 
