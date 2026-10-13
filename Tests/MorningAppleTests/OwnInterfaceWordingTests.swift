@@ -337,6 +337,16 @@ private enum OwnScreenFixtures {
         .other("17:30 Pick up the children from football practice", "17:30 Aller chercher les enfants à l’entraînement de football"),
         .shown("Source sample")
     ], recognizedWithoutBars: false)
+    /// Correcting a sampled screen's label: excerpts of its original text to choose from.
+    static let screenLabel = ContentScreen(name: "Screen label", top: [.shown("Screen label")], body: [
+        .shown("Your label"), .other("Calendar", "Calendrier"),
+        .shown("Describe the screen, such as Calendar or Messages. This changes your review, not the original recording or the model's result."),
+        .shown("Keep this screen unknown"),
+        .shown("Unknown screens stay visible in your review and are left out of new activity suggestions."),
+        .shown("Original excerpt"), meeting, reply,
+        .other("12:30 Lunch with the product team at the corner café", "12:30 Déjeuner avec l’équipe produit au café du coin"),
+        .shown("Choose the saved words that help you recognize this screen. Your label is your interpretation; it doesn't prove an app was opened or a message was read.")
+    ])
     private static let historyRows: [Piece] = (9...14).flatMap { day -> [Piece] in
         [.other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"), .other("Oct \(day), 2026", "\(day) oct. 2026"),
          .other("Europe/Paris", "Europe/Paris")]
@@ -396,7 +406,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [observation, unorderedObservation, sampledMoment, observations, choosingObservations,
+    static let contentScreens = [observation, unorderedObservation, sampledMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
@@ -818,6 +828,7 @@ struct OwnInterfaceWordingTests {
             "Friday, October 9\nObserved mornings\nNo observation dated to this day.\nRoutine runs\nNo routine saved for this day.\nA missing run stays unknown. It isn't counted as a\nzero-minute morning.",
             "vendredi 9 octobre\nMatinées observées\nAucune observation datée de ce jour.\nSessions de routine\nAucune routine enregistrée pour ce jour.\nUne session manquante reste inconnue. Elle n’est pas\ncomptée comme une matinée de zéro minute.",
             "Active routine time\n18 min\nPlanned time\n25 min\nRead messages from my family\nMarked complete\n5 min planned\nSaved routine version 3. Active time excludes pauses and\ndoesn't measure activity in other apps.",
+            "Routine run 1 · completed\nRead messages from my family\nSkipped\nPrepare breakfast for the children\nSkipped\nSaved routine version 3. Active time excludes pauses and doesn't measure activity in other apps.",
             "Temps de routine actif\n18 min\nDurée prévue\n25 min\nLire les messages de ma famille\nMarqué comme terminé\n5 min prévues\nVersion 3 de la routine enregistrée. Le temps actif exclut les\npauses et ne mesure pas l’activité dans d’autres apps."
         ] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")

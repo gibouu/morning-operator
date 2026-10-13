@@ -493,6 +493,34 @@ enum OwnInterfaceWording {
             shown("Source sample", fr: "Échantillon source"),
             shown("Read this saved moment", fr: "Lire ce moment enregistré")
         ]),
+        // Correcting one sampled screen's label, above excerpts of its original text.
+        Screen(name: "Screen label", copy: [
+            part("Describe the screen, such as Calendar or Messages", fr: "Décrivez l’écran, par exemple Calendrier ou Messages",
+                 of: "Describe the screen, such as Calendar or Messages. This changes your review, not the original recording or the model's result."),
+            part("This changes your review, not the original recording or the model's result",
+                 fr: "Cela modifie votre relecture, pas l’enregistrement d’origine ni le résultat du modèle",
+                 of: "Describe the screen, such as Calendar or Messages. This changes your review, not the original recording or the model's result."),
+            shown("Unknown screens stay visible in your review and are left out of new activity suggestions.",
+                  fr: "Les écrans inconnus restent visibles dans votre relecture et sont exclus des nouvelles suggestions d’activités."),
+            shown("Removing your correction restores the original interpretation, if one is available.",
+                  fr: "Supprimer votre correction rétablit l’interprétation d’origine, si elle existe."),
+            part("No short, complete excerpt is available to anchor a label",
+                 fr: "Aucun extrait court et complet n’est disponible pour appuyer un libellé",
+                 of: "No short, complete excerpt is available to anchor a label. You can still keep this screen unknown."),
+            part("Choose the saved words that help you recognize this screen",
+                 fr: "Choisissez les mots enregistrés qui vous aident à reconnaître cet écran",
+                 of: "Choose the saved words that help you recognize this screen. Your label is your interpretation; it doesn't prove an app was opened or a message was read."),
+            part("it doesn't prove an app was opened or a message was read",
+                 fr: "il ne prouve pas qu’une app a été ouverte ou qu’un message a été lu",
+                 of: "Choose the saved words that help you recognize this screen. Your label is your interpretation; it doesn't prove an app was opened or a message was read.")
+        ], controls: [
+            shown("Screen label", fr: "Libellé de l’écran"),
+            shown("Your label", fr: "Votre libellé"),
+            shown("What was on this screen?", fr: "Qu’y avait-il sur cet écran ?"),
+            shown("Keep this screen unknown", fr: "Laisser cet écran inconnu"),
+            shown("Remove my correction", fr: "Supprimer ma correction"),
+            shown("Original excerpt", fr: "Extrait d’origine")
+        ]),
         // The list of saved observations, and choosing some of them for an update.
         Screen(name: "Observations", copy: [
             part("Saved glimpses of your morning", fr: "Des aperçus enregistrés de votre matinée",
@@ -634,6 +662,7 @@ enum OwnInterfaceWording {
             shown("Active routine time", fr: "Temps de routine actif"),
             shown("Planned time", fr: "Durée prévue"),
             shown("Marked complete", fr: "Marqué comme terminé"),
+            shown("Skipped", fr: "Passé"),
             shown("Not completed", fr: "Non terminé"),
             shown("App observations", fr: "Observations d’apps")
         ])
