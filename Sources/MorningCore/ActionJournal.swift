@@ -139,14 +139,16 @@ public struct ActionJournal: Codable, Sendable, Equatable {
     public init(attempts: [ActionAttempt] = []) { self.attempts = attempts }
 }
 
-/// What this process, and only this process, still knows about a dispatch that the journal shows
-/// as unsettled: its adapter call outlasted the executor's deadline, or answered in time with an
-/// acceptance that could not be saved. Never written to the journal file.
-protocol OverdueDispatch: Sendable {
-    /// True while the call is still running, and for good once it has come back saying the
-    /// channel took the action. False once it has come back with anything else.
+/// What this process, and only this process, still knows about an attempt that the journal shows
+/// as unsettled: an adapter call that outlasted the executor's deadline, or an answer that came in
+/// time and could not be saved. Never written to the journal file.
+protocol UnsettledKnowledge: Sendable {
+    /// True while a dispatch call is still running, and for good once the channel has said that
+    /// it took the action or that the action was delivered.
     var mayHaveSent: Bool { get }
-    /// Returns once the adapter call itself has returned.
+    /// True once the adapter call behind this has returned.
+    var isOver: Bool { get }
+    /// Returns once the adapter call behind this has returned.
     func returned() async
 }
 
@@ -167,9 +169,9 @@ public actor ActionJournalStore {
     private var journal: ActionJournal
     /// Not actor state: admission is decided synchronously, inside the executor's initializer.
     private let seat = Mutex<ExecutorSeat?>(nil)
-    /// Overdue dispatch calls by attempt, in memory only. Kept here and not in the executor, so
-    /// that releasing an executor while such a call is still out does not forget it.
-    private var overdue: [UUID: any OverdueDispatch] = [:]
+    /// By attempt, in memory only. Kept here and not in the executor, so that releasing an
+    /// executor while an overdue call is still out does not forget it.
+    private var unsettled: [UUID: [any UnsettledKnowledge]] = [:]
 
     /// The seat, or `nil` while another executor holds it.
     nonisolated func admitExecutor() -> ExecutorSeat? {
@@ -202,20 +204,19 @@ public actor ActionJournalStore {
 
     public func snapshot() -> ActionJournal { journal }
 
-    func noteOverdueDispatch(_ call: any OverdueDispatch, for attemptID: UUID) { overdue[attemptID] = call }
+    func note(_ knowledge: any UnsettledKnowledge, for attemptID: UUID) { unsettled[attemptID, default: []].append(knowledge) }
 
-    /// Whether an overdue dispatch call for this attempt could still put the action through, or
-    /// has reported that the channel took it. While this is true, a "not delivered" answer from
-    /// the channel is not the last word.
-    func overdueDispatchMayHaveSent(_ attemptID: UUID) -> Bool {
-        guard let call = overdue[attemptID] else { return false }
-        if call.mayHaveSent { return true }
-        overdue[attemptID] = nil
-        return false
+    /// Whether, for all this process knows, the action of this attempt could still go through or
+    /// has gone through. While this is true, a "not delivered" answer from the channel is not the
+    /// last word.
+    func actionMayHaveBeenSent(_ attemptID: UUID) -> Bool {
+        // A call that is over and claims nothing has no more to say.
+        unsettled[attemptID]?.removeAll { $0.isOver && !$0.mayHaveSent }
+        return unsettled[attemptID]?.contains { $0.mayHaveSent } ?? false
     }
 
-    /// For tests: returns once every overdue dispatch call still remembered has returned.
-    func overdueDispatchesReturned() async { for call in Array(overdue.values) { await call.returned() } }
+    /// For tests: returns once every overdue adapter call still remembered has returned.
+    func overdueCallsReturned() async { for knowledge in unsettled.values.flatMap({ $0 }) { await knowledge.returned() } }
 
     @discardableResult
     func prepare(_ intent: ActionIntent, approval: ActionApproval, at date: Date = Date()) throws -> ActionAttempt {
@@ -276,7 +277,7 @@ public actor ActionJournalStore {
         if let receipt = ActionReference.constrained(receipt) { candidate.attempts[index].receiptReference = receipt }
         try commit(candidate)
         // A settled attempt has nothing left to doubt.
-        if state == .verified || state == .failedKnown { overdue[candidate.attempts[index].id] = nil }
+        if state == .verified || state == .failedKnown { unsettled[candidate.attempts[index].id] = nil }
     }
     private func commit(_ candidate: ActionJournal) throws {
         try file.save(candidate)

@@ -802,7 +802,7 @@ struct ActionExecutionTests {
         let before = try Data(contentsOf: harness.url)
         await harness.adapter.reply(.outcome(.accepted(receiptReference: "late-receipt")))
         await harness.adapter.release()
-        await journal.overdueDispatchesReturned()
+        await journal.overdueCallsReturned()
         #expect(await harness.adapter.dispatchesReturned == 2)
         #expect(await harness.adapter.heldDispatchSawCancellation == true, "The overdue call was not told to stop")
         // Nothing was written: not accepted, no receipt, no invalid transition, the file is the same bytes.
@@ -845,7 +845,7 @@ struct ActionExecutionTests {
         let before = try Data(contentsOf: harness.url)
         await harness.adapter.reply(.outcome(.failedKnown))
         await harness.adapter.release()
-        await journal.overdueDispatchesReturned()
+        await journal.overdueCallsReturned()
         for _ in 0..<100 { await Task.yield() }
         #expect(try Data(contentsOf: harness.url) == before)
         #expect(await journal.snapshot().attempts == [unknown])
@@ -878,7 +878,7 @@ struct ActionExecutionTests {
             let before = try Data(contentsOf: harness.url)
             await harness.adapter.reply(late)
             await harness.adapter.release()
-            await journal.overdueDispatchesReturned()
+            await journal.overdueCallsReturned()
             for _ in 0..<100 { await Task.yield() }
             #expect(try Data(contentsOf: harness.url) == before)
             #expect(try harness.onDisk() == [unknown])
@@ -903,10 +903,8 @@ struct ActionExecutionTests {
             let draft = draft()
             let unknown = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
             #expect(unknown.state == .outcomeUnknown && unknown.receiptReference == nil)
-            await journal.overdueDispatchesReturned()
+            await journal.overdueCallsReturned()
             #expect(try harness.onDisk() == [unknown])
-            await harness.adapter.reconciliation(.notDelivered)
-            #expect(try await executor.reconcile(unknown.id) == unknown)
             #expect(await harness.adapter.dispatched.count == 1)
         }
     }
@@ -939,6 +937,59 @@ struct ActionExecutionTests {
     }
 
     @Test
+    func deliveryThatReconciliationReportedButCouldNotSaveOrReportedLateIsNotOverriddenByNotThere() async throws {
+        // 1. Reported in time, and the save fails.
+        do {
+            let harness = Harness(); defer { harness.cleanUp() }
+            let (_, executor) = try harness.launch()
+            await harness.adapter.reply(.lostResponse)
+            let draft = draft()
+            let unknown = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
+            try FileManager.default.removeItem(at: harness.directory)
+            try Data("not a directory".utf8).write(to: harness.directory)
+            await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-7"))
+            await #expect(throws: (any Error).self) { try await executor.reconcile(unknown.id) }
+            try FileManager.default.removeItem(at: harness.directory)
+            await harness.adapter.reconciliation(.notDelivered)
+            #expect(try await executor.reconcile(unknown.id).state == .outcomeUnknown)
+            let retry = self.draft()
+            #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) }
+                    == .unreconciledOutcome(attemptID: unknown.id))
+            await harness.adapter.reconciliation(.delivered(evidenceReference: "sent-folder-item-7"))
+            #expect(try await executor.reconcile(unknown.id).state == .verified)
+            #expect(await harness.adapter.dispatched.count == 1)
+        }
+        // 2. Reported after the reconciliation's own deadline.
+        do {
+            let harness = Harness(); defer { harness.cleanUp() }
+            let (journal, executor) = try harness.launch()
+            await harness.adapter.reply(.lostResponse)
+            let draft = draft()
+            let unknown = try await executor.dispatch(draft, approvalID: await executor.approve(draft).id)
+            await harness.adapter.holdNextReconcile()
+            await harness.adapter.reconciliation(.delivered(evidenceReference: "late-evidence"))
+            let asked = Task { try await executor.reconcile(unknown.id) }
+            while await harness.adapter.reconciled.isEmpty { await Task.yield() }
+            await harness.deadlineClock.waitForSleepers()
+            harness.deadlineClock.advance(by: ActionExecutor.defaultAdapterDeadline)
+            #expect(try await asked.value == unknown)
+            let before = try Data(contentsOf: harness.url)
+            await harness.adapter.releaseReconcile()
+            await journal.overdueCallsReturned()
+            // Not applied: still unknown, same bytes, the evidence string nowhere.
+            #expect(try Data(contentsOf: harness.url) == before)
+            #expect(!(try String(contentsOf: harness.url, encoding: .utf8)).contains("late-evidence"))
+            // Weighed: an in-time "not there" no longer closes the attempt as failed.
+            await harness.adapter.reconciliation(.notDelivered)
+            #expect(try await executor.reconcile(unknown.id) == unknown)
+            let retry = self.draft()
+            #expect(await refusal { try await executor.dispatch(retry, approvalID: await executor.approve(retry).id) }
+                    == .unreconciledOutcome(attemptID: unknown.id))
+            #expect(await harness.adapter.dispatched.count == 1)
+        }
+    }
+
+    @Test
     func whatIsKnownAboutAnOverdueCallSurvivesAChangeOfExecutor() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let (journal, first) = try harness.launch()
@@ -953,7 +1004,7 @@ struct ActionExecutionTests {
         #expect(try await successor.reconcile(unknown.id) == unknown, "Believed 'not there' while the old call could still send")
         await harness.adapter.reply(.outcome(.accepted(receiptReference: nil)))
         await harness.adapter.release()
-        await journal.overdueDispatchesReturned()
+        await journal.overdueCallsReturned()
         #expect(try await successor.reconcile(unknown.id) == unknown, "Believed 'not there' after a late acceptance")
         let retry = self.draft()
         #expect(await refusal { try await successor.dispatch(retry, approvalID: await successor.approve(retry).id) }
