@@ -41,7 +41,7 @@ flowchart LR
 
 Review measures **routine runs** and shows source-linked appearances in sampled observations. It does not yet measure complete phone usage or learned app habits. Optional configured Shortcuts log selected app entries/returns with incomplete coverage. [The design contract](docs/V2-DESIGN.md) explains the layout, native controls and metric boundaries.
 
-French support is partial: the greeting, optional sample and some moment-purpose text follow the device language. The full interface is not yet localized; [issue #31](https://github.com/gibouu/morning-operator/issues/31) tracks that work.
+The interface is available in French and follows the device language ([#32](https://github.com/gibouu/morning-operator/pull/32)). It has not yet been checked on screen or read by a native speaker, and MORE recognizes its own screens by their English text only ([#46](https://github.com/gibouu/morning-operator/issues/46)); [issue #31](https://github.com/gibouu/morning-operator/issues/31) tracks what remains.
 
 ## Where it stands
 
