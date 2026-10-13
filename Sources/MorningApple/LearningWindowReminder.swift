@@ -81,7 +81,9 @@ public struct LearningWindowReminderPlanner {
             // Stop, Pause and the last morning all end here: the pending reminder goes.
             if let ownReminder, let target = ownReminder.learningTarget {
                 await invitations.cancel()
-                if invitations.invitation?.disposition == .enabled {
+                // Saved as cancelled is not enough: the system must no longer hold it.
+                let stillHeld = await invitations.systemHoldsInvitation()
+                if invitations.invitation?.disposition == .enabled || stillHeld {
                     return .removalFailed(dayKey: target.dayKey, at: ownReminder.scheduledAt)
                 }
             }

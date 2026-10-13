@@ -223,6 +223,13 @@ public final class MorningInvitationService {
         return current
     }
 
+    /// Whether the system still holds this feature's notification, pending or delivered.
+    /// Read from the system at the time of the call; nothing is assumed from saved state.
+    public func systemHoldsInvitation() async -> Bool {
+        if await notifications.pendingInvitation() != nil { return true }
+        return await notifications.hasDeliveredInvitation()
+    }
+
     public nonisolated static func payload(from userInfo: [AnyHashable: Any]) -> MorningInvitationPayload? {
         MorningInvitationPayload(userInfo: userInfo)
     }

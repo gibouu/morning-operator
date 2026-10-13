@@ -168,6 +168,15 @@ struct LearningWindowReminderTests {
         test.storage.failSave = false
         outcome = await test.planner.refresh(for: test.window)
         #expect(outcome == .nothingToSchedule && test.client.pending == nil)
+
+        // Saved as cancelled while the system keeps the request: still reported.
+        var other = try setup()
+        _ = await other.planner.refresh(for: other.window, personRequested: true)
+        other.window.stop(at: other.clock.date)
+        other.client.ignoreRemoval = true
+        outcome = await other.planner.refresh(for: other.window)
+        try #expect(outcome == .removalFailed(dayKey: key(12), at: at(12, 7)))
+        #expect(other.client.pending != nil)
     }
 
     @Test func thePersonsOwnInvitationIsNeverReplacedOrCancelledByAWindow() async throws {
@@ -262,7 +271,8 @@ struct LearningWindowReminderTests {
         added.append(invitation)
         if !dropAdds { pending = .init(payload: invitation.payload, scheduledAt: invitation.scheduledAt) }
     }
-    func removePendingInvitation() async { pending = nil }
+    var ignoreRemoval = false
+    func removePendingInvitation() async { if !ignoreRemoval { pending = nil } }
     func removeDeliveredInvitation() async {}
     func hasDeliveredInvitation() async -> Bool { false }
 }

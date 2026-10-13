@@ -254,8 +254,10 @@ struct LearningWindowReportTests {
         try learning.pause(at: at(12, 6, 30))
         let paused = LearningWindowReport(window: learning, archive: ObservationArchive(), now: try at(20, 9))
         #expect(paused.progress.remainingMorningCount == 2 && paused.progress.shortfallCount == 0)
-        // Resumed 400 days later: the window is past its 366 days and has no morning left.
+        // 400 days later the window is past its 366 days and has no morning left, paused or resumed.
         let later = try at(12, 6, 30).addingTimeInterval(400 * 86_400)
+        let stale = LearningWindowReport(window: learning, archive: ObservationArchive(), now: later)
+        #expect(stale.progress.remainingMorningCount == 0 && stale.progress.shortfallCount == 2)
         try learning.start(at: later)
         let report = LearningWindowReport(window: learning, archive: ObservationArchive(), now: later)
         #expect(report.mornings.allSatisfy { $0.status == .paused })
