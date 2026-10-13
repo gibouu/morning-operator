@@ -1723,18 +1723,18 @@ struct PhoneLoopProtocolTests {
         // The observation is spent. Sending it again, or sending the action's own answer, does not
         // let a second action with a new sequence through.
         gate.sent(answer)
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
         gate.sent(try harness.forged(for: .send(action), clockID: "phone-boot-1", uptime: 90_001, screen: answer.screen))
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
         #expect(gate.admit(observe) == .replayedOrOutOfOrder)             // an older command arriving late
 
         let other = try Harness()
         let foreignObserve = await other.session.start(now: 0)
         #expect(gate.admit(try other.command(foreignObserve)) == .foreignRun)
         // Admitting the action spent the observation it was based on, and another run's does not replace it.
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
         gate.sent(try #require(try other.carry(foreignObserve)))
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
         #expect(gate.lastAdmittedSequence == 2)
     }
 
