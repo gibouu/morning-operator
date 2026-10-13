@@ -80,7 +80,7 @@ struct PhoneLoopMessageCorrelationTests {
             #expect(await session.receive(stray, now: 0.1) == .ignored(rejection))
             #expect(await session.record == before)
             #expect(await session.phase == .awaitingObservation)
-            #expect(gate.lastObservationID == nil && gate.lastAdmittedSequence == observe.sequence)
+            #expect(gate.basisObservationIDs.isEmpty && gate.lastAdmittedSequence == observe.sequence)
         }
         gate.sent(genuine)
         #expect(await session.receive(genuine, now: 0.2)
@@ -100,7 +100,7 @@ struct PhoneLoopMessageCorrelationTests {
         var gate = PhoneCommandGate(runID: observe.runID)
         let genuine = try answer(observe)
         gate.sent(genuine) // No command has been admitted at all.
-        #expect(gate.lastObservationID == nil && gate.lastAdmittedSequence == 0)
+        #expect(gate.basisObservationIDs.isEmpty && gate.lastAdmittedSequence == 0)
         #expect(gate.admit(observe) == nil)
         // An action cannot be admitted before its basis exists. Its answer must not fill the
         // outstanding observe slot, even though it names this run and this step.
@@ -114,14 +114,14 @@ struct PhoneLoopMessageCorrelationTests {
         let foreign = try changed(observe, run: UUID(), sequence: 500)
         #expect(gate.admit(foreign) == .foreignRun)
         gate.sent(try answer(foreign))
-        #expect(gate.lastObservationID == nil && gate.lastAdmittedSequence == observe.sequence)
+        #expect(gate.basisObservationIDs.isEmpty && gate.lastAdmittedSequence == observe.sequence)
         gate.sent(genuine)
         _ = await session.receive(genuine, now: 0.2)
         let legitimate = try command(await session.propose(proposal(genuine), now: 0.3))
         #expect(gate.admit(legitimate) == nil)
         #expect(gate.admit(legitimate) == .replayedOrOutOfOrder)
         gate.sent(phantom) // An action's answer never creates a new action basis.
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
         #expect(gate.admit(try changed(legitimate, sequence: legitimate.sequence + 1)) == .notBasedOnLatestObservation)
     }
 
@@ -141,7 +141,7 @@ struct PhoneLoopMessageCorrelationTests {
         for stale in [old, try answer(first, uptime: 500)] {
             gate.sent(stale)
             #expect(await session.receive(stale, now: 0.3) == .ignored(.outOfSequence))
-            #expect(gate.lastObservationID == nil)
+            #expect(gate.basisObservationIDs.isEmpty)
             #expect(await session.record == before)
         }
         #expect(await session.propose(proposal(old), now: 0.3) == .ignored(.notExpectedInThisPhase))
@@ -168,11 +168,17 @@ struct PhoneLoopMessageCorrelationTests {
         let seen = try answer(observe)
         gate.sent(seen)
         _ = await session.receive(seen, now: 0.1)
-        for duplicate in [seen, try answer(observe, uptime: 999)] {
-            gate.sent(duplicate)
-            #expect(await session.receive(duplicate, now: 0.2) == .ignored(.notExpectedInThisPhase))
-            #expect(gate.lastObservationID == seen.observationID)
-        }
+        // The same answer delivered twice changes nothing on either side.
+        gate.sent(seen)
+        #expect(await session.receive(seen, now: 0.2) == .ignored(.notExpectedInThisPhase))
+        #expect(gate.basisObservationIDs == [seen.observationID])
+        // A second answer to the same observe arrives after the first: the session has moved on
+        // and ignores it. The gate cannot know which one the session took, so it keeps both as a
+        // possible basis; there is still one action (below).
+        let second = try answer(observe, uptime: 999)
+        gate.sent(second)
+        #expect(await session.receive(second, now: 0.2) == .ignored(.notExpectedInThisPhase))
+        #expect(gate.basisObservationIDs == [seen.observationID, second.observationID])
         let request = proposal(seen)
         let results = await withTaskGroup(of: PhoneLoopDirective.self) { group in
             for _ in 0..<16 { group.addTask { await session.propose(request, now: 0.3) } }
@@ -186,6 +192,10 @@ struct PhoneLoopMessageCorrelationTests {
         let action = try #require(actions.first)
         #expect(gate.admit(action) == nil)
         #expect(gate.admit(action) == .replayedOrOutOfOrder)
+        // Admitting the action used up both answers: one naming the other is not a second action.
+        #expect(gate.basisObservationIDs.isEmpty)
+        #expect(gate.admit(try changed(action, sequence: action.sequence + 1, basis: second.observationID))
+                == .notBasedOnLatestObservation)
         let post = try answer(action, uptime: 11, screen: PhoneScreenState(foregroundBundleID: app, elements: []))
         gate.sent(post)
         let next = try command(await session.receive(post, now: 0.4))
@@ -195,7 +205,7 @@ struct PhoneLoopMessageCorrelationTests {
             gate.sent(duplicate)
             #expect(await session.receive(duplicate, now: 0.5) == .ignored(.wrongStep))
             #expect(await session.record == before)
-            #expect(gate.lastObservationID == nil)
+            #expect(gate.basisObservationIDs.isEmpty)
         }
         let nextSeen = try answer(next, uptime: 12)
         gate.sent(nextSeen)
@@ -221,12 +231,12 @@ struct PhoneLoopMessageCorrelationTests {
         let replay = try answer(next, id: old.observationID, uptime: 11)
         gate.sent(replay)
         #expect(await session.receive(replay, now: 0.3) == .ignored(.replayedObservation))
-        #expect(gate.lastObservationID == nil, "A rejected replay must not spend the gate's observe slot")
+        #expect(gate.basisObservationIDs.isEmpty, "A rejected replay must not spend the gate's observe slot")
         let genuine = try answer(next, uptime: 12)
         gate.sent(genuine)
         #expect(await session.receive(genuine, now: 0.4)
                 == .requestProposal(stepID: next.stepID, observationID: genuine.observationID))
-        #expect(gate.lastObservationID == genuine.observationID)
+        #expect(gate.basisObservationIDs == [genuine.observationID])
         let action = try command(await session.propose(proposal(genuine), now: 0.5))
         #expect(gate.admit(action) == nil, "The real command must remain executable after the replay")
     }
@@ -247,18 +257,26 @@ struct PhoneLoopMessageCorrelationTests {
             (try changed(action, step: UUID()), .notBasedOnLatestObservation),
             (try changed(action, step: UUID(), sequence: 999), .notBasedOnLatestObservation),
             (try changed(action, basis: UUID()), .notBasedOnLatestObservation),
-            (try changed(action, run: UUID()), .foreignRun),
-            (try changed(action, sequence: observe.sequence), .replayedOrOutOfOrder)
+            (try changed(action, run: UUID()), .foreignRun)
         ]
         for (invalid, refusal) in invalid {
             #expect(gate.admit(invalid) == refusal)
             gate.sent(try answer(invalid))
-            #expect(gate.lastObservationID == seen.observationID)
+            #expect(gate.basisObservationIDs == [seen.observationID])
             #expect(gate.lastAdmittedSequence == observe.sequence)
         }
+        // An action carrying the sequence of the observe itself is a replay. Its answer echoes
+        // that observe's run, step and sequence, so it is one more answer to it and may be named
+        // by the one action; the first answer stays valid.
+        let sameSequence = try changed(action, sequence: observe.sequence)
+        #expect(gate.admit(sameSequence) == .replayedOrOutOfOrder)
+        let again = try answer(sameSequence)
+        gate.sent(again)
+        #expect(gate.basisObservationIDs == [seen.observationID, again.observationID])
+        #expect(gate.lastAdmittedSequence == observe.sequence)
         #expect(gate.admit(action) == nil)
         #expect(gate.admit(action) == .replayedOrOutOfOrder)
-        #expect(gate.lastObservationID == nil)
+        #expect(gate.basisObservationIDs.isEmpty)
     }
 
     @Test

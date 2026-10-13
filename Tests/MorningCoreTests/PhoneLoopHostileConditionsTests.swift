@@ -67,12 +67,12 @@ struct PhoneLoopHostileConditionsTests {
                                                         from: JSONEncoder().encode(wrongStep))
         gate.sent(decodedWrongStep)
         #expect(await session.receive(decodedWrongStep, now: 0.1) == .ignored(.wrongStep))
-        #expect(gate.lastObservationID == nil,
+        #expect(gate.basisObservationIDs.isEmpty,
                 "An answer for another step must not become evidence for this observe command")
 
         let genuine = try observation(for: observe, screen: initialScreen)
         gate.sent(genuine)
-        #expect(gate.lastObservationID == genuine.observationID,
+        #expect(gate.basisObservationIDs == [genuine.observationID],
                 "The wrong-step answer must not consume the one accepted-answer slot")
         #expect(await session.receive(genuine, now: 0.2)
                 == .requestProposal(stepID: observe.stepID, observationID: genuine.observationID))
