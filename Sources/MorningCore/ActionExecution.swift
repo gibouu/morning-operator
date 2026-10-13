@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Synchronization
 
 /// The reviewable content of one action, as named text fields (a message has "body").
 ///
@@ -153,6 +154,7 @@ public enum ActionExecutionError: Error, LocalizedError, Equatable, Sendable {
     case duplicateIntent(intentID: UUID)
     case unreconciledOutcome(attemptID: UUID)
     case attemptNotFound(attemptID: UUID)
+    case journalAlreadyHasExecutor
 
     public var errorDescription: String? {
         switch self {
@@ -166,6 +168,7 @@ public enum ActionExecutionError: Error, LocalizedError, Equatable, Sendable {
         case .unreconciledOutcome(let id):
             "The outcome of attempt \(id) is still unknown. Check what happened before sending anything else there."
         case .attemptNotFound(let id): "Attempt \(id) could not be found."
+        case .journalAlreadyHasExecutor: "This action journal already has an executor."
         }
     }
 }
@@ -179,7 +182,8 @@ public enum ActionExecutionError: Error, LocalizedError, Equatable, Sendable {
 ///
 /// `dispatch` and `reconcile` run strictly one at a time, including the adapter call: a second
 /// request waits, then sees the journal the first one left behind. `revoke` never waits.
-/// Use one executor per journal store.
+/// That ordering is what makes "unknown blocks, reconcile first" hold, so a journal store accepts
+/// one executor at a time; nothing else should write to that store.
 public actor ActionExecutor {
     private let journal: ActionJournalStore
     private let adapter: any ActionAdapter
@@ -188,9 +192,17 @@ public actor ActionExecutor {
     private var isBusy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
-    public init(journal: ActionJournalStore, adapter: any ActionAdapter, now: @escaping @Sendable () -> Date = { Date() }) {
+    private static let journalsInUse = Mutex<Set<ObjectIdentifier>>([])
+
+    /// Throws `journalAlreadyHasExecutor` while another executor for the same store is alive.
+    public init(journal: ActionJournalStore, adapter: any ActionAdapter,
+                now: @escaping @Sendable () -> Date = { Date() }) throws {
+        guard Self.journalsInUse.withLock({ $0.insert(ObjectIdentifier(journal)).inserted })
+        else { throw ActionExecutionError.journalAlreadyHasExecutor }
         self.journal = journal; self.adapter = adapter; self.now = now
     }
+
+    deinit { Self.journalsInUse.withLock { _ = $0.remove(ObjectIdentifier(journal)) } }
 
     /// The person approved exactly this draft: this intent, account, target and payload.
     public func approve(_ draft: ActionDraft, expiresAt: Date? = nil) -> ActionApproval {
@@ -220,9 +232,10 @@ public actor ActionExecutor {
 
         let attempts = await journal.snapshot().attempts
         // An attempt still marked dispatching here means its outcome could not be written down.
-        if let unresolved = attempts.first(where: { blocks($0, intent) }) {
-            throw ActionExecutionError.unreconciledOutcome(attemptID: unresolved.id)
-        }
+        if let unresolved = attempts.first(where: {
+            [.dispatching, .outcomeUnknown].contains($0.state) && $0.intent.kind == intent.kind
+            && $0.intent.accountID == intent.accountID && $0.intent.targetID == intent.targetID
+        }) { throw ActionExecutionError.unreconciledOutcome(attemptID: unresolved.id) }
         guard !attempts.contains(where: { $0.intent.id == intent.id })
         else { throw ActionExecutionError.duplicateIntent(intentID: intent.id) }
 
@@ -237,16 +250,10 @@ public actor ActionExecutor {
             throw error
         }
 
-        // `dispatching` is on disk, which took time and let other work in. Look once more, with no
-        // suspension between the last check and the adapter call: another attempt at this conversation
-        // must not be open (a second executor on the same store would show up here), and the approval
-        // must still stand. The adapter has not been invoked, so a refusal here is a known non-event.
-        do {
-            if let other = await journal.snapshot().attempts.first(where: { $0.id != attempt.id && blocks($0, intent) }) {
-                throw ActionExecutionError.unreconciledOutcome(attemptID: other.id)
-            }
-            _ = try authorize(intent, approvalID: approvalID, at: now())
-        } catch {
+        // `dispatching` is on disk, which took time: the approval may have expired or been withdrawn
+        // meanwhile. Check once more, with no suspension between this and the adapter call.
+        // The adapter has not been invoked, so a refusal here is a known non-event.
+        do { _ = try authorize(intent, approvalID: approvalID, at: now()) } catch {
             try? await journal.recordKnownFailure(attempt.id, at: now())
             throw error
         }
@@ -279,12 +286,6 @@ public actor ActionExecutor {
         case .stillUnknown: if attempt.state == .dispatching { try await journal.recordUnknown(attemptID, at: now()) }
         }
         return try await current(attemptID)
-    }
-
-    /// An open or unknown attempt at the same action class, account and target.
-    private func blocks(_ attempt: ActionAttempt, _ intent: ActionIntent) -> Bool {
-        [.dispatching, .outcomeUnknown].contains(attempt.state) && attempt.intent.kind == intent.kind
-        && attempt.intent.accountID == intent.accountID && attempt.intent.targetID == intent.targetID
     }
 
     private func remember(_ approval: ActionApproval) -> ActionApproval {

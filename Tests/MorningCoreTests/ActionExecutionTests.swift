@@ -77,7 +77,7 @@ private struct Harness {
 
     func launch() throws -> (journal: ActionJournalStore, executor: ActionExecutor) {
         let journal = try ActionJournalStore(fileURL: url, recoveringAt: clock.read())
-        return (journal, ActionExecutor(journal: journal, adapter: adapter, now: { [clock] in clock.read() }))
+        return (journal, try ActionExecutor(journal: journal, adapter: adapter, now: { [clock] in clock.read() }))
     }
     func cleanUp() { try? FileManager.default.removeItem(at: directory) }
 }
@@ -351,7 +351,7 @@ struct ActionExecutionTests {
     }
 
     @Test
-    func revocationStopsADispatchThatIsAlreadyWaitingItsTurn() async throws {
+    func revocationDuringASendStopsEveryDispatchThatHasNotReachedTheAdapter() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let (_, executor) = try harness.launch()
         let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
@@ -359,7 +359,8 @@ struct ActionExecutionTests {
         await harness.adapter.holdNextDispatch()
         let first = Task { try await executor.dispatch(one, approvalID: standing.id) }
         while await harness.adapter.dispatched.isEmpty { await Task.yield() }
-        // The second request queues behind the send in progress; the withdrawal arrives after it.
+        // The second request is made first and (after the yields, in practice) is queued behind the
+        // send in progress when the withdrawal arrives. Whichever order they land in, it must be refused.
         let second = Task { () -> ActionExecutionError? in
             do { _ = try await executor.dispatch(two, approvalID: standing.id); return nil }
             catch { return error as? ActionExecutionError }
@@ -373,25 +374,23 @@ struct ActionExecutionTests {
     }
 
     @Test
-    func twoExecutorsOnOneJournalCannotBothSendIntoAnUnknownOutcome() async throws {
-        // Not a supported arrangement (one executor per store), but the rule must not depend on it.
+    func journalStoreAcceptsOneExecutorAtATime() async throws {
+        // Dispatch and reconcile are only ordered within one executor, so a second one is refused.
         let harness = Harness(); defer { harness.cleanUp() }
         let journal = try ActionJournalStore(fileURL: harness.url)
-        let executors = (0..<2).map { _ in ActionExecutor(journal: journal, adapter: harness.adapter) }
-        await harness.adapter.reply(.lostResponse)
-        var work: [(ActionExecutor, ActionDraft, UUID)] = []
-        for index in 0..<16 {
-            let executor = executors[index % 2]
-            let standing = await executor.approveStanding(kind: .sendMessage, accountID: "account-A", targetID: "conversation-A")
-            work.append((executor, draft(body: "message \(index)"), standing.id))
+        do {
+            let first = try ActionExecutor(journal: journal, adapter: harness.adapter)
+            do {
+                _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
+                Issue.record("A second executor was created for a journal store that already has one")
+            } catch { #expect(error as? ActionExecutionError == .journalAlreadyHasExecutor) }
+            let draft = draft()
+            try await first.dispatch(draft, approvalID: await first.approve(draft).id)
         }
-        await withTaskGroup(of: Void.self) { group in
-            for (executor, draft, approvalID) in work { group.addTask { _ = try? await executor.dispatch(draft, approvalID: approvalID) } }
-        }
-        #expect(await harness.adapter.dispatched.count <= 1)
-        let states = await journal.snapshot().attempts.map(\.state)
-        #expect(states.filter { $0 == .outcomeUnknown }.count == (await harness.adapter.dispatched.count))
-        #expect(states.allSatisfy { $0 == .outcomeUnknown || $0 == .failedKnown })
+        // Once the first is gone the store can be handed to another; a different store is never affected.
+        _ = try ActionExecutor(journal: journal, adapter: harness.adapter)
+        _ = try harness.launch()
+        #expect(await harness.adapter.dispatched.count == 1)
     }
 
     // MARK: Unknown outcomes
@@ -564,7 +563,7 @@ struct ActionExecutionTests {
             .approvalNotIssued(approvalID: id), .approvalRevoked(approvalID: id), .approvalExpired(approvalID: id),
             .fingerprintMismatch(approved: draft.fingerprint, current: changed.fingerprint),
             .outsideApprovedScope(approvalID: id), .duplicateIntent(intentID: id),
-            .unreconciledOutcome(attemptID: id), .attemptNotFound(attemptID: id)
+            .unreconciledOutcome(attemptID: id), .attemptNotFound(attemptID: id), .journalAlreadyHasExecutor
         ]
         for error in errors { loggable += [error.localizedDescription, "\(error)", String(describing: error.errorDescription)] }
 
