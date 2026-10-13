@@ -25,6 +25,7 @@ English/French sample content does not mean a fully bilingual app. Greeting and 
 | [Your day](YOUR-DAY.md) | Select calendars and a city, preview a sourced recap, and add it to an approved morning |
 | [Saved moments](SAVED-MOMENTS.md) | Select an exact historical excerpt, preview it and hear it in an approved routine |
 | [Voice commands](VOICE.md) | Use an explicit listening turn; understand commands, audio handoff and outstanding device checks |
+| [Voice audit](VOICE-AUDIT.md) | What Apple documents about Personal Voice and Siri voices, and what a custom voice would require; none is offered |
 | [V2 design contract](V2-DESIGN.md) | Morning and Review, explicit spoken/typed completion capture, and accessible layout fallbacks |
 | [Short morning trial checklist](DEVICE-SETUP.md#tomorrow-morning-checklist) | The recording checks and recovery boundaries retained from the earlier physical trial |
 | [Onboarding](ONBOARDING.md) | Current sunrise/date/home navigation, plus how either collaborator builds and installs the selected source branch |
