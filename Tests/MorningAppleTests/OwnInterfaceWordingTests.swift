@@ -372,8 +372,11 @@ struct OwnInterfaceWordingTests {
         for screen in OwnInterfaceWording.screens {
             #expect(screen.copy.count >= 2)
             // Two sentences count as two pieces, so neither may be found inside the other.
-            for (index, sentence) in screen.copy.enumerated() {
-                #expect(!screen.copy.indices.contains { $0 != index && sentence.isPart(of: screen.copy[$0]) })
+            let wordings = screen.copy.map(\.normalized)
+            for (index, sentence) in wordings.enumerated() {
+                #expect(!wordings.indices.contains { other in
+                    other != index && sentence.contains { mine in wordings[other].contains { " \($0) ".contains(" \(mine) ") } }
+                })
             }
             for wording in screen.copy.flatMap(\.normalized) {
                 #expect(wording.split(separator: " ").count >= 4, "“\(wording)” is too short to identify \(screen.name).")
@@ -435,6 +438,8 @@ struct OwnInterfaceWordingTests {
                        "ENREGISTRER\nCHOISIR\nUne capture d'écran ou un fichier texte fonctionne\naussi. Seul le fichier choisi est lu"] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
         }
+        // A label is judged against the wording actually on screen, not its other translation.
+        #expect(isOwnInterface("Time in your routine, excluding pauses.\nVotre routine"))
         // A sentence shown twice still leaves its second reading free to pair with another.
         #expect(isOwnInterface("Use the audio output picker to choose an available speaker. Output doesn't connect a HomePod microphone.\nUse the audio output picker to choose an available speaker."))
         // Recordings made before the button was shortened, and its French form.

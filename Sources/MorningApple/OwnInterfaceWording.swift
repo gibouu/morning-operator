@@ -47,9 +47,13 @@ enum OwnInterfaceWording {
             }
         }
 
-        /// This wording also occurs, as whole words, inside `other`.
-        func isPart(of other: Phrase) -> Bool {
-            normalized.contains { mine in other.normalized.contains { " \($0) ".contains(" \(mine) ") } }
+        /// A line of the frame reads as this wording without being words of a `sentence`
+        /// found in the same frame.
+        func isLine(of frame: Frame, apartFrom sentences: [Phrase]) -> Bool {
+            let present = sentences.flatMap(\.normalized).filter { frame.text.contains(" \($0) ") }
+            return normalized.contains { line in
+                frame.lines.contains(line) && !present.contains { " \($0) ".contains(" \(line) ") }
+            }
         }
     }
 
@@ -402,10 +406,7 @@ enum OwnInterfaceWording {
             }
             // A wrapped sentence can leave a line that reads like a label ("your routine,").
             // That line is the same piece, not a second one.
-            let sentences = screen.copy.filter { $0.isWithin(frame) }
-            return twoSentences || screen.controls.contains { control in
-                control.isLine(of: frame) && !sentences.contains { control.isPart(of: $0) }
-            }
+            return twoSentences || screen.controls.contains { $0.isLine(of: frame, apartFrom: screen.copy) }
         }
     }
 
