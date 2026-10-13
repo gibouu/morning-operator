@@ -12,6 +12,9 @@ public enum SegmentedSessionEvidenceError: Error, Sendable, Equatable {
     /// No sampled frame could be decoded and read. Nothing is known about the segment:
     /// that is a failure to retry, not a segment without readable text.
     case noFrameCouldBeRead
+    /// A frame held text that the extraction dropped to stay within its limits. The
+    /// segment did show something, so it is not a segment without readable text.
+    case textWasOmitted
 }
 
 /// What the extraction of one segment's file amounts to.
@@ -95,7 +98,12 @@ public enum SegmentedSessionEvidence {
                                                 sourceLabel: sourceLabel, importedAt: importedAt))
         }
         try checkBounds(of: evidence, for: work)
-        guard evidence.frames.contains(where: { $0.outcome == .blank || $0.outcome == .observed }) else {
+        // Only frames read as blank support this result. A frame marked observed here has
+        // no text left because it was cut, and releasing its raw file would lose it.
+        guard !evidence.frames.contains(where: { $0.outcome == .observed || $0.textWasTruncated }) else {
+            throw SegmentedSessionEvidenceError.textWasOmitted
+        }
+        guard evidence.frames.contains(where: { $0.outcome == .blank }) else {
             throw SegmentedSessionEvidenceError.noFrameCouldBeRead
         }
         return .noReadableText(.init(acquisitionID: nil, sampledFrameCount: evidence.frames.count,

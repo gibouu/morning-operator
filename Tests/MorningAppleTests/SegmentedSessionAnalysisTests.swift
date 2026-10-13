@@ -282,6 +282,17 @@ struct SegmentedSessionAnalysisTests {
                     origin: .synthetic, sourceLabel: "Synthetic", importedAt: FakeSegmentedSession.start)
             }
         }
+        // A frame whose text was cut away showed something: never "no readable text".
+        let cut = try ObservationVideoEvidence(durationSeconds: 300, frames: [
+            try ObservationFrameEvidence(requestedTimeSeconds: 60, actualTimeSeconds: 60, outcome: .blank),
+            try ObservationFrameEvidence(requestedTimeSeconds: 180, actualTimeSeconds: 180, outcome: .observed,
+                                         text: "", textWasTruncated: true)
+        ])
+        #expect(!cut.hasRecognizedText)
+        #expect(throws: SegmentedSessionEvidenceError.textWasOmitted) {
+            try SegmentedSessionEvidence.outcome(for: work, evidence: cut, origin: .synthetic,
+                sourceLabel: "Synthetic", importedAt: FakeSegmentedSession.start)
+        }
         // Blank evidence is held to the same bounds as any other.
         #expect(throws: SegmentedSessionEvidenceError.evidenceOutsideSegment) {
             try SegmentedSessionEvidence.outcome(for: work, evidence: blankEvidence(duration: 600),
@@ -542,15 +553,21 @@ struct SegmentedSessionForgettingGuardTests {
             .appendingPathComponent("../../Sources/MorningOperator").standardizedFileURL
         let files = try FileManager.default.contentsOfDirectory(at: app, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "swift" }
-        #expect(files.contains { $0.lastPathComponent == "MorningStore.swift" })
-        let code = try files.map { url in
-            // Comments may name the store; only code that uses it counts.
+        // Comments may name the store; only code counts. Everything from "//" to the end
+        // of a line is dropped, which also drops the rest of a line holding a URL.
+        func code(_ url: URL) throws -> String {
             try String(contentsOf: url, encoding: .utf8).components(separatedBy: .newlines)
-                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
-        }.joined(separator: "\n")
-        let usesStore = code.contains("RecordingSessionStore") || code.contains("RecordingSessionManifest")
-            || code.contains("SegmentedSessionAnalysis")
-        #expect(!usesStore || code.contains(".forgetAll()"),
+                .map { line in line.range(of: "//").map { String(line[..<$0.lowerBound]) } ?? line }
+                .joined(separator: "\n")
+        }
+        let store = try #require(files.first { $0.lastPathComponent == "MorningStore.swift" })
+        let usesStore = try files.contains { url in
+            let text = try code(url)
+            return ["RecordingSessionStore", "RecordingSessionManifest", "SegmentedSessionAnalysis"].contains(where: text.contains)
+        }
+        // The call must be in the file that owns full forgetting, in code.
+        let forgets = try code(store).contains(".forgetAll()")
+        #expect(!usesStore || forgets,
                 "The app now creates or analyses recording sessions: full forgetting in MorningStore must call RecordingSessionStore.forgetAll().")
     }
 }
