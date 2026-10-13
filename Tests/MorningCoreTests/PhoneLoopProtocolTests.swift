@@ -485,6 +485,14 @@ struct PhoneLoopProtocolTests {
         #expect(still.phone.performed == [.openApp, .scrollListUp])
         #expect(still.session.record.steps.map(\.outcome) == [.verified, .stopped])
 
+        // The answer shows the app with nothing in it (loading, or an error page): not a scroll.
+        let blank = try Harness(maxSteps: 3, maxRetries: 0)
+        _ = try blank.openMailAndObserve()
+        let scroll = try blank.propose(.scrollListUp(try blank.target("list-main")))
+        #expect(blank.deliver(try blank.forged(for: scroll, clockID: "phone-boot-1", uptime: 95_000,
+                                               screen: PhoneScreenState(foregroundBundleID: mailApp, elements: [])))
+                == .stopped(.postconditionNotVerified))
+
         // Two lists: the driver would not choose, and neither does the session.
         let two = try Harness(maxSteps: 3)
         two.phone.extraElements = [PhoneScreenElement(id: "list-other", role: .list, label: "")]
@@ -686,6 +694,11 @@ struct PhoneLoopProtocolTests {
                          { try $0.target("button-inbox") }) == .stopped(.ambiguousTarget))
         // A tab is not a navigation row, and a row is not a tab.
         #expect(try stop({ _ in }, { try $0.target("cell-inbox") }, as: { .selectTab($0) }) == .stopped(.actionNotPermitted))
+        // A row that carries an allowed tab label is still not the tab.
+        #expect(try stop({ $0.phone.extraElements = [PhoneScreenElement(id: "cell-search", role: .cell, label: "Search")] },
+                         { try $0.target("cell-search") }, as: { .selectTab($0) }) == .stopped(.ambiguousTarget))
+        #expect(try stop({ _ in }, { _ in PhoneElementTarget(elementID: "tab-search", role: .cell, label: "Search") },
+                         as: { .selectTab($0) }) == .stopped(.ambiguousTarget))
         #expect(try stop({ _ in }, { _ in PhoneElementTarget(elementID: "tab-search", role: .tab, label: "Inbox") })
                 == .stopped(.ambiguousTarget))
         // The unambiguous row is accepted.
@@ -889,6 +902,27 @@ struct PhoneLoopProtocolTests {
         #expect(try lost.exchange(directive) == .completed)
         #expect(lost.phone.performed == [.openApp])
         #expect(lost.session.record.steps.first?.retryCount == 2)
+
+        // The look shows another allowed app with a row of the same identifier, role and label.
+        // That is a different screen: the action is not sent there and nothing is verified.
+        let moved = try Harness(maxSteps: 2)
+        let both = try PhoneLoopPolicy(allowedBundleIDs: [mailApp, "com.example.notes"],
+                                       navigation: ["Inbox": PhoneScreenExpectation(role: .navigationBar, label: "Inbox")],
+                                       tabLabels: [], allowsListScroll: false, maxEvidenceAgeSeconds: 2,
+                                       commandTimeoutSeconds: 5, reconnectWindowSeconds: 30,
+                                       maxRetriesPerStep: 2, maxReconnects: 1, maxSteps: 2)
+        moved.session = try PhoneLoopSession(runID: moved.phone.gate.runID, policy: both, mode: .tetheredController,
+                                             startedAt: Date(timeIntervalSince1970: 1_800_000_000))
+        _ = try moved.openMailAndObserve()
+        _ = try moved.command(try moved.propose(.tapNavigation(try moved.target("cell-inbox"))))   // never carried
+        moved.now += 6
+        let look = moved.session.checkDeadlines(now: moved.now)
+        let elsewhere = PhoneScreenState(foregroundBundleID: "com.example.notes",
+                                         elements: [PhoneScreenElement(id: "cell-inbox", role: .cell, label: "Inbox")])
+        #expect(moved.deliver(try moved.forged(for: look, clockID: "phone-boot-1", uptime: 95_000, screen: elsewhere))
+                == .stopped(.postconditionNotVerified))
+        #expect(moved.sentKinds == [.observe, .openApp, .observe])
+        #expect(moved.session.record.steps.map(\.outcome) == [.verified, .stopped])
 
         // No retry left to look with: the step is not assumed either way.
         let strict = try Harness(maxRetries: 0)
@@ -1103,6 +1137,18 @@ struct PhoneLoopProtocolTests {
         #expect(bounded.session.record.authorship == .mixed)
         #expect(bounded.session.record.steps.map(\.mode) == [.manualIntervention])
         #expect(bounded.sentKinds == [.observe, .observe])
+
+        // The same while the channel is down: no command is sent, the intervention still counts.
+        let offline = try Harness(maxRetries: 1)
+        _ = offline.session.start(now: 0)
+        _ = offline.session.transportDisconnected(now: 1)
+        #expect(offline.session.recordManualIntervention(now: 2) == .wait)
+        #expect(offline.session.recordManualIntervention(now: 3) == .stopped(.userStop))
+        #expect(offline.session.transportReconnected(now: 4) == .ignored(.notExpectedInThisPhase))
+        let none = try Harness(maxRetries: 0)
+        _ = none.session.start(now: 0)
+        _ = none.session.transportDisconnected(now: 1)
+        #expect(none.session.recordManualIntervention(now: 2) == .stopped(.userStop))
     }
 
     @Test

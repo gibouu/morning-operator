@@ -302,8 +302,11 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             // The action's result was in doubt. It either happened, or it may be sent again
             // against this new evidence, or the run stops; it is never assumed.
             if Self.holds(pending.expectation, in: observation.screen) { return completeStep(.verified, now: now) }
+            // Element identifiers mean nothing across observations, so "the same action" also has
+            // to mean the same app: a look that shows another app is not a place to try again.
             guard current.retryCount < policy.maxRetriesPerStep,
-                  case .allowed(let expectation) = rule(on: pending.action, in: observation.screen)
+                  case .allowed(let expectation) = rule(on: pending.action, in: observation.screen),
+                  expectation.app == pending.expectation.app
             else { return stop(.postconditionNotVerified, now: now) }
             step?.retryCount += 1
             step?.pending?.expectation = expectation
@@ -407,17 +410,20 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
 
     /// The person touched the phone. The step and the run are marked, and nothing captured before
     /// this moment is used: evidence in hand is dropped, an outstanding command is abandoned (its
-    /// answer will be ignored) and the screen is observed again. That observation counts against
-    /// the step's retries; with none left the run stops as `userStop`.
+    /// answer will be ignored) and the screen is observed again (after a reconnect, if the channel
+    /// is down). Every intervention spends one of the step's retries; with none left the run
+    /// stops as `userStop`.
     public mutating func recordManualIntervention(now: TimeInterval) -> PhoneLoopDirective {
         guard isUnderway || phase == .disconnected else { return .ignored(.notExpectedInThisPhase) }
         step?.mode = .manualIntervention
         record.authorship = .mixed
         evidence = nil
-        // Reconnecting observes again anyway.
-        guard phase != .disconnected else { return .wait }
         closeRoundTrip(.abandoned, now: now)
-        return recover(orStopWith: .userStop, now: now)
+        guard phase == .disconnected else { return recover(orStopWith: .userStop, now: now) }
+        // Reconnecting observes again anyway; the intervention still counts.
+        guard let current = step, current.retryCount < policy.maxRetriesPerStep else { return stop(.userStop, now: now) }
+        step?.retryCount += 1
+        return .wait
     }
 
     // MARK: Transitions
@@ -563,7 +569,10 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             let tabs = screen.elements.filter { $0.role == .tab }
             let named = tabs.filter { $0.label == label }
             return named.count == 1 && named[0].isSelected && tabs.filter(\.isSelected).count == 1
-        case .cellsChanged(let before): return cellLabels(in: screen) != before
+        case .cellsChanged(let before):
+            // The list must still be there with rows in it: an empty or loading screen is not a scroll.
+            let after = cellLabels(in: screen)
+            return screen.elements.filter { $0.role == .list && $0.isHittable }.count == 1 && !after.isEmpty && after != before
         }
     }
 
