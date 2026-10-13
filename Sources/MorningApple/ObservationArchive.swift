@@ -30,6 +30,24 @@ public enum ObservationAcquisitionSourceKind: String, Codable, Sendable, CaseIte
     case image, video, text, manual, unknown
 }
 
+extension ObservationAcquisition {
+    /// The source label of a typed note in builds that saved no source kind. It is
+    /// persisted data, not interface text: it stays English and is never translated.
+    public static let legacyWrittenSourceLabel = "Your written observation"
+
+    /// Whether this is evidence brought in from a file or recording rather than a note
+    /// typed by the user. Decided from the saved source kind, so a source label written
+    /// in one interface language reads the same in another. Only a legacy entry of
+    /// unknown kind falls back to the one label old builds gave a typed note.
+    public var isImportedEvidence: Bool {
+        switch sourceKind {
+        case .manual: false
+        case .image, .video, .text: true
+        case .unknown: sourceLabel != Self.legacyWrittenSourceLabel
+        }
+    }
+}
+
 public enum ObservationDateProvenance: String, Codable, Sendable {
     case recordingSession, userAssigned
 }

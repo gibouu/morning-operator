@@ -372,7 +372,8 @@ final class MorningStore {
                     // metadata. Migration deliberately leaves both dates unknown.
                     let original = saved.observationNotes ?? ""
                     if !original.isEmpty || saved.observationVideoEvidence != nil {
-                        let source = saved.observationSource ?? String(localized: "Your written observation")
+                        // Stable legacy marker: this unknown-kind entry is classified by it later.
+                        let source = saved.observationSource ?? ObservationAcquisition.legacyWrittenSourceLabel
                         let entry = try ObservationAcquisition(importedAt: nil,
                             sourceKind: saved.observationVideoEvidence == nil ? .unknown : .video,
                             sourceLabel: String(source.prefix(256)), originalText: original,
@@ -417,7 +418,8 @@ final class MorningStore {
         }
     }
 
-    var hasImportedObservation: Bool { (selectedObservationID != nil || !notes.isEmpty || observationVideoEvidence != nil) && ![String(localized: "Your written observation"), "Your written observation"].contains(notesSourceLabel) }
+    /// Unsaved typed notes have no archive entry yet and are never imported evidence.
+    var hasImportedObservation: Bool { selectedObservation?.isImportedEvidence ?? false }
     var hasPendingRecording: Bool { pendingRecordingURL != nil }
     var canStartRecording: Bool { storageIsAvailable && !busy && !sessionActive && !hasPendingRecording }
 
