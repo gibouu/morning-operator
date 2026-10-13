@@ -274,8 +274,12 @@ public extension ComparableMorningProfile {
         for entry in archive.entries {
             // A recording the person moved to another day in review is judged there, without
             // the declaration it was given for the morning it was recorded on.
-            guard case .counted(let capture) = window.standing(of: entry),
-                  let morning = due.first(where: { $0.dayKey == capture.dayKey }),
+            guard case .counted(let capture) = window.standing(of: entry) else { continue }
+            // Placed on its own morning and nowhere else, from the moment it is declared:
+            // while that morning is not yet a scheduled day of the comparison, the
+            // observation is on none, and never on the day its own date would give it.
+            mornings[entry.id] = capture.expectedStart
+            guard due.contains(where: { $0.dayKey == capture.dayKey }),
                   let core = window.comparableInterval(expectedStart: capture.expectedStart,
                                                        expectedEnd: capture.expectedEnd) else { continue }
             // The two ends are exact when the recording reaches them, so a morning recorded
@@ -287,7 +291,6 @@ public extension ComparableMorningProfile {
             scopes[entry.id] = try ObservationCaptureScope(
                 startOffsetSeconds: core.start.timeIntervalSince(capture.actualStart),
                 durationSeconds: coreSeconds, capturedIntervals: captured)
-            mornings[entry.id] = morning.expectedStart
         }
         try self.init(archive: archive, scheduledDays: due.map(\.expectedStart),
                       timeZoneIdentifier: window.timeZoneIdentifier, origin: origin,

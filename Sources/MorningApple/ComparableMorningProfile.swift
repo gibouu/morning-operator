@@ -63,8 +63,9 @@ public struct ComparableMorningProfile: Sendable, Equatable {
     /// Observations on a scheduled date with another origin. They never contribute.
     public let otherOriginAcquisitionIDs: [UUID]
     /// Dated in another time zone, whatever the date. Not moved onto this calendar. An
-    /// observation given a scheduled day through `scheduledDayByObservation` is not listed
-    /// here: it is on this calendar by that day, whatever zone its own date is written in.
+    /// observation given a day through `scheduledDayByObservation` is not listed here, nor
+    /// under `undatedAcquisitionIDs`: it is on this calendar by that day, whatever zone its
+    /// own date is written in.
     public let otherTimeZoneAcquisitionIDs: [UUID]
     public let undatedAcquisitionIDs: [UUID]
 
@@ -81,10 +82,11 @@ public struct ComparableMorningProfile: Sendable, Equatable {
     ///     `declaredCapture` for that observation. `init(window:archive:now:)` builds these
     ///     from the declarations saved on the observations themselves.
     ///   - scheduledDayByObservation: for an observation a planned scope declared to one
-    ///     scheduled day, that day, as one of `scheduledDays`. The observation is then
-    ///     counted on that day and on no other: its own date is not read, so it can neither
-    ///     be counted a second time under the date of the calendar it was recorded on, nor
-    ///     be refused for being dated in another zone. A day that is not scheduled is an error.
+    ///     day, an instant of that day. The observation is then counted on that day and on
+    ///     no other: its own date is not read, so it can neither be counted a second time
+    ///     under the date of the calendar it was recorded on, nor be refused for being dated
+    ///     in another zone. When that day is not one of `scheduledDays` (a morning still to
+    ///     come), the observation is on none of them.
     public init(archive: ObservationArchive, scheduledDays: [Date], timeZoneIdentifier: String,
                 origin: ObservationAcquisitionOrigin, comparisonKey: String,
                 policy: ObservationComparisonPolicy,
@@ -115,9 +117,9 @@ public struct ComparableMorningProfile: Sendable, Equatable {
             let key: String
             if let day = scheduledDayByObservation[entry.id] {
                 // Placed by its declaration. Its own date and zone are not consulted, so it
-                // has exactly one day here.
+                // has at most one day here, and that day is never the one its date names.
                 key = try dayKey(day)
-                guard scheduledKeys.contains(key) else { throw ObservationTraceError.invalidDay }
+                guard scheduledKeys.contains(key) else { continue }
                 dateByID[entry.id] = day
             } else {
                 guard let observed = entry.observedDate else { undated.append(entry.id); continue }

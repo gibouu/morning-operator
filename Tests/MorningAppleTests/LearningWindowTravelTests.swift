@@ -393,6 +393,49 @@ struct LearningWindowTravelTests {
         #expect(LearningWindowReport(window: learning, archive: odd, now: now).reassignedAcquisitionIDs == [impossible.id])
     }
 
+    @Test func aDeclarationForAMorningStillToComeNeverLandsOnTheDayItsOwnDateNames() throws {
+        // Monday has its recording. A session then starts on Monday at 23:59:30 in Paris and
+        // only its second segment, begun at 00:04:30 on Tuesday, is kept: it is dated Monday
+        // by its session and declared to Tuesday, hours before Tuesday's window opens.
+        let learning = try window(mornings: 2)
+        let monday = try recording(at(12, 7), zone: paris)
+        let lateStart = try at(13, 0, 4, 30)
+        let base = try recording(lateStart, zone: paris)
+        let segment = try ObservationAcquisition(id: base.id,
+            observedDate: .init(date: at(12, 23, 59, 30), timeZoneIdentifier: paris, provenance: .recordingSession),
+            origin: base.origin, sourceKind: base.sourceKind, sourceLabel: base.sourceLabel,
+            originalText: base.originalText, videoEvidence: base.videoEvidence, classification: base.classification,
+            recordingContext: base.recordingContext,
+            sessionSegment: .init(sessionID: UUID(), segmentIndex: 1, startSeconds: 300, endSeconds: 600))
+        #expect(segment.observedDate?.dayKey == key(12))
+        var archive = ObservationArchive()
+        try declare([monday, segment], to: learning, in: &archive)
+        #expect(archive.entry(id: segment.id)?.windowCapture?.dayKey == key(13))
+        // The same recording made from New York, filed there under Monday too.
+        var away = ObservationArchive()
+        try declare([monday, try recording(lateStart, zone: newYork)], to: learning, in: &away)
+
+        for (archive, second) in [(archive, segment.id), (away, away.entries[1].id)] {
+            // 00:10 on Tuesday: Monday is over, Tuesday is still to come.
+            let early = try at(13, 0, 10)
+            let report = LearningWindowReport(window: learning, archive: archive, now: early)
+            #expect(report.mornings.map(\.acquisitionIDs) == [[monday.id], [second]])
+            #expect(report.mornings.map(\.notCountedReason) == [nil, .observedOutsideWindow])
+            let before = try ComparableMorningProfile(window: learning, archive: archive, now: early, maximumSampleGapSeconds: 16)
+            // Monday is judged on Monday's recording alone: Tuesday's is on no scheduled day yet.
+            #expect(before.report.scheduledDayCount == 1 && before.report.includedDayKeys == [key(12)])
+            #expect(before.report.excludedDays.isEmpty)
+            #expect(before.acquisitionIDsByDayKey == [key(12): [monday.id]])
+            #expect(before.otherTimeZoneAcquisitionIDs.isEmpty && before.undatedAcquisitionIDs.isEmpty)
+            // Once Tuesday is over it is Tuesday's, and Monday has not changed.
+            let late = try at(13, 8)
+            let after = try ComparableMorningProfile(window: learning, archive: archive, now: late, maximumSampleGapSeconds: 16)
+            #expect(after.report.includedDayKeys == [key(12)])
+            #expect(after.report.excludedDays == [.init(dayKey: key(13), reason: .partialCapture)])
+            #expect(after.acquisitionIDsByDayKey == [key(12): [monday.id], key(13): [second]])
+        }
+    }
+
     @Test func pauseStopAndTheAllowancesHoldForARecordingMadeAway() throws {
         var learning = try window(mornings: 3)
         var archive = ObservationArchive()
