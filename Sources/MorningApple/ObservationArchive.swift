@@ -121,6 +121,10 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
     /// It does not establish physical pickup, PTS-zero alignment or continuous coverage.
     /// Legacy and externally imported recordings have no inferred recording context.
     public let recordingContext: ObservationRecordingContext?
+    /// What this recording captured of one morning of a learning window, written once when
+    /// the recording is declared to that window. Nil for every observation saved before
+    /// learning windows existed and for every one never declared: its capture is unknown.
+    public let windowCapture: ObservationWindowCapture?
     public let origin: ObservationAcquisitionOrigin
     public let sourceKind: ObservationAcquisitionSourceKind
     public let sourceLabel: String
@@ -140,8 +144,12 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                 classification: ObservationContextClassification? = nil,
                 warnings: [ObservationAcquisitionWarning] = [],
                 recordingContext: ObservationRecordingContext? = nil,
-                frameReviews: [ObservationFrameReview] = []) throws {
+                frameReviews: [ObservationFrameReview] = [],
+                windowCapture: ObservationWindowCapture? = nil) throws {
         if let recordingContext, !Self.recordingContextIsValid(recordingContext, sourceKind: sourceKind) {
+            throw ObservationArchiveError.invalidRecordingContext
+        }
+        if let windowCapture, !Self.windowCaptureIsValid(windowCapture, context: recordingContext, evidence: videoEvidence) {
             throw ObservationArchiveError.invalidRecordingContext
         }
         guard importedAt.map(archiveDateIsValid) ?? true else { throw ObservationArchiveError.invalidDate }
@@ -170,6 +178,7 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
         self.fileSHA256 = digest
         self.observedDate = observedDate
         self.recordingContext = recordingContext
+        self.windowCapture = windowCapture
         self.origin = origin
         self.sourceKind = sourceKind
         self.sourceLabel = sourceLabel
@@ -220,6 +229,16 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             timeZoneIdentifier: context.timeZoneIdentifier, provenance: .recordingSession)) != nil
     }
 
+    /// A declaration is only as good as its source: the native recording session of this
+    /// very observation. Its start and zone must be that session's, and its length the
+    /// saved movie's. An imported file has no session and can carry no declaration.
+    private static func windowCaptureIsValid(_ capture: ObservationWindowCapture,
+        context: ObservationRecordingContext?, evidence: ObservationVideoEvidence?) -> Bool {
+        guard let context, let evidence else { return false }
+        return capture.actualStart == context.startedAt && capture.timeZoneIdentifier == context.timeZoneIdentifier &&
+            capture.actualEnd == context.startedAt.addingTimeInterval(evidence.durationSeconds)
+    }
+
     private static func textIsBounded(_ text: String, maximumCharacters: Int) -> Bool {
         text.count <= maximumCharacters && text.utf8.count <= ObservationArchive.maximumTextBytes
     }
@@ -240,7 +259,15 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                   origin: origin ?? self.origin, sourceKind: sourceKind, sourceLabel: sourceLabel, originalText: originalText,
                   correctedText: correctedText, videoEvidence: videoEvidence,
                   classification: classification, warnings: warnings, recordingContext: recordingContext,
-                  frameReviews: frameReviews ?? self.frameReviews)
+                  frameReviews: frameReviews ?? self.frameReviews, windowCapture: windowCapture)
+    }
+
+    fileprivate func declaring(_ capture: ObservationWindowCapture) throws -> Self {
+        try .init(id: id, importedAt: importedAt, fileSHA256: fileSHA256, observedDate: observedDate,
+                  origin: origin, sourceKind: sourceKind, sourceLabel: sourceLabel, originalText: originalText,
+                  correctedText: correctedText, videoEvidence: videoEvidence,
+                  classification: classification, warnings: warnings, recordingContext: recordingContext,
+                  frameReviews: frameReviews, windowCapture: capture)
     }
 
     /// Derived interpretation can be discarded independently of valid source. Exact source
@@ -319,7 +346,7 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
 
     private enum CodingKeys: String, CodingKey {
         case id, importedAt, fileSHA256, observedDate, origin, sourceKind, sourceLabel, originalText
-        case correctedText, videoEvidence, classification, warnings, recordingContext, frameReviews
+        case correctedText, videoEvidence, classification, warnings, recordingContext, frameReviews, windowCapture
     }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -341,6 +368,12 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             restoredContext = nil
             if !warnings.contains(.invalidRecordingContextRemoved) { warnings.append(.invalidRecordingContextRemoved) }
         }
+        // A declaration that cannot be read, or that no longer matches its recording, is
+        // dropped without a warning: the capture is unknown again, as it was before.
+        let videoEvidence = try values.decodeIfPresent(ObservationVideoEvidence.self, forKey: .videoEvidence)
+        var restoredCapture = (try? values.decodeIfPresent(ObservationWindowCapture.self, forKey: .windowCapture)) ?? nil
+        if let capture = restoredCapture,
+           !Self.windowCaptureIsValid(capture, context: restoredContext, evidence: videoEvidence) { restoredCapture = nil }
         var restoredClassification: ObservationContextClassification?
         do { restoredClassification = try values.decodeIfPresent(ObservationContextClassification.self, forKey: .classification) }
         catch {
@@ -348,7 +381,6 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             if !warnings.contains(.invalidClassificationRemoved) { warnings.append(.invalidClassificationRemoved) }
         }
         let correctedText = try values.decodeIfPresent(String.self, forKey: .correctedText)
-        let videoEvidence = try values.decodeIfPresent(ObservationVideoEvidence.self, forKey: .videoEvidence)
         let restoredReviews: [ObservationFrameReview]
         do {
             let reviews = try values.decodeIfPresent([ObservationFrameReview].self, forKey: .frameReviews) ?? []
@@ -371,7 +403,7 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                       originalText: values.decode(String.self, forKey: .originalText),
                       correctedText: correctedText, videoEvidence: videoEvidence,
                       classification: restoredClassification, warnings: warnings, recordingContext: restoredContext,
-                      frameReviews: restoredReviews)
+                      frameReviews: restoredReviews, windowCapture: restoredCapture)
     }
 }
 
@@ -438,6 +470,17 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
             frameReviews: current.frameReviews)
         guard current.recordingContext == nil else { return false }
         try replace(enriched)
+        return true
+    }
+
+    /// Writes a learning window's declaration on a saved native recording, once. A second
+    /// declaration never replaces the first: returns false and changes nothing. The value
+    /// must describe this recording's own session and movie, or it is refused.
+    @discardableResult public mutating func attachWindowCapture(_ capture: ObservationWindowCapture, to id: UUID) throws -> Bool {
+        let current = try required(id)
+        let declared = try current.declaring(capture)
+        guard current.windowCapture == nil else { return false }
+        try replace(declared)
         return true
     }
 

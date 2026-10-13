@@ -336,7 +336,10 @@ struct MorningRootView: View {
         }
         if let payload = router.invitationPayload {
             do {
-                if try store.invitation.consume(payload) == nil { destination = .revealMorning }
+                // A learning window's reminder only brings the person to MORE. It never
+                // starts the routine, and it cannot start a recording.
+                let used = try store.invitation.consume(payload)
+                if used == nil || used?.learningTarget != nil { destination = .revealMorning }
             } catch {
                 destination = .revealMorning
                 store.notice = String(localized: "Your invitation couldn't be saved. Start your morning when you're ready.")

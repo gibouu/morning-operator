@@ -12,6 +12,18 @@ public enum MorningInvitationError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// Marks an invitation as the reminder of one morning of a learning window. Such a reminder
+/// only invites the person to start a recording themselves: it starts no routine and no
+/// recording, and the app must not treat its tap as a request to start the morning.
+public struct MorningInvitationLearningTarget: Codable, Sendable, Equatable {
+    public let windowID: UUID
+    public let dayKey: String
+    public init(windowID: UUID, dayKey: String) {
+        self.windowID = windowID
+        self.dayKey = dayKey
+    }
+}
+
 /// A single absolute occurrence. Its ID also versions a replacement schedule.
 /// The time zone is a display label, not a rule that moves the instant when travelling.
 public struct MorningInvitation: Codable, Sendable, Equatable, Identifiable {
@@ -23,11 +35,14 @@ public struct MorningInvitation: Codable, Sendable, Equatable, Identifiable {
     public let expiresAt: Date
     public private(set) var disposition: Disposition
     public private(set) var consumedAt: Date?
+    /// Nil for the person's own one-time invitation, as in every record saved before
+    /// learning windows existed.
+    public let learningTarget: MorningInvitationLearningTarget?
 
     public var payload: MorningInvitationPayload { .init(occurrenceID: id) }
 
     public init(id: UUID = UUID(), scheduledAt: Date, timeZoneIdentifier: String,
-                now: Date = Date()) throws {
+                now: Date = Date(), learningTarget: MorningInvitationLearningTarget? = nil) throws {
         guard scheduledAt.timeIntervalSince1970.isFinite, now.timeIntervalSince1970.isFinite,
               scheduledAt > now else { throw MorningInvitationError.futureDateRequired }
         guard TimeZone(identifier: timeZoneIdentifier) != nil else { throw MorningInvitationError.invalidTimeZone }
@@ -42,6 +57,7 @@ public struct MorningInvitation: Codable, Sendable, Equatable, Identifiable {
         }
         disposition = .enabled
         consumedAt = nil
+        self.learningTarget = learningTarget
     }
 
     public func isEligible(for payload: MorningInvitationPayload, at date: Date) -> Bool {
@@ -70,7 +86,7 @@ public struct MorningInvitation: Codable, Sendable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, scheduledAt, timeZoneIdentifier, expiresAt, disposition, consumedAt
+        case id, scheduledAt, timeZoneIdentifier, expiresAt, disposition, consumedAt, learningTarget
     }
 
     public init(from decoder: any Decoder) throws {
@@ -81,6 +97,9 @@ public struct MorningInvitation: Codable, Sendable, Equatable, Identifiable {
         expiresAt = try values.decode(Date.self, forKey: .expiresAt)
         disposition = try values.decode(Disposition.self, forKey: .disposition)
         consumedAt = try values.decodeIfPresent(Date.self, forKey: .consumedAt)
+        // An unreadable target fails the whole record: a learning reminder must never be
+        // read back as an invitation to start the morning.
+        learningTarget = try values.decodeIfPresent(MorningInvitationLearningTarget.self, forKey: .learningTarget)
         guard scheduledAt.timeIntervalSince1970.isFinite, expiresAt.timeIntervalSince1970.isFinite,
               expiresAt.timeIntervalSince(scheduledAt) == 2 * 60 * 60,
               TimeZone(identifier: timeZoneIdentifier) != nil else { throw MorningInvitationError.invalidRecord }

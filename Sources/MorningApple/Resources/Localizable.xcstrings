@@ -1361,6 +1361,16 @@
         }
       }
     },
+    "Open MORE and start the recording when you are ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez MORE et lancez l’enregistrement quand vous êtes prêt."
+          }
+        }
+      }
+    },
     "Original media timing could not be preserved; the decoded image and available decimal sample time were retained.": {
       "localizations": {
         "fr": {
@@ -2964,6 +2974,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "« Votre journée » n’est pas prête. Vérifiez « Votre journée » dans Réglages, ou touchez Suivant pour continuer."
+          }
+        }
+      }
+    },
+    "Your learning window is open": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre fenêtre d’apprentissage est ouverte"
           }
         }
       }
