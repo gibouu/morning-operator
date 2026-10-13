@@ -368,9 +368,13 @@ public struct PhoneObservationMessage: Codable, Sendable, Equatable {
 /// The runner's half of ordering. A runner asks this before carrying out a command and tells it
 /// about each observation it sends. A command is admitted only if it belongs to this run, its
 /// sequence is higher than every sequence already admitted, and (for an action) it was derived
-/// from the observation this runner sent in answer to the `observe` just before it. So a command
-/// that is delivered twice, late, out of order or after a reconnect is not carried out a second
-/// time, and one observation supports at most one action.
+/// from the observation this runner sent in answer to the `observe` just before it, in the same
+/// step. So a command that is delivered twice, late, out of order or after a reconnect is not
+/// carried out a second time, and one observation supports at most one action.
+///
+/// An answer is matched to the command it answers by everything the protocol says it echoes:
+/// run, step and sequence, all three. An observation that differs in any of them is not the
+/// answer the gate is waiting for; it changes nothing, and the genuine answer still counts.
 ///
 /// The gate orders commands; it does not authenticate them. It lives in the runner's memory: a
 /// runner that restarts has forgotten what it carried out, which is why the session stops a run
@@ -382,6 +386,9 @@ public struct PhoneCommandGate: Sendable {
     public private(set) var lastAdmittedSequence = 0
     /// The observation an action may be based on, until an action or a newer command uses it up.
     public private(set) var lastObservationID: UUID?
+    /// The step of the command admitted last. Its answer echoes it, and so does an action based
+    /// on that answer: the session sends an action in the step of the observation it came from.
+    private var lastAdmittedStepID: UUID?
     private var awaitsObserveAnswer = false
     public init(runID: UUID) { self.runID = runID }
 
@@ -390,20 +397,27 @@ public struct PhoneCommandGate: Sendable {
         guard command.runID == runID else { return .foreignRun }
         guard command.sequence > lastAdmittedSequence else { return .replayedOrOutOfOrder }
         if case .perform = command.command {
-            guard let lastObservationID, command.basedOnObservationID == lastObservationID
+            // While a basis exists, the command admitted last is the `observe` it answered.
+            guard let lastObservationID, command.basedOnObservationID == lastObservationID,
+                  command.stepID == lastAdmittedStepID
             else { return .notBasedOnLatestObservation }
         }
         // Whatever was observed before this command is no longer a basis for an action.
         lastObservationID = nil
         lastAdmittedSequence = command.sequence
+        lastAdmittedStepID = command.stepID
         awaitsObserveAnswer = command.command == .observe
         return nil
     }
 
-    /// Only the first answer to the `observe` admitted last becomes a basis. The answer to an
-    /// action, an answer sent twice and another run's answer do not.
+    /// Only the first answer to the `observe` admitted last becomes a basis: one that echoes its
+    /// run, its step and its sequence. The answer to an action, an answer sent twice, another
+    /// run's answer and an answer naming another step or sequence do not, and leave the gate as
+    /// it was.
     public mutating func sent(_ observation: PhoneObservationMessage) {
-        guard awaitsObserveAnswer, observation.runID == runID, observation.sequence == lastAdmittedSequence else { return }
+        guard awaitsObserveAnswer, observation.runID == runID, observation.stepID == lastAdmittedStepID,
+              observation.sequence == lastAdmittedSequence
+        else { return }
         awaitsObserveAnswer = false
         lastObservationID = observation.observationID
     }
