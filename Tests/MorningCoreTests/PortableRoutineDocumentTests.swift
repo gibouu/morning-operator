@@ -181,8 +181,10 @@ struct PortableRoutineDocumentTests {
             expectThrows(.invalidRoutine) { _ = try PortableRoutineDocument.decode(data(json)) }
         }
         var source = routine()
+        // A step holds one minute to one day, as its initializer always ensured for the
+        // lower bound: zero cannot be stored, so there is no zero-minute row to export.
         source.steps[0].durationMinutes = 0
-        expectThrows(.invalidRoutine) { _ = try PortableRoutineDocument(routine: source) }
+        #expect(source.steps[0].durationMinutes == 1)
         source.steps[0].durationMinutes = 121
         expectThrows(.invalidRoutine) { _ = try PortableRoutineDocument(routine: source) }
     }

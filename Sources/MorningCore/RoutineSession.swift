@@ -44,12 +44,17 @@ public struct RoutineSession: Codable, Sendable, Identifiable, Equatable {
     }
     public mutating func start(at date: Date = Date()) throws {
         guard status == .ready else { throw SessionError.invalidTransition }
-        guard routine.isApproved else { throw SessionError.routineNeedsApproval }
-        guard !routine.steps.isEmpty else { throw SessionError.emptyRoutine }
+        if let refusal = Self.startRefusal(for: routine) { throw refusal }
+        status = .running; events.append(SessionEvent(kind: .started, occurredAt: date))
+    }
+    /// Why this routine cannot be run, or nil. The same rule admits a start and a saved start.
+    private static func startRefusal(for routine: RoutineVersion) -> SessionError? {
+        guard routine.isApproved else { return .routineNeedsApproval }
+        guard !routine.steps.isEmpty else { return .emptyRoutine }
         guard Set(routine.steps.map(\.id)).count == routine.steps.count,
               routine.steps.allSatisfy({ !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.durationMinutes > 0 })
-        else { throw SessionError.invalidRoutine }
-        status = .running; events.append(SessionEvent(kind: .started, occurredAt: date))
+        else { return .invalidRoutine }
+        return nil
     }
     public mutating func pause(at date: Date = Date()) throws {
         guard status == .running else { throw SessionError.invalidTransition }
@@ -72,5 +77,69 @@ public struct RoutineSession: Codable, Sendable, Identifiable, Equatable {
         guard status == .ready || status == .running || status == .paused else { throw SessionError.invalidTransition }
         let stepID = currentStep?.id
         status = .stopped; events.append(SessionEvent(kind: .stopped, stepID: stepID, occurredAt: date))
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, routine, status, currentStepIndex, events }
+
+    /// A saved session is read only if the commands above could have recorded its events over
+    /// its pinned routine, ending in its saved status and position. Every session this type has
+    /// written passes. Anything else is damage and is refused here, so that progress, history,
+    /// timing and the recap never report a step the routine does not hold, a step counted twice,
+    /// or an ending that did not happen.
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        routine = try values.decode(RoutineVersion.self, forKey: .routine)
+        status = try values.decode(SessionStatus.self, forKey: .status)
+        currentStepIndex = try values.decode(Int.self, forKey: .currentStepIndex)
+        events = try values.decode([SessionEvent].self, forKey: .events)
+        guard let replayed = Self.replay(events, over: routine),
+              replayed.status == status, replayed.index == currentStepIndex else {
+            throw DecodingError.dataCorruptedError(forKey: .events, in: values,
+                debugDescription: "The saved events do not describe a run of the pinned routine.")
+        }
+    }
+
+    /// Where recording exactly these events leaves a new session, or nil when no sequence of
+    /// commands records them. A start is admitted by the rule `start` applies: the pinned
+    /// routine never changes, so a run that was started still satisfies it, and a saved run
+    /// of an unapproved routine was never started by this type.
+    private static func replay(_ events: [SessionEvent], over routine: RoutineVersion) -> (status: SessionStatus, index: Int)? {
+        let steps = routine.steps
+        var status = SessionStatus.ready
+        var index = 0
+        var current: UUID? { steps.indices.contains(index) ? steps[index].id : nil }
+        // A command ID that already recorded a step records nothing more.
+        var stepCommandIDs = Set<UUID>()
+        // The last step and the end of the run are recorded by one command, at one instant.
+        var lastStepRecordedAt: Date?
+        for event in events {
+            if let instant = lastStepRecordedAt {
+                guard event.kind == .completed, event.stepID == nil, event.occurredAt == instant else { return nil }
+                status = .completed; lastStepRecordedAt = nil
+                continue
+            }
+            switch (event.kind, status) {
+            case (.started, .ready):
+                guard event.stepID == nil, startRefusal(for: routine) == nil else { return nil }
+                status = .running
+            case (.paused, .running):
+                guard event.stepID == current else { return nil }
+                status = .paused
+            case (.resumed, .paused):
+                guard event.stepID == current else { return nil }
+                status = .running
+            case (.stepCompleted, .running), (.stepSkipped, .running):
+                guard let expected = current, event.stepID == expected,
+                      stepCommandIDs.insert(event.id).inserted else { return nil }
+                index += 1
+                if index == steps.count { lastStepRecordedAt = event.occurredAt }
+            case (.stopped, .ready), (.stopped, .running), (.stopped, .paused):
+                guard event.stepID == current else { return nil }
+                status = .stopped
+            default: return nil
+            }
+        }
+        return lastStepRecordedAt == nil ? (status, index) : nil
     }
 }
