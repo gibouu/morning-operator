@@ -97,13 +97,17 @@ public struct EvidenceDependentCopy: Sendable, Equatable {
 /// would touch. It deletes nothing and is never persisted; the workspace owner
 /// applies it. Raw evidence expires. A quotation outlives its observation only
 /// where the person approved it in a routine or kept it as a choice, or in the
-/// saved record of a morning that ran, and every such copy is listed. Each ambiguous case is reported as kept, not removed.
+/// saved record of a morning that ran, and every such copy that carries a source
+/// reference is listed. Each ambiguous case is reported as kept, not removed.
 ///
 /// A copy is found by its source reference, or by exact words of an observation
 /// still in the archive: a suggestion's evidence line, or a whole line of a step's
-/// text that is a whole line of the observation. Words a person retyped or ran
-/// into other text, and copies of an observation that already left the archive
-/// without a reference, cannot be found without saved provenance.
+/// detail that is a whole line of the observation. A step's name is not searched:
+/// names are short and often equal an app or screen label. Words a person retyped
+/// or ran into other text, and copies of an observation that already left the
+/// archive without a reference, cannot be found without saved provenance. Copies
+/// without a reference are therefore listed as far as exact words allow, not proven
+/// complete.
 public struct EvidenceRetentionPlan: Sendable, Equatable {
     /// Archive order. Older than `maximumAge` by its import date; an entry exactly
     /// at the limit, or imported after `now`, is not expired.
