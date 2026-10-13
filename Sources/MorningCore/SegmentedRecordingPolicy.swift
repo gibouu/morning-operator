@@ -24,6 +24,10 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
     /// monitor asks for a stop once a second; it is not a ceiling.
     public let segmentByteOvershootAllowance: Int64
     public let maximumSessionDurationSeconds: Double
+    /// How much longer a segment's file may be than the segment on the session's clock,
+    /// and how far past that length a frame may sit. The two clocks are not aligned by
+    /// measurement.
+    public let segmentTimingToleranceSeconds: Double
     /// Sampled frames requested from one segment.
     public let framesPerSegment: Int
     public let maximumSessionFrames: Int
@@ -45,6 +49,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
     ///   duration comes first; the size guards high-motion content.
     /// - **4 MiB overshoot**: an allowance for the one-second size monitor. Unmeasured.
     /// - **90 minutes per session**: the upper end of the morning asked for in issue #27.
+    /// - **2 seconds of timing tolerance**: twice the own-interface margin. Unmeasured.
     /// - **12 frames per segment, 216 per session**: one request every 25 seconds instead of
     ///   every 78 (24 frames over 30 minutes), within the existing 24 frames per file.
     /// - **180,000 Characters per session**: 10,000 per segment, an equal share so dense early
@@ -62,6 +67,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
         maximumSegmentBytes: 64 * mebibyte,
         segmentByteOvershootAllowance: 4 * mebibyte,
         maximumSessionDurationSeconds: 90 * 60,
+        segmentTimingToleranceSeconds: 2,
         framesPerSegment: 12,
         maximumSessionFrames: 216,
         maximumSessionTextCharacters: 180_000,
@@ -72,7 +78,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
 
     public init(identifier: String, maximumSegmentDurationSeconds: Double, maximumSegmentBytes: Int64,
                 segmentByteOvershootAllowance: Int64, maximumSessionDurationSeconds: Double,
-                framesPerSegment: Int, maximumSessionFrames: Int, maximumSessionTextCharacters: Int,
+                segmentTimingToleranceSeconds: Double, framesPerSegment: Int, maximumSessionFrames: Int, maximumSessionTextCharacters: Int,
                 maximumUnreleasedRawSegments: Int, minimumFreeBytesReserve: Int64,
                 analysedRawRetentionSeconds: Double, maximumAnalysisAttempts: Int) throws {
         // A segment is one file for the existing import path: it must fit that path's
@@ -84,6 +90,8 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
               maximumSessionDurationSeconds >= maximumSegmentDurationSeconds,
               maximumSessionDurationSeconds / maximumSegmentDurationSeconds
                   <= Double(RecordingSessionManifest.maximumSegments),
+              segmentTimingToleranceSeconds.isFinite, segmentTimingToleranceSeconds >= 0,
+              segmentTimingToleranceSeconds <= RecordingSessionManifest.ownInterfaceCarrySeconds / 2,
               maximumSegmentBytes > 0, segmentByteOvershootAllowance >= 0,
               maximumSegmentBytes <= RecordingSessionManifest.maximumSegmentFileBytes,
               segmentByteOvershootAllowance <= RecordingSessionManifest.maximumSegmentFileBytes - maximumSegmentBytes,
@@ -102,6 +110,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
         self.maximumSegmentBytes = maximumSegmentBytes
         self.segmentByteOvershootAllowance = segmentByteOvershootAllowance
         self.maximumSessionDurationSeconds = maximumSessionDurationSeconds
+        self.segmentTimingToleranceSeconds = segmentTimingToleranceSeconds
         self.framesPerSegment = framesPerSegment
         self.maximumSessionFrames = maximumSessionFrames
         self.maximumSessionTextCharacters = maximumSessionTextCharacters
@@ -129,7 +138,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case identifier, maximumSegmentDurationSeconds, maximumSegmentBytes, segmentByteOvershootAllowance
-        case maximumSessionDurationSeconds, framesPerSegment, maximumSessionFrames, maximumSessionTextCharacters
+        case maximumSessionDurationSeconds, segmentTimingToleranceSeconds, framesPerSegment, maximumSessionFrames, maximumSessionTextCharacters
         case maximumUnreleasedRawSegments, minimumFreeBytesReserve, analysedRawRetentionSeconds, maximumAnalysisAttempts
     }
     public init(from decoder: any Decoder) throws {
@@ -140,6 +149,7 @@ public struct SegmentedRecordingPolicy: Codable, Equatable, Sendable {
             maximumSegmentBytes: values.decode(Int64.self, forKey: .maximumSegmentBytes),
             segmentByteOvershootAllowance: values.decode(Int64.self, forKey: .segmentByteOvershootAllowance),
             maximumSessionDurationSeconds: values.decode(Double.self, forKey: .maximumSessionDurationSeconds),
+            segmentTimingToleranceSeconds: values.decode(Double.self, forKey: .segmentTimingToleranceSeconds),
             framesPerSegment: values.decode(Int.self, forKey: .framesPerSegment),
             maximumSessionFrames: values.decode(Int.self, forKey: .maximumSessionFrames),
             maximumSessionTextCharacters: values.decode(Int.self, forKey: .maximumSessionTextCharacters),

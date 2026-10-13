@@ -431,12 +431,25 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
     @discardableResult public mutating func insert(_ acquisition: ObservationAcquisition) throws -> UUID {
         if let existing = entry(id: acquisition.id) {
             guard existing.fileSHA256 == acquisition.fileSHA256, existing.sourceKind == acquisition.sourceKind,
-                  existing.originalText.utf8.elementsEqual(acquisition.originalText.utf8) else { throw ObservationArchiveError.duplicateAcquisition }
+                  existing.originalText.utf8.elementsEqual(acquisition.originalText.utf8),
+                  Self.keepsSessionSegment(of: acquisition, in: existing) else { throw ObservationArchiveError.duplicateAcquisition }
             return existing.id
         }
-        if let digest = acquisition.fileSHA256, let existing = entries.first(where: { $0.fileSHA256 == digest }) { return existing.id }
+        if let digest = acquisition.fileSHA256, let existing = entries.first(where: { $0.fileSHA256 == digest }) {
+            guard Self.keepsSessionSegment(of: acquisition, in: existing) else { throw ObservationArchiveError.duplicateDigest }
+            return existing.id
+        }
         self = try Self(entries: entries + [acquisition])
         return acquisition.id
+    }
+
+    /// A segment of a session may only be answered with the entry of that same segment.
+    /// Returning an ordinary observation of the same bytes would lose the segment's place
+    /// in its session: it could no longer be found, resumed or forgotten with the session.
+    /// An observation that is not a segment is answered as before.
+    private static func keepsSessionSegment(of acquisition: ObservationAcquisition,
+                                            in existing: ObservationAcquisition) -> Bool {
+        acquisition.sessionSegment == nil || acquisition.sessionSegment == existing.sessionSegment
     }
 
     /// Enrich an existing exact-file copy only with metadata retained by the caller's

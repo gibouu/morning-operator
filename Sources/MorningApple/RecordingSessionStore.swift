@@ -55,6 +55,8 @@ public struct RecordingSessionRecovery: Equatable, Sendable {
 /// Order of every change: the manifest is saved first, files are removed after. A crash in
 /// between leaves a file the manifest no longer wants, which `reconcile` removes. It never
 /// leaves the manifest claiming derived text or a raw file that was not saved.
+/// Every removal opens the sessions folder, then the session's folder inside it, neither
+/// through a link, and unlinks leaf names there.
 /// The owner serializes calls, as for `PendingScreenRecordingStore`.
 public struct RecordingSessionStore: Sendable {
     public static let manifestFileName = "session-manifest.json"
@@ -92,8 +94,14 @@ public struct RecordingSessionStore: Sendable {
         }
         return nil
     }
-    /// A staged copy an interrupted atomic save can leave beside the manifest.
-    static func isStagingFileName(_ name: String) -> Bool { name.hasPrefix(".morning-save-") }
+    /// A staged copy an interrupted atomic save can leave beside the manifest: exactly the
+    /// name `AtomicJSONFile` gives `mkstemp`, six letters or digits after the prefix.
+    static func isStagingFileName(_ name: String) -> Bool {
+        let prefix = ".morning-save-"
+        guard name.hasPrefix(prefix) else { return false }
+        let suffix = name.dropFirst(prefix.count)
+        return suffix.count == 6 && suffix.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) }
+    }
 
     // MARK: Manifest
 
@@ -265,7 +273,7 @@ public struct RecordingSessionStore: Sendable {
         }
         if unexpected > 0 { findings.append(.unexpectedItems(count: unexpected)) }
         if manifest != original { try save(manifest) }
-        try RecordingFileCleanup.remove(in: sessionDirectory(sessionID), names: removals)
+        try RecordingFileCleanup.remove(in: root, child: sessionID.uuidString, names: removals)
         return .init(manifest: manifest, findings: findings)
     }
 
@@ -287,10 +295,9 @@ public struct RecordingSessionStore: Sendable {
         guard Self.kind(of: root) == .directory else { throw RecordingSessionStoreError.unsafeLocation }
         let names = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         let owned = names.filter { Self.segmentIndex(inFileName: $0) != nil || Self.isStagingFileName($0) }
-        try RecordingFileCleanup.remove(in: directory, names: owned)
-        try RecordingFileCleanup.remove(in: directory, names: [Self.manifestFileName])
-        // rmdir removes an empty folder only. Anything unexpected keeps the folder in place.
-        _ = directory.path.withCString { rmdir($0) }
+        // The folder is removed only when empty. Anything unexpected keeps it in place.
+        try RecordingFileCleanup.remove(in: root, child: sessionID.uuidString,
+            names: owned + [Self.manifestFileName], removingChildIfEmpty: true)
     }
 
     /// Forgets every session. One that cannot be removed does not stop the others; the
@@ -306,7 +313,7 @@ public struct RecordingSessionStore: Sendable {
     // MARK: Helpers
 
     private func removeFiles(sessionID: UUID, index: Int) throws {
-        try RecordingFileCleanup.remove(in: sessionDirectory(sessionID),
+        try RecordingFileCleanup.remove(in: root, child: sessionID.uuidString,
             names: [Self.segmentFileName(index), Self.writingFileName(index)])
     }
 

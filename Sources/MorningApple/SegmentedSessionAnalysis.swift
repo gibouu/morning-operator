@@ -6,6 +6,9 @@ public enum SegmentedSessionEvidenceError: Error, Sendable, Equatable {
     case segmentNotAnalysable
     /// The extraction holds more frames or text than the segment's share of the session.
     case budgetExceeded
+    /// The extraction is longer than the segment, or holds a frame past its end: it was
+    /// not made from this segment's file.
+    case evidenceOutsideSegment
 }
 
 /// Everything the analysis of one sealed segment needs, and nothing about other segments.
@@ -21,6 +24,8 @@ public struct RecordingSegmentWork: Sendable, Equatable {
     public let observedDate: ObservationObservedDate
     public let maximumFrames: Int
     public let maximumTextCharacters: Int
+    /// The segment's length on the session's clock plus the policy's timing tolerance.
+    public let maximumMediaSeconds: Double
 }
 
 /// How a segmented session reaches the existing archive, review and proposal code.
@@ -55,7 +60,9 @@ public enum SegmentedSessionEvidence {
             fileURL: store.segmentURL(sessionID: manifest.id, index: index), fingerprint: fingerprint,
             reference: reference, recordingContext: context, observedDate: observedDate,
             maximumFrames: manifest.frameBudgetForNextAnalysis,
-            maximumTextCharacters: manifest.textCharacterBudgetForNextAnalysis)
+            maximumTextCharacters: manifest.textCharacterBudgetForNextAnalysis,
+            maximumMediaSeconds: reference.endSeconds - reference.startSeconds
+                + manifest.policy.segmentTimingToleranceSeconds)
     }
 
     /// The observation for one segment, from the extraction of its file. Its identity is the
@@ -66,6 +73,12 @@ public enum SegmentedSessionEvidence {
         guard evidence.frames.count <= work.maximumFrames,
               evidence.frames.reduce(0, { $0 + $1.text.count }) <= work.maximumTextCharacters else {
             throw SegmentedSessionEvidenceError.budgetExceeded
+        }
+        // A frame past the segment's end would be compared with spans that were never
+        // carried that far, and would have no place on the session's clock.
+        guard evidence.durationSeconds <= work.maximumMediaSeconds,
+              evidence.frames.allSatisfy({ $0.timeSeconds <= work.maximumMediaSeconds }) else {
+            throw SegmentedSessionEvidenceError.evidenceOutsideSegment
         }
         return try ObservationAcquisition(id: work.segment.id, importedAt: importedAt,
             fileSHA256: work.fingerprint.sha256, observedDate: work.observedDate, origin: origin,

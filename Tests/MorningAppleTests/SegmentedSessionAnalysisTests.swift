@@ -35,9 +35,11 @@ private actor FakeWorkspace {
         let acquisition = try fakeAcquisition(for: work)
         // The raw file must still be there while its text is being saved.
         if !FileManager.default.fileExists(atPath: work.fileURL.path) { missingRawAtSaveTime.append(index) }
-        try archive.insert(acquisition)
+        // Describe the entry the archive holds, by the identifier it returned.
+        let savedID = try archive.insert(acquisition)
+        let saved = try #require(archive.entry(id: savedID))
         if cancelAfterSaving == index { withUnsafeCurrentTask { $0?.cancel() } }
-        return SegmentedSessionEvidence.derivation(of: acquisition, analysedAt: FakeSegmentedSession.start.addingTimeInterval(7_200))
+        return SegmentedSessionEvidence.derivation(of: saved, analysedAt: FakeSegmentedSession.start.addingTimeInterval(7_200))
     }
 }
 
@@ -53,10 +55,11 @@ private func fakeEvidence(segment index: Int, times: [Double] = [60, 180], durat
     })
 }
 
-private func fakeAcquisition(for work: RecordingSegmentWork, times: [Double] = [60, 180]) throws -> ObservationAcquisition {
+private func fakeAcquisition(for work: RecordingSegmentWork, times: [Double] = [60, 180],
+                             duration: Double? = nil) throws -> ObservationAcquisition {
     try SegmentedSessionEvidence.acquisition(for: work,
         evidence: fakeEvidence(segment: work.reference.segmentIndex, times: times,
-                               duration: work.reference.endSeconds - work.reference.startSeconds),
+                               duration: duration ?? work.reference.endSeconds - work.reference.startSeconds),
         origin: .synthetic, sourceLabel: "Synthetic segment \(work.reference.segmentIndex)",
         importedAt: FakeSegmentedSession.start.addingTimeInterval(7_000))
 }
@@ -218,6 +221,28 @@ struct SegmentedSessionAnalysisTests {
         #expect(try session.names() == ["session-manifest.json"])
     }
 
+    @Test("A segment whose bytes are already an ordinary observation fails; it is not merged into it")
+    func sameBytesAlreadyArchived() async throws {
+        var session = try FakeSegmentedSession()
+        defer { session.cleanUp() }
+        try await session.recordSegments(2)
+        let workspace = FakeWorkspace()
+        // The same file was imported earlier as a plain video: an entry with no session.
+        let evidence = try fakeEvidence(segment: 1)
+        let imported = try ObservationAcquisition(fileSHA256: session.manifest.segments[1].fingerprint?.sha256,
+            sourceKind: .video, sourceLabel: "Imported earlier", originalText: evidence.renderedText, videoEvidence: evidence)
+        try await workspace.insert(imported)
+
+        let result = try await run(session, workspace)
+        #expect(result.analysedSegments == [0])
+        #expect(result.failedSegments == [1])
+        #expect(result.recoveredSegments.isEmpty, "An entry without the session's reference is not this segment.")
+        #expect(session.fileExists(1), "Its raw file stays: nothing of the session holds its text.")
+        #expect(result.coverage.missing.map(\.segmentIndex) == [1])
+        #expect(await workspace.archive.entries(ofSession: session.id).map(\.id) == [session.manifest.segments[0].id])
+        #expect(await workspace.archive.entry(id: imported.id) == imported)
+    }
+
     @Test("An extraction over the segment's share is refused before it is saved")
     func budgetIsEnforced() async throws {
         var session = try FakeSegmentedSession()
@@ -229,6 +254,16 @@ struct SegmentedSessionAnalysisTests {
         #expect(throws: SegmentedSessionEvidenceError.budgetExceeded) {
             try fakeAcquisition(for: work, times: (0..<13).map { Double($0) * 20 })
         }
+        // An extraction longer than the segment was not made from this segment's file. Its
+        // late frames would escape the spans carried into the segment.
+        #expect(work.maximumMediaSeconds == 302)
+        #expect(throws: SegmentedSessionEvidenceError.evidenceOutsideSegment) {
+            try fakeAcquisition(for: work, times: [60, 400], duration: 600)
+        }
+        #expect(throws: SegmentedSessionEvidenceError.evidenceOutsideSegment) {
+            try fakeAcquisition(for: work, times: [60, 180], duration: 302.5)
+        }
+        _ = try fakeAcquisition(for: work, times: [60, 301], duration: 302)
         _ = try session.beginSegment(startSeconds: 300)
         #expect(throws: SegmentedSessionEvidenceError.segmentNotAnalysable) {
             try SegmentedSessionEvidence.work(forSegment: 1, in: session.manifest, store: session.store)
@@ -331,6 +366,15 @@ struct SegmentedSessionEvidenceTests {
         #expect(try archive.insert(retry) == id)
         #expect(archive.entries.count == 1)
         // Different bytes claiming the same place in the session.
+        var plain = ObservationArchive()
+        try plain.insert(try ObservationAcquisition(fileSHA256: work.fingerprint.sha256, sourceKind: .video,
+            sourceLabel: "Imported earlier", originalText: first.originalText, videoEvidence: first.videoEvidence))
+        // The same bytes saved earlier as an ordinary video: the segment is refused rather
+        // than answered with an entry that has no place in the session.
+        #expect(throws: ObservationArchiveError.duplicateDigest) { try plain.insert(first) }
+        // The other way round is unchanged: a plain import of a segment's bytes finds it.
+        #expect(try archive.insert(try ObservationAcquisition(fileSHA256: work.fingerprint.sha256, sourceKind: .video,
+            sourceLabel: "Imported later", originalText: first.originalText, videoEvidence: first.videoEvidence)) == id)
         let impostor = try ObservationAcquisition(fileSHA256: String(repeating: "ab", count: 32),
             observedDate: work.observedDate, origin: .synthetic, sourceKind: .video, sourceLabel: "Other",
             originalText: first.originalText, videoEvidence: first.videoEvidence, sessionSegment: work.reference)

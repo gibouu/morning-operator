@@ -130,7 +130,8 @@ public struct RecordingSegmentPiece: Equatable, Sendable {
 extension RecordingSessionManifest {
     /// Spans within this many seconds of a segment are carried into it, so a frame near a
     /// boundary is still excluded by a span that ended just before its file began. The
-    /// result matches the session's own answer for any margin up to this value.
+    /// result matches the session's own answer for any margin up to half this value, for a
+    /// frame anywhere in the file, the policy's timing tolerance included.
     public static let ownInterfaceCarrySeconds: Double = 60
     /// Carried spans are widened by this much so that rounding in the shift can only
     /// exclude a frame, never admit one.
@@ -196,11 +197,13 @@ extension RecordingSessionManifest {
     // MARK: Session time and segment time
 
     /// The session instant of a media time in one segment's file. Media time runs from zero
-    /// to the segment's length, both included: a sampled frame may sit exactly at the end.
+    /// to the segment's length, both included, plus the policy's timing tolerance: a frame
+    /// may sit at the very end of a file that is slightly longer than its segment.
     public func sessionSeconds(forSegment index: Int, mediaSeconds: Double) -> Double? {
         guard segments.indices.contains(index), mediaSeconds.isFinite, mediaSeconds >= 0 else { return nil }
         let segment = segments[index]
-        if let duration = segment.durationSeconds, mediaSeconds > duration { return nil }
+        if let duration = segment.durationSeconds,
+           mediaSeconds > duration + policy.segmentTimingToleranceSeconds { return nil }
         return segment.startSeconds + mediaSeconds
     }
 

@@ -166,13 +166,19 @@ struct RecordingSessionStoreTests {
         try session.manifest.end(reason: .stoppedByPerson, atSeconds: 300)
         try session.store.save(session.manifest)
         let directory = session.store.sessionDirectory(session.id)
-        for name in ["segment-0007.mp4", "segment-0003.writing.mp4", ".morning-save-AbCdEf", "notes.txt", "segment-7.mp4"] {
+        // The last three only look like this store's names.
+        for name in ["segment-0007.mp4", "segment-0003.writing.mp4", ".morning-save-AbCdEf",
+                     "notes.txt", "segment-7.mp4", ".morning-save-notes.txt"] {
             try Data("stray".utf8).write(to: directory.appendingPathComponent(name))
         }
         let recovery = try session.store.reconcile(session.id)
         #expect(recovery.findings.filter { $0 == .removedUnlistedFile }.count == 3)
-        #expect(recovery.findings.contains(.unexpectedItems(count: 2)))
-        #expect(try session.names() == ["notes.txt", "segment-0000.mp4", "segment-7.mp4", "session-manifest.json"])
+        #expect(recovery.findings.contains(.unexpectedItems(count: 3)))
+        #expect(try session.names() == [".morning-save-notes.txt", "notes.txt", "segment-0000.mp4", "segment-7.mp4",
+                                        "session-manifest.json"])
+        // Forgetting leaves the same look-alikes in place.
+        try session.store.forget(session.id)
+        #expect(try session.names() == [".morning-save-notes.txt", "notes.txt", "segment-7.mp4"])
         #expect(recovery.manifest == session.manifest, "Unlisted files change nothing in the manifest.")
     }
 
@@ -231,7 +237,7 @@ struct RecordingSessionStoreTests {
     func rawExpiryByClock() async throws {
         let policy = try SegmentedRecordingPolicy(identifier: "retention-test", maximumSegmentDurationSeconds: 300,
             maximumSegmentBytes: 64 * 1_048_576, segmentByteOvershootAllowance: 0, maximumSessionDurationSeconds: 5_400,
-            framesPerSegment: 12, maximumSessionFrames: 216, maximumSessionTextCharacters: 180_000,
+            segmentTimingToleranceSeconds: 2, framesPerSegment: 12, maximumSessionFrames: 216, maximumSessionTextCharacters: 180_000,
             maximumUnreleasedRawSegments: 18, minimumFreeBytesReserve: 0, analysedRawRetentionSeconds: 3_600,
             maximumAnalysisAttempts: 3)
         var session = try FakeSegmentedSession(policy: policy)
@@ -373,6 +379,11 @@ struct RecordingSessionStoreTests {
         #expect(RecordingSessionStore.writingFileName(255) == "segment-0255.writing.mp4")
         #expect(RecordingSessionStore.segmentIndex(inFileName: "segment-0007.mp4") == 7)
         #expect(RecordingSessionStore.segmentIndex(inFileName: "segment-0007.writing.mp4") == 7)
+        #expect(RecordingSessionStore.isStagingFileName(".morning-save-a1B2c3"))
+        for name in [".morning-save-notes.txt", ".morning-save-", ".morning-save-abcde", ".morning-save-abcdefg",
+                     ".morning-save-abc/ef", "morning-save-abcdef"] {
+            #expect(!RecordingSessionStore.isStagingFileName(name), "\(name)")
+        }
         for name in ["segment-7.mp4", "segment-0256.mp4", "segment-00a7.mp4", "segment-0007.mov", "../segment-0007.mp4",
                      "segment-0007.mp4/", "session-manifest.json", "segment--001.mp4"] {
             #expect(RecordingSessionStore.segmentIndex(inFileName: name) == nil, "\(name)")

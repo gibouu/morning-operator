@@ -381,7 +381,10 @@ public struct RecordingSessionManifest: Codable, Equatable, Sendable, Identifiab
             }
             guard consistent else { throw Failure.inconsistentSegment(index) }
             if let derivation = segment.derivation {
-                guard (0...policy.framesPerSegment).contains(derivation.sampledFrameCount),
+                // Analysed means frames were sampled; text and an archive entry go together.
+                guard (derivation.acquisitionID == nil) == (derivation.textCharacterCount == 0),
+                      derivation.sampledFrameCount >= 1 else { throw Failure.inconsistentSegment(index) }
+                guard derivation.sampledFrameCount <= policy.framesPerSegment,
                       (0...policy.textCharactersPerSegment).contains(derivation.textCharacterCount),
                       derivation.analysedAt.timeIntervalSinceReferenceDate.isFinite else {
                     throw Failure.budgetExceeded(index)

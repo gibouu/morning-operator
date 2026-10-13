@@ -53,6 +53,7 @@ struct SegmentedRecordingPolicyTests {
         #expect(policy.maximumSegmentBytes == 64 * mebibyte)
         #expect(policy.maximumSessionDurationSeconds == 5_400)
         #expect(policy.maximumSegmentCount == 18)
+        #expect(policy.segmentTimingToleranceSeconds == 2)
         #expect(policy.framesPerSegment == 12)
         #expect(policy.maximumSessionFrames == 18 * 12)
         #expect(policy.maximumSessionTextCharacters == 180_000)
@@ -97,7 +98,8 @@ private func policy(segmentSeconds: Double = 300, segmentBytes: Int64 = 64 * meb
                     retentionSeconds: Double = 0) throws -> SegmentedRecordingPolicy {
     try SegmentedRecordingPolicy(identifier: "test", maximumSegmentDurationSeconds: segmentSeconds,
         maximumSegmentBytes: segmentBytes, segmentByteOvershootAllowance: 4 * mebibyte,
-        maximumSessionDurationSeconds: sessionSeconds, framesPerSegment: framesPerSegment,
+        maximumSessionDurationSeconds: sessionSeconds, segmentTimingToleranceSeconds: 2,
+        framesPerSegment: framesPerSegment,
         maximumSessionFrames: 216, maximumSessionTextCharacters: 180_000,
         maximumUnreleasedRawSegments: maximumUnreleasedRawSegments, minimumFreeBytesReserve: 256 * mebibyte,
         analysedRawRetentionSeconds: retentionSeconds, maximumAnalysisAttempts: 3)
@@ -280,6 +282,17 @@ struct RecordingSessionManifestTests {
         #expect(throws: RecordingSessionManifestError.invalidTransition(index: 0, from: .sealed)) {
             try manifest.expireRaw(index: 0)
         }
+        // "Analysed" must describe a real sampling: frames were read, and text and an
+        // archive entry come together or not at all.
+        #expect(throws: RecordingSessionManifestError.inconsistentSegment(0)) {
+            try manifest.markAnalysed(index: 0, derivation: derivation(frames: 0, characters: 0, acquisition: nil))
+        }
+        #expect(throws: RecordingSessionManifestError.inconsistentSegment(0)) {
+            try manifest.markAnalysed(index: 0, derivation: derivation(characters: 400, acquisition: nil))
+        }
+        #expect(throws: RecordingSessionManifestError.inconsistentSegment(0)) {
+            try manifest.markAnalysed(index: 0, derivation: derivation(characters: 0))
+        }
         try manifest.beginSegment(startSeconds: 600)
         #expect(throws: RecordingSessionManifestError.invalidTransition(index: 2, from: .writing)) {
             try manifest.markAnalysed(index: 2, derivation: derivation())
@@ -432,7 +445,9 @@ struct RecordingSessionTimelineTests {
         #expect(manifest.sessionSeconds(forSegment: 2, mediaSeconds: 295) == 900)
         // A frame may sit exactly at the end of its file, and no further.
         #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: 300) == 300)
-        #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: 300.001) == nil)
+        // A file may run slightly longer than its segment: the policy's tolerance, no more.
+        #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: 302) == 302)
+        #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: 302.001) == nil)
         #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: -0.001) == nil)
         #expect(manifest.sessionSeconds(forSegment: 3, mediaSeconds: 0) == nil)
         #expect(manifest.sessionSeconds(forSegment: 0, mediaSeconds: .nan) == nil)
