@@ -1,6 +1,6 @@
 # Teammate handoff
 
-**13 October 2026.** Work on `main`: the app source merged there through [PR #26](https://github.com/gibouu/morning-operator/pull/26), which carried [PR #22](https://github.com/gibouu/morning-operator/pull/22), and pull requests now get a hosted package-test run. What merged that day and how it was checked is in [PHASE-ONE](PHASE-ONE.md); none of it was run on a device or simulator. The sections below describe the 10 October delivery and remain the record of the installed app.
+**13 October 2026.** Work on `main`: the app source merged there through [PR #26](https://github.com/gibouu/morning-operator/pull/26), which carried [PR #22](https://github.com/gibouu/morning-operator/pull/22), and non-draft pull requests that change more than documentation now get a hosted package-test run. What merged that day and how it was checked is in [PHASE-ONE](PHASE-ONE.md); none of it was run on a device or simulator. The sections below describe the 10 October delivery and remain the record of the installed app.
 
 ## Local development paused — 10 October 2026
 

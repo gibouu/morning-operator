@@ -8,26 +8,27 @@
 
 **What merged.** The app source moved from `codex/more-quiet-morning` to `main` (#26, carrying #22), followed by the open interface work: city search and suggestions (#33, #34), tappable Settings cards (#35), warm form rows (#36), Review and Learn polish (#37), the Human Interface Guidelines pass (#39) and the French String Catalogs (#32).
 
-| Area | PR | Issue | What it adds | Package tests |
+| Area | PR | Issue | What it adds | Tests declared |
 |---|---|---|---|---|
 | Time budget, session recap, feedback, reduction goal | #40 | #10 | Reports only; never trims a step | 17 |
 | Typed digest and claim validation | #41 | #23 | Contract version 1; blocked output when no generator | 13 + 1 scorer |
 | Comparable-morning profile | #42, #54 | #11, #21, #48 | Archive to window report, explicit exclusions | 14 |
-| Retention and selective-forget plan | #43 | #8 | A plan across six stores; deletes nothing | 19 |
+| Retention and selective-forget plan | #43 | #8 | A plan across six stores; deletes nothing | 19 at merge, 21 after #32 |
 | Action approval, journal and adapter contract | #49 | #12 | Fake adapter only | 24 |
 | Opening script | #51 | #28 | English and French, greet once | 10 |
-| Phone-loop messages and session rules | #56 | #7 | Fake phone and transport only | 34 |
-| Recognition of MORE's own screens | #58 | #46, #47 | English and French wording tied to the catalogs by test | 10 |
+| Phone-loop messages and session rules | #56 | #7 | Fake phone and transport only | 33 |
+| Recognition of MORE's own screens | #58 | #46, #47 | English and French wording tied to the catalogs by test | 10 (22 cases) |
 | Briefing deadlines on an injectable clock | #57 | #45 | Tests no longer depend on machine load | 2 new, suite converted |
 | CI and String Catalog build check | #44, #53 | #52 | One macOS job; catalogs compiled and proven by a test | 2 |
 | Personal Voice and custom-voice audit | #55 | #20 | [VOICE-AUDIT](VOICE-AUDIT.md), 19 points listed as unverified | none (documentation) |
 
-None of these issues is closed except #45, #47, #48 and #52: each slice is logic that the app does not call yet, and the remainder needs screens, a device or real model output.
+None of these issues is closed except #45, #47, #48 and #52. The app does not reference the new types for the budget, recap, digest, comparable-morning profile, retention plan, action contract, opening script or phone loop; those issues still need screens, a device or real model output. The recognition and briefing-clock changes are on paths the app already calls.
 
 **How it was checked.**
 
-- Package tests on `main` after the last merge in this table (`977901f`): 240 + 433 pass under Xcode 27.0; the hosted job runs one test fewer on Xcode 26.6, because that test builds Foundation Models error cases that exist only in the Xcode 27 SDK.
+- Package tests on `main` after the last merge in this table (`977901f`), run locally under Xcode 27.0: two runs reporting 240 and 433 tests, no failure, with 6 of the 433 skipped because they need the on-device model or local media and were not opted into. Skipped tests are not passes. The hosted job runs one test fewer on Xcode 26.6, because that test builds Foundation Models error cases that exist only in the Xcode 27 SDK.
 - `xcodebuild` for `generic/platform=iOS Simulator` with signing disabled: **BUILD SUCCEEDED** on `main` after #26–#39, after #32 and at `977901f`. Before Xcode was reinstalled that afternoon, the app target was only type-checked against the Mac Catalyst SDK.
+- These are results reported from the working session, not retained artifacts: no result bundle was kept for this day. Each pull request's comments record its review rounds and test counts, and the hosted runs are in the repository's Actions history.
 - Every change was read by a second model before merge; the contract, deletion-planning and recognition changes (#43, #49, #56, #58) by two. Review found, among others: nine defects in city suggestions, seven places where translated text was used as saved data, a start haptic that only plays on Apple Watch, 268 MB of committed build products, and a run-history store the retention plan did not inspect.
 - With 32 busy loops competing for CPU, the suite in parallel passed 10 runs out of 10 after #57. Before it, the same load failed most runs.
 
