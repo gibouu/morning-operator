@@ -1,7 +1,7 @@
 name: CI
 
-# Shared-logic package tests only. The app target, UI tests and anything that
-# needs a simulator runtime, a device or the on-device model stay local.
+# Package tests and a simulator build of the app target. UI tests and anything that
+# needs a device or the on-device model stay local.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -47,3 +47,29 @@ jobs:
 
       - name: Scorer tests
         run: python3 -m unittest discover -s scripts/tests
+
+  app-build:
+    name: App build
+    # Compiles the app, widget and UI-test targets for the simulator; nothing is run.
+    # It catches what the package tests cannot: an app target that no longer compiles.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ${{ vars.CI_RUNNER || 'macos-26' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest installed Xcode
+        run: |
+          newest="$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)"
+          echo "DEVELOPER_DIR=$newest/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$newest/Contents/Developer" xcodebuild -version
+
+      - name: Build for the iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project MorningOperator.xcodeproj -scheme MorningOperator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO build-for-testing \
+            | tee xcodebuild.log | grep -E "error:|warning: unable|BUILD|\*\* " || true
+          grep -q "TEST BUILD SUCCEEDED" xcodebuild.log
+
