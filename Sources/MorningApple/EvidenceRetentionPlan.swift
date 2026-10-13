@@ -1,10 +1,13 @@
 import Foundation
 import MorningCore
 
-/// The only places, besides the archive itself, that a plan ever inspects. Thoughts,
-/// receipts and recording files hold no routine step and are not inspected.
+/// The only places, besides the archive itself, that a plan ever inspects: every
+/// part of the saved workspace that holds a routine step. Thoughts, receipts and
+/// recording files hold none and are not inspected.
 public enum EvidenceRetentionStore: String, Sendable, Equatable, CaseIterable {
     case currentRoutine, previousRoutine, pendingProposal, preferenceJournal
+    /// The saved session pins its own copy of the routine it was made from.
+    case session
     /// Each saved run pins the whole routine it ran, with every step's text.
     case runHistory
 }
@@ -37,12 +40,13 @@ public enum EvidenceDependentDisposition: String, Sendable, Equatable {
 
 /// Why a copy gets its disposition. One reason always gives the same disposition.
 public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
-    case approvedQuotation, keptChoice, markedRequired, savedRun, unlinkedMatchingText, unapprovedDraftQuotation, reworkedStep
+    case approvedQuotation, keptChoice, markedRequired, savedRun, choicesUnavailable, unlinkedMatchingText
+    case unapprovedDraftQuotation, reworkedStep
     case suggestionSource, suggestionCitation, insideDiscardedSuggestion
 
     public var disposition: EvidenceDependentDisposition {
         switch self {
-        case .approvedQuotation, .keptChoice, .markedRequired, .savedRun, .unlinkedMatchingText: .separatelyRetained
+        case .approvedQuotation, .keptChoice, .markedRequired, .savedRun, .choicesUnavailable, .unlinkedMatchingText: .separatelyRetained
         case .unapprovedDraftQuotation: .removed
         case .reworkedStep, .suggestionSource, .suggestionCitation, .insideDiscardedSuggestion: .invalidated
         }
@@ -58,6 +62,8 @@ public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
             "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it."
         case .savedRun:
             "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it."
+        case .choicesUnavailable:
+            "Your saved choices could not be read, so this quotation is kept until they can be checked."
         case .unlinkedMatchingText:
             "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it."
         case .unapprovedDraftQuotation:
@@ -110,10 +116,11 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
     static let minimumEvidenceCharacters = 8
 
     /// A maximum age that is negative or not finite, or a clock that is not finite,
-    /// expires nothing.
+    /// expires nothing. Pass nil preferences when the saved choices could not be read:
+    /// an empty journal means the person keeps nothing, and nil lists nothing for removal.
     public init(archive: ObservationArchive, currentRoutine: RoutineVersion?, previousRoutine: RoutineVersion?,
-                pendingProposal: EvidenceRoutineProposal?, preferences: RoutinePreferenceJournal,
-                history: MorningHistory, now: Date, maximumAge: TimeInterval) {
+                session: RoutineSession?, pendingProposal: EvidenceRoutineProposal?,
+                preferences: RoutinePreferenceJournal?, history: MorningHistory, now: Date, maximumAge: TimeInterval) {
         let limit = maximumAge.isFinite && maximumAge >= 0 && now.timeIntervalSince1970.isFinite ? maximumAge : nil
         var expired: [UUID] = []
         var unknown: [UUID] = []
@@ -129,9 +136,9 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
         // exact reference in any approved version rather than by the draft's flag. A
         // saved run keeps the approved version it ran after that version has rotated out.
         let runRoutines = history.runs.map(\.session.routine)
-        let approved = ([currentRoutine, previousRoutine].compactMap { $0 } + runRoutines).filter(\.isApproved)
+        let approved = ([currentRoutine, previousRoutine, session?.routine].compactMap { $0 } + runRoutines).filter(\.isApproved)
             .flatMap { $0.steps.compactMap(\.observationReference) }
-        let kept = preferences.entries.filter { $0.presence == .keep }
+        let kept = (preferences?.entries ?? []).filter { $0.presence == .keep }
         func explicitDecision(_ step: RoutineStep, _ reference: RoutineObservationReference) -> EvidenceRetentionReason? {
             if approved.contains(reference) { return .approvedQuotation }
             if kept.contains(where: { $0.targetID == step.id || $0.retainedStep?.observationReference == reference }) {
@@ -198,12 +205,14 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                         low = whole
                     } else {
                         guard holds(start, ends[low]) else { continue }
-                        // If a longer quotation is in the source, every shorter one is too.
-                        var high = ends.count - 1
-                        while low < high {
-                            let middle = (low + high + 1) / 2
-                            if holds(start, ends[middle]) { low = middle } else { high = middle - 1 }
-                        }
+                    }
+                    // If a longer quotation is in the source, every shorter one is too, so
+                    // one failed probe just past the line settles the usual case.
+                    var high = ends.count - 1
+                    if low < high, !holds(start, ends[low + 1]) { high = low }
+                    while low < high {
+                        let middle = (low + high + 1) / 2
+                        if holds(start, ends[middle]) { low = middle } else { high = middle - 1 }
                     }
                     // A suggestion never writes a quotation shorter than this, and a few
                     // typed letters would match almost every observation.
@@ -230,7 +239,8 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                     stepID: step.id, quote: match.quote, reason: .unlinkedMatchingText))
             }
         }
-        for (store, routine) in [(EvidenceRetentionStore.currentRoutine, currentRoutine), (.previousRoutine, previousRoutine)] {
+        for (store, routine) in [(EvidenceRetentionStore.currentRoutine, currentRoutine), (.previousRoutine, previousRoutine),
+                                 (.session, session?.routine)] {
             for step in routine?.steps ?? [] {
                 addUnlinked(step, in: store)
                 guard let reference = step.observationReference else { continue }
@@ -242,7 +252,8 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                         .spokenText.utf8.elementsEqual(step.detail.utf8) == true
                 copies.append(.init(acquisitionID: reference.acquisitionID, store: store, kind: kind(step),
                     stepID: step.id, quote: reference.quote,
-                    reason: explicitDecision(step, reference) ?? (untouched ? .unapprovedDraftQuotation : .reworkedStep)))
+                    reason: explicitDecision(step, reference) ?? (preferences == nil ? .choicesUnavailable
+                        : untouched ? .unapprovedDraftQuotation : .reworkedStep)))
             }
         }
 

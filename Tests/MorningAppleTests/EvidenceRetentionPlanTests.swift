@@ -37,10 +37,10 @@ struct EvidenceRetentionPlanTests {
 
     private func plan(_ entries: [ObservationAcquisition], current: RoutineVersion? = nil,
                       previous: RoutineVersion? = nil, proposal: EvidenceRoutineProposal? = nil,
-                      preferences: RoutinePreferenceJournal = .init(), runs: [MorningRunRecord] = [],
-                      maximumAge: TimeInterval? = nil) throws -> EvidenceRetentionPlan {
+                      preferences: RoutinePreferenceJournal? = .init(), runs: [MorningRunRecord] = [],
+                      session: RoutineSession? = nil, maximumAge: TimeInterval? = nil) throws -> EvidenceRetentionPlan {
         .init(archive: try ObservationArchive(entries: entries), currentRoutine: current, previousRoutine: previous,
-              pendingProposal: proposal, preferences: preferences, history: MorningHistory(runs: runs),
+              session: session, pendingProposal: proposal, preferences: preferences, history: MorningHistory(runs: runs),
               now: now, maximumAge: maximumAge ?? week)
     }
 
@@ -49,6 +49,28 @@ struct EvidenceRetentionPlanTests {
         if start { try session.start(at: now) }
         try session.stop(at: now.addingTimeInterval(60))
         return try MorningRunRecord(session: session, timeZoneIdentifier: "Europe/Paris", recordedAt: now)
+    }
+
+    @Test func theSavedSessionCopyIsListedAndFollowsItsRoutine() throws {
+        let source = try morning("A quiet cup of tea.")
+        let draft = RoutineVersion(sourceLabel: "Your selected saved observation", steps: [try savedMoment(source)])
+        let approved = draft.approved()
+        let ready = try plan([source], current: approved, session: RoutineSession(routine: approved)).dependents(of: source.id)
+        #expect(ready.map(\.store) == [.currentRoutine, .session])
+        #expect(ready.allSatisfy { $0.reason == .approvedQuotation })
+        // The app also saves a session for a routine not yet approved.
+        let unapproved = try plan([source], current: draft, session: RoutineSession(routine: draft)).dependents(of: source.id)
+        #expect(unapproved.map(\.store) == [.currentRoutine, .session])
+        #expect(unapproved.allSatisfy { $0.reason == .unapprovedDraftQuotation })
+    }
+
+    @Test func nothingIsListedForRemovalWhileSavedChoicesCannotBeRead() throws {
+        let source = try morning("A quiet cup of tea.")
+        let draft = RoutineVersion(sourceLabel: "Your selected saved observation", steps: [try savedMoment(source)])
+        #expect(try plan([source], current: draft).dependents(of: source.id).map(\.disposition) == [.removed])
+        let unread = try plan([source], current: draft, preferences: nil)
+        #expect(unread.dependents(of: source.id).map(\.reason) == [.choicesUnavailable])
+        #expect(!unread.dependentCopies.contains { $0.disposition == .removed })
     }
 
     @Test func savedRunsStillHoldingAQuotationAreListedAfterTheRoutineMovedOn() throws {
@@ -162,7 +184,7 @@ struct EvidenceRetentionPlanTests {
         var archive = try ObservationArchive(entries: [source])
         try archive.correct(id: source.id, text: "I review my calendar after lunch.")
         let result = EvidenceRetentionPlan(archive: archive, currentRoutine: draft, previousRoutine: nil,
-            pendingProposal: nil, preferences: .init(), history: .init(), now: now, maximumAge: week)
+            session: nil, pendingProposal: nil, preferences: .init(), history: .init(), now: now, maximumAge: week)
         #expect(result.dependents(of: source.id).map(\.reason) == [.reworkedStep])
         // The same holds once the observation is no longer in the archive at all.
         let orphaned = try plan([], current: draft).dependents(of: source.id)
@@ -202,7 +224,7 @@ struct EvidenceRetentionPlanTests {
         var corrected = try ObservationArchive(entries: [learned, other])
         try corrected.correct(id: other.id, text: "I stretch before tea.")
         let afterCorrection = EvidenceRetentionPlan(archive: corrected, currentRoutine: draft, previousRoutine: nil,
-            pendingProposal: nil, preferences: journal, history: .init(), now: now, maximumAge: week)
+            session: nil, pendingProposal: nil, preferences: journal, history: .init(), now: now, maximumAge: week)
         #expect(afterCorrection.dependents(of: other.id).map(\.store) == [.currentRoutine, .preferenceJournal])
     }
 
@@ -238,6 +260,11 @@ struct EvidenceRetentionPlanTests {
         let tricked = try plan([tricky], current: RoutineVersion(sourceLabel: "Your morning", steps: [step]))
             .dependents(of: tricky.id).compactMap(\.quote)
         #expect(tricked.contains("I review “mail” carefully.") && tricked.count == 2)
+        // A quotation running over several lines is not cut at a shorter whole line.
+        let long = try morning("I review\nI review” then\nmy bank statement.", day: 5)
+        step.detail = "Evidence: “I review” then\nmy bank statement.”"
+        #expect(try plan([long], current: RoutineVersion(sourceLabel: "Your morning", steps: [step]))
+            .dependents(of: long.id).map(\.quote) == ["I review” then\nmy bank statement."])
         // A few typed letters after the marker would match nearly any observation.
         step.detail = "Evidence: “review”\nEvidence: “ ”\nEvidence: “I review”"
         #expect(try plan([learned], current: RoutineVersion(sourceLabel: "Your morning", steps: [step]))
@@ -390,7 +417,7 @@ struct EvidenceRetentionPlanTests {
         #expect(try plan(entries, maximumAge: 0).expiredAcquisitionIDs == [atLimit.id, justOver.id, fresh.id])
         for clock in [Date(timeIntervalSince1970: .infinity), Date(timeIntervalSince1970: .nan)] {
             let broken = EvidenceRetentionPlan(archive: try ObservationArchive(entries: entries), currentRoutine: nil,
-                previousRoutine: nil, pendingProposal: nil, preferences: .init(), history: .init(), now: clock, maximumAge: week)
+                previousRoutine: nil, session: nil, pendingProposal: nil, preferences: .init(), history: .init(), now: clock, maximumAge: week)
             #expect(broken.expiredAcquisitionIDs.isEmpty)
         }
     }
@@ -410,12 +437,13 @@ struct EvidenceRetentionPlanTests {
     }
 
     @Test func everyReasonHasOneDispositionAndAPlainExplanation() {
-        let retained: Set<EvidenceRetentionReason> = [.approvedQuotation, .keptChoice, .markedRequired, .savedRun, .unlinkedMatchingText]
+        let retained: Set<EvidenceRetentionReason> = [.approvedQuotation, .keptChoice, .markedRequired, .savedRun,
+            .choicesUnavailable, .unlinkedMatchingText]
         for reason in EvidenceRetentionReason.allCases {
             #expect(!reason.explanation.isEmpty)
             #expect((reason.disposition == .separatelyRetained) == retained.contains(reason))
         }
         #expect(EvidenceRetentionReason.allCases.filter { $0.disposition == .removed } == [.unapprovedDraftQuotation])
-        #expect(EvidenceRetentionStore.allCases.count == 5)
+        #expect(EvidenceRetentionStore.allCases.count == 6)
     }
 }
