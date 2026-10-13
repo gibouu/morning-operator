@@ -56,10 +56,17 @@ enum OwnInterfaceWording {
         }
 
         /// A line begins or ends with this wording: the title or a button of a bar, read alone
-        /// or merged with its neighbour in that bar, or a counted line such as "5 minutes planned".
+        /// or merged with its neighbour in that bar. A counted clause must be the whole line
+        /// after its number ("5 minutes planned"), not the end of someone's sentence.
         func isAtLineEdge(of frame: Frame) -> Bool {
             normalized.contains { wording in
-                frame.lines.contains { $0 == wording || $0.hasPrefix("\(wording) ") || $0.hasSuffix(" \(wording)") }
+                frame.lines.contains { line in
+                    guard isPartOfCatalogString else {
+                        return line == wording || line.hasPrefix("\(wording) ") || line.hasSuffix(" \(wording)")
+                    }
+                    let count = line.prefix { $0.isNumber }
+                    return !count.isEmpty && line.dropFirst(count.count) == " \(wording)"
+                }
             }
         }
 
@@ -211,18 +218,23 @@ enum OwnInterfaceWording {
     /// the bars that stay while the text scrolls or around the text itself. Both pieces must
     /// begin or end a line.
     static let labelPairs: [[Phrase]] = [
-        // The suggested update: its title above, its approval below.
-        [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Approve update", fr: "Approuver la mise à jour")],
+        // The suggested update: its title above or its approval below, with the planned time
+        // under any suggested step. Title and approval together are what any updater shows.
+        [shown("Suggested update", fr: "Mise à jour suggérée"), minutesPlanned],
+        [shown("Approve update", fr: "Approuver la mise à jour"), minutesPlanned],
         // Under each suggested step, whatever the model wrote above them.
-        [shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"),
-         part("minutes planned", fr: "minutes prévues", of: "%lld minutes planned", earlier: "minute planned", "minute prévue")],
-        // The list of saved observations: its title and the button beside it.
+        [shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"), minutesPlanned],
+        // The list of saved observations: its title and the button beside it, and the two
+        // buttons under it once some are chosen.
         [shown("Observations", fr: "Observations"), shown("Choose mornings", fr: "Choisir des matinées")],
-        // One saved observation: the two rows above its notes, and the headings of its notes
-        // and of the text first read from the recording.
+        [shown("Clear selection", fr: "Effacer la sélection"), shown("Suggest an update", fr: "Suggérer une mise à jour")],
+        // One saved observation: the two rows above its notes.
         [shown("Read a saved moment", fr: "Lire un moment enregistré"), shown("Edit in Learn", fr: "Modifier dans Apprendre")],
-        [shown("Current notes", fr: "Notes actuelles"), shown("Original extracted text", fr: "Texte extrait d’origine")]
+        // One sampled screen: its title read as one line with the button beside it.
+        [shown("Sampled moment", fr: "Moment échantillonné"), shown("Done", fr: "Terminé")]
     ]
+    private static let minutesPlanned = part("minutes planned", fr: "minutes prévues", of: "%lld minutes planned",
+                                             earlier: "minute planned", "minute prévue")
 
     /// The Learn, Review, Settings, routine, recording and voice screens as they read today,
     /// then the screens that display an earlier observation or a suggestion.
@@ -508,9 +520,7 @@ enum OwnInterfaceWording {
             part("Choose dated observations from your own mornings, or a separate set of samples",
                  fr: "Choisissez des observations datées de vos propres matinées, ou un ensemble d’exemples séparé",
                  of: "Choose dated observations from your own mornings, or a separate set of samples. Nothing is selected automatically."),
-            shown("Choose one to five observations.", fr: "Choisissez entre une et cinq observations."),
-            shown("Record or import a little of your morning in Learn.",
-                  fr: "Enregistrez ou importez un peu de votre matinée dans Apprendre.")
+            shown("Choose one to five observations.", fr: "Choisissez entre une et cinq observations.")
         ], controls: [
             shown("Observations", fr: "Observations"),
             shown("Date needed", fr: "Date requise"),
@@ -707,28 +717,36 @@ enum OwnInterfaceWording {
     ///
     /// The badge must end a line in MORE's own capitals, "MORE" then "Recording" or
     /// « Enregistrement ». It sits in the date's row, so it is accepted when that line also
-    /// holds the date, or when it stands alone (at most a misread symbol before it) and the
+    /// holds the date, or when it stands alone (at most a misread symbol beside it) and the
     /// frame shows something else of the home: the date on a line of its own, a line that
     /// begins with the heading, or a playback label. Alone among another app's lines it is
     /// not enough, and neither is "more recording" in any other case or place.
     static func showsRecordingBadge(_ frame: Frame) -> Bool {
-        let before = recordingBadge.wordsBeforeLineEnd(in: frame)
+        let before = recordingBadge.wordsBeforeLineEnd(in: frame).map(withoutSymbols)
         if before.contains(where: isHomeDate) { return true }
-        // The badge's own symbol can be read as a letter or two.
-        guard before.contains(where: { $0.count <= 2 && $0.allSatisfy { $0.count == 1 } }) else { return false }
+        guard before.contains(where: \.isEmpty) else { return false }
         let headings = homeHeadings.flatMap(\.normalized)
-        return frame.shownLines.contains { isHomeDate($0.map(LearningEvidencePolicy.normalized)) }
+        return frame.shownLines.contains { isHomeDate(withoutSymbols($0.map(LearningEvidencePolicy.normalized))) }
             || frame.lines.contains { line in headings.contains { line == $0 || line.hasPrefix("\($0) ") } }
             || [playbackNow, playbackPause, playbackPaused, playbackContinue].contains { $0.isLine(of: frame) }
     }
 
-    /// The home's date as any locale abbreviates it ("Tue, Oct 13", « mar. 13 oct. »): a day of
-    /// the month among at most three short words, one of them the chevron beside it if read.
+    /// The words of a line without what the symbols at its end were read as: the chevron
+    /// beside the date and the badge's own dot, each a single letter at most.
+    private static func withoutSymbols(_ words: [String]) -> [String] {
+        var words = words
+        while words.count > 0, let last = words.last, last.count == 1, last.allSatisfy(\.isLetter) { words.removeLast() }
+        return words
+    }
+
+    /// The home's date as written with separate words ("Tue, Oct 13", « mar. 13 oct. »): a day
+    /// of the month with one or two abbreviated names. A date written as one run of signs
+    /// ("10月13日") is not recognized here; the badge then needs another piece of the home.
     private static func isHomeDate(_ words: [String]) -> Bool {
         let days = words.filter { Int($0).map { (1...31).contains($0) } ?? false }
         let names = words.filter { $0.allSatisfy(\.isLetter) }
-        return days.count == 1 && (1...3).contains(names.count) && days.count + names.count == words.count
-            && names.contains { $0.count >= 2 } && names.allSatisfy { $0.count <= 5 }
+        return days.count == 1 && (1...2).contains(names.count) && days.count + names.count == words.count
+            && names.allSatisfy { (2...5).contains($0.count) }
     }
 
     static func containsMarketing(_ frame: Frame) -> Bool {

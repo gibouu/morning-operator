@@ -378,7 +378,14 @@ private enum OwnScreenFixtures {
           + [.shown("Selected observations"), .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
              .other("Oct 9, 2026 · Original text", "9 oct. 2026 · Texte d’origine"),
              .shown("Correct a source in Learn to request a new suggestion."), .shown("About this suggestion")])
-    static let contentScreens = [observation, unorderedObservation, sampledMoment, observations, choosingObservations, suggestedUpdate]
+    /// Some observations chosen: the sentence under the list gives way to a count.
+    static let chosenObservations = ContentScreen(
+        name: "Observations, some chosen", top: [.shown("Observations"), .shown("Done choosing")],
+        bottom: [.other("2 observations across 2 dated days", "2 observations sur 2 jours datés"),
+                 .shown("Clear selection"), .shown("Suggest an update")],
+        body: historyRows, recognizedWithoutBars: false)
+    static let contentScreens = [observation, unorderedObservation, sampledMoment, observations, choosingObservations,
+                                 chosenObservations, suggestedUpdate]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
     /// read as one line with the invitation time and the planned minutes, then the person's steps.
@@ -469,6 +476,8 @@ struct OwnInterfaceWordingTests {
             #expect(screen.controls.contains { $0.catalogKey != nil }, "\(screen.name) has no label tied to a catalog.")
         }
         #expect(OwnInterfaceWording.recordingBadge.catalogKey == "MORE · Recording")
+        // The badge is matched in the letter case the app shows, so its case must not drift either.
+        #expect(try catalogs.languages.map { try catalogs.text("MORE · Recording", $0) } == OwnInterfaceWording.recordingBadge.wordings)
         #expect(OwnInterfaceWording.labelPairs.allSatisfy { pair in pair.count == 2 && pair.allSatisfy { $0.catalogKey != nil } })
         #expect(linked.allSatisfy { $0.wordings.count >= catalogs.languages.count })
         let record = try #require(OwnInterfaceWording.screens.first { $0.name == "Learn" }?
@@ -667,6 +676,7 @@ struct OwnInterfaceWordingTests {
             [date, badge],                          // read as two lines
             ["\(date) \(badge)"],                   // read as one line
             ["\(date) v \(badge)"],                 // with the chevron beside the date
+            ["\(date) v O \(badge)"], ["\(date) v", "O \(badge)"],   // and the badge's symbol
             [date, "O \(badge)"], [date, badge.replacingOccurrences(of: "·", with: "•")],
             [date, badge.replacingOccurrences(of: " ·", with: "")], ["\(date) \(badge.replacingOccurrences(of: " ·", with: ""))"],
             [badge],                                // the date not read: the heading and the playback labels remain
@@ -766,11 +776,17 @@ struct OwnInterfaceWordingTests {
         for pair in OwnInterfaceWording.labelPairs {
             for language in [0, 1] {
                 // The counted line as the app shows it.
+                let counted = pair.contains(where: \.isPartOfCatalogString)
                 let pieces = pair.map { $0.isPartOfCatalogString ? "5 \($0.wordings[language])" : $0.wordings[language] }
                 #expect(isOwnInterface("\(pieces[0])\n\(content)\n\(pieces[1])"))
-                #expect(isOwnInterface("\(pieces[0]) \(pieces[1])\n\(content)"))
-                for piece in pieces {
+                // Two labels of one bar read as one line. A counted line is a line of its own.
+                #expect(isOwnInterface("\(pieces[0]) \(pieces[1])\n\(content)") == !counted)
+                for piece in pieces where piece != "Sampled moment" && piece != "Moment échantillonné" {
                     #expect(!isOwnInterface("\(piece)\n\(content)"), "“\(piece)” alone rejected a screen.")
+                }
+                // The counted clause at the end of a sentence is not the label.
+                if counted {
+                    #expect(!isOwnInterface("\(pieces[0])\nIt runs over the 30 \(pair[1].wordings[language])\n\(content)"))
                 }
                 // Inside a longer line they are ordinary words.
                 #expect(!isOwnInterface("Please see the \(pieces[0]) today\nThen press \(pieces[1]) again\n\(content)"))
@@ -779,6 +795,10 @@ struct OwnInterfaceWordingTests {
         // The title of one sampled screen stays above its original text and identifies it alone.
         for title in ["Sampled moment", "Moment échantillonné"] {
             #expect(isOwnInterface("\(title)\n\(content)\n12:30 Lunch with the product team"))
+        }
+        // The same title read as one line with the button beside it.
+        for title in ["Sampled moment Done", "Moment échantillonné Terminé"] {
+            #expect(isOwnInterface("\(title)\nFriday, October 9\n\(content)\n12:30 Lunch with the product team"))
         }
     }
 
@@ -841,6 +861,13 @@ struct OwnInterfaceWordingTests {
             "Updates\nSuggested update\nKeep current\nVersion 4.2 improves the calendar and fixes meeting reminders",
             "Mises à jour\nMise à jour suggérée\nGarder l’actuelle\nLa version 4.2 améliore le calendrier et les rappels",
             "Updates\nApprove update\nKeep current\n09:00 Team planning meeting",
+            "Updates\nSuggested update\nVersion 4.2 improves the calendar and fixes meeting reminders\nKeep current\nApprove update",
+            "Mises à jour\nMise à jour suggérée\nLa version 4.2 améliore le calendrier et les rappels\nGarder l’actuelle\nApprouver la mise à jour",
+            "Messages\nPourquoi cette suggestion ?\nElle dépasse les 30 minutes prévues.\n09:00 Réunion de planification de l’équipe",
+            "Messages\nWhy this suggestion? The meeting already runs over its 30 minutes planned\n09:00 Team planning meeting",
+            "Scanner\nCurrent notes\nCheck the invoice before the planning meeting\nOriginal extracted text\nInvoice 2026-114",
+            "Scanner\nNotes actuelles\nVérifier la facture avant la réunion de planification\nTexte extrait d’origine\nFacture 2026-114",
+            "Photos\nClear selection\nDone\nObservations\n09:00 Team planning meeting",
             "Music\nWhy this suggestion?\nBecause you listened to the morning jazz playlist four times",
             "Musique\nPourquoi cette suggestion ?\nParce que vous avez écouté la playlist jazz du matin",
             "Fitness\n45 minutes planned\nMorning mobility and strength session with the group",
