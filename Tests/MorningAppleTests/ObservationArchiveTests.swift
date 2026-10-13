@@ -474,6 +474,9 @@ struct ObservationArchiveTests {
         // Builds without a source kind saved only the English label for a typed note.
         #expect(try !entry(.unknown, ObservationAcquisition.legacyWrittenSourceLabel).isImportedEvidence)
         #expect(ObservationAcquisition.legacyWrittenSourceLabel == "Your written observation")
+        // The localized pre-release build migrated such a note under its French label.
+        #expect(try !entry(.unknown, "Votre observation écrite").isImportedEvidence)
+        #expect(ObservationAcquisition.legacyWrittenSourceLabels == ["Your written observation", "Votre observation écrite"])
         #expect(try entry(.unknown, "Selected file: synthetic.txt").isImportedEvidence)
     }
 }
