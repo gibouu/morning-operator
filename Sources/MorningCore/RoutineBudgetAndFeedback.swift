@@ -63,9 +63,10 @@ public struct RoutineBudgetAndFeedback: Codable, Sendable, Equatable {
     }
 
     /// The same state without an acceptance made for another routine version. The store
-    /// saves this form with every write, so an edit, a reorder, an import or an approved
-    /// suggestion ends the acceptance for good: restoring the earlier routine afterwards
-    /// brings the note back. Approving keeps the version, and so keeps the acceptance.
+    /// applies this before every write and when it loads a file, so an edit, a reorder, an
+    /// import or an approved suggestion ends the acceptance for good: restoring the earlier
+    /// routine afterwards brings the note back. Approving keeps the version, and so keeps
+    /// the acceptance.
     public func droppingAcceptance(unlessFor routine: RoutineVersion?) -> RoutineBudgetAndFeedback {
         guard let acceptedLongerPlan, acceptedLongerPlan.routineVersionID != routine?.id else { return self }
         var copy = self

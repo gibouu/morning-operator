@@ -369,7 +369,7 @@ final class MorningStore {
                     }
                 }
                 history = saved.history ?? MorningHistory()
-                budgetAndFeedback = saved.budgetAndFeedback ?? RoutineBudgetAndFeedback()
+                budgetAndFeedback = (saved.budgetAndFeedback ?? RoutineBudgetAndFeedback()).droppingAcceptance(unlessFor: routine)
                 savedEndedSessionIDs = endedSessionIDsInMemory
                 captures = saved.captures ?? []
                 receipts = saved.receipts ?? [:]
@@ -2044,6 +2044,9 @@ final class MorningStore {
             return false
         }
         do {
+            // An accepted longer plan ends with any change of routine, whether or not this write succeeds.
+            let currentBudget = budgetAndFeedback.droppingAcceptance(unlessFor: routine)
+            if currentBudget != budgetAndFeedback { budgetAndFeedback = currentBudget }
             try synchronizeObservationEdits()
             // A proposal is derived from both sources and a full routine revision.
             // Drop stale derived state in the same write as any edit or deletion.
@@ -2051,13 +2054,12 @@ final class MorningStore {
             let validProposal = routinePreferencesIssue == nil ? pendingRoutineProposal.flatMap {
                 $0.isCurrent(archive: observationArchive, baseRoutine: routine, preferences: routinePreferences) ? $0 : nil
             } : nil
-            let currentBudget = budgetAndFeedback.droppingAcceptance(unlessFor: routine)
             try privacyControl.withReadyAccess { _ in
                 try snapshot.save(WorkspaceSnapshot(routine: routine, session: session, previousRoutine: previousRoutine,
                 history: history, captures: captures, receipts: receipts, sessionTimeZone: sessionTimeZone,
                 automatic: automatic, readAloud: readAloud, showMorningOnLockScreen: showMorningOnLockScreen,
                 sessionTimingInterrupted: sessionTimingInterrupted,
-                budgetAndFeedback: currentBudget,
+                budgetAndFeedback: budgetAndFeedback,
                 pendingCaptures: pendingCaptures, voiceIdentifier: speech.voiceIdentifier,
                 observationNotes: notes.isEmpty ? nil : notes,
                 observationSource: notes.isEmpty && observationVideoEvidence == nil ? nil : notesSourceLabel,
@@ -2071,7 +2073,6 @@ final class MorningStore {
             pendingRoutineProposal = validProposal
             savedCompletionSessionID = session?.status == .completed ? session?.id : nil
             savedEndedSessionIDs = endedSessionIDsInMemory
-            if budgetAndFeedback != currentBudget { budgetAndFeedback = currentBudget }
             observationEditsNeedSave = false
             projectObservation(selectedObservationID)
             if let observationSaveIssue, notice == observationSaveIssue { notice = nil }
