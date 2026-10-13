@@ -177,6 +177,12 @@ struct LearningWindowReminderTests {
         outcome = await other.planner.refresh(for: other.window)
         try #expect(outcome == .removalFailed(dayKey: key(12), at: at(12, 7)))
         #expect(other.client.pending != nil)
+        // It keeps being reported until the system lets go of it.
+        outcome = await other.planner.refresh(for: other.window)
+        try #expect(outcome == .removalFailed(dayKey: key(12), at: at(12, 7)))
+        other.client.ignoreRemoval = false
+        outcome = await other.planner.refresh(for: other.window)
+        #expect(outcome == .nothingToSchedule && other.client.pending == nil)
     }
 
     @Test func thePersonsOwnInvitationIsNeverReplacedOrCancelledByAWindow() async throws {

@@ -139,7 +139,7 @@ public struct LearningWindowReport: Sendable, Equatable {
         if window.state == .paused {
             var resumed = window
             if (try? resumed.start(at: now)) != nil {
-                datable = resumed.schedule(asOf: now).countedMornings.filter { $0.expectedStart > now }.count
+                datable = resumed.schedule(asOf: now).countedMornings.filter { $0.expectedStart >= now }.count
             }
         }
         let upcoming = mornings.filter { $0.status == .notYetDue }.count + datable
