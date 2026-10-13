@@ -183,6 +183,43 @@ struct OwnInterfaceIntervalsTests {
         #expect(spans?.contains(mediaSeconds: 30.1) == true, "The report may be late, so the last frame is left out.")
     }
 
+    @Test("An inactive scene is still in front: only the background ends a span")
+    func inactiveDoesNotEndASpan() {
+        // The app reports `scenePhase != .background`, so active and inactive both read true.
+        enum Phase { case active, inactive, background
+            var inFront: Bool { self != .background } }
+        var recorder = OwnInterfaceIntervalRecorder()
+        recorder.note(inFront: Phase.active.inFront, at: 0)
+        recorder.begin()
+        // A system sheet covers MORE, then leaves; later the app switcher, then another app.
+        recorder.note(inFront: Phase.inactive.inFront, at: 102)
+        recorder.note(inFront: Phase.active.inFront, at: 103)
+        recorder.note(inFront: Phase.inactive.inFront, at: 110)
+        #expect(recorder.intervals(recordingStartedAt: 100)?.intervals == [.init(startSeconds: 0)])
+        recorder.note(inFront: Phase.background.inFront, at: 111)
+        // Returning passes through inactive first, and that already opens the next span.
+        recorder.note(inFront: Phase.inactive.inFront, at: 150)
+        recorder.note(inFront: Phase.active.inFront, at: 151)
+        #expect(recorder.intervals(recordingStartedAt: 100)?.intervals
+            == [.init(startSeconds: 0, endSeconds: 11), .init(startSeconds: 50)])
+    }
+
+    @Test("A change with an unusable reading leaves what follows unknown, so it is excluded")
+    func nonFiniteReading() {
+        var recorder = OwnInterfaceIntervalRecorder()
+        recorder.note(inFront: true, at: 0)
+        recorder.begin()
+        recorder.note(inFront: false, at: 104)
+        // A visit to MORE whose start cannot be placed in time, then a valid return to another app.
+        recorder.note(inFront: true, at: .nan)
+        recorder.note(inFront: false, at: 140)
+        let spans = recorder.intervals(recordingStartedAt: 100)
+        // The visit began somewhere after 104, so everything from that last placed change is left out.
+        #expect(spans?.intervals == [.init(startSeconds: 0)])
+        #expect(spans?.contains(mediaSeconds: 20) == true)
+        #expect(spans?.contains(mediaSeconds: 60) == true)
+    }
+
     @Test("Repeated reports of one state add nothing, and lost reports exclude what follows")
     func repeatsAndOverflow() {
         var recorder = OwnInterfaceIntervalRecorder()

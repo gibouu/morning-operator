@@ -111,11 +111,18 @@ public struct OwnInterfaceIntervalRecorder: Equatable, Sendable {
     }
 
     /// Reports the scene's current state. Repeating the same state changes nothing.
+    /// "In front" means not in the background: a scene that is visible but inactive (the
+    /// app switcher, a system sheet over MORE) is still drawn, so it does not end a span.
     public mutating func note(inFront value: Bool, at reading: Double) {
         guard value != inFront else { return }
         inFront = value
         guard collecting else { return }
-        guard reading.isFinite, transitions.count < Self.maximumTransitions else {
+        // A change that cannot be placed in time leaves the state after the last kept one
+        // unknown, exactly like a lost report: everything from that one on is excluded, and
+        // nothing later is trusted. Dropping the change instead could hide a visit to MORE
+        // and let its frames through. The recorder's monotonic clock cannot produce such a
+        // reading, so this costs nothing in practice.
+        guard !overflowed, reading.isFinite, transitions.count < Self.maximumTransitions else {
             overflowed = true
             return
         }
