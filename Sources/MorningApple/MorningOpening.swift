@@ -80,7 +80,7 @@ public enum MorningOpeningComposer {
                                precipitation: MorningPrecipitationForecast? = nil,
                                unknownSenders: MorningUnknownSenderShare? = nil) -> MorningOpening {
         let locale = Locale(identifier: briefing.localeIdentifier)
-        let bundle = languageBundle(for: locale)
+        let phrases = MorningOpeningPhrases(french: locale.language.languageCode?.identifier == "fr")
         let zone = TimeZone(identifier: briefing.timeZoneIdentifier)
         let inWindow = now.timeIntervalSinceReferenceDate.isFinite && zone != nil
             && zone == TimeZone(identifier: timeZoneIdentifier)
@@ -100,13 +100,13 @@ public enum MorningOpeningComposer {
         func add(_ id: String, _ source: MorningOpeningSegment.Source, _ text: String) {
             segments.append(.init(id: id, source: source, text: text))
         }
-        add("greeting", .greeting, String(localized: "Good morning.", bundle: bundle, locale: locale))
+        add("greeting", .greeting, phrases.greeting)
 
         let weather = fact(briefing.weather), calendar = fact(briefing.calendar)
         switch weather {
         case .fresh(let text): add("weather", .weather, text)
-        case .stale: add("weather", .weather, String(localized: "The weather is out of date.", bundle: bundle, locale: locale))
-        case .unavailable: add("weather", .weather, String(localized: "The weather is unavailable.", bundle: bundle, locale: locale))
+        case .stale: add("weather", .weather, phrases.weatherStale)
+        case .unavailable: add("weather", .weather, phrases.weatherUnavailable)
         case .silent: break
         }
         if let precipitation, let zone, inWindow,
@@ -118,34 +118,23 @@ public enum MorningOpeningComposer {
             formatter.locale = locale; formatter.timeZone = zone
             formatter.dateStyle = .none; formatter.timeStyle = .short
             let time = formatter.string(from: precipitation.windowEnd)
-            add("umbrella", .umbrella,
-                String(localized: "Precipitation is likely before \(time). Take an umbrella.", bundle: bundle, locale: locale))
+            add("umbrella", .umbrella, phrases.umbrella(before: time))
         }
         switch calendar {
         case .fresh(let text): add("calendar", .calendar, text)
-        case .stale: add("calendar", .calendar, String(localized: "The calendar is out of date.", bundle: bundle, locale: locale))
-        case .unavailable: add("calendar", .calendar, String(localized: "The calendar is unavailable.", bundle: bundle, locale: locale))
+        case .stale: add("calendar", .calendar, phrases.calendarStale)
+        case .unavailable: add("calendar", .calendar, phrases.calendarUnavailable)
         case .silent: break
         }
 
         for provider in MorningOpeningProvider.allCases {
             let text: String
-            switch (provider, counts[provider] ?? .unavailable) {
-            case (_, .unavailable): continue
+            switch counts[provider] ?? .unavailable {
+            case .unavailable: continue
             // A negative count is not a count: treat it as not read.
-            case (_, .available(let count)) where count < 0: continue
-            case (.unreadMessages, .available(let count)):
-                text = String(localized: "\(count) unread messages.", bundle: bundle, locale: locale)
-            case (.unreadEmail, .available(let count)):
-                text = String(localized: "\(count) unread emails.", bundle: bundle, locale: locale)
-            case (.missedCalls, .available(let count)):
-                text = String(localized: "\(count) missed calls.", bundle: bundle, locale: locale)
-            case (.unreadMessages, .stale):
-                text = String(localized: "The unread message count is out of date.", bundle: bundle, locale: locale)
-            case (.unreadEmail, .stale):
-                text = String(localized: "The unread email count is out of date.", bundle: bundle, locale: locale)
-            case (.missedCalls, .stale):
-                text = String(localized: "The missed call count is out of date.", bundle: bundle, locale: locale)
+            case .available(let count) where count < 0: continue
+            case .available(let count): text = phrases.count(count, provider)
+            case .stale: text = phrases.staleCount(provider)
             }
             add("count.\(provider.rawValue)", .count, text)
         }
@@ -153,30 +142,75 @@ public enum MorningOpeningComposer {
         if let share = unknownSenders, let total = share.totalSenders, total > 0,
            (0...total).contains(share.unknownSenders) {
             let percent = Int((Double(share.unknownSenders) / Double(total) * 100).rounded())
-            add("unknownSenders", .unknownSenders,
-                String(localized: "\(percent)% of senders are not in the contacts shared with this app.",
-                       bundle: bundle, locale: locale))
+            add("unknownSenders", .unknownSenders, phrases.unknownSenders(percent: percent))
         }
 
         // The brief is offered only when it has something current to read.
         let hasBrief = [weather, calendar].contains { if case .fresh = $0 { true } else { false } }
         let choices: [MorningOpeningChoice] = hasBrief ? [.brief, .ritual, .stop] : [.ritual, .stop]
-        add("choice", .choice, hasBrief
-            ? String(localized: "Would you like to hear your briefing, start your routine, or stop?", bundle: bundle, locale: locale)
-            : String(localized: "Would you like to start your routine, or stop?", bundle: bundle, locale: locale))
+        add("choice", .choice, phrases.choice(withBrief: hasBrief))
         return .init(segments: segments, choices: choices, text: segments.map(\.text).joined(separator: " "))
     }
 
     private enum SectionFact: Equatable {
         case fresh(String), stale, unavailable, silent
     }
+}
 
-    /// The catalog table for the briefing's language rather than the process language.
-    private static func languageBundle(for locale: Locale) -> Bundle {
-        let code = locale.language.languageCode?.identifier == "fr" ? "fr" : "en"
-        guard let path = Bundle.module.path(forResource: code, ofType: "lproj"),
-              let bundle = Bundle(path: path) else { return .module }
-        return bundle
+/// Deterministic opening sentences for each supported language, explicit like
+/// `MorningBriefingPhrases` and for the same reason: the script is in the briefing's
+/// language whatever the device language is, and is testable on any toolchain.
+private struct MorningOpeningPhrases {
+    let french: Bool
+
+    var greeting: String { french ? "Bonjour." : "Good morning." }
+    var weatherStale: String { french ? "La météo n’est plus à jour." : "The weather is out of date." }
+    var weatherUnavailable: String { french ? "La météo n’est pas disponible." : "The weather is unavailable." }
+    var calendarStale: String { french ? "Le calendrier n’est plus à jour." : "The calendar is out of date." }
+    var calendarUnavailable: String { french ? "Le calendrier n’est pas disponible." : "The calendar is unavailable." }
+
+    func umbrella(before time: String) -> String {
+        french ? "Des précipitations sont probables avant \(time). Prenez un parapluie."
+            : "Precipitation is likely before \(time). Take an umbrella."
+    }
+    func count(_ count: Int, _ provider: MorningOpeningProvider) -> String {
+        if french {
+            // French counts zero as singular.
+            let one = count < 2
+            switch provider {
+            case .unreadMessages: return one ? "\(count) message non lu." : "\(count) messages non lus."
+            case .unreadEmail: return one ? "\(count) e-mail non lu." : "\(count) e-mails non lus."
+            case .missedCalls: return one ? "\(count) appel manqué." : "\(count) appels manqués."
+            }
+        }
+        let one = count == 1
+        switch provider {
+        case .unreadMessages: return "\(count) unread \(one ? "message" : "messages")."
+        case .unreadEmail: return "\(count) unread \(one ? "email" : "emails")."
+        case .missedCalls: return "\(count) missed \(one ? "call" : "calls")."
+        }
+    }
+    func staleCount(_ provider: MorningOpeningProvider) -> String {
+        switch provider {
+        case .unreadMessages:
+            french ? "Le nombre de messages non lus n’est plus à jour." : "The unread message count is out of date."
+        case .unreadEmail:
+            french ? "Le nombre d’e-mails non lus n’est plus à jour." : "The unread email count is out of date."
+        case .missedCalls:
+            french ? "Le nombre d’appels manqués n’est plus à jour." : "The missed call count is out of date."
+        }
+    }
+    func unknownSenders(percent: Int) -> String {
+        french ? "\(percent) % des expéditeurs ne figurent pas dans les contacts partagés avec cette app."
+            : "\(percent)% of senders are not in the contacts shared with this app."
+    }
+    func choice(withBrief: Bool) -> String {
+        if french {
+            return withBrief ? "Voulez-vous écouter votre récap, lancer votre routine ou arrêter ?"
+                : "Voulez-vous lancer votre routine ou arrêter ?"
+        }
+        return withBrief ? "Would you like to hear your briefing, start your routine, or stop?"
+            : "Would you like to start your routine, or stop?"
     }
 }
 

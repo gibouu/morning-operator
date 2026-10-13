@@ -131,66 +131,6 @@
         }
       }
     },
-    "%lld missed calls.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg missed call."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg missed calls."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg appel manqué."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg appels manqués."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld of %lld requested frames could not be analyzed.": {
       "localizations": {
         "en": {
@@ -247,136 +187,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "%lld unread emails.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg unread email."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg unread emails."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg e-mail non lu."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg e-mails non lus."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld unread messages.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg unread message."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg unread messages."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 1,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg message non lu."
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg messages non lus."
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld%% of senders are not in the contacts shared with this app.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld %% des expéditeurs ne figurent pas dans les contacts partagés avec cette app."
           }
         }
       }
@@ -1121,16 +931,6 @@
         }
       }
     },
-    "Good morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bonjour."
-          }
-        }
-      }
-    },
     "Heard: %@": {
       "localizations": {
         "fr": {
@@ -1577,16 +1377,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "En pause"
-          }
-        }
-      }
-    },
-    "Precipitation is likely before %@. Take an umbrella.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Des précipitations sont probables avant %@. Prenez un parapluie."
           }
         }
       }
@@ -2218,26 +2008,6 @@
         }
       }
     },
-    "The calendar is out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le calendrier n’est plus à jour."
-          }
-        }
-      }
-    },
-    "The calendar is unavailable.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le calendrier n’est pas disponible."
-          }
-        }
-      }
-    },
     "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened.": {
       "localizations": {
         "fr": {
@@ -2354,16 +2124,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "La session micro ne s’est pas activée."
-          }
-        }
-      }
-    },
-    "The missed call count is out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le nombre d’appels manqués n’est plus à jour."
           }
         }
       }
@@ -2588,52 +2348,12 @@
         }
       }
     },
-    "The unread email count is out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le nombre d’e-mails non lus n’est plus à jour."
-          }
-        }
-      }
-    },
-    "The unread message count is out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le nombre de messages non lus n’est plus à jour."
-          }
-        }
-      }
-    },
     "The visible-context catalog is invalid, ambiguous or too large.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Le catalogue de contextes visibles est invalide, ambigu ou trop volumineux."
-          }
-        }
-      }
-    },
-    "The weather is out of date.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La météo n’est plus à jour."
-          }
-        }
-      }
-    },
-    "The weather is unavailable.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La météo n’est pas disponible."
           }
         }
       }
@@ -3194,26 +2914,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "En cours : %@."
-          }
-        }
-      }
-    },
-    "Would you like to hear your briefing, start your routine, or stop?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voulez-vous écouter votre récap, lancer votre routine ou arrêter ?"
-          }
-        }
-      }
-    },
-    "Would you like to start your routine, or stop?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voulez-vous lancer votre routine ou arrêter ?"
           }
         }
       }
