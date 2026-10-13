@@ -4596,6 +4596,16 @@
         }
       }
     },
+    "Discard this recording?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer cet enregistrement ?"
+          }
+        }
+      }
+    },
     "Dismiss": {
       "localizations": {
         "fr": {
@@ -10218,6 +10228,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Les sources ont changé. Revenez aux matinées observées pour voir les tendances actuelles."
+          }
+        }
+      }
+    },
+    "The video is deleted from this device. Nothing from it has been saved yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vidéo est supprimée de cet appareil. Rien n’en a encore été enregistré."
+          }
+        }
+      }
+    },
+    "The video is deleted from this device. Text already saved from it stays available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vidéo est supprimée de cet appareil. Le texte déjà enregistré à partir de cette vidéo reste disponible."
           }
         }
       }
