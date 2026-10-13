@@ -973,6 +973,11 @@ struct ActionExecutionTests {
             await harness.deadlineClock.waitForSleepers()
             harness.deadlineClock.advance(by: ActionExecutor.defaultAdapterDeadline)
             #expect(try await asked.value == unknown)
+            // While that reconciliation is still out, a second one answering "not there" is not
+            // believed: the first may yet come back with evidence.
+            await harness.adapter.reconciliation(.notDelivered)
+            #expect(try await executor.reconcile(unknown.id) == unknown)
+            await harness.adapter.reconciliation(.delivered(evidenceReference: "late-evidence"))
             let before = try Data(contentsOf: harness.url)
             await harness.adapter.releaseReconcile()
             await journal.overdueCallsReturned()

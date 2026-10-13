@@ -143,7 +143,7 @@ public struct ActionJournal: Codable, Sendable, Equatable {
 /// as unsettled: an adapter call that outlasted the executor's deadline, or an answer that came in
 /// time and could not be saved. Never written to the journal file.
 protocol UnsettledKnowledge: Sendable {
-    /// True while a dispatch call is still running, and for good once the channel has said that
+    /// True while an overdue call is still running, and for good once the channel has said that
     /// it took the action or that the action was delivered.
     var mayHaveSent: Bool { get }
     /// True once the adapter call behind this has returned.

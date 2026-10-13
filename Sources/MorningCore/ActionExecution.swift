@@ -323,12 +323,18 @@ private struct OverdueDispatchCall: UnsettledKnowledge {
     func returned() async { await call.adapterReturned() }
 }
 
-/// A reconciliation call that outlasted the deadline. It never sends, so while it runs it says
-/// nothing; if it comes back with evidence of delivery, that evidence is not forgotten.
+/// A reconciliation call that outlasted the deadline. It never sends, but while it runs it may
+/// yet come back with evidence of delivery, and if it does, that evidence is not forgotten.
+/// So "not there" is not believed until it has returned with something else.
 private struct OverdueReconciliationCall: UnsettledKnowledge {
     let call: AdapterCall<ActionReconciliation>
     var mayHaveSent: Bool {
-        if case .answered(.delivered(let reference)) = call.late { !isBlank(reference) } else { false }
+        switch call.late {
+        case nil: false
+        case .stillRunning: true
+        case .answered(.delivered(let reference)): !isBlank(reference)
+        case .answered: false
+        }
     }
     var isOver: Bool { if case .answered = call.late { true } else { false } }
     func returned() async { await call.adapterReturned() }
@@ -360,9 +366,9 @@ private func isBlank(_ reference: String) -> Bool {
 ///    `reconcile` works again (and `revoke` never stopped working). A `reconcile` call that
 ///    outlasts it settles nothing. A late answer is never written to the journal and never
 ///    causes a call to the adapter. It is taken into account in one place only, `reconcile`:
-///    while an overdue dispatch call is still running, or once it has come back saying the
-///    channel took the action, or once an overdue reconciliation has come back with evidence of
-///    delivery, a "not delivered" answer is not believed, by rule 3. (The same holds for an
+///    while an overdue call (dispatch or reconciliation) about the attempt is still running, or
+///    once an overdue dispatch has come back saying the channel took the action, or an overdue
+///    reconciliation with evidence of delivery, a "not delivered" answer is not believed, by rule 3. (The same holds for an
 ///    acceptance or a delivery reported in time that could not be saved.) That memory is held by
 ///    the journal store, in memory: it survives a change of executor, and after a relaunch only
 ///    the journal's "unknown" remains (the overdue call itself is gone with the process).
@@ -428,8 +434,9 @@ public actor ActionExecutor {
         remember(.standing(kind: kind, accountID: accountID, targetID: targetID, at: now(), expiresAt: expiresAt))
     }
 
-    /// Immediate. Every dispatch whose adapter has not been invoked yet is refused, including
-    /// one already waiting its turn; an adapter call already under way cannot be recalled.
+    /// Immediate. Every dispatch that has not passed its last check yet is refused, including one
+    /// already waiting its turn. That last check is made just before the adapter call is started;
+    /// a call started by then cannot be recalled, even if the channel has not begun work on it.
     public func revoke(_ approvalID: UUID) {
         if approvals[approvalID]?.revokedAt == nil { approvals[approvalID]?.revokedAt = now() }
     }
