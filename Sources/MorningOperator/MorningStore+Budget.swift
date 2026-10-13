@@ -47,9 +47,10 @@ extension MorningStore {
     }
 
     /// Rebuilt from the session each time. "Saved" is the store's own save result for
-    /// this run: the last successful write held it.
+    /// this run: the last successful write held this exact ending.
     func recap(for session: RoutineSession) -> RoutineSessionRecap {
-        RoutineSessionRecap(session: session, isPersisted: savedEndedSessionIDs.contains(session.id))
+        RoutineSessionRecap(session: session,
+                            isPersisted: Self.ending(of: session).map(savedRunEndings.contains) ?? false)
     }
 
     func feedback(for session: RoutineSession) -> RoutineSessionFeedback? {
@@ -71,11 +72,18 @@ extension MorningStore {
     @discardableResult
     func retrySavingMorning() -> Bool { saveBudgetAndFeedback() }
 
-    /// Every ended run held in memory: the saved history and the current run once it ended.
-    var endedSessionIDsInMemory: Set<UUID> {
-        var ids = Set(history.runs.map(\.id))
-        if let endedSession { ids.insert(endedSession.id) }
-        return ids
+    /// The ending event of every ended run held in memory: the saved history and the current
+    /// run once it ended. An ending names one stop or one completion, so a run that shares
+    /// an identity with an older record is not mistaken for it.
+    var runEndingsInMemory: Set<UUID> {
+        var endings = Set(history.runs.compactMap { Self.ending(of: $0.session) })
+        if let endedSession, let ending = Self.ending(of: endedSession) { endings.insert(ending) }
+        return endings
+    }
+
+    private static func ending(of session: RoutineSession) -> UUID? {
+        guard session.status == .completed || session.status == .stopped else { return nil }
+        return session.events.last?.id
     }
 
     private func changeBudgetAndFeedback(_ change: (inout RoutineBudgetAndFeedback) -> Void) -> Bool {

@@ -177,8 +177,8 @@ final class MorningStore {
     private(set) var pendingCaptures: [String: String] = [:]
     // Time budget, recap and feedback (#10). Change these through MorningStore+Budget.swift.
     var budgetAndFeedback = RoutineBudgetAndFeedback()
-    /// Ended runs that the last successful save wrote to disk.
-    private(set) var savedEndedSessionIDs: Set<UUID> = []
+    /// The ending event of each ended run that the last successful save wrote to disk.
+    private(set) var savedRunEndings: Set<UUID> = []
     func saveBudgetAndFeedback() -> Bool { persist() }
     private var sessionTimingInterrupted = false
     private var sessionTimeZone = TimeZone.current.identifier
@@ -370,7 +370,7 @@ final class MorningStore {
                 }
                 history = saved.history ?? MorningHistory()
                 budgetAndFeedback = (saved.budgetAndFeedback ?? RoutineBudgetAndFeedback()).droppingAcceptance(unlessFor: routine)
-                savedEndedSessionIDs = endedSessionIDsInMemory
+                savedRunEndings = runEndingsInMemory
                 captures = saved.captures ?? []
                 receipts = saved.receipts ?? [:]
                 sessionTimeZone = saved.sessionTimeZone ?? TimeZone.current.identifier
@@ -2072,7 +2072,7 @@ final class MorningStore {
             }
             pendingRoutineProposal = validProposal
             savedCompletionSessionID = session?.status == .completed ? session?.id : nil
-            savedEndedSessionIDs = endedSessionIDsInMemory
+            savedRunEndings = runEndingsInMemory
             observationEditsNeedSave = false
             projectObservation(selectedObservationID)
             if let observationSaveIssue, notice == observationSaveIssue { notice = nil }
@@ -2217,7 +2217,7 @@ final class MorningStore {
         pendingRoutineProposal = nil
         routinePreferences = RoutinePreferenceJournal(); routinePreferencesIssue = nil; unreadablePreferences = nil
         history = MorningHistory(); captures = []; receipts = [:]; pendingCaptures = [:]
-        budgetAndFeedback = RoutineBudgetAndFeedback(); savedEndedSessionIDs = []
+        budgetAndFeedback = RoutineBudgetAndFeedback(); savedRunEndings = []
         pendingRecordingURL = nil; pendingRecordingShouldAutoProcess = false
         pendingRecordingInterruption = nil; pendingRecordingContext = nil
         captureBusy = false; capturePresented = false; capturePrefill = ""; captureSource = .typed
