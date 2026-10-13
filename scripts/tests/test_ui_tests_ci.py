@@ -43,8 +43,9 @@ class PickSimulatorTests(unittest.TestCase):
     def test_runtime_newer_than_the_sdk_is_left_alone(self):
         self.assertEqual(ci.pick_simulator(self.listing(), (27, 0)), ("pro", "iPhone 18 Pro", "27.0"))
 
-    def test_falls_back_when_every_runtime_is_newer_than_the_sdk(self):
-        self.assertEqual(ci.pick_simulator(self.listing(), (25, 0))[0], "beta")
+    def test_no_runtime_this_sdk_supports_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            ci.pick_simulator(self.listing(), (25, 0))
 
     def test_any_iphone_when_no_pro_exists(self):
         listing = {"devices": {self.PREFIX + "iOS-27-0": [device("iPhone 18e", "e"), device("iPad Air", "pad")]}}
@@ -125,6 +126,43 @@ class SummaryTests(unittest.TestCase):
     def test_an_unknown_result_is_a_problem(self):
         _, problems = ci.summarize({"result": "unknown"}, bundle(case("testA", "unknown")), "Title")
         self.assertEqual(len(problems), 1)
+
+
+class UnreadableBundleTests(unittest.TestCase):
+    """A bundle left by a run that was stopped: it exists, xcresulttool refuses it."""
+
+    def run_summary(self, bundle):
+        import contextlib, io, sys, unittest.mock
+        output = io.StringIO()
+        with unittest.mock.patch.object(sys, "argv", ["ui-tests-ci.py", "summary", bundle, "--title", "UI tests (x)"]), \
+                contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as stopped:
+            ci.main()
+        return stopped.exception.code, output.getvalue()
+
+    def test_a_bundle_xcresulttool_cannot_read_gives_a_summary_and_fails(self):
+        import subprocess, unittest.mock
+        with tempfile.TemporaryDirectory() as bundle:
+            error = subprocess.CalledProcessError(1, ["xcrun"], stderr="Error: not a valid\n result bundle")
+            with unittest.mock.patch.object(ci.subprocess, "run", side_effect=error):
+                code, text = self.run_summary(bundle)
+        self.assertEqual(code, 1)
+        self.assertIn("### UI tests (x)", text)
+        self.assertIn("**The test run did not finish.**", text)
+        self.assertIn("Error: not a valid result bundle", text)
+
+    def test_output_that_is_not_json_is_unreadable_too(self):
+        import subprocess, unittest.mock
+        with tempfile.TemporaryDirectory() as bundle:
+            done = subprocess.CompletedProcess(["xcrun"], 0, stdout="", stderr="")
+            with unittest.mock.patch.object(ci.subprocess, "run", return_value=done):
+                code, text = self.run_summary(bundle)
+        self.assertEqual(code, 1)
+        self.assertIn("did not finish", text)
+
+    def test_a_missing_bundle_fails_with_its_own_line(self):
+        code, text = self.run_summary("/nonexistent/ui-tests.xcresult")
+        self.assertEqual(code, 1)
+        self.assertIn("the tests did not start", text)
 
 
 if __name__ == "__main__":

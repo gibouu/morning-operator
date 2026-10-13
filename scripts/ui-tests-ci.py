@@ -40,7 +40,10 @@ def pick_simulator(listing, max_os=None):
         raise SystemExit("No available iPhone simulator on any iOS runtime.")
     # A runtime newer than the selected Xcode's SDK belongs to another (possibly
     # beta) Xcode on the image. Prefer the newest one this Xcode was built for.
-    usable = [v for v in runtimes if max_os is None or v[:2] <= max_os[:2]] or list(runtimes)
+    usable = [v for v in runtimes if max_os is None or v[:2] <= max_os[:2]]
+    if not usable:
+        raise SystemExit("Every iPhone simulator runs an iOS newer than this Xcode's SDK ("
+                         + ".".join(str(part) for part in max_os) + "): none is compatible.")
     newest = max(usable)
 
     def preference(device):
@@ -76,10 +79,32 @@ def select(mode, classes, directory):
     return [f"-{mode}-testing:{TARGET}/{name}" for name in classes]
 
 
+class UnreadableBundle(Exception):
+    pass
+
+
 def xcresulttool(*arguments):
-    output = subprocess.run(["xcrun", "xcresulttool", "get", "test-results", *arguments],
-                            check=True, capture_output=True, text=True).stdout
-    return json.loads(output)
+    """Return one xcresulttool report, or raise UnreadableBundle.
+
+    xcodebuild writes the bundle's index when it ends. A run stopped from
+    outside (the step's time limit, a cancellation) leaves a bundle that
+    exists and cannot be read.
+    """
+    try:
+        output = subprocess.run(["xcrun", "xcresulttool", "get", "test-results", *arguments],
+                                check=True, capture_output=True, text=True).stdout
+        return json.loads(output)
+    except (subprocess.CalledProcessError, OSError, ValueError) as error:
+        detail = getattr(error, "stderr", None) or str(error)
+        raise UnreadableBundle(" ".join(detail.split())[:300]) from error
+
+
+def unreadable_summary(title, bundle, detail):
+    return "\n".join([f"### {title}", "",
+                      f"**The test run did not finish.** The result bundle at `{bundle}` exists but cannot be read, "
+                      "which is what a run stopped by its time limit (or cancelled) leaves behind. "
+                      "There is no per-test result: the step's log lists the tests that had finished.", "",
+                      f"`xcresulttool`: {cell(detail)}", ""])
 
 
 def walk(node, suite=None):
@@ -189,11 +214,17 @@ def main():
         print(" ".join(select(arguments.mode, arguments.classes, arguments.tests_directory)))
     else:
         if not pathlib.Path(arguments.bundle).exists():
-            print(f"### {arguments.title}\n\nNo result bundle at `{arguments.bundle}`: the tests did not start.")
+            print(f"### {arguments.title}\n\nNo result bundle at `{arguments.bundle}`: the tests did not start "
+                  "(an earlier step failed, or the run was stopped first).")
             raise SystemExit(1)
-        text, problems = summarize(xcresulttool("summary", "--path", arguments.bundle),
-                                   xcresulttool("tests", "--path", arguments.bundle),
-                                   arguments.title, allow_skips=not arguments.no_skips)
+        try:
+            summary = xcresulttool("summary", "--path", arguments.bundle)
+            tests = xcresulttool("tests", "--path", arguments.bundle)
+        except UnreadableBundle as error:
+            print(unreadable_summary(arguments.title, arguments.bundle, str(error)))
+            print("Not a clean run: the tests were stopped before they finished.")
+            raise SystemExit(1)
+        text, problems = summarize(summary, tests, arguments.title, allow_skips=not arguments.no_skips)
         print(text)
         if problems:
             print("Not a clean run: " + "; ".join(problems) + ".")

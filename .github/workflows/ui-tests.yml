@@ -29,11 +29,13 @@ permissions:
 
 env:
   # The whole suite takes about two hours on one hosted simulator, so it is
-  # split by test class into three of roughly forty minutes. Each class is named
-  # once, here. The third shard runs every class not named in the first two, so
-  # a new test class is picked up without touching this file.
+  # split by test class into three of roughly forty minutes (measured: 40, up to
+  # 47 on a slow runner, and 41), well under the 62-minute limit of the test
+  # step. Each class is named once, here. The third shard runs every class not
+  # named in the first two, so a new test class is picked up without touching
+  # this file.
   MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests MorningBriefingTests CompletionCaptureTests PrivacyTests RoutineTransferTests
-  PROPOSAL_CLASSES: RoutineEvidenceProposalTests ObservedMorningOverviewTests
+  PROPOSAL_CLASSES: RoutineEvidenceProposalTests
 
 jobs:
   guard:
@@ -161,16 +163,18 @@ jobs:
             -only-testing:MorningOperatorUITests/InterfaceTourTests/testLargestTextTourOfHomeLearnReviewAndSettings
 
       # The summaries can fail the job (nothing ran, a failure in the bundle, a
-      # skip in the largest-text pass) but cannot make a failed run pass.
+      # skip in the largest-text pass, a bundle left unreadable by a run that hit
+      # its time limit) but cannot make a failed run pass. They run whatever
+      # happened before, so a failed build or a timeout still leaves its line.
       - name: Summarize
-        if: ${{ always() && steps.build.outcome == 'success' }}
+        if: ${{ always() }}
         run: |
           python3 scripts/ui-tests-ci.py summary ui-tests.xcresult \
             --title "UI tests ($SHARD)" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
       - name: Summarize the largest-text checks
-        if: ${{ always() && matrix.shard == 'everything-else' && steps.build.outcome == 'success' }}
+        if: ${{ always() && matrix.shard == 'everything-else' }}
         run: |
           python3 scripts/ui-tests-ci.py summary ui-tests-largest-text.xcresult --no-skips \
             --title "Largest text size" | tee -a "$GITHUB_STEP_SUMMARY"
