@@ -159,6 +159,7 @@ struct MorningRootView: View {
 
     var body: some View {
         workspaceContent
+        .modifier(MorningHaptics(store: store))
         .onChange(of: store.speech.state) { store.handleSpeechInterruption() }
         .onChange(of: store.automation.status) { store.synchronizeMorningActivity() }
         .onChange(of: scenePhase) { _, phase in
@@ -427,7 +428,7 @@ struct TodayView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(step.title).font(.title3.weight(.semibold))
                                 Text("\(step.durationMinutes) min").font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(MorningStyle.muted)
                             }
                         }
                         Text(purpose(for: step)).font(.body)
@@ -440,14 +441,14 @@ struct TodayView: View {
                                 .accessibilityIdentifier("run.detail")
                         } else if !step.detail.isEmpty {
                             DisclosureGroup(isFrench ? "Détails enregistrés" : "Saved details") {
-                                Text(step.detail).font(.subheadline).foregroundStyle(.secondary)
+                                Text(step.detail).font(.subheadline).foregroundStyle(MorningStyle.muted)
                                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                                     .accessibilityIdentifier("run.detail")
                             }.font(.subheadline).tint(MorningStyle.accent)
                         }
                         if step.automation == nil {
                             Label(step.kind == .messages ? (isFrench ? "Non connecté" : "Not connected") : (isFrench ? "À votre rythme" : "At your pace"), systemImage: step.kind == .messages ? "arrow.up.forward.app" : "hand.tap")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("moment.manual")
                         }
                         if store.session?.status == .paused,
@@ -457,7 +458,7 @@ struct TodayView: View {
                                 .buttonStyle(.glass).accessibilityIdentifier("briefing.updateCurrent")
                         }
                         if store.session?.status == .paused {
-                            Text("Your morning is paused.").font(.caption).foregroundStyle(.secondary)
+                            Text("Your morning is paused.").font(.caption).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("run.detailPaused")
                         }
                         if store.sessionActive, store.currentStep?.id == step.id {
@@ -467,7 +468,7 @@ struct TodayView: View {
                            let index = routine.steps.firstIndex(where: { $0.id == step.id }) {
                             let generation = store.dataGeneration
                             HStack(spacing: 12) {
-                                Text("Move").font(.caption).foregroundStyle(.secondary)
+                                Text("Move").font(.caption).foregroundStyle(MorningStyle.muted)
                                 Spacer()
                                 if index > 0 {
                                     Button("Move earlier", systemImage: "arrow.up") {
@@ -544,7 +545,7 @@ struct TodayView: View {
                 if store.session?.status == .completed { closingMoment }
                 compactTimeline(routine, compact: compact)
                 if routine.isSynthetic {
-                    Text("Sample morning").font(.caption2).foregroundStyle(.secondary)
+                    Text("Sample morning").font(.caption2).foregroundStyle(MorningStyle.muted)
                         .padding(.horizontal, 4).accessibilityIdentifier("routine.source")
                         .accessibilityLabel("Sample morning, not your observed activity")
                 }
@@ -599,13 +600,13 @@ struct TodayView: View {
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 14) {
             Image(systemName: "sun.horizon")
-                .font(.system(size: 28, weight: .regular))
+                .scaledFont(28, relativeTo: .title, weight: .regular)
                 .foregroundStyle(.primary.opacity(0.75)).accessibilityHidden(true)
             Text("Your morning")
                 .font(.title2.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
             Text("Show us a little of your morning.\nWe’ll find the rhythm together.")
-                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(.subheadline).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -616,12 +617,12 @@ struct TodayView: View {
                 .accessibilityValue(store.session?.status == .stopped ? "stopped" : "")
             morningInvitationButton
             if !routine.isApproved {
-                Text("Draft").font(.caption2).foregroundStyle(.secondary)
+                Text("Draft").font(.caption2).foregroundStyle(MorningStyle.muted)
                     .accessibilityIdentifier("morning.draft")
                     .accessibilityLabel("Draft, review before starting")
             }
             Spacer(minLength: 8)
-            Text("\(routine.totalDurationMinutes) min").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            Text("\(routine.totalDurationMinutes) min").font(.caption.monospacedDigit()).foregroundStyle(MorningStyle.muted)
                 .accessibilityLabel("\(routine.totalDurationMinutes) minutes planned")
         }.padding(.bottom, 2)
     }
@@ -639,7 +640,7 @@ struct TodayView: View {
                     if let upcoming {
                         Text(upcoming.formatted(date: .omitted, time: .shortened)).monospacedDigit()
                     }
-                }.font(.caption2).foregroundStyle(.secondary).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                }.font(.caption2).foregroundStyle(MorningStyle.muted).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .accessibilityLabel(upcoming == nil ? "Set morning invitation" : "Edit morning invitation")
                 .accessibilityValue(upcoming?.formatted(date: .complete, time: .shortened) ?? "No upcoming invitation")
@@ -760,13 +761,13 @@ struct TodayView: View {
         return Button { viewingStep = step } label: {
             HStack(spacing: 13) {
                 Image(systemName: complete ? "checkmark" : skipped ? "forward.end" : MorningStyle.symbol(for: step.kind))
-                    .font(.system(size: 16, weight: .regular))
+                    .scaledFont(16, relativeTo: .body, weight: .regular)
                     .foregroundStyle(.primary.opacity(complete || skipped ? 0.4 : 0.72)).frame(width: 25)
                 Text(step.title).font(.subheadline.weight(.medium))
                     .lineLimit(dynamicType.isAccessibilitySize ? nil : 1)
                 Spacer(minLength: 4)
                 Text("\(step.durationMinutes) min")
-                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .font(.caption.monospacedDigit()).foregroundStyle(MorningStyle.muted)
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, 16).padding(.vertical, 12)
@@ -811,7 +812,7 @@ struct TodayView: View {
             if compact {
                 EmptyView()
             } else if store.automatic, !store.automation.message.isEmpty {
-                Text(store.automation.message).font(.caption).foregroundStyle(.secondary)
+                Text(store.automation.message).font(.caption).foregroundStyle(MorningStyle.muted)
                     .lineLimit(dynamicType.isAccessibilitySize ? nil : compact ? 2 : 3)
             }
         }.padding(compact ? 11 : 14).frame(maxWidth: .infinity, alignment: .leading)
@@ -822,7 +823,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(store.shouldOfferCompletionReflection ? "Save a thought?" : "Morning complete.")
                 .font(.headline).accessibilityIdentifier("run.step")
-            Text(store.stateLabel).font(.caption).foregroundStyle(.secondary)
+            Text(store.stateLabel).font(.caption).foregroundStyle(MorningStyle.muted)
                 .accessibilityIdentifier("run.state").accessibilityValue(store.stateLabel)
             if store.shouldOfferCompletionReflection {
                 if dynamicType.isAccessibilitySize {
@@ -884,7 +885,7 @@ struct NoticeView: View {
             Text(text).font(.caption).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Button(action: dismiss) { Image(systemName: "xmark").padding(5) }.accessibilityLabel("Dismiss message")
-        }.foregroundStyle(.secondary).padding(16).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 18))
+        }.foregroundStyle(MorningStyle.muted).padding(16).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityIdentifier("app.notice")
     }
 }
@@ -1100,5 +1101,20 @@ private struct MorningLightBackdrop: View {
                 }
             }
         }.ignoresSafeArea().accessibilityHidden(true).allowsHitTesting(false)
+    }
+}
+
+/// Light haptics mark the moments that matter: a morning starts, a morning finishes,
+/// a routine is approved. The system skips them when haptics are off.
+private struct MorningHaptics: ViewModifier {
+    let store: MorningStore
+    func body(content: Content) -> some View {
+        let sessionID: UUID? = store.session?.id
+        let completed: Bool = store.session?.status == .completed
+        let approved: Bool = store.routine?.isApproved ?? false
+        return content
+            .sensoryFeedback(.start, trigger: sessionID) { (old: UUID?, new: UUID?) -> Bool in new != nil && old != new }
+            .sensoryFeedback(.success, trigger: completed) { (old: Bool, new: Bool) -> Bool in !old && new }
+            .sensoryFeedback(.success, trigger: approved) { (old: Bool, new: Bool) -> Bool in !old && new }
     }
 }

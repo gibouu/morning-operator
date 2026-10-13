@@ -329,7 +329,7 @@ struct SetupView: View {
                     Image(systemName: "sun.horizon").font(.title2)
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Your next morning").font(.headline)
-                        Text(store.invitation.statusText).font(.caption).foregroundStyle(.secondary)
+                        Text(store.invitation.statusText).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption)
@@ -342,7 +342,7 @@ struct SetupView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Your day").font(.headline)
                         Text("A little context before your morning begins.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption)
@@ -355,7 +355,7 @@ struct SetupView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Morning at a glance").font(.headline)
                         Text("Keep your place on the Lock Screen.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption)
@@ -371,7 +371,7 @@ struct SetupView: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text("Companion voice").font(.subheadline.weight(.semibold))
                                 Text(store.speech.selectedVoiceSummary)
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(MorningStyle.muted)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -423,7 +423,7 @@ struct SetupView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Privacy & data").font(.headline)
                         Text("What stays here, and what you can remove.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption)
@@ -494,7 +494,7 @@ struct StepEditor: View {
                     if step.automation == .savedObservation {
                         Text(step.detail).textSelection(.enabled)
                         Text("Choose a different excerpt from its observation in Review. Switching to Read this text aloud makes it an ordinary note.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     } else {
                         TextField("What would you like to do?", text: $step.detail, axis: .vertical)
                             .lineLimit(3...7).accessibilityLabel("Step details")

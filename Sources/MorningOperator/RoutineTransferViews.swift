@@ -55,7 +55,7 @@ struct RoutineExportView: View {
                     Text(includeNotes ? "Your plan and its notes" : "Your plan only")
                         .font(.headline)
                     Text("Review the names and text below before saving a file. Names can contain personal information.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     Toggle("Include notes", isOn: $includeNotes)
                         .disabled(showingFileExporter)
                         .accessibilityIdentifier("export.includeNotes")
@@ -72,13 +72,13 @@ struct RoutineExportView: View {
                     Section {
                         Label("This routine couldn't be prepared for export", systemImage: "exclamationmark.circle")
                             .font(.headline)
-                        Text(error.localizedDescription).font(.subheadline).foregroundStyle(.secondary)
+                        Text(error.localizedDescription).font(.subheadline).foregroundStyle(MorningStyle.muted)
                     }.accessibilityIdentifier("export.validationError")
                 }
 
                 Section {
                     Text("Recordings, observation history, saved choices and app operations aren't included.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                 }
                 if let statusMessage {
                     Section {
@@ -183,17 +183,17 @@ struct RoutineImportView: View {
                     Text("Review this plan before using it")
                         .font(.headline)
                     Text("This becomes your current draft. An approved routine can be restored while you review. Approve the draft before starting a morning.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     Text("Every imported moment is user-led. No app operation is enabled.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                 }
                 RoutineTransferPreview(document: documentSnapshot, prefix: "import")
                 Section {
                     Text("This file doesn't add recordings, observation history or saved choices. Your existing saved choices stay separate.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                     if documentSnapshot.detail == .planOnly {
                         Text("This plan-only file has no notes or source label.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                 }
                 if let failureMessage {
@@ -245,12 +245,12 @@ private struct RoutineTransferPreview: View {
             LabeledContent("Planned time", value: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes")
             if document.sourceIsSynthetic {
                 Label("Sample or test plan", systemImage: "sparkles")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
                     .accessibilityIdentifier("\(prefix).synthetic")
             }
             if let source = document.sourceLabel {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Source label").font(.caption).foregroundStyle(.secondary)
+                    Text("Source label").font(.caption).foregroundStyle(MorningStyle.muted)
                     Text(verbatim: source).textSelection(.enabled)
                         .accessibilityIdentifier("\(prefix).source")
                 }
@@ -269,14 +269,14 @@ private struct RoutineTransferPreview: View {
                     .accessibilityIdentifier("\(prefix).step.\(index).minutes")
                 if step.isRequired {
                     Label("Marked to keep in this plan", systemImage: "heart")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                         .accessibilityIdentifier("\(prefix).step.\(index).required")
                 }
                 if let notes = step.detail {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Notes").font(.caption).foregroundStyle(.secondary)
+                        Text("Notes").font(.caption).foregroundStyle(MorningStyle.muted)
                         if notes.isEmpty {
-                            Text("Empty").font(.caption).foregroundStyle(.secondary)
+                            Text("Empty").font(.caption).foregroundStyle(MorningStyle.muted)
                         } else {
                             Text(verbatim: notes).font(.subheadline).textSelection(.enabled)
                                 .accessibilityIdentifier("\(prefix).step.\(index).notes")

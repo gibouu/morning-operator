@@ -45,7 +45,7 @@ struct VoicePickerView: View {
                         .accessibilityIdentifier("voice.stopPreview")
                     }
                     if let error = speech.lastError {
-                        Text(error).font(.footnote).foregroundStyle(.secondary)
+                        Text(error).font(.footnote).foregroundStyle(MorningStyle.muted)
                     }
                 } footer: {
                     if let selected = speech.voiceIdentifier, !voices.contains(where: { $0.id == selected }) {
@@ -65,7 +65,7 @@ struct VoicePickerView: View {
                     }
                     if filteredVoices.isEmpty {
                         Text(search.isEmpty ? "No matching installed voices. Try showing all languages." : "No matching voices.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(MorningStyle.muted)
                     }
                 } header: {
                     Text("Installed voices")
@@ -80,11 +80,11 @@ struct VoicePickerView: View {
                     }
                     #if os(iOS)
                     Text("In Settings → Accessibility → Read & Speak → Voices, choose your language and download an Enhanced or Premium voice if offered. Return here after the download finishes.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(MorningStyle.muted)
                     Link("Apple’s voice settings guide", destination: URL(string: "https://support.apple.com/en-ie/guide/iphone/iph96b214f0/27/ios/27")!)
                     #else
                     Text("More voices can be downloaded through the accessibility voice controls in System Settings. Return here when the download finishes.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(MorningStyle.muted)
                     #endif
                     Button("Refresh installed voices") { voices = speech.availableVoices }
                         .accessibilityIdentifier("voice.refresh")
@@ -140,7 +140,7 @@ struct VoicePickerView: View {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(name).foregroundStyle(.primary)
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    Text(detail).font(.caption).foregroundStyle(MorningStyle.muted)
                 }
                 Spacer()
                 if speech.voiceIdentifier == identifier {

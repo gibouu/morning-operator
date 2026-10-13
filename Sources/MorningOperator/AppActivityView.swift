@@ -30,10 +30,10 @@ struct AppActivityView: View {
                             .font(.subheadline).foregroundStyle(MorningStyle.accent)
                     }
                     Text("Today's configured app automations only. These entries are separate from phone pickups; gaps and other apps may be missing.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                 } else {
                     Text(errorMessage ?? "Connect the apps you want to understand. Their entries and repeated returns will appear here.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     Button("Connect app activity") { showingSetup = true }
                         .buttonStyle(SecondaryButtonStyle())
                 }
@@ -73,7 +73,7 @@ private struct AppActivitySetupView: View {
                     instruction("2", "Add Morning Operator", "Add the action Log an app transition. Choose that same app and Opened or switched to. Leave Event ID empty for ordinary use.")
                     instruction("3", "Track when you leave", "Create a separate Is Closed automation for the same app. Choose Closed or switched from in our action. Repeat for any other supported apps you want to include.")
                     Text("Try opening two connected apps and returning to the first, then open Review. Counts appear after those automations actually run. This setup does not start screen recording or read messages.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(MorningStyle.muted)
                     #if os(iOS)
                     Link(destination: URL(string: "shortcuts://")!) {
                         Label("Open Shortcuts", systemImage: "arrow.up.right")
@@ -84,13 +84,13 @@ private struct AppActivitySetupView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Your saved app activity").font(.headline)
                         Text("App names and transition times stay on this device until you clear them. Disable the corresponding automations in Shortcuts to stop adding new entries.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(MorningStyle.muted)
                         Button("Clear recorded app activity", role: .destructive) { confirmingClear = true }
                             .disabled(clearing)
                             .accessibilityIdentifier("activity.clear")
                         if clearing { ProgressView("Clearing saved activity…") }
                         if let clearMessage {
-                            Text(clearMessage).font(.footnote).foregroundStyle(.secondary)
+                            Text(clearMessage).font(.footnote).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("activity.clearResult")
                         }
                     }
@@ -128,7 +128,7 @@ private struct AppActivitySetupView: View {
                 .background(MorningStyle.lavender, in: Circle())
             VStack(alignment: .leading, spacing: 7) {
                 Text(title).font(.headline)
-                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                Text(detail).font(.subheadline).foregroundStyle(MorningStyle.muted)
             }
         }
     }

@@ -40,7 +40,7 @@ struct ObservationScreenReviewView: View {
                         .disabled(frame?.canSupportIdentity != true)
                         .accessibilityIdentifier("sampleLabel.text")
                     if let message {
-                        Text(message).font(.caption).foregroundStyle(.secondary)
+                        Text(message).font(.caption).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("sampleLabel.message")
                     }
                 } header: { Text("Your label") } footer: {
@@ -64,7 +64,7 @@ struct ObservationScreenReviewView: View {
                 Section {
                     if quotes.isEmpty {
                         Text("No short, complete excerpt is available to anchor a label. You can still keep this screen unknown.")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                            .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     }
                     ForEach(Array(quotes.enumerated()), id: \.offset) { index, text in
                         Button { quote = text; labelFocused = false } label: {

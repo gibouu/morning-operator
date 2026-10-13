@@ -14,19 +14,19 @@ struct MorningVoiceCommandView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     Image(systemName: store.voiceCommands.state == .listening ? "waveform" : "mic")
-                        .font(.system(size: 36, weight: .light)).foregroundStyle(MorningStyle.accent)
+                        .scaledFont(36, relativeTo: .largeTitle, weight: .light).foregroundStyle(MorningStyle.accent)
                         .accessibilityHidden(true)
                     Text("A word from you.")
                         .font(.system(.largeTitle, design: .serif, weight: .medium))
                     Text("Your morning is paused. Say next, pause, resume, skip, repeat or stop.")
-                        .font(.body).foregroundStyle(.secondary)
+                        .font(.body).foregroundStyle(MorningStyle.muted)
                     Picker("Command language", selection: $language) {
                         Text("English").tag(MorningVoiceCommandLanguage.english)
                         Text("Français").tag(MorningVoiceCommandLanguage.french)
                     }.pickerStyle(.segmented).disabled(store.voiceInputBlocksPlayback)
                     if language == .french {
                         Text("Suivant · pause · reprends · passe cette étape · répète · arrête")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                            .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     }
                     Text(store.voiceCommandFeedback ?? store.voiceCommands.message)
                         .font(.subheadline).accessibilityIdentifier("voiceCommand.status")
@@ -35,11 +35,11 @@ struct MorningVoiceCommandView: View {
                             .accessibilityIdentifier("voiceCommand.transcript")
                     }
                     if let route = store.voiceCommands.inputRouteName, store.voiceCommands.state == .listening {
-                        Label(route, systemImage: "mic.fill").font(.caption).foregroundStyle(.secondary)
+                        Label(route, systemImage: "mic.fill").font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     controls
                     Text("Only listens when you tap. Up to eight seconds, processed on this device. Nothing is saved from this turn.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(MorningStyle.muted)
                 }.padding(24).frame(maxWidth: 600).frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(MorningStyle.background).navigationTitle("Speak to MORE").navigationBarTitleDisplayMode(.inline)

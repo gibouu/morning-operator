@@ -31,18 +31,18 @@ struct ObservationNarrationView: View {
             MorningList {
                 Section {
                     Text("Keep a thought from a morning you've saved. Choose the words you want to hear again.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    if let entry { Text(entry.sourceLabel).font(.caption).foregroundStyle(.secondary) }
+                        .font(.subheadline).foregroundStyle(MorningStyle.muted)
+                    if let entry { Text(entry.sourceLabel).font(.caption).foregroundStyle(MorningStyle.muted) }
                 }
                 if prepared == nil, let message {
                     Section {
-                        Text(message).font(.subheadline).foregroundStyle(.secondary)
+                        Text(message).font(.subheadline).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("narration.requestUnavailable")
                     }
                 }
                 if let prepared {
                     Section {
-                        Text(prepared.sourceDateLabel).font(.caption).foregroundStyle(.secondary)
+                        Text(prepared.sourceDateLabel).font(.caption).foregroundStyle(MorningStyle.muted)
                         Text(prepared.spokenText).textSelection(.enabled)
                             .accessibilityIdentifier("narration.text")
                         HStack {
@@ -60,7 +60,7 @@ struct ObservationNarrationView: View {
                             }
                         }.buttonStyle(.borderless)
                         Text(playing ? store.speech.statusText : (store.speech.lastError ?? "Ready when you are"))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("narration.playback")
                             .accessibilityValue(playing ? store.speech.state.rawValue : "idle")
                         Button(added ? "Added to your draft" : "Add to my morning") {
@@ -70,7 +70,7 @@ struct ObservationNarrationView: View {
                         }.disabled(blocked || added)
                             .accessibilityIdentifier("narration.add")
                         if let message {
-                            Text(message).font(.caption).foregroundStyle(.secondary)
+                            Text(message).font(.caption).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("narration.message")
                         }
                     } header: { Text("What you'll hear") } footer: {
@@ -80,7 +80,7 @@ struct ObservationNarrationView: View {
                 Section {
                     if candidates.isEmpty {
                         Text("This observation needs a confirmed day, a personal or sample origin, and a short readable line. You can review its date or add a correction in Learn.")
-                            .foregroundStyle(.secondary).accessibilityIdentifier("narration.unavailable")
+                            .foregroundStyle(MorningStyle.muted).accessibilityIdentifier("narration.unavailable")
                     } else {
                         ForEach(candidates) { candidate in
                             Button {
