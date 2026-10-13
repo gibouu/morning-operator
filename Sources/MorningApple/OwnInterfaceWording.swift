@@ -32,6 +32,11 @@ enum OwnInterfaceWording {
 
         /// The frame contains this wording as whole words, even wrapped over several lines.
         func isWithin(_ frame: Frame) -> Bool { normalized.contains { frame.text.contains(" \($0) ") } }
+
+        /// This wording also occurs, as whole words, inside `other`.
+        func isPart(of other: Phrase) -> Bool {
+            normalized.contains { mine in other.normalized.contains { " \($0) ".contains(" \(mine) ") } }
+        }
     }
 
     /// One screen's recognized text: its complete lines, and all of it as one run of words.
@@ -77,19 +82,17 @@ enum OwnInterfaceWording {
         shown("Show your morning", fr: "Montrez votre matinée"),
         shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
         shown("Your routine stays in your hands", fr: "Votre routine reste entre vos mains"),
-        shown("Suggest a routine", fr: "Suggérer une routine"),
-        shown("Stop automatically after", fr: "Arrêter automatiquement après"),
         // The Learn button read this until it was shortened to "Record"; it is still its spoken label.
         shown("Record a little of my morning", fr: "Enregistrer un peu de ma matinée"),
         shown("Sample morning, not your observed activity", fr: "Matinée d’exemple, pas votre activité observée"),
         shown("Your mornings will find their shape.", fr: "Vos matinées vont prendre forme."),
-        shown("Your approved routine", fr: "Votre routine approuvée"),
-        shown("A draft for you to review", fr: "Un brouillon à relire"),
         shown("Your morning voice", fr: "La voix de votre matinée"),
         shown("More natural voices", fr: "Des voix plus naturelles"),
-        // The English eyebrow has always identified Learn by itself, so it still does. Its
-        // translation is ordinary French; it only corroborates (see the Learn screen below).
-        earlier("Your rhythm"),
+        // These English lines have always identified a screen by themselves, so they still do.
+        // Their translations are ordinary French that other apps also show (« Votre rythme »,
+        // « Un brouillon à relire »): those only confirm a sentence of their screen, below.
+        earlier("Your rhythm"), earlier("Suggest a routine"), earlier("Stop automatically after"),
+        earlier("Your approved routine"), earlier("A draft for you to review"),
         earlier("On-device learning"),
         earlier("Enable screen recording"),
         earlier("Your first draft is ready to review")
@@ -147,7 +150,7 @@ enum OwnInterfaceWording {
               of: "Show us a little of your morning.\nWe’ll find the rhythm together.")]
     ]
 
-    /// The Learn, Review and Settings screens as they read today.
+    /// The Learn, Review, Settings, routine and recording screens as they read today.
     static let screens: [Screen] = [
         Screen(name: "Learn", copy: [
             shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
@@ -172,8 +175,26 @@ enum OwnInterfaceWording {
             part("Your current routine stays ready while you review a suggestion",
                  fr: "Votre routine actuelle reste prête pendant que vous relisez une suggestion",
                  of: "Your current routine stays ready while you review a suggestion. Approve it when it fits, or keep the morning you already have."),
-            shown("About on-device learning", fr: "À propos de l’apprentissage sur l’appareil")
+            shown("About on-device learning", fr: "À propos de l’apprentissage sur l’appareil"),
+            part("Each observation is saved on this device", fr: "Chaque observation est enregistrée sur cet appareil",
+                 of: "Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it."),
+            part("Evidence already attached to a saved routine remains with it",
+                 fr: "Les éléments déjà liés à une routine enregistrée restent avec elle",
+                 of: "Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it."),
+            part("A recording is sampled at up to 24 moments", fr: "Un enregistrement est échantillonné sur 24 moments au maximum",
+                 of: "A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention."),
+            part("it doesn't reveal every tap or intention", fr: "il ne révèle pas chaque toucher ni chaque intention",
+                 of: "A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention."),
+            part("Analysis uses Apple's on-device model when available",
+                 fr: "L’analyse utilise le modèle d’Apple sur l’appareil lorsqu’il est disponible",
+                 of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you."),
+            part("It doesn't run other apps or approve a routine for you",
+                 fr: "Elle ne lance pas d’autres apps et n’approuve pas de routine à votre place",
+                 of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you.")
         ], controls: [
+            shown("Suggest a routine", fr: "Suggérer une routine"),
+            shown("Suggest an update", fr: "Suggérer une mise à jour"),
+            shown("Check availability again", fr: "Vérifier à nouveau la disponibilité"),
             shown("Record", fr: "Enregistrer"),
             shown("Choose", fr: "Choisir"),
             shown("Your rhythm", fr: "Votre rythme"),
@@ -190,7 +211,11 @@ enum OwnInterfaceWording {
             shown("Record, describe or refine", fr: "Enregistrer, décrire ou affiner"),
             shown("A place for what comes to mind", fr: "Un endroit pour ce qui vous passe par la tête"),
             shown("Today's connected app entries", fr: "Ouvertures d’apps connectées aujourd’hui"),
-            shown("Voice, calendar and preferences", fr: "Voix, calendrier et préférences")
+            shown("Voice, calendar and preferences", fr: "Voix, calendrier et préférences"),
+            shown("Sample runs stay out of your personal averages.",
+                  fr: "Les sessions d’exemple n’entrent pas dans vos moyennes personnelles."),
+            shown("Runs with incomplete timing are excluded from this average.",
+                  fr: "Les sessions à la durée incomplète sont exclues de cette moyenne.")
         ], controls: [
             shown("Average routine time", fr: "Durée moyenne de la routine"),
             shown("Routine-run timing", fr: "Durée des sessions"),
@@ -208,8 +233,28 @@ enum OwnInterfaceWording {
             shown("A little context before your morning begins.", fr: "Un peu de contexte avant que votre matinée commence."),
             shown("Keep your place on the Lock Screen.", fr: "Gardez votre progression sur l’écran verrouillé."),
             shown("Hear the next step as you move through your routine.", fr: "Entendez l’étape suivante au fil de votre routine."),
-            shown("What stays here, and what you can remove.", fr: "Ce qui reste ici, et ce que vous pouvez supprimer.")
+            shown("What stays here, and what you can remove.", fr: "Ce qui reste ici, et ce que vous pouvez supprimer."),
+            part("Use the audio output picker to choose an available speaker",
+                 fr: "Utilisez le sélecteur de sortie audio pour choisir un haut-parleur disponible",
+                 of: "Use the audio output picker to choose an available speaker, including a HomePod on your network."),
+            part("Speaker output doesn't connect a HomePod microphone",
+                 fr: "La sortie vers un haut-parleur ne connecte pas le micro d’un HomePod",
+                 of: "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet."),
+            part("Room-to-room listening isn't available yet", fr: "L’écoute de pièce en pièce n’est pas encore disponible",
+                 of: "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet."),
+            part("You can capture thoughts and dreams, edit a routine, and use spoken guidance",
+                 fr: "Vous pouvez noter pensées et rêves, modifier une routine et utiliser le guidage vocal",
+                 of: "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable."),
+            part("Connecting a phone to a Mac doesn't automatically give this app control of the phone",
+                 fr: "Connecter un téléphone à un Mac ne donne pas automatiquement à cette app le contrôle du téléphone",
+                 of: "Connecting a phone to a Mac doesn't automatically give this app control of the phone. The separate development test runner is needed for the phone-control experiment."),
+            part("Messages and email aren't connected here yet", fr: "Les messages et les e-mails ne sont pas encore connectés ici",
+                 of: "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."),
+            part("Automatic room detection and continuous voice commands also need further work",
+                 fr: "La détection automatique de pièce et les commandes vocales continues demandent aussi du travail",
+                 of: "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work.")
         ], controls: [
+            shown("Check again", fr: "Vérifier à nouveau"),
             shown("Make yourself at home", fr: "Faites comme chez vous"),
             shown("Your next morning", fr: "Votre prochaine matinée"),
             shown("Your day", fr: "Votre journée"),
@@ -220,6 +265,48 @@ enum OwnInterfaceWording {
             shown("Listen where you like", fr: "Écoutez où vous voulez"),
             shown("Privacy & data", fr: "Confidentialité et données"),
             shown("Try the voice", fr: "Essayer la voix")
+        ]),
+        Screen(name: "Routine", copy: [
+            part("Editing creates a new draft; your saved mornings keep their original routine",
+                 fr: "Modifier crée un nouveau brouillon ; vos matinées enregistrées gardent leur routine d’origine",
+                 of: "Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine."),
+            shown("Restoring a routine leaves your saved choices for future suggestions unchanged.",
+                  fr: "Restaurer une routine ne modifie pas vos choix enregistrés pour les futures suggestions.")
+        ], controls: [
+            shown("Your approved routine", fr: "Votre routine approuvée"),
+            shown("A draft for you to review", fr: "Un brouillon à relire"),
+            shown("Add a moment", fr: "Ajouter un moment"),
+            shown("Restore previous routine", fr: "Restaurer la routine précédente"),
+            shown("Export routine", fr: "Exporter la routine"),
+            shown("Import routine", fr: "Importer une routine"),
+            shown("Learn from an observation", fr: "Apprendre d’une observation")
+        ]),
+        Screen(name: "Recording", copy: [
+            part("Confirm Apple's picker, then go through your morning", fr: "Confirmez le sélecteur d’Apple, puis vivez votre matinée",
+                 of: "Confirm Apple's picker, then go through your morning. This screen closes when recording begins. We stop at your chosen limit and save the visible text for you to review when you return."),
+            part("This screen closes when recording begins", fr: "Cet écran se ferme quand l’enregistrement commence",
+                 of: "Confirm Apple's picker, then go through your morning. This screen closes when recording begins. We stop at your chosen limit and save the visible text for you to review when you return."),
+            part("This records visible screen content without sound or camera video",
+                 fr: "Cela enregistre le contenu visible de l’écran, sans son ni vidéo de la caméra",
+                 of: "This records visible screen content without sound or camera video. Keep the part you want to teach short; other personal content on screen may also appear."),
+            part("Recording stops at your chosen time limit or its file-size limit",
+                 fr: "L’enregistrement s’arrête à la durée choisie ou à sa limite de taille",
+                 of: "Recording stops at your chosen time limit or its file-size limit. This is a time limit, not a guess that you stopped using your phone. You can stop earlier using the app or the system controls."),
+            part("This is a time limit, not a guess that you stopped using your phone",
+                 fr: "C’est une limite de temps, pas une supposition que vous avez cessé d’utiliser votre téléphone",
+                 of: "Recording stops at your chosen time limit or its file-size limit. This is a time limit, not a guess that you stopped using your phone. You can stop earlier using the app or the system controls."),
+            part("You can stop earlier using the app or the system controls",
+                 fr: "Vous pouvez l’arrêter plus tôt depuis l’app ou les commandes du système",
+                 of: "Recording stops at your chosen time limit or its file-size limit. This is a time limit, not a guess that you stopped using your phone. You can stop earlier using the app or the system controls."),
+            part("When recording finishes, visible text is extracted and saved locally",
+                 fr: "À la fin de l’enregistrement, le texte visible est extrait et enregistré localement",
+                 of: "When recording finishes, visible text is extracted and saved locally. Review the text, then choose whether to ask Apple Intelligence for a routine suggestion. Your routine changes only after you approve. The video stays on this device until its extracted text is saved, or until you discard it."),
+            part("Your routine changes only after you approve", fr: "Votre routine ne change qu’après votre approbation",
+                 of: "When recording finishes, visible text is extracted and saved locally. Review the text, then choose whether to ask Apple Intelligence for a routine suggestion. Your routine changes only after you approve. The video stays on this device until its extracted text is saved, or until you discard it.")
+        ], controls: [
+            shown("Stop automatically after", fr: "Arrêter automatiquement après"),
+            shown("Start screen recording", fr: "Lancer l’enregistrement de l’écran"),
+            shown("You're in control", fr: "C’est vous qui décidez")
         ])
     ]
 
@@ -263,8 +350,12 @@ enum OwnInterfaceWording {
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
         return screens.contains { screen in
-            let copy = screen.copy.filter { $0.isWithin(frame) }.count
-            return copy >= 2 || (copy == 1 && screen.controls.contains { $0.isLine(of: frame) })
+            let sentences = screen.copy.filter { $0.isWithin(frame) }
+            guard let sentence = sentences.first else { return false }
+            // A wrapped sentence can leave a line that reads like a label ("your routine,").
+            // That line is the same piece, not a second one.
+            return sentences.count >= 2
+                || screen.controls.contains { $0.isLine(of: frame) && !$0.isPart(of: sentence) }
         }
     }
 

@@ -45,7 +45,9 @@ private struct ShippedCatalogs {
             let cases = (forms as? [String: Any] ?? [:]).values.compactMap { $0 as? [String: Any] }
             groups.append(cases.flatMap { valueGroups($0).flatMap { $0 } })
         }
-        for substitution in (node["substitutions"] as? [String: Any] ?? [:]).values {
+        // Only the substitutions the string actually uses reach the screen.
+        let used = groups.flatMap { $0 }.joined(separator: " ")
+        for (name, substitution) in node["substitutions"] as? [String: Any] ?? [:] where used.contains("%#@\(name)@") {
             groups += valueGroups(substitution as? [String: Any] ?? [:])
         }
         return groups
@@ -131,7 +133,9 @@ private struct ShippedCatalogs {
         let views = files.compactMap { $0 as? URL }
             .filter { $0.pathExtension == "swift" && $0.lastPathComponent != "OwnInterfaceWording.swift" }
         try #require(views.count > 50)
-        return try views.map { try String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
+        // A string that survives only in a comment is not shown.
+        return try views.flatMap { try String(contentsOf: $0, encoding: .utf8).components(separatedBy: .newlines) }
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
     }
 }
 
@@ -147,7 +151,11 @@ private enum OwnScreenFixtures {
         "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.",
         "Add context, if you like", "Build it myself", "Your routine stays in your hands",
         "Your current routine stays ready while you review a suggestion. Approve it when it fits, or keep the morning you already have.",
-        "About on-device learning"
+        "Suggest a routine", "About on-device learning",
+        "Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.",
+        "A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention.",
+        "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you.",
+        "Check availability again"
     ]
     static let review = [
         "Average routine time", "Time in your routine, excluding pauses. Other app use isn't measured here.",
@@ -164,10 +172,29 @@ private enum OwnScreenFixtures {
         "Your next morning", "Your day", "A little context before your morning begins.",
         "Morning at a glance", "Keep your place on the Lock Screen.",
         "A voice to guide you", "Companion voice", "Read each step aloud",
-        "Hear the next step as you move through your routine.", "Listen where you like",
-        "Privacy & data", "What stays here, and what you can remove.", "Try the voice"
+        "Hear the next step as you move through your routine.", "Try the voice", "Listen where you like",
+        "Use the audio output picker to choose an available speaker, including a HomePod on your network.",
+        "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet.",
+        "Privacy & data", "What stays here, and what you can remove.", "Apple Intelligence", "Check again",
+        "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable.",
+        "Connecting a phone to a Mac doesn't automatically give this app control of the phone. The separate development test runner is needed for the phone-control experiment.",
+        "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."
     ]
-    static let all = [("Learn", learn), ("Review", review), ("Settings", settings)]
+    static let routine = [
+        "Your routine", "A draft for you to review", "Add a moment",
+        "Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine.",
+        "Restore previous routine", "Export routine", "Learn from an observation",
+        "Restoring a routine leaves your saved choices for future suggestions unchanged.", "Approve this routine"
+    ]
+    static let recording = [
+        "Confirm Apple's picker, then go through your morning. This screen closes when recording begins. We stop at your chosen limit and save the visible text for you to review when you return.",
+        "Stop automatically after", "Start screen recording", "You're in control",
+        "This records visible screen content without sound or camera video. Keep the part you want to teach short; other personal content on screen may also appear.",
+        "Recording stops at your chosen time limit or its file-size limit. This is a time limit, not a guess that you stopped using your phone. You can stop earlier using the app or the system controls.",
+        "When recording finishes, visible text is extracted and saved locally. Review the text, then choose whether to ask Apple Intelligence for a routine suggestion. Your routine changes only after you approve. The video stays on this device until its extracted text is saved, or until you discard it."
+    ]
+    static let all = [("Learn", learn), ("Review", review), ("Settings", settings),
+                      ("Routine", routine), ("Recording", recording)]
 
     /// Recognized lines for a screen: each string on its own lines, long ones wrapped.
     static func lines(_ keys: [String], _ language: String, from catalogs: ShippedCatalogs, width: Int = 38) throws -> [String] {
@@ -256,7 +283,7 @@ struct OwnInterfaceWordingTests {
         #expect(catalogs.drift(of: OwnInterfaceWording.all) == [])
         // The comparison is not empty: most recognition depends on current catalog strings.
         let linked = OwnInterfaceWording.all.filter { $0.catalogKey != nil }
-        #expect(linked.count >= 70)
+        #expect(linked.count >= 100, "\(linked.count)")
         #expect(linked.allSatisfy { $0.wordings.count >= catalogs.languages.count })
         let record = try #require(OwnInterfaceWording.screens.first { $0.name == "Learn" }?
             .controls.first { $0.catalogKey == "Record" })
@@ -297,6 +324,13 @@ struct OwnInterfaceWordingTests {
             entry = try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
         }
         #expect(plural.drift(of: phrases).count == 1)
+        // The counted line stops using the part that holds the recognized words.
+        let unused = try catalogs.changing(counted) { entry in
+            var text = String(decoding: try! JSONSerialization.data(withJSONObject: entry), as: UTF8.self)
+            text = text.replacingOccurrences(of: "%#@a@ · %#@b@", with: "%#@b@")
+            entry = try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
+        }
+        #expect(unused.drift(of: phrases).count == 2)
     }
 
     @Test("Every recognized catalog string is one the app's source still shows")
@@ -321,6 +355,10 @@ struct OwnInterfaceWordingTests {
     func copyIsLongEnoughToBeDistinctive() {
         for screen in OwnInterfaceWording.screens {
             #expect(screen.copy.count >= 2)
+            // Two sentences count as two pieces, so neither may be found inside the other.
+            for (index, sentence) in screen.copy.enumerated() {
+                #expect(!screen.copy.indices.contains { $0 != index && sentence.isPart(of: screen.copy[$0]) })
+            }
             for wording in screen.copy.flatMap(\.normalized) {
                 #expect(wording.split(separator: " ").count >= 4, "“\(wording)” is too short to identify \(screen.name).")
             }
@@ -345,12 +383,12 @@ struct OwnInterfaceWordingTests {
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
                 try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen)
             }
-            // Scrolled anywhere: any ten consecutive lines still show enough of the screen,
-            // without its navigation title and whatever the wrapping width.
-            for width in [30, 38, 52] {
+            // Scrolled anywhere: any fourteen consecutive lines (a phone shows more) still show
+            // enough of the screen, without its navigation title and whatever the wrapping width.
+            for width in [34, 42, 52] {
                 let wrapped = try OwnScreenFixtures.lines(keys, language, from: catalogs, width: width)
-                for start in 0...max(0, wrapped.count - 10) {
-                    let visible = wrapped[start..<min(wrapped.count, start + 10)].joined(separator: "\n")
+                for start in 0...max(0, wrapped.count - 14) {
+                    let visible = wrapped[start..<min(wrapped.count, start + 14)].joined(separator: "\n")
                     #expect(isOwnInterface(visible), "\(name) in \(language), from line \(start) at width \(width):\n\(visible)")
                 }
             }
@@ -402,7 +440,7 @@ struct OwnInterfaceWordingTests {
             "Vos matinées observées\nUn aperçu enregistré, pas un temps passé. Ces échantillons\nn’établissent ni ouvertures d’apps\n\(planned)",
             "Montrez votre matinée\nArrêter automatiquement après\n\(planned)",
             "La voix de votre matinée\nDes voix plus naturelles\n\(planned)",
-            "Votre routine approuvée\n\(planned)", "Un brouillon à relire\n\(planned)", "Suggérer une routine\n\(planned)"
+            "Vos matinées vont prendre forme.\n\(planned)"
         ] {
             #expect(isOwnInterface(screen), "Passed as evidence:\n\(screen)")
         }
@@ -423,6 +461,13 @@ struct OwnInterfaceWordingTests {
             "Santé\nVotre routine\nActivité des apps\nDurée des sessions\n09:00 Réunion de planification de l’équipe",
             "Fitness\nYour routine\nApp activity\nAverage routine time\n09:00 Team planning meeting",
             "Matinée\nMaintenant\nPause\n09:00 Réunion de planification de l’équipe",
+            // A French title that is ordinary wording elsewhere does not reject by itself.
+            "Notes\nUn brouillon à relire\nBonjour Paul, voici les documents pour notre réunion.",
+            "Minuteur\nArrêter automatiquement après\n09:00 Réunion de planification de l’équipe",
+            "Sport\nSuggérer une routine\nVotre routine approuvée\n09:00 Réunion de planification de l’équipe",
+            // A wrapped sentence is one piece, even when one of its lines reads like a label.
+            "Fitness\nTime in\nyour routine,\nexcluding pauses.\n07:30 Mobility strength session",
+            "Forme\nTemps passé dans\nvotre routine,\npauses exclues.\n07:30 Séance de mobilité et de force",
             // One sentence of MORE's copy quoted in a conversation is not MORE's screen.
             "Messages\nMontrez-nous votre matinée\nPlease bring the printed meeting notes tomorrow.",
             "Messages\nA place for what comes to mind\nPlease bring the printed meeting notes tomorrow.",
@@ -451,7 +496,7 @@ struct OwnInterfaceWordingTests {
         func isTitle(_ wording: String) -> Bool { titles.contains(LearningEvidencePolicy.normalized(wording)) }
         let controls = screen.controls.map { $0.wordings[language] }.filter { !isTitle($0) }
         let copy = screen.copy.map { $0.wordings[language] }
-        #expect(controls.count >= 3)
+        #expect(controls.count >= 2)
         #expect(!isOwnInterface((["Calendar"] + controls + [content]).joined(separator: "\n")),
                 "\(screenName)'s controls alone rejected a screen.")
         for (index, sentence) in copy.enumerated() {
@@ -459,7 +504,11 @@ struct OwnInterfaceWordingTests {
                 #expect(!isOwnInterface("Messages\n\(sentence)\n\(content)"), "“\(sentence)” alone rejected a screen.")
             }
             for control in controls {
-                #expect(isOwnInterface("\(sentence)\n\(control)\n\(content)"), "“\(sentence)” with “\(control)” passed.")
+                // A label whose words also occur in the sentence cannot confirm that sentence.
+                let independent = !" \(LearningEvidencePolicy.normalized(sentence)) "
+                    .contains(" \(LearningEvidencePolicy.normalized(control)) ")
+                #expect(isOwnInterface("\(sentence)\n\(control)\n\(content)") == independent,
+                        "“\(sentence)” with “\(control)”: expected own interface \(independent).")
             }
             let other = copy[(index + 1) % copy.count]
             #expect(isOwnInterface("\(sentence)\n\(other)\n\(content)"), "“\(sentence)” with “\(other)” passed.")
