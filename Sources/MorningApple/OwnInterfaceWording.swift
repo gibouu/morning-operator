@@ -905,12 +905,12 @@ enum OwnInterfaceWording {
     }
 
     /// The words of a line without what the two symbols at its end were read as: the badge's
-    /// own dot, a zero or an "o", and before it the chevron beside the date, one letter. One of
-    /// each at most; anything more is another app's words.
+    /// own dot, a zero or an "o", and before it the chevron beside the date, a "v". One of
+    /// each at most; any other letter or word is another app's ("Tue, Oct 13 A").
     private static func withoutSymbols(_ words: [String]) -> [String] {
         var words = words
         if let last = words.last, last == "0" || last == "o" { words.removeLast() }
-        if let last = words.last, last.count == 1, last.allSatisfy(\.isLetter) { words.removeLast() }
+        if words.last == "v" { words.removeLast() }
         return words
     }
 
@@ -921,7 +921,8 @@ enum OwnInterfaceWording {
     /// order ("Tue, Oct 13", "Tue 13 Oct", « mar. 13 oct. »). A few regions print the month as
     /// a number ("Tue 13. 10.", « 10-13, mar. »). Nothing else is a date here: not a count
     /// beside short words ("Save 1"), not an hour ("9 AM", "Tue 09:30"), not a duration
-    /// (« 5 min »). An hour whose colon Vision dropped ("Tue 9 05") still reads as a date.
+    /// (« 5 min »). An hour written with a dot or read without its colon ("Tue 9.05") is the
+    /// numeric date some regions print, and still reads as one.
     ///
     /// The words arrive lowercase and without accents. A real date in this form on another
     /// app's line that also ends with the badge's capitals is still read as the home.
