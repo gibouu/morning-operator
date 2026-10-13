@@ -537,6 +537,15 @@ enum OwnInterfaceWording {
             part("Separate clips are never joined into one continuous timeline",
                  fr: "Les clips séparés ne sont jamais fusionnés en une chronologie continue",
                  of: "Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline."),
+            // Under samples, tests and automated activity, in place of the sentence above.
+            part("This evidence stays separate from personal mornings", fr: "Ces éléments restent séparés des matinées personnelles",
+                 of: "This evidence stays separate from personal mornings. Dates and origins can be reviewed in the source observation."),
+            part("Dates and origins can be reviewed in the source observation",
+                 fr: "Les dates et origines peuvent être vérifiées dans l’observation source",
+                 of: "This evidence stays separate from personal mornings. Dates and origins can be reviewed in the source observation."),
+            shown("No screen labels are available yet.", fr: "Aucun libellé d’écran n’est encore disponible."),
+            shown("Undated observations are outside this period until you assign their observed day.",
+                  fr: "Les observations non datées restent hors de cette période tant que vous ne leur attribuez pas de jour."),
             shown("No dated observations in this period.", fr: "Aucune observation datée sur cette période.")
         ], controls: [
             shown("Observed mornings", fr: "Matinées observées"),

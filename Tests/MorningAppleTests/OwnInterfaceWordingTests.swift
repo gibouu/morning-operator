@@ -365,6 +365,15 @@ private enum OwnScreenFixtures {
         .other("2026-10-10", "2026-10-10"), .shown("No observation"),
         .shown("Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline.")
     ])
+    /// The same review of samples or tests, scrolled to its labels and its other closing sentence.
+    static let observedSamples = ContentScreen(name: "Observed mornings, samples", top: [.shown("Observed mornings")], body: [
+        .other("Team planning workshop", "Atelier de planification de l’équipe"),
+        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .other("Reply to family messages", "Répondre aux messages de la famille"),
+        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .shown("The seven days"),
+        .shown("This evidence stays separate from personal mornings. Dates and origins can be reviewed in the source observation.")
+    ])
     /// The quotations behind one screen label, as its first screen shows them.
     static let sourceMoments = ContentScreen(name: "Source moments", top: [.shown("Source moments")], body: [
         .other("Calendar", "Calendrier"),
@@ -453,7 +462,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [learnReview, observation, unorderedObservation, sampledMoment, observedMornings, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
+    static let contentScreens = [learnReview, observation, unorderedObservation, sampledMoment, observedMornings, observedSamples, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
