@@ -357,7 +357,8 @@ private enum OwnScreenFixtures {
                          .other("Oct 9, 2026 · Original text", "9 oct. 2026 · Texte d’origine"),
                          .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")] : [])
     }
-    /// A suggestion from the model, one "Why this suggestion?" open on its quotation.
+    /// A suggestion from the model, one "Why this suggestion?" open on its quotation. Between
+    /// its first and last lines nothing identifies it but the title above and the approval below.
     static let suggestedUpdate = ContentScreen(
         name: "Suggested update", top: [.shown("Suggested update"), .shown("Done")],
         bottom: [.shown("Keep current"), .shown("Approve update")], body: [
@@ -377,7 +378,8 @@ private enum OwnScreenFixtures {
                            "Noter les trois tâches qui comptent le plus après le déjeuner."))
           + [.shown("Selected observations"), .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
              .other("Oct 9, 2026 · Original text", "9 oct. 2026 · Texte d’origine"),
-             .shown("Correct a source in Learn to request a new suggestion."), .shown("About this suggestion")])
+             .shown("Correct a source in Learn to request a new suggestion."), .shown("About this suggestion")],
+        recognizedWithoutBars: false)
     /// Some observations chosen: the sentence under the list gives way to a count.
     static let chosenObservations = ContentScreen(
         name: "Observations, some chosen", top: [.shown("Observations"), .shown("Done choosing")],
@@ -476,6 +478,21 @@ struct OwnInterfaceWordingTests {
             #expect(screen.controls.contains { $0.catalogKey != nil }, "\(screen.name) has no label tied to a catalog.")
         }
         #expect(OwnInterfaceWording.recordingBadge.catalogKey == "MORE · Recording")
+        // A counted label is matched as a whole line, "5 minutes planned": every form the catalogs
+        // can show must be its number and then the recognized words, nothing before or after.
+        for phrase in OwnInterfaceWording.labelPairs.flatMap({ $0 }) where phrase.isPartOfCatalogString {
+            let key = try #require(phrase.catalogKey)
+            for language in catalogs.languages {
+                let forms = try #require(catalogs.valueGroups(for: key, in: language)).flatMap { $0 }.flatMap { $0 }
+                    .filter { !$0.contains("%#@") }
+                #expect(!forms.isEmpty)
+                for form in forms {
+                    let line = LearningEvidencePolicy.normalized(form.replacingOccurrences(of: "%arg", with: "5")
+                        .replacingOccurrences(of: "%lld", with: "5"))
+                    #expect(phrase.normalized.contains { line == "5 \($0)" }, "“\(form)” is not a number and then the recognized words.")
+                }
+            }
+        }
         // The badge is matched in the letter case the app shows, so its case must not drift either.
         #expect(try catalogs.languages.map { try catalogs.text("MORE · Recording", $0) } == OwnInterfaceWording.recordingBadge.wordings)
         #expect(OwnInterfaceWording.labelPairs.allSatisfy { pair in pair.count == 2 && pair.allSatisfy { $0.catalogKey != nil } })
@@ -677,6 +694,7 @@ struct OwnInterfaceWordingTests {
             ["\(date) \(badge)"],                   // read as one line
             ["\(date) v \(badge)"],                 // with the chevron beside the date
             ["\(date) v O \(badge)"], ["\(date) v", "O \(badge)"],   // and the badge's symbol
+            ["\(date) v 0 \(badge)"], [date, "0 \(badge)"],
             [date, "O \(badge)"], [date, badge.replacingOccurrences(of: "·", with: "•")],
             [date, badge.replacingOccurrences(of: " ·", with: "")], ["\(date) \(badge.replacingOccurrences(of: " ·", with: ""))"],
             [badge],                                // the date not read: the heading and the playback labels remain
@@ -868,6 +886,8 @@ struct OwnInterfaceWordingTests {
             "Scanner\nCurrent notes\nCheck the invoice before the planning meeting\nOriginal extracted text\nInvoice 2026-114",
             "Scanner\nNotes actuelles\nVérifier la facture avant la réunion de planification\nTexte extrait d’origine\nFacture 2026-114",
             "Photos\nClear selection\nDone\nObservations\n09:00 Team planning meeting",
+            "Fitness\nWhy this suggestion?\n45 minutes planned\n09:00 Mobility and strength session with the group",
+            "Forme\nPourquoi cette suggestion ?\n45 minutes prévues\n09:00 Séance de mobilité et de renforcement avec le groupe",
             "Music\nWhy this suggestion?\nBecause you listened to the morning jazz playlist four times",
             "Musique\nPourquoi cette suggestion ?\nParce que vous avez écouté la playlist jazz du matin",
             "Fitness\n45 minutes planned\nMorning mobility and strength session with the group",

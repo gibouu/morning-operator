@@ -222,8 +222,6 @@ enum OwnInterfaceWording {
         // under any suggested step. Title and approval together are what any updater shows.
         [shown("Suggested update", fr: "Mise à jour suggérée"), minutesPlanned],
         [shown("Approve update", fr: "Approuver la mise à jour"), minutesPlanned],
-        // Under each suggested step, whatever the model wrote above them.
-        [shown("Why this suggestion?", fr: "Pourquoi cette suggestion ?"), minutesPlanned],
         // The list of saved observations: its title and the button beside it, and the two
         // buttons under it once some are chosen.
         [shown("Observations", fr: "Observations"), shown("Choose mornings", fr: "Choisir des matinées")],
@@ -732,20 +730,20 @@ enum OwnInterfaceWording {
     }
 
     /// The words of a line without what the symbols at its end were read as: the chevron
-    /// beside the date and the badge's own dot, each a single letter at most.
+    /// beside the date and the badge's own dot, each a single letter or a zero at most.
     private static func withoutSymbols(_ words: [String]) -> [String] {
         var words = words
-        while words.count > 0, let last = words.last, last.count == 1, last.allSatisfy(\.isLetter) { words.removeLast() }
+        while let last = words.last, last == "0" || (last.count == 1 && last.allSatisfy(\.isLetter)) { words.removeLast() }
         return words
     }
 
     /// The home's date as written with separate words ("Tue, Oct 13", « mar. 13 oct. »): a day
-    /// of the month with one or two abbreviated names. A date written as one run of signs
+    /// of the month with up to three short words (« ter., 13 de out. »). A date written as one run of signs
     /// ("10月13日") is not recognized here; the badge then needs another piece of the home.
     private static func isHomeDate(_ words: [String]) -> Bool {
         let days = words.filter { Int($0).map { (1...31).contains($0) } ?? false }
         let names = words.filter { $0.allSatisfy(\.isLetter) }
-        return days.count == 1 && (1...2).contains(names.count) && days.count + names.count == words.count
+        return days.count == 1 && (1...3).contains(names.count) && days.count + names.count == words.count
             && names.allSatisfy { (2...5).contains($0.count) }
     }
 
