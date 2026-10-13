@@ -214,14 +214,20 @@ enum OwnInterfaceWording {
     ]
 
     /// Screens that show text MORE did not write (an earlier observation, a suggestion from
-    /// the model) with no sentence of MORE's in view: two labels that always sit together, in
-    /// the bars that stay while the text scrolls or around the text itself. Both pieces must
-    /// begin or end a line.
-    static let labelPairs: [[Phrase]] = [
+    /// the model) with no sentence of MORE's in view: labels that always sit together, in the
+    /// bars that stay while the text scrolls or around the text itself. Every piece of a group
+    /// must begin or end a line.
+    static let labelGroups: [[Phrase]] = [
         // The suggested update: its title above or its approval below, with the planned time
         // under any suggested step. Title and approval together are what any updater shows.
         [shown("Suggested update", fr: "Mise à jour suggérée"), minutesPlanned],
         [shown("Approve update", fr: "Approuver la mise à jour"), minutesPlanned],
+        // Scrolled into the quotations a suggestion rests on, no planned time is in view: the
+        // title and both buttons of the bars that stay. Two of the three are not enough.
+        [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Keep current", fr: "Garder l’actuelle"),
+         shown("Approve update", fr: "Approuver la mise à jour")],
+        [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Discard", fr: "Supprimer"),
+         shown("Approve update", fr: "Approuver la mise à jour")],
         // The list of saved observations: its title and the button beside it, and the two
         // buttons under it once some are chosen.
         [shown("Observations", fr: "Observations"), shown("Choose mornings", fr: "Choisir des matinées")],
@@ -650,7 +656,7 @@ enum OwnInterfaceWording {
         distinctiveLines + marketing + marketingPair + earlierReviewHeadings + [earlierReviewNote]
             + [overviewHeading] + overviewCopy + homeHeadings + homeFooters
             + [homeReviewPrompt, recordingBadge, playbackNow, playbackPause, playbackPaused, playbackContinue]
-            + pairs.flatMap { $0 } + labelPairs.flatMap { $0 } + screens.flatMap { $0.copy + $0.controls }
+            + pairs.flatMap { $0 } + labelGroups.flatMap { $0 } + screens.flatMap { $0.copy + $0.controls }
     }
 
     // MARK: - Recognition
@@ -686,7 +692,7 @@ enum OwnInterfaceWording {
            (playbackNow.isLine(of: frame) && playbackPause.isLine(of: frame))
             || (playbackPaused.isLine(of: frame) && playbackContinue.isLine(of: frame)) { return true }
         if pairs.contains(where: { pair in pair.allSatisfy { $0.isWithin(frame) } }) { return true }
-        if labelPairs.contains(where: { pair in pair.allSatisfy { $0.isAtLineEdge(of: frame) } }) { return true }
+        if labelGroups.contains(where: { group in group.allSatisfy { $0.isAtLineEdge(of: frame) } }) { return true }
         // Every recognized sentence on this frame, once: a label that is words of one of them
         // is not a second piece, whichever screen the sentence belongs to.
         let present = frame.sentences(among: screens.flatMap(\.copy))

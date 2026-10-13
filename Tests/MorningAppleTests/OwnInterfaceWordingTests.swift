@@ -386,8 +386,18 @@ private enum OwnScreenFixtures {
         bottom: [.other("2 observations across 2 dated days", "2 observations sur 2 jours datés"),
                  .shown("Clear selection"), .shown("Suggest an update")],
         body: historyRows, recognizedWithoutBars: false)
+    /// Scrolled into the quotations of one suggested step: no planned time, no sentence of MORE's.
+    static let suggestedUpdateQuotations = ContentScreen(
+        name: "Suggested update, quotations", top: [.shown("Suggested update"), .shown("Done")],
+        bottom: [.shown("Keep current"), .shown("Approve update")],
+        body: (9...12).flatMap { day -> [Piece] in
+            [.other("“09:00 Team planning meeting with the design group. Discuss the release schedule.”",
+                    "« 09:00 Réunion de planification avec l’équipe de design. Discuter du calendrier de sortie. »"),
+             .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
+             .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
+        }, recognizedWithoutBars: false)
     static let contentScreens = [observation, unorderedObservation, sampledMoment, observations, choosingObservations,
-                                 chosenObservations, suggestedUpdate]
+                                 chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
     /// read as one line with the invitation time and the planned minutes, then the person's steps.
@@ -480,11 +490,15 @@ struct OwnInterfaceWordingTests {
         #expect(OwnInterfaceWording.recordingBadge.catalogKey == "MORE · Recording")
         // A counted label is matched as a whole line, "5 minutes planned": every form the catalogs
         // can show must be its number and then the recognized words, nothing before or after.
-        for phrase in OwnInterfaceWording.labelPairs.flatMap({ $0 }) where phrase.isPartOfCatalogString {
+        for phrase in OwnInterfaceWording.labelGroups.flatMap({ $0 }) where phrase.isPartOfCatalogString {
             let key = try #require(phrase.catalogKey)
             for language in catalogs.languages {
-                let forms = try #require(catalogs.valueGroups(for: key, in: language)).flatMap { $0 }.flatMap { $0 }
-                    .filter { !$0.contains("%#@") }
+                let values = try #require(catalogs.valueGroups(for: key, in: language)).flatMap { $0 }.flatMap { $0 }
+                // The string itself is its plural and nothing around it.
+                for whole in values where whole.contains("%#@") {
+                    #expect(whole.wholeMatch(of: /%#@\w+@/) != nil, "“\(whole)” puts words around the counted label.")
+                }
+                let forms = values.filter { !$0.contains("%#@") }
                 #expect(!forms.isEmpty)
                 for form in forms {
                     let line = LearningEvidencePolicy.normalized(form.replacingOccurrences(of: "%arg", with: "5")
@@ -495,7 +509,7 @@ struct OwnInterfaceWordingTests {
         }
         // The badge is matched in the letter case the app shows, so its case must not drift either.
         #expect(try catalogs.languages.map { try catalogs.text("MORE · Recording", $0) } == OwnInterfaceWording.recordingBadge.wordings)
-        #expect(OwnInterfaceWording.labelPairs.allSatisfy { pair in pair.count == 2 && pair.allSatisfy { $0.catalogKey != nil } })
+        #expect(OwnInterfaceWording.labelGroups.allSatisfy { group in group.count >= 2 && group.allSatisfy { $0.catalogKey != nil } })
         #expect(linked.allSatisfy { $0.wordings.count >= catalogs.languages.count })
         let record = try #require(OwnInterfaceWording.screens.first { $0.name == "Learn" }?
             .controls.first { $0.catalogKey == "Record" })
@@ -788,26 +802,29 @@ struct OwnInterfaceWordingTests {
         }
     }
 
-    @Test("Two labels that sit together are recognized together, read alone or as one line; one of them is not enough")
-    func labelPairsNeedBothPieces() {
+    @Test("Labels that sit together are recognized together, read alone or as one line; without one of them they are not")
+    func labelGroupsNeedEveryPiece() {
         let content = "09:00 Team planning meeting"
-        for pair in OwnInterfaceWording.labelPairs {
+        for group in OwnInterfaceWording.labelGroups {
             for language in [0, 1] {
+                let counted = group.contains(where: \.isPartOfCatalogString)
                 // The counted line as the app shows it.
-                let counted = pair.contains(where: \.isPartOfCatalogString)
-                let pieces = pair.map { $0.isPartOfCatalogString ? "5 \($0.wordings[language])" : $0.wordings[language] }
-                #expect(isOwnInterface("\(pieces[0])\n\(content)\n\(pieces[1])"))
-                // Two labels of one bar read as one line. A counted line is a line of its own.
-                #expect(isOwnInterface("\(pieces[0]) \(pieces[1])\n\(content)") == !counted)
-                for piece in pieces where piece != "Sampled moment" && piece != "Moment échantillonné" {
-                    #expect(!isOwnInterface("\(piece)\n\(content)"), "“\(piece)” alone rejected a screen.")
+                let pieces = group.map { $0.isPartOfCatalogString ? "5 \($0.wordings[language])" : $0.wordings[language] }
+                #expect(isOwnInterface((pieces.dropLast() + [content] + pieces.suffix(1)).joined(separator: "\n")))
+                // The last two labels of one bar read as one line. A counted line is a line of its own.
+                let merged = pieces.dropLast(2) + ["\(pieces[pieces.count - 2]) \(pieces[pieces.count - 1])", content]
+                #expect(isOwnInterface(merged.joined(separator: "\n")) == !counted)
+                for missing in pieces.indices where group.count > 2 || (pieces[1 - missing] != "Sampled moment" && pieces[1 - missing] != "Moment échantillonné") {
+                    var rest = pieces
+                    rest.remove(at: missing)
+                    #expect(!isOwnInterface((rest + [content]).joined(separator: "\n")), "\(rest) without “\(pieces[missing])” rejected a screen.")
                 }
                 // The counted clause at the end of a sentence is not the label.
                 if counted {
-                    #expect(!isOwnInterface("\(pieces[0])\nIt runs over the 30 \(pair[1].wordings[language])\n\(content)"))
+                    #expect(!isOwnInterface("\(pieces[0])\nIt runs over the 30 \(group[1].wordings[language])\n\(content)"))
                 }
                 // Inside a longer line they are ordinary words.
-                #expect(!isOwnInterface("Please see the \(pieces[0]) today\nThen press \(pieces[1]) again\n\(content)"))
+                #expect(!isOwnInterface(pieces.map { "Please see the \($0) today" }.joined(separator: "\n") + "\n\(content)"))
             }
         }
         // The title of one sampled screen stays above its original text and identifies it alone.
@@ -879,8 +896,8 @@ struct OwnInterfaceWordingTests {
             "Updates\nSuggested update\nKeep current\nVersion 4.2 improves the calendar and fixes meeting reminders",
             "Mises à jour\nMise à jour suggérée\nGarder l’actuelle\nLa version 4.2 améliore le calendrier et les rappels",
             "Updates\nApprove update\nKeep current\n09:00 Team planning meeting",
-            "Updates\nSuggested update\nVersion 4.2 improves the calendar and fixes meeting reminders\nKeep current\nApprove update",
-            "Mises à jour\nMise à jour suggérée\nLa version 4.2 améliore le calendrier et les rappels\nGarder l’actuelle\nApprouver la mise à jour",
+            "Updates\nSuggested update\nVersion 4.2 improves the calendar and fixes meeting reminders\nApprove update",
+            "Mises à jour\nMise à jour suggérée\nLa version 4.2 améliore le calendrier et les rappels\nApprouver la mise à jour",
             "Messages\nPourquoi cette suggestion ?\nElle dépasse les 30 minutes prévues.\n09:00 Réunion de planification de l’équipe",
             "Messages\nWhy this suggestion? The meeting already runs over its 30 minutes planned\n09:00 Team planning meeting",
             "Scanner\nCurrent notes\nCheck the invoice before the planning meeting\nOriginal extracted text\nInvoice 2026-114",
@@ -915,7 +932,7 @@ struct OwnInterfaceWordingTests {
         let content = "09:00 Team planning meeting"
         // A few titles identify a screen by one complete line; leave those to their own tests.
         // Two labels that sit together identify their screen; that has its own tests too.
-        let titles = Set((OwnInterfaceWording.distinctiveLines + OwnInterfaceWording.labelPairs.flatMap { $0 }).flatMap(\.normalized))
+        let titles = Set((OwnInterfaceWording.distinctiveLines + OwnInterfaceWording.labelGroups.flatMap { $0 }).flatMap(\.normalized))
         func isTitle(_ wording: String) -> Bool { titles.contains(LearningEvidencePolicy.normalized(wording)) }
         let controls = screen.controls.map { $0.wordings[language] }.filter { !isTitle($0) }
         let copy = screen.copy.map { $0.wordings[language] }
