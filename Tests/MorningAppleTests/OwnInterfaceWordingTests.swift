@@ -337,6 +337,15 @@ private enum OwnScreenFixtures {
         .other("17:30 Pick up the children from football practice", "17:30 Aller chercher les enfants à l’entraînement de football"),
         .shown("Source sample")
     ], recognizedWithoutBars: false)
+    /// The quotations behind one screen label, as its first screen shows them.
+    static let sourceMoments = ContentScreen(name: "Source moments", top: [.shown("Source moments")], body: [
+        .other("Calendar", "Calendrier"),
+        .other("Seen on 2 distinct days. Open a quote to inspect the original sampled screen.",
+               "Vu sur 2 jours distincts. Ouvrez une citation pour examiner l’écran échantillonné d’origine."),
+        .shown("A proposed visual label doesn't establish an app's identity or an action you took."),
+        .other("2026-10-09 · Europe/Paris", "2026-10-09 · Europe/Paris"), meeting,
+        .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")
+    ])
     /// Choosing a line of a saved observation to hear again.
     static let savedMoment = ContentScreen(name: "Saved moment", top: [.shown("A saved moment"), .shown("Done")], body: [
         .shown("Keep a thought from a morning you've saved. Choose the words you want to hear again."),
@@ -416,7 +425,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [observation, unorderedObservation, sampledMoment, savedMoment, screenLabel, observations, choosingObservations,
+    static let contentScreens = [observation, unorderedObservation, sampledMoment, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading

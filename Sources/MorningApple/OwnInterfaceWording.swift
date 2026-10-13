@@ -494,6 +494,21 @@ enum OwnInterfaceWording {
             shown("Source sample", fr: "Échantillon source"),
             shown("Read this saved moment", fr: "Lire ce moment enregistré")
         ]),
+        // The quotations behind one screen label seen across several mornings.
+        Screen(name: "Source moments", copy: [
+            part("Open a quote to inspect the original sampled screen",
+                 fr: "Ouvrez une citation pour examiner l’écran échantillonné d’origine",
+                 of: "Seen on %lld distinct days. Open a quote to inspect the original sampled screen."),
+            shown("A proposed visual label doesn't establish an app's identity or an action you took.",
+                  fr: "Un libellé visuel proposé n’établit ni l’identité d’une app ni une action de votre part."),
+            part("It stays separate from model labels and doesn't establish an action you took",
+                 fr: "Il reste séparé des libellés du modèle et n’établit pas une action de votre part",
+                 of: "You supplied this label. It stays separate from model labels and doesn't establish an action you took.")
+        ], controls: [
+            shown("Source moments", fr: "Moments sources"),
+            shown("Excerpt selected by you", fr: "Extrait choisi par vous"),
+            shown("Pattern updated", fr: "Tendance mise à jour")
+        ]),
         // Choosing a line of a saved observation to hear again.
         Screen(name: "Saved moment", copy: [
             part("Keep a thought from a morning you've saved", fr: "Gardez une pensée d’une matinée enregistrée",
