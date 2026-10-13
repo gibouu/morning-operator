@@ -383,7 +383,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         guard proposal.observationID == evidence.observation.observationID
         else { return .ignored(.notDerivedFromLatestObservation) }
         guard isFresh(evidence, now: now) else { return stop(.staleEvidence, now: now) }
-        step?.proposalWaitSeconds = current.proposalRequestedAt.map { now - $0 }
+        step?.proposalWaitSeconds = current.proposalRequestedAt.map { Self.elapsed(from: $0, to: now) }
 
         switch proposal.action {
         case .externalEffect(let reference):
@@ -559,9 +559,14 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
         return .stopped(reason)
     }
 
+    /// A recorded duration is never negative and always a finite number, so the record can be stored.
+    private static func elapsed(from start: TimeInterval, to end: TimeInterval) -> TimeInterval {
+        min(max(end - start, 0), .greatestFiniteMagnitude)
+    }
+
     private mutating func closeRoundTrip(_ result: PhoneRoundTripResult, now: TimeInterval) {
         guard let sent = outstanding else { return }
-        step?.roundTrips.append(PhoneRoundTrip(sequence: sent.sequence, kind: sent.kind, seconds: now - sent.issuedAt, result: result))
+        step?.roundTrips.append(PhoneRoundTrip(sequence: sent.sequence, kind: sent.kind, seconds: Self.elapsed(from: sent.issuedAt, to: now), result: result))
         outstanding = nil
     }
 
@@ -571,7 +576,7 @@ public struct PhoneLoopSession: ~Copyable, Sendable {
             id: current.id, mode: current.mode, action: current.pending?.action.kind, outcome: outcome,
             verifiedBy: outcome == .verified ? current.pending.map { Self.verificationKind(of: $0.expectation) } : nil,
             extraLookCount: current.extraLooks, actionResendCount: current.resends,
-            manualInterventionCount: current.interventions, durationSeconds: now - current.startedAt,
+            manualInterventionCount: current.interventions, durationSeconds: Self.elapsed(from: current.startedAt, to: now),
             proposalWaitSeconds: current.proposalWaitSeconds, roundTrips: current.roundTrips,
             externalIntentID: current.externalIntentID))
         step = nil

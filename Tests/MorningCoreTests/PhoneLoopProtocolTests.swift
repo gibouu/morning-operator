@@ -630,6 +630,15 @@ struct PhoneLoopProtocolTests {
         // The record is still storable: no timing in it is NaN.
         #expect((try? JSONEncoder().encode(nan.session.record)) != nil)
 
+        // Extreme but finite times: the recorded durations stay finite numbers.
+        let extreme = try Harness()
+        _ = extreme.session.start(now: -Double.greatestFiniteMagnitude)
+        _ = extreme.session.checkDeadlines(now: Double.greatestFiniteMagnitude)      // a timeout an "infinite" time later
+        #expect(extreme.session.userStopped(now: 0) == .stopped(.staleEvidence))    // and then the clock runs backwards
+        #expect((try? JSONEncoder().encode(extreme.session.record)) != nil)
+        #expect(extreme.session.record.steps.flatMap(\.roundTrips).allSatisfy { $0.seconds.isFinite && $0.seconds >= 0 })
+        #expect(extreme.session.record.steps.allSatisfy { $0.durationSeconds.isFinite })
+
         for bad in [TimeInterval.nan, .infinity, -.infinity] {
             let harness = try Harness()
             _ = try harness.startAndObserve()
@@ -1011,8 +1020,8 @@ struct PhoneLoopProtocolTests {
         _ = try moved.command(try moved.propose(.tapNavigation(try moved.target("cell-inbox"))))   // never carried
         moved.now += 6
         let look = moved.session.checkDeadlines(now: moved.now)
-        let elsewhere = PhoneScreenState(foregroundBundleID: "com.example.notes",
-                                         elements: [PhoneScreenElement(id: "cell-inbox", role: .cell, label: "Inbox")])
+        // Exactly the approved screen's elements; only the app in front differs.
+        let elsewhere = PhoneScreenState(foregroundBundleID: "com.example.notes", elements: try #require(moved.seen).screen.elements)
         #expect(moved.deliver(try moved.forged(for: look, clockID: "phone-boot-1", uptime: 95_000, screen: elsewhere))
                 == .stopped(.postconditionNotVerified))
         #expect(moved.sentKinds == [.observe, .openApp, .observe])
@@ -1277,7 +1286,7 @@ struct PhoneLoopProtocolTests {
                                   maxReconnects: reconnects, maxSteps: steps)) != nil
         }
         #expect(build())
-        #expect(!build(bundle: "mail"))
+        #expect(!build(bundle: "mail", navigationApp: "mail"))
         #expect(!build(label: ""))
         #expect(!build(age: 0)); #expect(!build(age: 61)); #expect(!build(age: .nan))
         #expect(!build(timeout: 0)); #expect(!build(timeout: 121))
