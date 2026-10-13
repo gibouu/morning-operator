@@ -265,8 +265,31 @@ enum OwnInterfaceWording {
                  of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you."),
             part("It doesn't run other apps or approve a routine for you",
                  fr: "Elle ne lance pas d’autres apps et n’approuve pas de routine à votre place",
-                 of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you.")
+                 of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you."),
+            // Under "What we could see": the text of the observation just made, and its sampled screens.
+            part("Review the text we found and correct anything we missed",
+                 fr: "Relisez le texte trouvé et corrigez ce qui nous a échappé",
+                 of: "Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."),
+            part("Visible words don't always mean you performed an activity",
+                 fr: "Des mots visibles ne signifient pas toujours que vous avez fait une activité",
+                 of: "Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."),
+            part("These are occasional views of your screen", fr: "Ce sont des aperçus ponctuels de votre écran",
+                 of: "These are occasional views of your screen. They can't count every scroll, prove a message was read, or measure complete app use."),
+            part("They can't count every scroll, prove a message was read, or measure complete app use",
+                 fr: "Ils ne peuvent ni compter chaque défilement, ni prouver qu’un message a été lu, ni mesurer toute l’utilisation des apps",
+                 of: "These are occasional views of your screen. They can't count every scroll, prove a message was read, or measure complete app use."),
+            part("Order of recognized appearances", fr: "Ordre des apparitions reconnues",
+                 of: "Order of recognized appearances. Unknown samples may hide other activity."),
+            part("Unknown samples may hide other activity", fr: "Les échantillons inconnus peuvent cacher d’autres activités",
+                 of: "Order of recognized appearances. Unknown samples may hide other activity."),
+            part("Editing the observation removes its attached frame evidence and screen interpretation",
+                 fr: "Modifier l’observation supprime les images liées et l’interprétation de l’écran",
+                 of: "Uses Apple Intelligence on this device. Editing the observation removes its attached frame evidence and screen interpretation.")
         ], controls: [
+            shown("A glimpse of this recording", fr: "Un aperçu de cet enregistrement"),
+            shown("See sampled screens", fr: "Voir les écrans échantillonnés"),
+            shown("Recognize sampled screens", fr: "Reconnaître les écrans échantillonnés"),
+            shown("Try recognizing screens again", fr: "Relancer la reconnaissance des écrans"),
             shown("Suggest a routine", fr: "Suggérer une routine"),
             shown("Suggest an update", fr: "Suggérer une mise à jour"),
             shown("Check availability again", fr: "Vérifier à nouveau la disponibilité"),
@@ -493,6 +516,34 @@ enum OwnInterfaceWording {
             shown("Original extracted text", fr: "Texte extrait d’origine"),
             shown("Source sample", fr: "Échantillon source"),
             shown("Read this saved moment", fr: "Lire ce moment enregistré")
+        ]),
+        // Seven days of observations: the screen labels derived from them, and each day's clips.
+        Screen(name: "Observed mornings", copy: [
+            shown("Screens that appeared across your mornings.", fr: "Les écrans apparus au fil de vos matinées."),
+            part("They don't measure time in apps, reads or scrolls",
+                 fr: "Ils ne mesurent ni le temps passé dans les apps, ni les lectures, ni les défilements",
+                 of: "These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown."),
+            part("These labels describe sampled screens", fr: "Ces libellés décrivent des écrans échantillonnés",
+                 of: "These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown."),
+            part("Missing samples stay unknown", fr: "Les échantillons manquants restent inconnus",
+                 of: "These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown."),
+            part("Conflicting labels are excluded from this pattern list", fr: "Les libellés contradictoires sont exclus de cette liste",
+                 of: "Conflicting labels are excluded from this pattern list. Their original samples remain in each observation."),
+            part("Their original samples remain in each observation", fr: "Leurs échantillons d’origine restent dans chaque observation",
+                 of: "Conflicting labels are excluded from this pattern list. Their original samples remain in each observation."),
+            part("Dates use the time zone saved with each observation",
+                 fr: "Les dates utilisent le fuseau horaire enregistré avec chaque observation",
+                 of: "Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline."),
+            part("Separate clips are never joined into one continuous timeline",
+                 fr: "Les clips séparés ne sont jamais fusionnés en une chronologie continue",
+                 of: "Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline."),
+            shown("No dated observations in this period.", fr: "Aucune observation datée sur cette période.")
+        ], controls: [
+            shown("Observed mornings", fr: "Matinées observées"),
+            shown("The seven days", fr: "Les sept jours"),
+            shown("No observation", fr: "Aucune observation"),
+            shown("Notes only", fr: "Notes uniquement"),
+            shown("Your label", fr: "Votre libellé")
         ]),
         // The quotations behind one screen label seen across several mornings.
         Screen(name: "Source moments", copy: [

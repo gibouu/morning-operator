@@ -337,6 +337,34 @@ private enum OwnScreenFixtures {
         .other("17:30 Pick up the children from football practice", "17:30 Aller chercher les enfants à l’entraînement de football"),
         .shown("Source sample")
     ], recognizedWithoutBars: false)
+    /// Learn after a recording: the text just read from it, to correct, and its sampled screens.
+    static let learnReview = ContentScreen(name: "Learn, what we could see", top: [.shown("Learn my morning"), .shown("Done")], body: [
+        .shown("What we could see"),
+        .shown("Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."),
+        meeting, reply, .shown("A glimpse of this recording"),
+        .other("42 seconds · 9 samples · 7 with complete text", "42 secondes · 9 échantillons · 7 avec texte complet"),
+        .shown("See sampled screens"),
+        .shown("These are occasional views of your screen. They can't count every scroll, prove a message was read, or measure complete app use."),
+        .other("Calendar → Messages", "Calendrier → Messages"),
+        .shown("Order of recognized appearances. Unknown samples may hide other activity."),
+        .shown("Recognize sampled screens"), .other("00:05", "00:05"), .other("Calendar", "Calendrier"), meeting,
+        .shown("Uses Apple Intelligence on this device. Editing the observation removes its attached frame evidence and screen interpretation.")
+    ])
+    /// Seven days of observations: derived screen labels, then each day's clips.
+    static let observedMornings = ContentScreen(name: "Observed mornings", top: [.shown("Observed mornings")], body: [
+        .other("2026-10-07 – 2026-10-13", "2026-10-07 – 2026-10-13"), .shown("Screens that appeared across your mornings."),
+        .shown("These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown."),
+        .other("My mornings · Europe/Paris", "Mes matinées · Europe/Paris"),
+        .other("2 days with labeled samples · 2 days with observations", "2 jours avec échantillons identifiés · 2 jours avec observations"),
+        .other("Team planning workshop", "Atelier de planification de l’équipe"),
+        .other("Seen on 2 of 2 days with labeled samples", "Vu sur 2 des 2 jours avec échantillons identifiés"),
+        .shown("Conflicting labels are excluded from this pattern list. Their original samples remain in each observation."),
+        .shown("The seven days"), .other("2026-10-09", "2026-10-09"),
+        .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov"),
+        .other("3 labeled moments · 1 unresolved", "3 moments identifiés · 1 non résolu"),
+        .other("2026-10-10", "2026-10-10"), .shown("No observation"),
+        .shown("Dates use the time zone saved with each observation. Separate clips are never joined into one continuous timeline.")
+    ])
     /// The quotations behind one screen label, as its first screen shows them.
     static let sourceMoments = ContentScreen(name: "Source moments", top: [.shown("Source moments")], body: [
         .other("Calendar", "Calendrier"),
@@ -425,7 +453,7 @@ private enum OwnScreenFixtures {
              .other("Oct \(day), 2026 · Original text", "\(day) oct. 2026 · Texte d’origine"),
              .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")]
         }, recognizedWithoutBars: false)
-    static let contentScreens = [observation, unorderedObservation, sampledMoment, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
+    static let contentScreens = [learnReview, observation, unorderedObservation, sampledMoment, observedMornings, sourceMoments, savedMoment, screenLabel, observations, choosingObservations,
                                  chosenObservations, suggestedUpdate, suggestedUpdateQuotations]
 
     /// The home while MORE records and a saved routine runs: the date and the badge, the heading
@@ -783,7 +811,7 @@ struct OwnInterfaceWordingTests {
 
     // MARK: Screens that display an earlier observation or a suggestion
 
-    @Test("Observation, sampled moment, observations list and suggested update are not evidence, wherever they are scrolled",
+    @Test("Screens that display an earlier observation or a suggestion are not evidence, wherever they are scrolled",
           arguments: ["en", "fr"])
     func screensShowingEarlierTextAreRejected(language: String) throws {
         let catalogs = try ShippedCatalogs.load()
