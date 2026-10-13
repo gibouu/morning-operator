@@ -251,10 +251,11 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 guard let reference = step.observationReference else { continue }
                 // Removal needs proof that the text is still the untouched saved excerpt:
                 // the same byte-for-byte check playback uses against the current source.
-                // An edited sentence, or a source that changed or is gone, is kept.
+                // An edited sentence, or a source that changed or is gone, is kept. The
+                // excerpt keeps the language it was composed in, whatever the interface is now.
                 let untouched = step.automation == .savedObservation
-                    && (try? ObservationNarrationComposer.resolve(reference: reference, archive: archive))?
-                        .spokenText.utf8.elementsEqual(step.detail.utf8) == true
+                    && (try? ObservationNarrationComposer.resolve(reference: reference, archive: archive,
+                                                                  approvedText: step.detail)) != nil
                 copies.append(.init(acquisitionID: reference.acquisitionID, store: store, kind: kind(step),
                     stepID: step.id, quote: reference.quote,
                     reason: explicitDecision(step, reference) ?? (preferences == nil ? .choicesUnavailable

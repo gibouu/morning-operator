@@ -140,6 +140,18 @@ struct EvidenceRetentionPlanTests {
         #expect(approved[0].kind == .savedMomentStep && approved[0].store == .currentRoutine)
     }
 
+    @Test("An untouched draft moment is recognized in the language it was composed in",
+          arguments: ObservationNarrationLanguage.allCases)
+    func anUntouchedDraftMomentIsRecognizedInItsOwnLanguage(language: ObservationNarrationLanguage) throws {
+        let source = try morning()
+        let candidate = try #require(ObservationNarrationComposer.candidates(for: source).first)
+        let prepared = try ObservationNarrationComposer.prepare(acquisition: source, candidate: candidate, language: language)
+        let step = RoutineStep(title: "A saved moment", detail: prepared.spokenText, kind: .briefing,
+            durationMinutes: 1, automation: .savedObservation, observationReference: prepared.reference)
+        let draft = RoutineVersion(sourceLabel: "Your morning", steps: [step])
+        #expect(try plan([source], current: draft).dependents(of: source.id).map(\.reason) == [.unapprovedDraftQuotation])
+    }
+
     @Test func editingAnApprovedMomentDoesNotPutItsQuotationUpForRemoval() throws {
         let source = try morning()
         let original = try savedMoment(source)
