@@ -254,7 +254,7 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
                   !step.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   step.title.count <= (inferred ? 120 : 2_000),
                   step.detail.count <= LearningEvidencePreparation.maximumDetailCharacters,
-                  (1...(item.reason == .inferredEvidence ? 60 : 1_440)).contains(step.durationMinutes),
+                  (1...(item.reason == .inferredEvidence ? 60 : RoutineStep.durationMinutesRange.upperBound)).contains(step.durationMinutes),
                   !inferred || (!step.isRequired && step.automation == nil && step.observationReference == nil),
                   item.citations.count <= LearningEvidencePreparation.maximumCitationsPerStep,
                   item.preferenceIDs.count <= 100,
@@ -297,7 +297,10 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
         guard (snapshot == nil) == (revision == nil) else { throw RoutineEvidenceProposalError.invalidProposal }
         preferenceSnapshot = snapshot
         preferenceRevision = revision
-        routine = try values.decode(RoutineVersion.self, forKey: .routine)
+        // A step refuses planned minutes outside its range when read; for a saved
+        // suggestion that is the same damage as any other value outside its bounds.
+        do { routine = try values.decode(RoutineVersion.self, forKey: .routine) }
+        catch { throw RoutineEvidenceProposalError.invalidProposal }
         sourceSnapshots = try values.decode([LearningSourceSnapshot].self, forKey: .sourceSnapshots)
         support = try values.decode([RoutineProposalSupport].self, forKey: .support)
         omissions = try values.decodeIfPresent([LearningEvidenceOmission].self, forKey: .omissions) ?? []

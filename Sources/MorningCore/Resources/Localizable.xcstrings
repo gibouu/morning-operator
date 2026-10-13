@@ -901,6 +901,16 @@
         }
       }
     },
+    "This is more than the file can hold. Nothing was replaced.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est plus que ce que le fichier peut contenir. Rien n’a été remplacé."
+          }
+        }
+      }
+    },
     "This period has ended or was cancelled. Start a new one to change it.": {
       "localizations": {
         "fr": {
