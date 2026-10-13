@@ -74,11 +74,13 @@ public enum MorningOpeningComposer {
 
     /// Deterministic. The language is the one the briefing was prepared in, so the opening
     /// and the facts it quotes cannot disagree. A briefing section is quoted only while it
-    /// is fresh at `now`; an expired one is announced as out of date.
+    /// is fresh at `now`; an expired one is announced as out of date. Pass `offersBrief:
+    /// false` once the recap could not be read: the question and the choices then leave it out.
     public static func compose(briefing: PreparedMorningBriefing, at now: Date, timeZoneIdentifier: String,
                                counts: [MorningOpeningProvider: MorningOpeningCount] = [:],
                                precipitation: MorningPrecipitationForecast? = nil,
-                               unknownSenders: MorningUnknownSenderShare? = nil) -> MorningOpening {
+                               unknownSenders: MorningUnknownSenderShare? = nil,
+                               offersBrief: Bool = true) -> MorningOpening {
         let locale = Locale(identifier: briefing.localeIdentifier)
         let phrases = MorningOpeningPhrases(french: locale.language.languageCode?.identifier == "fr")
         let zone = TimeZone(identifier: briefing.timeZoneIdentifier)
@@ -147,7 +149,8 @@ public enum MorningOpeningComposer {
 
         // The brief is offered only when it has something current to read. Sleep is not
         // quoted in the opening, but a brief that holds a current night is still a brief.
-        let hasBrief = [weather, calendar, fact(briefing.sleep)].contains { if case .fresh = $0 { true } else { false } }
+        let hasBrief = offersBrief
+            && [weather, calendar, fact(briefing.sleep)].contains { if case .fresh = $0 { true } else { false } }
         let choices: [MorningOpeningChoice] = hasBrief ? [.brief, .ritual, .stop] : [.ritual, .stop]
         add("choice", .choice, phrases.choice(withBrief: hasBrief))
         return .init(segments: segments, choices: choices, text: segments.map(\.text).joined(separator: " "))

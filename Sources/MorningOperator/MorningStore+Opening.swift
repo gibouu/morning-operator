@@ -169,7 +169,7 @@ extension MorningStore {
                 openingPresentation?.briefWithdrawn = true
                 openingPresentation?.document = document
                 openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: Date(),
-                    timeZoneIdentifier: TimeZone.current.identifier)
+                    timeZoneIdentifier: TimeZone.current.identifier, offersBrief: false)
                 notice = String(localized: "This recap needs an update before playback.")
                 return
             }
