@@ -760,6 +760,7 @@ final class MorningStore {
     func pause() {
         guard !privacyBlocksWork else { return }
         cancelVoiceCommandTurn()
+        endOpening()
         cancelStepPlayback()
         do { try session?.pause(); speech.stop(); notice = nil; persist() }
         catch { notice = error.localizedDescription }
@@ -780,6 +781,9 @@ final class MorningStore {
     func advance(skipping: Bool = false, commandID: UUID = UUID()) {
         guard !privacyBlocksWork else { return }
         guard !voiceInputBlocksPlayback else { return }
+        // Pause, Next, Stop and Again take over from the opening. A changed listening
+        // choice does not: the first moment still waits for the answer.
+        endOpening()
         cancelStepPlayback()
         do {
             try session?.advance(skipping: skipping, commandID: commandID)
@@ -798,6 +802,7 @@ final class MorningStore {
     func stop() {
         guard !privacyBlocksWork else { return }
         cancelVoiceCommandTurn()
+        endOpening()
         cancelStepPlayback()
         speech.stop()
         do { try session?.stop(); archiveTerminalSession(); notice = nil; persist() }
@@ -809,6 +814,7 @@ final class MorningStore {
     func readCurrent() {
         guard !privacyBlocksWork, !voiceInputBlocksPlayback,
               let session, let step = currentStep else { return }
+        endOpening()
         cancelStepPlayback()
         if step.automation == nil {
             speech.speak("\(step.title). \(step.detail)")
@@ -837,8 +843,6 @@ final class MorningStore {
     }
 
     private func cancelStepPlayback() {
-        // Pause, Next, Stop, Again or a changed listening choice takes over from the opening.
-        endOpening()
         repeatAttempt = nil
         repeatTask?.cancel(); repeatTask = nil
         automation.cancel()
@@ -2031,6 +2035,7 @@ final class MorningStore {
     }
 
     private func pauseAfterSaveFailure() {
+        endOpening()
         cancelStepPlayback()
         speech.stop()
         if session?.status == .running { try? session?.pause() }
@@ -2126,6 +2131,7 @@ final class MorningStore {
         oldAnalysis?.cancel()
         briefing.cancelAndClear()
         stepExecutor.clear()
+        endOpening()
         cancelStepPlayback()
         speech.stop()
         cancelVoiceCommandTurn()

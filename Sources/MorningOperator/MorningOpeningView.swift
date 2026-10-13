@@ -127,6 +127,7 @@ struct MorningWeatherAttributionView: View {
                 .accessibilityLabel("Apple Weather")
             }
             Link("Weather data sources", destination: attribution.legalURL).font(.caption)
+                .accessibilityIdentifier("weather.sources")
         }
     }
 }

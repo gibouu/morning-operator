@@ -136,8 +136,12 @@ extension MorningStore {
         guard presentation.phase == .choosing, session?.status == .running, !voiceInputBlocksPlayback,
               let document = presentation.document else { return }
         // The same admission checks as a briefing moment, on the document the opening quoted.
-        guard document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier),
-              briefing.permitsPlayback(of: document) else {
+        let now = Date(), zone = TimeZone.current.identifier
+        guard document.isCurrent(at: now, timeZoneIdentifier: zone), briefing.permitsPlayback(of: document) else {
+            // The opening waited past its facts. Compose it again from the same document:
+            // it now says what is out of date, and offers the recap only if one remains.
+            // Shown, not spoken: a morning is greeted aloud once.
+            openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: now, timeZoneIdentifier: zone)
             notice = String(localized: "This recap needs an update before playback.")
             return
         }

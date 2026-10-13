@@ -532,9 +532,12 @@ enum MorningUITestNavigation {
         let routine = app.buttons["opening.routine"]
         XCTAssertTrue(routine.waitForExistence(timeout: 15),
                       "A started morning must show its opening.\n\(app.debugDescription)", file: file, line: line)
-        // The opening is at the top of the page; larger text may have scrolled past it.
+        // Larger text scrolls the page: the opening may be above or below what is visible.
         let scroll = app.scrollViews.containing(.button, identifier: "opening.routine").firstMatch
-        for _ in 0..<4 where !routine.isHittable && scroll.exists { scroll.swipeDown() }
+        for _ in 0..<6 where !routine.isHittable && scroll.exists {
+            if routine.frame.height > 0, routine.frame.midY < scroll.frame.midY { scroll.swipeDown() }
+            else { scroll.swipeUp() }
+        }
         XCTAssertTrue(routine.isHittable, app.debugDescription, file: file, line: line)
         routine.tap()
         XCTAssertTrue(routine.waitForNonExistence(timeout: 5), app.debugDescription, file: file, line: line)
