@@ -265,12 +265,16 @@ struct MorningBriefingControllerTests {
             do { try await Task.sleep(for: .seconds(30)) } catch { return }
             gate.release(weather)
         }
+        let started = ContinuousClock.now
         let result = await controller.refresh()
+        let elapsed = ContinuousClock.now - started
         let returnedBeforeRelease = !gate.wasReleased
         fallback.cancel()
         gate.release(weather)
         let prepared = try #require(result)
         #expect(returnedBeforeRelease, "A timeout must not wait for an uncooperative provider to return.")
+        // The injected 30 ms deadline must be the one in force, not the 10-second default.
+        #expect(elapsed < .seconds(8), "The injected deadline was ignored.")
         #expect(prepared.calendar.status == .fresh)
         #expect(prepared.weather.status == .unavailable)
         let preparedID = prepared.id
