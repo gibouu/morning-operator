@@ -582,6 +582,186 @@
         }
       }
     },
+    "%lld moments completed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment completed"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments completed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment terminé"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments terminés"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld moments not reached": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment not reached"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments not reached"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment non atteint"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments non atteints"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld moments skipped": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment skipped"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments skipped"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moment passé"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg moments passés"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld moments · approved": {
       "localizations": {
         "en": {
@@ -3800,6 +3980,16 @@
         }
       }
     },
+    "Change any moment above when you like. Nothing is removed, shortened or moved for you.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifiez un moment ci-dessus quand vous le souhaitez. Rien n’est retiré, raccourci ni déplacé à votre place."
+          }
+        }
+      }
+    },
     "Change day or origin": {
       "localizations": {
         "fr": {
@@ -3958,6 +4148,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choisissez des observations datées de vos propres matinées, ou un ensemble d’exemples séparé. Rien n’est sélectionné automatiquement."
+          }
+        }
+      }
+    },
+    "Choose it again to clear your answer.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez-la de nouveau pour effacer votre réponse."
           }
         }
       }
@@ -5600,6 +5800,16 @@
         }
       }
     },
+    "It stopped at “%@”.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêt au moment « %@ »."
+          }
+        }
+      }
+    },
     "Keep a little spark": {
       "localizations": {
         "fr": {
@@ -6140,6 +6350,16 @@
         }
       }
     },
+    "Morning length": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée de la matinée"
+          }
+        }
+      }
+    },
     "Move": {
       "localizations": {
         "fr": {
@@ -6246,6 +6466,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sept prochains jours"
+          }
+        }
+      }
+    },
+    "No": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non"
           }
         }
       }
@@ -6800,6 +7030,66 @@
         }
       }
     },
+    "On their own they are %lld minutes more than your target.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On their own they are %#@n@ more than your target."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À eux seuls, ils dépassent votre objectif de %#@n@."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "On-device recognition finished. Unclear screens remain unknown.": {
       "localizations": {
         "fr": {
@@ -7030,6 +7320,16 @@
         }
       }
     },
+    "Optional. A target only compares planned minutes; it never changes your routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facultatif. Un objectif compare seulement les minutes prévues ; il ne modifie jamais votre routine."
+          }
+        }
+      }
+    },
     "Order of recognized appearances. Unknown samples may hide other activity.": {
       "localizations": {
         "fr": {
@@ -7186,6 +7486,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Durée prévue"
+          }
+        }
+      }
+    },
+    "Planned: %lld minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planned: %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prévu : %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -7506,6 +7866,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "On commence quand vous voulez"
+          }
+        }
+      }
+    },
+    "Recap": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récap"
           }
         }
       }
@@ -7838,6 +8208,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Supprime de MORE sur cet appareil les routines, observations, pensées, l’historique, les choix enregistrés, l’activité des apps et les copies d’enregistrements."
+          }
+        }
+      }
+    },
+    "Remove the target": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer l’objectif"
           }
         }
       }
@@ -9312,6 +9692,16 @@
         }
       }
     },
+    "Set a target length": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixer un objectif de durée"
+          }
+        }
+      }
+    },
     "Set a time & alert": {
       "localizations": {
         "fr": {
@@ -9552,6 +9942,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Certains calendriers sélectionnés ne sont pas disponibles. Choisissez-les à nouveau ou effacez la sélection."
+          }
+        }
+      }
+    },
+    "Somewhat": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un peu"
           }
         }
       }
@@ -10012,6 +10412,76 @@
         }
       }
     },
+    "Target length in minutes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objectif de durée en minutes"
+          }
+        }
+      }
+    },
+    "Target: %lld minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target: %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objectif : %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Temperature": {
       "localizations": {
         "fr": {
@@ -10068,6 +10538,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Le texte était limité ; l’identité reste inconnue."
+          }
+        }
+      }
+    },
+    "That is %lld minutes more than your target.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is %#@n@ more than your target."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soit %#@n@ de plus que votre objectif."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -10168,6 +10698,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Les réglages des données locales n’ont pas pu être lus. Ouvrez Confidentialité pour relancer la suppression des données locales. %@"
+          }
+        }
+      }
+    },
+    "The moments you chose to keep take %lld minutes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The moments you chose to keep take %#@n@."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les moments que vous avez choisi de garder prennent %#@n@."
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -10458,6 +11048,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cette matinée n’a pas pu être ajoutée à l’historique : %@"
+          }
+        }
+      }
+    },
+    "This morning is not saved yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette matinée n’est pas encore enregistrée."
+          }
+        }
+      }
+    },
+    "This morning is still going.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette matinée est encore en cours."
+          }
+        }
+      }
+    },
+    "This morning was not started.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette matinée n’a pas été commencée."
           }
         }
       }
@@ -10896,6 +11516,16 @@
         }
       }
     },
+    "Try saving again": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayer d’enregistrer"
+          }
+        }
+      }
+    },
     "Try speaking again": {
       "localizations": {
         "fr": {
@@ -10922,6 +11552,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Essayer la voix"
+          }
+        }
+      }
+    },
+    "Two optional questions. Answer one, both or neither.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deux questions facultatives. Répondez à une, aux deux ou à aucune."
           }
         }
       }
@@ -11222,6 +11862,26 @@
         }
       }
     },
+    "Was it enjoyable?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Était-ce agréable ?"
+          }
+        }
+      }
+    },
+    "Was it useful?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Était-ce utile ?"
+          }
+        }
+      }
+    },
     "Weather": {
       "localizations": {
         "fr": {
@@ -11372,6 +12032,16 @@
         }
       }
     },
+    "Within your target.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans votre objectif."
+          }
+        }
+      }
+    },
     "Write": {
       "localizations": {
         "fr": {
@@ -11402,12 +12072,42 @@
         }
       }
     },
+    "Yes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui"
+          }
+        }
+      }
+    },
     "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Vous pouvez noter pensées et rêves, modifier une routine et utiliser le guidage vocal même quand le modèle sur l’appareil est indisponible."
+          }
+        }
+      }
+    },
+    "You finished this morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez terminé cette matinée."
+          }
+        }
+      }
+    },
+    "You kept this longer plan. This note returns when the routine changes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez gardé ce plan plus long. Cette note reviendra quand la routine changera."
           }
         }
       }
@@ -11482,6 +12182,26 @@
         }
       }
     },
+    "You stopped before the end.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez arrêté avant la fin."
+          }
+        }
+      }
+    },
+    "You stopped while the morning was paused.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez arrêté pendant que la matinée était en pause."
+          }
+        }
+      }
+    },
     "You supplied this label. It stays separate from model labels and doesn't establish an action you took.": {
       "localizations": {
         "fr": {
@@ -11498,6 +12218,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "C’est vous qui décidez"
+          }
+        }
+      }
+    },
+    "Your answer is saved with this morning. It changes nothing else.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre réponse est enregistrée avec cette matinée. Elle ne change rien d’autre."
           }
         }
       }

@@ -33,18 +33,38 @@ public struct RoutineTimeBudget: Sendable, Equatable {
     /// In routine order.
     public let requiredStepIDs: [UUID]
 
-    /// A journal keep counts by exact step identity, which is what a reconciled
-    /// routine carries. Exclusions and timing-only choices do not protect a step.
+    /// A journal keep protects the step the journal itself would apply it to: the step
+    /// with that exact identity or, when no step has it, the single step with the same
+    /// category and title. Exclusions and timing-only choices do not protect a step.
     public init(routine: RoutineVersion, targetMinutes: Int,
                 preferences: RoutinePreferenceJournal = RoutinePreferenceJournal()) {
-        let required = routine.steps.filter {
-            $0.isRequired || preferences.entry(targetID: $0.id)?.presence == .keep
-        }
+        let kept = Self.keptStepIDs(in: routine.steps, preferences: preferences)
+        let required = routine.steps.filter { $0.isRequired || kept.contains($0.id) }
         routineVersionID = routine.id
         self.targetMinutes = max(1, targetMinutes)
         totalMinutes = routine.totalDurationMinutes
         requiredMinutes = required.reduce(0) { $0 + $1.durationMinutes }
         requiredStepIDs = required.map(\.id)
+    }
+
+    /// The journal's own matching rule, read without changing the journal. A choice whose
+    /// step is in the routine belongs to that step alone. Otherwise it reaches a step by
+    /// category and title only when exactly one step matches it and that step has no choice
+    /// of its own; anything ambiguous protects nothing, as the journal refuses to guess.
+    private static func keptStepIDs(in steps: [RoutineStep], preferences: RoutinePreferenceJournal) -> Set<UUID> {
+        let stepIDs = Set(steps.map(\.id))
+        var matchedSteps: [UUID: [UUID]] = [:]
+        for step in steps {
+            guard let match = try? preferences.matchingPreference(for: step) else { continue }
+            if match.targetID == step.id || !stepIDs.contains(match.targetID) {
+                matchedSteps[match.id, default: []].append(step.id)
+            }
+        }
+        var kept = Set<UUID>()
+        for entry in preferences.entries where entry.presence == .keep {
+            if let matched = matchedSteps[entry.id], matched.count == 1 { kept.insert(matched[0]) }
+        }
+        return kept
     }
 
     public var minutesOverTarget: Int { max(0, totalMinutes - targetMinutes) }

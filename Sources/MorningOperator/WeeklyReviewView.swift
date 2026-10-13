@@ -34,6 +34,7 @@ struct WeeklyReviewView: View {
             VStack(alignment: .leading, spacing: 26) {
                 periodSelector
                 activeRecordingStatus
+                MorningRecapCard(store: store)
                 if let week {
                     if showingDays { days(in: week) }
                     if let observedPeriod, !observedPeriod.partitions.isEmpty {
@@ -336,6 +337,7 @@ private struct RoutineReviewEditor: View {
                     } footer: {
                         Text("Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine.")
                     }
+                    RoutineTimeBudgetSection(store: store, isDisabled: importLoading)
                     Section {
                         if store.previousRoutine != nil {
                             Button("Restore previous routine") { store.restorePreviousRoutine() }
@@ -622,6 +624,7 @@ private struct ReviewDayDetail: View {
             }
             ForEach(Array(day.runs.enumerated()), id: \.element.id) { index, run in
                 Section {
+                    MorningRecapView(store: store, session: run.session, showsMomentNames: false)
                     LabeledContent("Active routine time", value: MorningStyle.duration(run.activeDurationSeconds))
                     LabeledContent("Planned time", value: String(localized: "\(run.plannedDurationMinutes) min"))
                     if run.activeDurationSeconds == nil {
