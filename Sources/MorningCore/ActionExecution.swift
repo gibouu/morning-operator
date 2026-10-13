@@ -258,7 +258,9 @@ private final class AdapterCall<Answer: Sendable>: Sendable {
             }
         } onCancel: { cancelWork() }
         state.withLock { $0.timer }?.cancel()
-        if case .overdue = result { cancelWork() }
+        // Telling the overdue call to stop runs the adapter's own cancellation handlers, which may
+        // block. That must not hold up the return at the deadline, so it is done from elsewhere.
+        if case .overdue = result { Task.detached { [self] in cancelWork() } }
         return result
     }
 

@@ -24,6 +24,9 @@ private actor FakeAdapter: ActionAdapter {
     private(set) var reconcilesReturned = 0
     /// Whether the held dispatch found its task cancelled when it was let go.
     private(set) var heldDispatchSawCancellation: Bool?
+    /// Set the moment the held dispatch is told to stop, while it is still held.
+    private let toldToStop = Mutex(false)
+    nonisolated var heldDispatchWasToldToStop: Bool { toldToStop.withLock { $0 } }
     private(set) var statesOnDiskAtDispatch: [ActionAttemptState?] = []
 
     init(journalURL: URL) { self.journalURL = journalURL }
@@ -46,7 +49,8 @@ private actor FakeAdapter: ActionAdapter {
         defer { dispatchesReturned += 1 }
         if holding {
             holding = false
-            await withCheckedContinuation { held = $0 }
+            await withTaskCancellationHandler { await withCheckedContinuation { held = $0 } }
+                onCancel: { toldToStop.withLock { $0 = true } }
             heldDispatchSawCancellation = Task.isCancelled
         }
         await Task.yield()
@@ -812,6 +816,8 @@ struct ActionExecutionTests {
         await harness.adapter.reconciliation(.notDelivered)
         #expect(try await executor.reconcile(unknown.id) == unknown)
 
+        // The overdue call is told to stop, off the path that returned at the deadline.
+        while !harness.adapter.heldDispatchWasToldToStop { await Task.yield() }
         // Now the channel answers, late: it took the message.
         let before = try Data(contentsOf: harness.url)
         await harness.adapter.reply(.outcome(.accepted(receiptReference: "late-receipt")))
