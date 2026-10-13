@@ -101,9 +101,16 @@ struct OwnInterfaceExclusionTests {
     func reviewAndEmptyResult() throws {
         let spans = OwnInterfaceIntervals([.init(startSeconds: 0)])
         let entry = try recording([(0, calendar), (30, calendar)], context: context(spans))
-        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+        // The refusal names the cause, so a capture in which MORE never left the front is
+        // told apart from a recording that simply shows nothing usable.
+        #expect(throws: RoutineEvidenceProposalError.ownInterfaceLeftNoEvidence) {
             try LearningEvidencePreparation.prepare(acquisitions: [entry])
         }
+        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+            try LearningEvidencePreparation.prepare(acquisitions: [try recording([(0, picker)], context: context(nil))])
+        }
+        #expect(RoutineEvidenceProposalError.ownInterfaceLeftNoEvidence.errorDescription
+            != RoutineEvidenceProposalError.insufficientEvidence.errorDescription)
         let partly = try recording([(0, calendar), (30, calendar)],
                                    context: context(OwnInterfaceIntervals([.init(startSeconds: 0, endSeconds: 4)])))
         var archive = try ObservationArchive(entries: [partly])
