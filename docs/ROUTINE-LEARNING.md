@@ -56,6 +56,23 @@ If saved screen reviews are damaged, original-video preparation and older pendin
 
 Screen reviews participate in the source revision. Changing or removing one invalidates dependent pending suggestions, including after relaunch. Their original text, frame offsets and quotation checks remain unchanged. This is saved feedback for the next explicit inference, not training or an automatic background update. [Correct a screen](OBSERVED-MORNINGS.md#correct-one-screen).
 
+## Frames that show MORE itself
+
+A recording made in the app starts and ends inside MORE, so some sampled frames show MORE's own screens. Two guards keep them out of a suggestion.
+
+**By time, for a recording made in the app.** While a capture runs, the recorder notes each moment MORE's scene leaves or returns from the background, with one monotonic clock that also times the recording-output start callback. The resulting spans are saved inside the recording's `recordingContext` as seconds after that start, so they follow the recording through the recovery slot and into the saved observation. A sampled frame carries a movie time counted from the start of the file. A frame whose movie time falls inside a span is left out and disclosed with its own reason, `ownInterfaceInFront`; the review counts it under **samples without suitable activity context**.
+
+- The movie's zero and the start callback are assumed close, not measured. Each span is therefore widened by one second on both sides (`OwnInterfaceIntervals.defaultMarginSeconds`), which also covers the system's open and close animation. Both widened bounds are inclusive.
+- A scene that is visible but inactive (app switcher, a system sheet over MORE) counts as in front. Only the background state ends a span.
+- Spans are final when the file is closed. A span still open then runs to the end of the recording. A return to MORE reported just after capture stopped is kept, because a scene report arrives late and may describe the last frames; at worst it leaves out the last sample of another app. A report handled only after the file is closed is not recorded.
+- A scene change just before the start callback keeps its negative time, so the margin still covers a first frame slightly older than the callback.
+- Saved spans are part of the observation's source revision: attaching them later makes an earlier pending suggestion stale.
+- If the start reading or the scene state is unknown, no span is saved: nothing is excluded by time and only the text rule applies. An unfinished capture lost to a crash has no file to recover, so it has no spans to recover either.
+
+**By text, always.** `OwnInterfaceWording` and `LearningEvidencePolicy` still check every frame, including those of a recording made in the app. Imported recordings, screenshots and recordings saved before spans existed carry no spans and are judged by text alone.
+
+The time guard is covered by package tests with a hand-driven clock. It has not been checked on a phone: whether real scene notifications and real movie times line up within the margin is still to be measured.
+
 ## Saved choices in Review
 
 **Review → Your routine** is where the person edits a moment and chooses **Keep in future suggestions** or **Keep this duration**. Changing its minutes turns on the timing choice; it can be switched off before Save. These controls save a separate `RoutinePreferenceJournal`; they do not train the model or turn a personal choice into observed behavior. The journal is applied after the model's proposed activities and exact quotations have been checked.

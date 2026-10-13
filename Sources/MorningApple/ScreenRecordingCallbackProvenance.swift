@@ -11,6 +11,7 @@ final class ScreenRecordingCallbackProvenance: Sendable {
         var outputID: ObjectIdentifier?
         var observedStart = false
         var context: ObservationRecordingContext?
+        var monotonicStartSeconds: Double?
         var isClosed = false
     }
 
@@ -28,10 +29,14 @@ final class ScreenRecordingCallbackProvenance: Sendable {
         }
     }
 
-    func recordingDidStart(outputID: ObjectIdentifier, startedAt: Date, timeZoneIdentifier: String) {
+    /// `monotonicStartSeconds` is read from the clock that also times scene changes. Without
+    /// it the start cannot be aligned with them, and no own-interface span is recorded.
+    func recordingDidStart(outputID: ObjectIdentifier, startedAt: Date, timeZoneIdentifier: String,
+                           monotonicStartSeconds: Double? = nil) {
         state.withLock { value in
             guard !value.isClosed, value.outputID == outputID, !value.observedStart else { return }
             value.observedStart = true
+            value.monotonicStartSeconds = monotonicStartSeconds
             // The first matching callback remains the source even if its metadata is invalid.
             // A duplicate callback must not invent a later replacement wall-clock instant.
             value.context = try? ObservationRecordingContext(id: sessionID, startedAt: startedAt,
@@ -48,20 +53,22 @@ final class ScreenRecordingCallbackProvenance: Sendable {
                    sessionID requestedSessionID: UUID, outputID: ObjectIdentifier,
                    closing: Bool = false) -> Bool {
         guard requestedSessionID == sessionID else { return false }
-        let snapshot = state.withLock { value -> (Bool, ObservationRecordingContext?) in
-            guard !value.isClosed, value.outputID == outputID else { return (false, nil) }
-            let snapshot = (value.observedStart, value.context)
+        let snapshot = state.withLock { value -> (Bool, ObservationRecordingContext?, Double?) in
+            guard !value.isClosed, value.outputID == outputID else { return (false, nil, nil) }
+            let snapshot = (value.observedStart, value.context, value.monotonicStartSeconds)
             if closing {
                 value.isClosed = true
                 value.outputID = nil
                 value.observedStart = false
                 value.context = nil
+                value.monotonicStartSeconds = nil
             }
             return snapshot
         }
         if let context = snapshot.1 {
             provenance.recordingDidStart(sessionID: context.id, startedAt: context.startedAt,
-                                          timeZoneIdentifier: context.timeZoneIdentifier)
+                                          timeZoneIdentifier: context.timeZoneIdentifier,
+                                          monotonicStartSeconds: snapshot.2)
         }
         return snapshot.0
     }
@@ -74,6 +81,7 @@ final class ScreenRecordingCallbackProvenance: Sendable {
             value.outputID = nil
             value.observedStart = false
             value.context = nil
+            value.monotonicStartSeconds = nil
         }
     }
 }

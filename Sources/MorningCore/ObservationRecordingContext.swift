@@ -19,8 +19,12 @@ public struct ObservationRecordingContext: Codable, Identifiable, Equatable, Sen
     public let id: UUID
     public let startedAt: Date
     public let timeZoneIdentifier: String
+    /// When MORE's own scene was in front during this recording, if the app established it.
+    /// Nil for recordings saved before this was recorded and whenever it stayed unknown.
+    public let ownInterfaceIntervals: OwnInterfaceIntervals?
 
-    public init(id: UUID = UUID(), startedAt: Date, timeZoneIdentifier: String) throws {
+    public init(id: UUID = UUID(), startedAt: Date, timeZoneIdentifier: String,
+                ownInterfaceIntervals: OwnInterfaceIntervals? = nil) throws {
         guard startedAt.timeIntervalSinceReferenceDate.isFinite else {
             throw ObservationRecordingContextError.invalidStartDate
         }
@@ -30,13 +34,25 @@ public struct ObservationRecordingContext: Codable, Identifiable, Equatable, Sen
         self.id = id
         self.startedAt = startedAt
         self.timeZoneIdentifier = timeZoneIdentifier
+        self.ownInterfaceIntervals = ownInterfaceIntervals
     }
 
-    private enum CodingKeys: String, CodingKey { case id, startedAt, timeZoneIdentifier }
+    /// The same session with its own-interface spans set. The start instant is unchanged.
+    public func withOwnInterfaceIntervals(_ intervals: OwnInterfaceIntervals?) -> Self {
+        // The stored fields were validated when this value was created.
+        (try? Self(id: id, startedAt: startedAt, timeZoneIdentifier: timeZoneIdentifier,
+                   ownInterfaceIntervals: intervals)) ?? self
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, startedAt, timeZoneIdentifier, ownInterfaceIntervals }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        // Spans that cannot be read are treated as unknown. They must not cost the recording
+        // its start date or strand it in recovery; the text rule still guards its frames.
         try self.init(id: values.decode(UUID.self, forKey: .id),
                       startedAt: values.decode(Date.self, forKey: .startedAt),
-                      timeZoneIdentifier: values.decode(String.self, forKey: .timeZoneIdentifier))
+                      timeZoneIdentifier: values.decode(String.self, forKey: .timeZoneIdentifier),
+                      ownInterfaceIntervals: try? values.decodeIfPresent(OwnInterfaceIntervals.self,
+                                                                         forKey: .ownInterfaceIntervals))
     }
 }

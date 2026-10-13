@@ -38,7 +38,7 @@ struct RoutineEvidenceProposalView: View {
                                         VStack(alignment: .leading, spacing: 5) {
                                             Text(source.sourceLabel).font(.subheadline)
                                             let incomplete = omitted.filter { $0.reason == .unavailableOrTruncatedFrame }.count
-                                            let unsupported = omitted.filter { $0.reason == .unsupportedVisualContext }.count
+                                            let unsupported = omitted.filter { $0.reason == .unsupportedVisualContext || $0.reason == .ownInterfaceInFront }.count
                                             let reviewedUnknown = omitted.filter { $0.reason == .explicitlyReviewedUnknown }.count
                                             if reviewedUnknown > 0 { Text("\(reviewedUnknown) samples you kept unknown").font(.caption).foregroundStyle(MorningStyle.muted) }
                                             if incomplete > 0 { Text("\(incomplete) unavailable or incomplete samples").font(.caption).foregroundStyle(MorningStyle.muted) }

@@ -108,23 +108,59 @@ struct ScreenRecordingFinalizationState: Sendable {
 /// Stale or duplicate native callbacks cannot replace the current session's first start.
 struct ScreenRecordingContextState {
     private var sessionID: UUID?
-    private(set) var context: ObservationRecordingContext?
+    private var startedContext: ObservationRecordingContext?
+    private var monotonicStartSeconds: Double?
+    private var ownInterface = OwnInterfaceIntervalRecorder()
+
+    /// The session's start, with the spans in which MORE's own scene was in front when the
+    /// app established them. Reading it again after `captureEnded()` returns the same value.
+    var context: ObservationRecordingContext? {
+        startedContext?.withOwnInterfaceIntervals(ownInterface.intervals(recordingStartedAt: monotonicStartSeconds))
+    }
 
     mutating func begin(sessionID: UUID) {
         self.sessionID = sessionID
-        context = nil
+        startedContext = nil
+        monotonicStartSeconds = nil
+        ownInterface.begin()
     }
 
-    mutating func recordingDidStart(sessionID: UUID, startedAt: Date, timeZoneIdentifier: String) {
-        guard self.sessionID == sessionID, context == nil else { return }
+    mutating func recordingDidStart(sessionID: UUID, startedAt: Date, timeZoneIdentifier: String,
+                                    monotonicStartSeconds: Double? = nil) {
+        guard self.sessionID == sessionID, startedContext == nil else { return }
         // Invalid metadata stays unknown; it must not turn a valid capture into a failure.
-        context = try? ObservationRecordingContext(id: sessionID, startedAt: startedAt,
-                                                  timeZoneIdentifier: timeZoneIdentifier)
+        startedContext = try? ObservationRecordingContext(id: sessionID, startedAt: startedAt,
+                                                         timeZoneIdentifier: timeZoneIdentifier)
+        self.monotonicStartSeconds = startedContext == nil ? nil : monotonicStartSeconds
     }
+
+    /// The app reports its scene state at every change, whether or not a capture is running:
+    /// the state at the first frame is whatever was last reported before it.
+    mutating func ownInterfaceChanged(inFront: Bool, monotonicSeconds: Double) {
+        ownInterface.note(inFront: inFront, at: monotonicSeconds)
+    }
+
+    /// Capture resources are released and the file is closed; the spans are final from here.
+    /// Scene changes are still recorded between the stop and this point, because a report
+    /// handled just after the stop may be a late report of what the last frames show.
+    mutating func captureEnded() { ownInterface.end() }
 
     mutating func clear() {
         sessionID = nil
-        context = nil
+        startedContext = nil
+        monotonicStartSeconds = nil
+        ownInterface.end()
+    }
+}
+
+/// The monotonic clock shared by the recording-start callback and scene-change reports.
+/// It keeps counting while the device sleeps and is unaffected by wall-clock changes.
+enum ScreenRecordingMonotonicClock {
+    private static let reference = ContinuousClock.now
+
+    static let seconds: @Sendable () -> Double = {
+        let elapsed = reference.duration(to: ContinuousClock.now).components
+        return Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
     }
 }
 
@@ -226,9 +262,20 @@ public final class ScreenRecordingService {
     // retain their own operation until it returns, including if the sheet has gone away.
     @ObservationIgnored private var activeLifetime: ScreenRecordingService?
 
+    @ObservationIgnored private let monotonicSeconds: @Sendable () -> Double
+
     private enum DeadlineKind { case start, stop, finalization }
 
-    public init() {}
+    public convenience init() { self.init(monotonicSeconds: ScreenRecordingMonotonicClock.seconds) }
+
+    init(monotonicSeconds: @escaping @Sendable () -> Double) { self.monotonicSeconds = monotonicSeconds }
+
+    /// Call at every scene-phase change, and once when the phase is first known. `inFront`
+    /// is false only while the scene is in the background, where it cannot be drawn. Frames
+    /// sampled while it was in front are later left out of routine evidence by time.
+    public func ownInterfaceChanged(inFront: Bool) {
+        recordingProvenance.ownInterfaceChanged(inFront: inFront, monotonicSeconds: monotonicSeconds())
+    }
 
     /// Presents Apple's picker only in response to the user's Start recording button.
     public func presentPicker(duration: ScreenRecordingDuration = .tenMinutes) {
@@ -265,7 +312,7 @@ public final class ScreenRecordingService {
         streamStopped = false
         needsStopRetry = false
         stopReason = nil
-        let delegate = ScreenRecordingDelegateBridge(owner: self, sessionID: token)
+        let delegate = ScreenRecordingDelegateBridge(owner: self, sessionID: token, monotonicSeconds: monotonicSeconds)
         bridge = delegate
         let picker = SCContentSharingPicker.shared
         Self.pickerOwnerID = token
@@ -690,6 +737,7 @@ public final class ScreenRecordingService {
         monitoring = nil
         deadline = nil
         bridge?.provenance.invalidate()
+        recordingProvenance.captureEnded()
         stream = nil
         output = nil
         bridge = nil
@@ -749,11 +797,13 @@ fileprivate final class ScreenRecordingDelegateBridge: NSObject, SCContentSharin
     SCStreamDelegate, SCRecordingOutputDelegate, @unchecked Sendable {
     private weak var owner: ScreenRecordingService?
     private let sessionID: UUID
+    private let monotonicSeconds: @Sendable () -> Double
     let provenance: ScreenRecordingCallbackProvenance
 
-    init(owner: ScreenRecordingService, sessionID: UUID) {
+    init(owner: ScreenRecordingService, sessionID: UUID, monotonicSeconds: @escaping @Sendable () -> Double) {
         self.owner = owner
         self.sessionID = sessionID
+        self.monotonicSeconds = monotonicSeconds
         provenance = ScreenRecordingCallbackProvenance(sessionID: sessionID)
     }
 
@@ -778,11 +828,13 @@ fileprivate final class ScreenRecordingDelegateBridge: NSObject, SCContentSharin
         let id = ObjectIdentifier(recordingOutput)
         let token = sessionID
         let startedAt = Date()
+        let monotonicStart = monotonicSeconds()
         let timeZoneIdentifier = TimeZone.current.identifier
         // Store before enqueueing: independent MainActor Tasks need not execute in
         // delegate callback order, and finalization may release this bridge first.
         provenance.recordingDidStart(outputID: id, startedAt: startedAt,
-                                      timeZoneIdentifier: timeZoneIdentifier)
+                                      timeZoneIdentifier: timeZoneIdentifier,
+                                      monotonicStartSeconds: monotonicStart)
         Task { @MainActor [weak owner] in
             owner?.recordingStarted(outputID: id, sessionID: token)
         }

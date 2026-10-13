@@ -145,6 +145,9 @@ struct MorningRecordingCoordinator: View {
             announceStartedIfActive()
             processRecordingIfReady()
         }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            recording.ownInterfaceChanged(inFront: phase != .background)
+        }
         .onChange(of: store.busy) { _, busy in
             if !busy { processRecordingIfReady() }
         }
