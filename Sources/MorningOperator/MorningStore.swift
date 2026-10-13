@@ -113,6 +113,9 @@ final class MorningStore {
     private(set) var routine: RoutineVersion?
     private(set) var session: RoutineSession?
     private(set) var previousRoutine: RoutineVersion?
+    /// Counts successful approvals in this launch, so feedback can follow each one —
+    /// an approved update replaces an approved routine and leaves `isApproved` unchanged.
+    private(set) var approvalCount = 0
     private(set) var notes = ""
     private(set) var observationVideoEvidence: ObservationVideoEvidence?
     private(set) var observationContextClassification: ObservationContextClassification?
@@ -530,6 +533,7 @@ final class MorningStore {
             session = savedSession
             return false
         }
+        approvalCount += 1
         return true
     }
 
@@ -1294,6 +1298,7 @@ final class MorningStore {
             pendingRoutineProposal = proposal
             return false
         }
+        approvalCount += 1
         notice = "Update approved. Your next morning will use this routine."
         return true
     }

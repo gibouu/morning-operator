@@ -1111,10 +1111,9 @@ private struct MorningHaptics: ViewModifier {
     func body(content: Content) -> some View {
         let sessionID: UUID? = store.session?.id
         let completed: Bool = store.session?.status == .completed
-        let approved: Bool = store.routine?.isApproved ?? false
         return content
             .sensoryFeedback(.start, trigger: sessionID) { (old: UUID?, new: UUID?) -> Bool in new != nil && old != new }
             .sensoryFeedback(.success, trigger: completed) { (old: Bool, new: Bool) -> Bool in !old && new }
-            .sensoryFeedback(.success, trigger: approved) { (old: Bool, new: Bool) -> Bool in !old && new }
+            .sensoryFeedback(.success, trigger: store.approvalCount)
     }
 }
