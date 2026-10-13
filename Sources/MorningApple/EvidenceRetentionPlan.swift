@@ -1,9 +1,12 @@
 import Foundation
 import MorningCore
 
-/// The only places, besides the archive itself, that a plan ever inspects.
+/// The only places, besides the archive itself, that a plan ever inspects. Thoughts,
+/// receipts and recording files hold no routine step and are not inspected.
 public enum EvidenceRetentionStore: String, Sendable, Equatable, CaseIterable {
     case currentRoutine, previousRoutine, pendingProposal, preferenceJournal
+    /// Each saved run pins the whole routine it ran, with every step's text.
+    case runHistory
 }
 
 public enum EvidenceDependentKind: String, Sendable, Equatable {
@@ -34,12 +37,12 @@ public enum EvidenceDependentDisposition: String, Sendable, Equatable {
 
 /// Why a copy gets its disposition. One reason always gives the same disposition.
 public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
-    case approvedQuotation, keptChoice, markedRequired, unlinkedMatchingText, unapprovedDraftQuotation, reworkedStep
+    case approvedQuotation, keptChoice, markedRequired, savedRun, unlinkedMatchingText, unapprovedDraftQuotation, reworkedStep
     case suggestionSource, suggestionCitation, insideDiscardedSuggestion
 
     public var disposition: EvidenceDependentDisposition {
         switch self {
-        case .approvedQuotation, .keptChoice, .markedRequired, .unlinkedMatchingText: .separatelyRetained
+        case .approvedQuotation, .keptChoice, .markedRequired, .savedRun, .unlinkedMatchingText: .separatelyRetained
         case .unapprovedDraftQuotation: .removed
         case .reworkedStep, .suggestionSource, .suggestionCitation, .insideDiscardedSuggestion: .invalidated
         }
@@ -53,6 +56,8 @@ public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
             "You chose to keep this moment. Its quotation stays with that choice until you clear it in Review."
         case .markedRequired:
             "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it."
+        case .savedRun:
+            "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it."
         case .unlinkedMatchingText:
             "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it."
         case .unapprovedDraftQuotation:
@@ -85,8 +90,8 @@ public struct EvidenceDependentCopy: Sendable, Equatable {
 /// A derived description of what age-based expiry or forgetting one observation
 /// would touch. It deletes nothing and is never persisted; the workspace owner
 /// applies it. Raw evidence expires. A quotation outlives its observation only
-/// where the person approved it in a routine or kept it as a choice, and every
-/// such copy is listed. Each ambiguous case is reported as kept, not removed.
+/// where the person approved it in a routine or kept it as a choice, or in the
+/// saved record of a morning that ran, and every such copy is listed. Each ambiguous case is reported as kept, not removed.
 ///
 /// A copy is found by its source reference, or by exact words of an observation
 /// still in the archive: a suggestion's evidence line, or a whole line of a step's
@@ -99,14 +104,16 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
     public let expiredAcquisitionIDs: [UUID]
     /// No import date was saved. These are reported and never expire by age.
     public let unknownAgeAcquisitionIDs: [UUID]
-    /// Every copy the four stores hold, for every observation they name.
+    /// Every copy those stores hold, for every observation they name.
     public let dependentCopies: [EvidenceDependentCopy]
+    /// The shortest quotation a suggestion may cite.
+    static let minimumEvidenceCharacters = 8
 
     /// A maximum age that is negative or not finite, or a clock that is not finite,
     /// expires nothing.
     public init(archive: ObservationArchive, currentRoutine: RoutineVersion?, previousRoutine: RoutineVersion?,
                 pendingProposal: EvidenceRoutineProposal?, preferences: RoutinePreferenceJournal,
-                now: Date, maximumAge: TimeInterval) {
+                history: MorningHistory, now: Date, maximumAge: TimeInterval) {
         let limit = maximumAge.isFinite && maximumAge >= 0 && now.timeIntervalSince1970.isFinite ? maximumAge : nil
         var expired: [UUID] = []
         var unknown: [UUID] = []
@@ -119,8 +126,10 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
 
         // Approval and Keep are the two explicit decisions. A draft made by editing an
         // approved routine is unapproved again, so the quotation is matched by its
-        // exact reference in any approved version rather than by the draft's flag.
-        let approved = [currentRoutine, previousRoutine].compactMap { $0 }.filter(\.isApproved)
+        // exact reference in any approved version rather than by the draft's flag. A
+        // saved run keeps the approved version it ran after that version has rotated out.
+        let runRoutines = history.runs.map(\.session.routine)
+        let approved = ([currentRoutine, previousRoutine].compactMap { $0 } + runRoutines).filter(\.isApproved)
             .flatMap { $0.steps.compactMap(\.observationReference) }
         let kept = preferences.entries.filter { $0.presence == .keep }
         func explicitDecision(_ step: RoutineStep, _ reference: RoutineObservationReference) -> EvidenceRetentionReason? {
@@ -159,6 +168,7 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 }
                 return result
             }
+            let newline = Data([0x0A])
             let starts = offsets(of: "Evidence: “").map(\.upperBound)
             let ends = starts.isEmpty ? [] : offsets(of: "”").map(\.lowerBound)
             // Byte-exact throughout: two spellings of the same letters are two quotations.
@@ -173,24 +183,38 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                     seen.insert(Data(reference.quote.utf8))
                 }
                 func holds(_ start: Int, _ end: Int) -> Bool {
-                    let quote = bytes[start..<end]
+                    // A copy, not a slice: searching for a one-byte slice traps in Foundation.
+                    let quote = Data(bytes[start..<end])
                     return source.texts.contains { $0.range(of: quote) != nil }
                 }
                 var covered = 0
                 for start in starts {
-                    guard var low = ends.firstIndex(where: { $0 > start }), holds(start, ends[low]) else { continue }
-                    // If a longer quotation is in the source, every shorter one is too.
-                    var high = ends.count - 1
-                    while low < high {
-                        let middle = (low + high + 1) / 2
-                        if holds(start, ends[middle]) { low = middle } else { high = middle - 1 }
+                    guard var low = ends.firstIndex(where: { $0 > start }) else { continue }
+                    // Usual case first, without scanning: the evidence line as written
+                    // quotes one whole line of the source.
+                    let lineEnd = bytes.range(of: newline, in: start..<bytes.count)?.lowerBound ?? bytes.count
+                    if let whole = ends.lastIndex(where: { $0 > start && $0 < lineEnd }),
+                       source.lines.contains(Data(bytes[start..<ends[whole]])) {
+                        low = whole
+                    } else {
+                        guard holds(start, ends[low]) else { continue }
+                        // If a longer quotation is in the source, every shorter one is too.
+                        var high = ends.count - 1
+                        while low < high {
+                            let middle = (low + high + 1) / 2
+                            if holds(start, ends[middle]) { low = middle } else { high = middle - 1 }
+                        }
                     }
+                    // A suggestion never writes a quotation shorter than this, and a few
+                    // typed letters would match almost every observation.
+                    let quote = Data(bytes[start..<ends[low]])
+                    let words = String(decoding: quote, as: UTF8.self)
+                    guard words.count >= Self.minimumEvidenceCharacters else { continue }
                     // A marker inside a quotation already listed adds nothing unless
                     // its own quotation runs past the end of that one.
                     guard ends[low] > covered else { continue }
                     covered = ends[low]
-                    let quote = Data(bytes[start..<ends[low]])
-                    if seen.insert(quote).inserted { found.append((source.id, String(decoding: quote, as: UTF8.self))) }
+                    if seen.insert(quote).inserted { found.append((source.id, words)) }
                 }
                 for line in lines where source.lines.contains(Data(line.utf8)) && seen.insert(Data(line.utf8)).inserted {
                     found.append((source.id, line))
@@ -219,6 +243,17 @@ public struct EvidenceRetentionPlan: Sendable, Equatable {
                 copies.append(.init(acquisitionID: reference.acquisitionID, store: store, kind: kind(step),
                     stepID: step.id, quote: reference.quote,
                     reason: explicitDecision(step, reference) ?? (untouched ? .unapprovedDraftQuotation : .reworkedStep)))
+            }
+        }
+
+        // A run record is history: its copy is never listed for removal. Approval is
+        // required to start a morning, but a session stopped before starting is saved too.
+        for routine in runRoutines {
+            for step in routine.steps {
+                addUnlinked(step, in: .runHistory)
+                guard let reference = step.observationReference else { continue }
+                copies.append(.init(acquisitionID: reference.acquisitionID, store: .runHistory, kind: kind(step),
+                    stepID: step.id, quote: reference.quote, reason: explicitDecision(step, reference) ?? .savedRun))
             }
         }
 
