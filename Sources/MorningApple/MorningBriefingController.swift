@@ -2,18 +2,24 @@ import Foundation
 import MorningCore
 import Observation
 
-/// Only connection choices are durable. No event title, weather response,
-/// prepared sentence or source timestamp is encoded in this document.
+/// Only connection choices are durable. No event title, weather response, sleep
+/// sample, prepared sentence or source timestamp is encoded in this document.
 public struct MorningBriefingSettings: Codable, Sendable, Equatable {
     public var calendarIDs: Set<String>
     public var weatherLocation: WeatherLocation?
     public var temperatureUnit: MorningBriefingTemperatureUnit
+    /// The person's choice to include health (today: sleep duration) in the briefing,
+    /// independent of calendar and weather. Off until they turn it on; while it is off
+    /// the health reader is never called. A settings file saved before this choice
+    /// existed has no such key and loads as off.
+    public var includesHealth: Bool
 
     public init(calendarIDs: Set<String> = [], weatherLocation: WeatherLocation? = nil,
-                temperatureUnit: MorningBriefingTemperatureUnit = .celsius) {
+                temperatureUnit: MorningBriefingTemperatureUnit = .celsius, includesHealth: Bool = false) {
         self.calendarIDs = calendarIDs
         self.weatherLocation = weatherLocation
         self.temperatureUnit = temperatureUnit
+        self.includesHealth = includesHealth
     }
 
     public func validate() throws {
@@ -23,12 +29,13 @@ public struct MorningBriefingSettings: Codable, Sendable, Equatable {
         }) else { throw MorningBriefingControllerError.invalidSettings }
     }
 
-    private enum CodingKeys: String, CodingKey { case calendarIDs, weatherLocation, temperatureUnit }
+    private enum CodingKeys: String, CodingKey { case calendarIDs, weatherLocation, temperatureUnit, includesHealth }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         calendarIDs = try values.decode(Set<String>.self, forKey: .calendarIDs)
         weatherLocation = try values.decodeIfPresent(WeatherLocation.self, forKey: .weatherLocation)
         temperatureUnit = try values.decode(MorningBriefingTemperatureUnit.self, forKey: .temperatureUnit)
+        includesHealth = try values.decodeIfPresent(Bool.self, forKey: .includesHealth) ?? false
         try validate()
     }
 }
@@ -67,7 +74,9 @@ public final class MorningBriefingController {
     public private(set) var errorMessage: String?
     public private(set) var settingsRecoveryError: String?
     public var isCalendarAuthorized: Bool { calendar.isAuthorized }
-    public var hasConfiguredSources: Bool { !settings.calendarIDs.isEmpty || settings.weatherLocation != nil }
+    public var hasConfiguredSources: Bool {
+        !settings.calendarIDs.isEmpty || settings.weatherLocation != nil || settings.includesHealth
+    }
     /// Pin beside a document; settings/reset/cancellation changes invalidate it.
     public var playbackRevision: UUID { revision }
 
@@ -90,6 +99,9 @@ public final class MorningBriefingController {
                     guard document.weatherLocation == settings.weatherLocation,
                           settings.weatherLocation != nil else { return false }
                 }
+                // A document prepared with health must not play once health is excluded,
+                // and one prepared without it is out of date once health is included.
+                guard (document.sleep.status != .notConfigured) == settings.includesHealth else { return false }
                 return true
             }
         } catch { return false }
@@ -97,6 +109,7 @@ public final class MorningBriefingController {
 
     @ObservationIgnored private let calendar: CalendarObservationService
     @ObservationIgnored private let weather: WeatherObservationService
+    @ObservationIgnored private let sleep: SleepObservationService
     @ObservationIgnored private let control: LocalDataControl
     @ObservationIgnored private let file: AtomicJSONFile<MorningBriefingSettings>
     @ObservationIgnored private let now: @Sendable () -> Date
@@ -120,16 +133,20 @@ public final class MorningBriefingController {
     @ObservationIgnored private var suggestionTask: Task<Void, Never>?
     @ObservationIgnored private var calendarInput: MorningBriefingInput<CalendarSnapshot> = .notConfigured
     @ObservationIgnored private var weatherInput: MorningBriefingInput<WeatherObservationSnapshot> = .notConfigured
+    @ObservationIgnored private var sleepInput: SleepBriefingInput = .excluded
     @ObservationIgnored private var preparingKey: PreparationKey?
 
     public init(directory: URL = LocalDataControl.defaultDirectory,
                 calendar: CalendarObservationService = .init(), weather: WeatherObservationService = .init(),
+                sleep: SleepObservationService = .init(),
                 now: @escaping @Sendable () -> Date = { Date() },
                 timeZone: @escaping @Sendable () -> TimeZone = { .current },
                 localeIdentifier: String = AppLanguage.localeIdentifier, policy: MorningBriefingFreshnessPolicy = .standard,
                 sourceTimeout: Duration = .seconds(10), suggestionDelay: Duration = .milliseconds(250),
                 clock: any Clock<Duration> = ContinuousClock()) {
         self.calendar = calendar; self.weather = weather
+        // The default has no reader: until one is passed in, sleep is "not part of this version".
+        self.sleep = sleep
         control = LocalDataControl(directory: directory)
         file = AtomicJSONFile(url: directory.appendingPathComponent("briefing-settings.json"))
         self.now = now; self.timeZone = timeZone; self.localeIdentifier = localeIdentifier
@@ -396,6 +413,7 @@ public final class MorningBriefingController {
             do {
                 var nextCalendar = calendarInput
                 var nextWeather = weatherInput
+                var nextSleep = sleepInput
                 if key.settings.calendarIDs.isEmpty { nextCalendar = .notConfigured }
                 else if !calendar.isAuthorized { nextCalendar = .denied; calendarChoices = [] }
                 else {
@@ -425,6 +443,20 @@ public final class MorningBriefingController {
                         } catch { nextWeather = .unavailable }
                     }
                 } else { nextWeather = .notConfigured }
+                // Excluded means the reader is not called at all.
+                if key.settings.includesHealth {
+                    let cached = try compose(calendar: .notConfigured, weather: .notConfigured, sleep: nextSleep, at: instant, zone: zone)
+                    // A read that found no night is read again: the night can arrive later.
+                    if force || cached.sleep.status != .fresh {
+                        let service = sleep
+                        do {
+                            nextSleep = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) {
+                                try await service.read(at: instant)
+                            }
+                        } catch is CancellationError { throw CancellationError() }
+                        catch { nextSleep = .notReadable }
+                    }
+                } else { nextSleep = .excluded }
                 try Task.checkCancellation()
                 guard revision == expectedRevision, refreshAttempt == attempt,
                       timeZone().identifier == key.timeZoneIdentifier, settings == key.settings else { return nil }
@@ -443,8 +475,8 @@ public final class MorningBriefingController {
                     }
                 }
                 let completedAt = max(instant, now())
-                let document = try compose(calendar: nextCalendar, weather: nextWeather, at: completedAt, zone: zone)
-                calendarInput = nextCalendar; weatherInput = nextWeather; prepared = document
+                let document = try compose(calendar: nextCalendar, weather: nextWeather, sleep: nextSleep, at: completedAt, zone: zone)
+                calendarInput = nextCalendar; weatherInput = nextWeather; sleepInput = nextSleep; prepared = document
                 if !document.hasUsableFacts { errorMessage = String(localized: "No current briefing facts are available. Review your sources or try refreshing.", bundle: .module) }
                 return document
             } catch {
@@ -459,8 +491,9 @@ public final class MorningBriefingController {
     }
 
     private func compose(calendar: MorningBriefingInput<CalendarSnapshot>,
-        weather: MorningBriefingInput<WeatherObservationSnapshot>, at date: Date, zone: TimeZone) throws -> PreparedMorningBriefing {
-        try MorningBriefingComposer.prepare(calendar: calendar, weather: weather, for: date, at: date,
+        weather: MorningBriefingInput<WeatherObservationSnapshot>, sleep: SleepBriefingInput = .excluded,
+        at date: Date, zone: TimeZone) throws -> PreparedMorningBriefing {
+        try MorningBriefingComposer.prepare(calendar: calendar, weather: weather, sleep: sleep, for: date, at: date,
             timeZoneIdentifier: zone.identifier, localeIdentifier: localeIdentifier,
             temperatureUnit: settings.temperatureUnit, policy: policy)
     }
@@ -471,7 +504,7 @@ public final class MorningBriefingController {
         refreshTask?.cancel(); accessTask?.cancel(); searchTask?.cancel(); suggestionTask?.cancel()
         refreshTask = nil; accessTask = nil; searchTask = nil; suggestionTask = nil; preparingKey = nil
         isPreparing = false; isConnectingCalendar = false; isSearchingCities = false
-        prepared = nil; calendarInput = .notConfigured; weatherInput = .notConfigured
+        prepared = nil; calendarInput = .notConfigured; weatherInput = .notConfigured; sleepInput = .excluded
         cityQuery = ""; cityResults = []; citySuggestions = []; citySearchOutcome = nil
         if clearChoices { calendarChoices = []; weather.forgetCitySuggestions() }
     }
