@@ -56,17 +56,10 @@ enum OwnInterfaceWording {
         }
 
         /// A line begins or ends with this wording: the title or a button of a bar, read alone
-        /// or merged with its neighbour in that bar. A counted clause must be the whole line
-        /// after its number ("5 minutes planned"), not the end of someone's sentence.
+        /// or merged with its neighbour in that bar.
         func isAtLineEdge(of frame: Frame) -> Bool {
             normalized.contains { wording in
-                frame.lines.contains { line in
-                    guard isPartOfCatalogString else {
-                        return line == wording || line.hasPrefix("\(wording) ") || line.hasSuffix(" \(wording)")
-                    }
-                    let count = line.prefix { $0.isNumber }
-                    return !count.isEmpty && line.dropFirst(count.count) == " \(wording)"
-                }
+                frame.lines.contains { $0 == wording || $0.hasPrefix("\(wording) ") || $0.hasSuffix(" \(wording)") }
             }
         }
 
@@ -218,12 +211,8 @@ enum OwnInterfaceWording {
     /// bars that stay while the text scrolls or around the text itself. Every piece of a group
     /// must begin or end a line.
     static let labelGroups: [[Phrase]] = [
-        // The suggested update: its title above or its approval below, with the planned time
-        // under any suggested step. Title and approval together are what any updater shows.
-        [shown("Suggested update", fr: "Mise à jour suggérée"), minutesPlanned],
-        [shown("Approve update", fr: "Approuver la mise à jour"), minutesPlanned],
-        // Scrolled into the quotations a suggestion rests on, no planned time is in view: the
-        // title and both buttons of the bars that stay. Two of the three are not enough.
+        // The suggested update, wherever it is scrolled, quotations included: the title and
+        // both buttons of the bars that stay. Two of the three are what any updater shows.
         [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Keep current", fr: "Garder l’actuelle"),
          shown("Approve update", fr: "Approuver la mise à jour")],
         [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Discard", fr: "Supprimer"),
@@ -237,8 +226,6 @@ enum OwnInterfaceWording {
         // One sampled screen: its title read as one line with the button beside it.
         [shown("Sampled moment", fr: "Moment échantillonné"), shown("Done", fr: "Terminé")]
     ]
-    private static let minutesPlanned = part("minutes planned", fr: "minutes prévues", of: "%lld minutes planned",
-                                             earlier: "minute planned", "minute prévue")
 
     /// The Learn, Review, Settings, routine, recording and voice screens as they read today,
     /// then the screens that display an earlier observation or a suggestion.

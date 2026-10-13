@@ -358,7 +358,7 @@ private enum OwnScreenFixtures {
                          .other("Team planning workshop video.mov", "Atelier de planification de l’équipe.mov")] : [])
     }
     /// A suggestion from the model, one "Why this suggestion?" open on its quotation. Between
-    /// its first and last lines nothing identifies it but the title above and the approval below.
+    /// its first and last lines nothing identifies it but the title above and the buttons below.
     static let suggestedUpdate = ContentScreen(
         name: "Suggested update", top: [.shown("Suggested update"), .shown("Done")],
         bottom: [.shown("Keep current"), .shown("Approve update")], body: [
@@ -488,25 +488,6 @@ struct OwnInterfaceWordingTests {
             #expect(screen.controls.contains { $0.catalogKey != nil }, "\(screen.name) has no label tied to a catalog.")
         }
         #expect(OwnInterfaceWording.recordingBadge.catalogKey == "MORE · Recording")
-        // A counted label is matched as a whole line, "5 minutes planned": every form the catalogs
-        // can show must be its number and then the recognized words, nothing before or after.
-        for phrase in OwnInterfaceWording.labelGroups.flatMap({ $0 }) where phrase.isPartOfCatalogString {
-            let key = try #require(phrase.catalogKey)
-            for language in catalogs.languages {
-                let values = try #require(catalogs.valueGroups(for: key, in: language)).flatMap { $0 }.flatMap { $0 }
-                // The string itself is its plural and nothing around it.
-                for whole in values where whole.contains("%#@") {
-                    #expect(whole.wholeMatch(of: /%#@\w+@/) != nil, "“\(whole)” puts words around the counted label.")
-                }
-                let forms = values.filter { !$0.contains("%#@") }
-                #expect(!forms.isEmpty)
-                for form in forms {
-                    let line = LearningEvidencePolicy.normalized(form.replacingOccurrences(of: "%arg", with: "5")
-                        .replacingOccurrences(of: "%lld", with: "5"))
-                    #expect(phrase.normalized.contains { line == "5 \($0)" }, "“\(form)” is not a number and then the recognized words.")
-                }
-            }
-        }
         // The badge is matched in the letter case the app shows, so its case must not drift either.
         #expect(try catalogs.languages.map { try catalogs.text("MORE · Recording", $0) } == OwnInterfaceWording.recordingBadge.wordings)
         #expect(OwnInterfaceWording.labelGroups.allSatisfy { group in group.count >= 2 && group.allSatisfy { $0.catalogKey != nil } })
@@ -807,21 +788,15 @@ struct OwnInterfaceWordingTests {
         let content = "09:00 Team planning meeting"
         for group in OwnInterfaceWording.labelGroups {
             for language in [0, 1] {
-                let counted = group.contains(where: \.isPartOfCatalogString)
-                // The counted line as the app shows it.
-                let pieces = group.map { $0.isPartOfCatalogString ? "5 \($0.wordings[language])" : $0.wordings[language] }
+                let pieces = group.map { $0.wordings[language] }
                 #expect(isOwnInterface((pieces.dropLast() + [content] + pieces.suffix(1)).joined(separator: "\n")))
-                // The last two labels of one bar read as one line. A counted line is a line of its own.
+                // The last two labels of one bar read as one line.
                 let merged = pieces.dropLast(2) + ["\(pieces[pieces.count - 2]) \(pieces[pieces.count - 1])", content]
-                #expect(isOwnInterface(merged.joined(separator: "\n")) == !counted)
+                #expect(isOwnInterface(merged.joined(separator: "\n")))
                 for missing in pieces.indices where group.count > 2 || (pieces[1 - missing] != "Sampled moment" && pieces[1 - missing] != "Moment échantillonné") {
                     var rest = pieces
                     rest.remove(at: missing)
                     #expect(!isOwnInterface((rest + [content]).joined(separator: "\n")), "\(rest) without “\(pieces[missing])” rejected a screen.")
-                }
-                // The counted clause at the end of a sentence is not the label.
-                if counted {
-                    #expect(!isOwnInterface("\(pieces[0])\nIt runs over the 30 \(group[1].wordings[language])\n\(content)"))
                 }
                 // Inside a longer line they are ordinary words.
                 #expect(!isOwnInterface(pieces.map { "Please see the \($0) today" }.joined(separator: "\n") + "\n\(content)"))
@@ -908,6 +883,9 @@ struct OwnInterfaceWordingTests {
             "Music\nWhy this suggestion?\nBecause you listened to the morning jazz playlist four times",
             "Musique\nPourquoi cette suggestion ?\nParce que vous avez écouté la playlist jazz du matin",
             "Fitness\n45 minutes planned\nMorning mobility and strength session with the group",
+            "Notes\nSuggested update to tomorrow's agenda\n09:00 Team planning meeting\n30 minutes planned",
+            "Notes\nMise à jour suggérée pour demain\n09:00 Réunion de planification de l’équipe\n30 minutes prévues",
+            "Updates\nApprove update\n5 minutes planned\n09:00 Team planning meeting",
             "Messages\nGaps may hide others\nPlease bring the printed meeting notes tomorrow.",
             "Notes\nKept by your choice\nPlease bring the printed meeting notes tomorrow.",
             // A label of one of these screens beside a sentence of another is not either screen.
