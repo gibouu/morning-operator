@@ -52,8 +52,10 @@ jobs:
     name: App build
     # Compiles the app, widget and UI-test targets for the simulator; nothing is run.
     # It catches what the package tests cannot: an app target that no longer compiles.
+    # The app uses iOS 27 audio and recording APIs, so it needs the Xcode 27 image
+    # (a GitHub public preview); the iOS 26 SDK on macos-26 cannot build it.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
-    runs-on: ${{ vars.CI_RUNNER || 'macos-26' }}
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
