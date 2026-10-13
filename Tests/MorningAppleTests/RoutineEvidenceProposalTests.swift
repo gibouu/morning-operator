@@ -442,7 +442,7 @@ struct RoutineEvidenceProposalTests {
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
         let proposal = try LearningEvidencePreparation.assemble(evidence: evidence, steps: [step(evidence.units[0])], preserving: nil)
         let data = try JSONEncoder().encode(proposal)
-        for duration in [-1, Int.max, 61] {
+        for duration in [-1, 0, Int.min, Int.max, 61, 1_441] {
             var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
             var routine = try #require(object["routine"] as? [String: Any])
             var steps = try #require(routine["steps"] as? [[String: Any]])

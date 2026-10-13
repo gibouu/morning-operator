@@ -54,7 +54,7 @@ public struct RoutinePreference: Codable, Sendable, Equatable, Identifiable {
             guard retainedStep.id == targetID, retainedStep.kind == targetKind,
                   retainedStep.title.utf8.elementsEqual(targetTitle.utf8),
                   retainedStep.detail.count <= 32_000,
-                  (1...1_440).contains(retainedStep.durationMinutes) else {
+                  RoutineStep.durationMinutesRange.contains(retainedStep.durationMinutes) else {
                 throw RoutinePreferenceError.invalidPreference
             }
         }

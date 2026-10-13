@@ -22,9 +22,20 @@ public struct MorningBriefingSettings: Codable, Sendable, Equatable {
         self.includesHealth = includesHealth
     }
 
+    public static let maximumCalendarIDs = 100
+    public static let maximumCalendarIDBytes = 1_024
+    /// The one size limit of the settings file, applied when it is written and when it is read.
+    /// It holds every value `validate()` accepts: JSON writes a quote, a backslash or a slash as
+    /// two bytes and nothing else longer (control characters are refused), so 100 calendar IDs
+    /// take at most 100 × (2 × 1,024 + 10) = 205,800 bytes with their quotes, comma and
+    /// indentation, the city name at most 2 × `WeatherLocation.maximumLabelBytes` = 262,144,
+    /// and the remaining fields under 1,024: 468,968 in all. Earlier builds read back at most
+    /// 131,072 bytes, so every file they could read is still read.
+    public static let maximumEncodedBytes = 512 * 1_024
+
     public func validate() throws {
-        guard calendarIDs.count <= 100, calendarIDs.allSatisfy({
-            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.utf8.count <= 1_024 &&
+        guard calendarIDs.count <= Self.maximumCalendarIDs, calendarIDs.allSatisfy({
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.utf8.count <= Self.maximumCalendarIDBytes &&
                 !$0.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
         }) else { throw MorningBriefingControllerError.invalidSettings }
     }
@@ -42,6 +53,9 @@ public struct MorningBriefingSettings: Codable, Sendable, Equatable {
 
 public enum MorningBriefingControllerError: Error, LocalizedError, Sendable, Equatable {
     case invalidSettings, unreadableSettings, staleGeneration, timedOut
+    /// The choices are valid one by one but their saved form would exceed the settings file's
+    /// limit. Nothing was written and the choices in effect are unchanged.
+    case settingsTooLarge
 
     public var errorDescription: String? {
         switch self {
@@ -49,6 +63,7 @@ public enum MorningBriefingControllerError: Error, LocalizedError, Sendable, Equ
         case .unreadableSettings: String(localized: "Saved briefing settings couldn't be read. Reset them to choose sources again.", bundle: .module)
         case .staleGeneration: String(localized: "Local data changed. Reopen briefing settings before continuing.", bundle: .module)
         case .timedOut: String(localized: "The source took too long to respond. Your morning can continue without it.", bundle: .module)
+        case .settingsTooLarge: String(localized: "These briefing choices are too large to save. Your previous choices are unchanged. Choose fewer calendars.", bundle: .module)
         }
     }
 }
@@ -143,12 +158,15 @@ public final class MorningBriefingController {
                 timeZone: @escaping @Sendable () -> TimeZone = { .current },
                 localeIdentifier: String = AppLanguage.localeIdentifier, policy: MorningBriefingFreshnessPolicy = .standard,
                 sourceTimeout: Duration = .seconds(10), suggestionDelay: Duration = .milliseconds(250),
-                clock: any Clock<Duration> = ContinuousClock()) {
+                clock: any Clock<Duration> = ContinuousClock(),
+                settingsByteLimit: Int = MorningBriefingSettings.maximumEncodedBytes) {
         self.calendar = calendar; self.weather = weather
         // The default has no reader: until one is passed in, sleep is "not part of this version".
         self.sleep = sleep
         control = LocalDataControl(directory: directory)
-        file = AtomicJSONFile(url: directory.appendingPathComponent("briefing-settings.json"))
+        // Test injection may lower the limit, never raise it. Writer and reader share it.
+        file = AtomicJSONFile(url: directory.appendingPathComponent("briefing-settings.json"),
+            maximumBytes: min(max(settingsByteLimit, 1), MorningBriefingSettings.maximumEncodedBytes))
         self.now = now; self.timeZone = timeZone; self.localeIdentifier = localeIdentifier
         self.policy = policy
         // Test injection may shorten the deadline, never extend the public cap.
@@ -189,7 +207,8 @@ public final class MorningBriefingController {
             guard settingsRecoveryError == nil else { throw MorningBriefingControllerError.unreadableSettings }
             try withCurrentAccess {
                 guard next != settings else { return }
-                try file.save(next)
+                do { try file.save(next) }
+                catch PersistenceError.fileTooLarge { throw MorningBriefingControllerError.settingsTooLarge }
             }
             guard next != settings else { return }
             invalidateWork(clearChoices: false)
@@ -540,7 +559,7 @@ public final class MorningBriefingController {
         do { attributes = try FileManager.default.attributesOfItem(atPath: file.url.path) }
         catch let error as CocoaError where error.code == .fileReadNoSuchFile { return false }
         guard attributes[.type] as? FileAttributeType == .typeRegular,
-              allowCorruptRegularFile || ((attributes[.size] as? NSNumber)?.intValue ?? Int.max) <= 131_072 else {
+              allowCorruptRegularFile || ((attributes[.size] as? NSNumber)?.intValue ?? Int.max) <= (file.maximumBytes ?? MorningBriefingSettings.maximumEncodedBytes) else {
             throw MorningBriefingControllerError.unreadableSettings
         }
         return true

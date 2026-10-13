@@ -8,8 +8,11 @@ import Glibc
 public enum PersistenceError: Error, LocalizedError, Sendable, Equatable {
     case fileURLRequired
     case unsupportedSchema(Int)
+    /// The encoded document, or the file found on disk, is larger than this file's limit.
+    case fileTooLarge(byteCount: Int, limit: Int)
     public var errorDescription: String? {
         switch self {
+        case .fileTooLarge: String(localized: "This is more than the file can hold. Nothing was replaced.", bundle: .module)
         case .fileURLRequired: String(localized: "Choose a local file for this workspace.", bundle: .module)
         case .unsupportedSchema(let version): String(localized: "This file uses an unsupported schema version (\(version)).", bundle: .module)
         }
@@ -26,13 +29,18 @@ private struct JSONEnvelope<Value: Codable & Sendable>: Codable, Sendable {
 /// before the rename commits; no throwing operation follows that boundary.
 /// Use one authoritative writer; this does not coordinate multiple processes.
 /// Store secrets in Keychain, never in these exported documents.
+///
+/// A file with `maximumBytes` applies that one limit to the bytes it writes and to the bytes
+/// it reads. A save over the limit is refused before anything is staged, so a successful save
+/// is never a file that `load` refuses for its size. Without a limit, neither side has one.
 public struct AtomicJSONFile<Value: Codable & Sendable>: Sendable {
     public let url: URL
-    public init(url: URL) { self.url = url }
+    public let maximumBytes: Int?
+    public init(url: URL, maximumBytes: Int? = nil) { self.url = url; self.maximumBytes = maximumBytes }
 
     public func load() throws -> Value {
         guard url.isFileURL else { throw PersistenceError.fileURLRequired }
-        let data = try Data(contentsOf: url)
+        let data = try readBounded()
         // Read the schema independently so a future envelope is rejected before decoding its payload.
         let header = try JSONDecoder().decode(SchemaHeader.self, from: data)
         guard header.schemaVersion == 1 else { throw PersistenceError.unsupportedSchema(header.schemaVersion) }
@@ -44,6 +52,9 @@ public struct AtomicJSONFile<Value: Codable & Sendable>: Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(JSONEnvelope(schemaVersion: 1, value: value))
+        if let maximumBytes, data.count > maximumBytes {
+            throw PersistenceError.fileTooLarge(byteCount: data.count, limit: maximumBytes)
+        }
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         // mkstemp exclusively creates a sibling file with owner-only permissions.
@@ -72,6 +83,24 @@ public struct AtomicJSONFile<Value: Codable & Sendable>: Sendable {
         }
         guard result == 0 else { throw currentPOSIXError() }
         committed = true
+    }
+
+    /// Reads at most one byte past the limit: enough to know the file is over it.
+    private func readBounded() throws -> Data {
+        guard let maximumBytes else { return try Data(contentsOf: url) }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        // The extra byte is skipped at Int.max, where no file can be over the limit.
+        let ceiling = maximumBytes < Int.max ? maximumBytes + 1 : Int.max
+        var data = Data()
+        while data.count < ceiling {
+            guard let chunk = try handle.read(upToCount: ceiling - data.count), !chunk.isEmpty else { break }
+            data.append(chunk)
+        }
+        guard data.count <= maximumBytes else {
+            throw PersistenceError.fileTooLarge(byteCount: data.count, limit: maximumBytes)
+        }
+        return data
     }
 }
 

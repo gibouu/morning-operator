@@ -1862,7 +1862,7 @@ final class MorningStore {
     private func installCandidate(_ candidate: RoutineVersion) {
         if let routine, routine.isApproved { previousRoutine = routine }
         var draft = candidate
-        draft.number = (routine?.number ?? 0) + 1
+        draft.number = routine?.nextNumber ?? 1
         draft.isApproved = false
         routine = draft
         session = nil

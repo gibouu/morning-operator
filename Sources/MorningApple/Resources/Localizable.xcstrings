@@ -2398,6 +2398,16 @@
         }
       }
     },
+    "These briefing choices are too large to save. Your previous choices are unchanged. Choose fewer calendars.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces choix pour le récap sont trop volumineux pour être enregistrés. Vos choix précédents sont inchangés. Choisissez moins de calendriers."
+          }
+        }
+      }
+    },
     "These observations exceed the saved-source limit of %lld characters. Longer saved observations within that limit are analyzed in smaller requests.": {
       "localizations": {
         "fr": {

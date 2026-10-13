@@ -28,8 +28,15 @@ public struct WeatherLocation: Codable, Sendable, Equatable, Identifiable {
                       displayName: values.decode(String.self, forKey: .displayName))
     }
 
+    /// A label is bounded in characters for display and in bytes for storage: one character
+    /// can be a base letter followed by any number of combining marks. The byte bound is the
+    /// size of the largest settings file earlier builds could read back, so no city name they
+    /// kept is refused now.
+    public static let maximumLabelBytes = 131_072
+
     fileprivate static func validLabel(_ value: String, maximum: Int) -> Bool {
         !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && value.count <= maximum &&
+            value.utf8.count <= maximumLabelBytes &&
             !value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
 }

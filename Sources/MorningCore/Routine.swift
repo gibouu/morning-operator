@@ -29,11 +29,16 @@ public enum RoutineStepAutomation: String, Codable, CaseIterable, Sendable {
 }
 
 public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
+    /// One minute to one day: the widest planned time a saved choice or suggestion may carry.
+    /// A step holds no other value, so adding the minutes of any list of steps cannot overflow.
+    public static let durationMinutesRange = 1...1_440
+
     public let id: UUID
     public var title: String
     public var detail: String
     public var kind: StepKind
-    public var durationMinutes: Int
+    /// Planned minutes. A value set outside `durationMinutesRange` becomes its nearest bound.
+    public var durationMinutes: Int { didSet { durationMinutes = Self.bounded(durationMinutes) } }
     public var isRequired: Bool
     public var automation: RoutineStepAutomation?
     public var observationReference: RoutineObservationReference?
@@ -41,8 +46,32 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
                 durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
                 observationReference: RoutineObservationReference? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
-        self.durationMinutes = max(1, durationMinutes); self.isRequired = isRequired
+        self.durationMinutes = Self.bounded(durationMinutes); self.isRequired = isRequired
         self.automation = automation; self.observationReference = observationReference
+    }
+
+    private static func bounded(_ minutes: Int) -> Int {
+        min(max(durationMinutesRange.lowerBound, minutes), durationMinutesRange.upperBound)
+    }
+
+    /// The app never writes minutes outside the range, so a saved value outside it is damage.
+    /// It is refused, not adjusted: a changed number would be presented as the person's own.
+    /// An absent operation or observation reference is an older file, and stays readable.
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        title = try values.decode(String.self, forKey: .title)
+        detail = try values.decode(String.self, forKey: .detail)
+        kind = try values.decode(StepKind.self, forKey: .kind)
+        let minutes = try values.decode(Int.self, forKey: .durationMinutes)
+        guard Self.durationMinutesRange.contains(minutes) else {
+            throw DecodingError.dataCorruptedError(forKey: .durationMinutes, in: values,
+                debugDescription: "Planned minutes must be between 1 and 1,440.")
+        }
+        durationMinutes = minutes
+        isRequired = try values.decode(Bool.self, forKey: .isRequired)
+        automation = try values.decodeIfPresent(RoutineStepAutomation.self, forKey: .automation)
+        observationReference = try values.decodeIfPresent(RoutineObservationReference.self, forKey: .observationReference)
     }
 }
 
@@ -76,10 +105,13 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
             steps.contains { $0.observationReference?.isSynthetic == true }
     }
     public var totalDurationMinutes: Int { steps.reduce(0) { $0 + $1.durationMinutes } }
+    /// The number of the version that follows this one. A saved number is not bounded when
+    /// read, so the count stops at the largest integer instead of overflowing.
+    public var nextNumber: Int { number < Int.max ? number + 1 : Int.max }
     public func approved() -> RoutineVersion { var copy = self; copy.isApproved = true; return copy }
     /// Explicit edits create a new version needing approval, leaving active sessions unchanged.
     public func revised(steps: [RoutineStep], sourceLabel: String? = nil, at date: Date = Date()) -> RoutineVersion {
-        RoutineVersion(number: number + 1, createdAt: date, sourceLabel: sourceLabel ?? self.sourceLabel,
+        RoutineVersion(number: nextNumber, createdAt: date, sourceLabel: sourceLabel ?? self.sourceLabel,
                        steps: steps, isApproved: false)
     }
     /// Proposals retain complete required rituals and steps named by explicit preferences.
@@ -108,7 +140,7 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
         // preference. Keep its existing synthetic provenance out of a learned morning.
         let personalSteps = previous?.isSynthetic == true
             ? [] : previous?.steps ?? []
-        return RoutineVersion(number: (previous?.number ?? 0) + 1, createdAt: date,
+        return RoutineVersion(number: previous?.nextNumber ?? 1, createdAt: date,
             sourceLabel: candidate.sourceLabel,
             steps: reconcile(proposed, previous: personalSteps, preferences: preferences),
             isApproved: false)
