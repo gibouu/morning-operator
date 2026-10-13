@@ -544,6 +544,7 @@ struct TodayView: View {
             dateHeader
             if let routine = store.routine {
                 if !store.sessionActive { routineHeading(routine, compact: compact) }
+                if let opening = store.currentOpening { MorningOpeningView(store: store, presentation: opening) }
                 if store.sessionActive { nowPlaying(compact: compact) }
                 if store.session?.status == .completed { closingMoment }
                 compactTimeline(routine, compact: compact)

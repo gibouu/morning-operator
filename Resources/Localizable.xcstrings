@@ -5366,6 +5366,16 @@
         }
       }
     },
+    "Hear my recap": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écouter mon récap"
+          }
+        }
+      }
+    },
     "Hear preview": {
       "localizations": {
         "fr": {
@@ -9702,6 +9712,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commencer la matinée"
+          }
+        }
+      }
+    },
+    "Start my routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer ma routine"
           }
         }
       }

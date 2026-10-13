@@ -84,6 +84,45 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
+    func testOpeningQuotesPreparedSourcesAndOffersTheirRecap() {
+        let app = launchFixture()
+        openBriefing(app)
+        configureSources(app)
+        assertPreparedSources(app)
+        closeBriefingAndSettings(app)
+        MorningUITestNavigation.openRoutine(in: app)
+        MorningUITestNavigation.tapButton("routine.approve", in: app)
+        MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
+        let opening = app.staticTexts["opening.text"]
+        XCTAssertTrue(opening.waitForExistence(timeout: 15), app.debugDescription)
+        // Wording belongs to the package tests. Here: the synthetic sources reach the screen.
+        XCTAssertTrue(opening.label.contains("Synthetic"), opening.label)
+        XCTAssertEqual(opening.value as? String, "silent", "The fixture keeps spoken guidance off.")
+        XCTAssertTrue(app.staticTexts["Synthetic weather attribution"].exists)
+        let hear = app.buttons["opening.brief"]
+        XCTAssertTrue(hear.exists, "Current sources must offer their recap.")
+        XCTAssertTrue(app.buttons["opening.routine"].exists)
+        XCTAssertTrue(app.buttons["opening.stop"].exists)
+        attach("synthetic-opening-with-prepared-sources", app)
+
+        // Asking for the recap shows the text being read. Its audio is not checked here.
+        reveal(hear, app)
+        hear.tap()
+        let recap = app.staticTexts["opening.briefText"]
+        if recap.waitForExistence(timeout: 5) {
+            XCTAssertTrue(recap.label.contains("Synthetic quiet reading"), recap.label)
+            XCTAssertFalse(hear.exists, "The recap is not offered again while it plays.")
+            attach("synthetic-opening-recap-being-read", app)
+        }
+        // The recap may already have ended and handed over to the routine.
+        if app.buttons["opening.routine"].exists { MorningUITestNavigation.chooseRoutineAtOpening(in: app) }
+        XCTAssertTrue(opening.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["run.state"].value as? String, "running")
+        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
+    }
+
     private func launchFixture() -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
