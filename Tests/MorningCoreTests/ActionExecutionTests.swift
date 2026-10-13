@@ -426,8 +426,8 @@ struct ActionExecutionTests {
     func requestCancelledWhileDispatchingIsWrittenIsClosedWithoutCallingTheAdapter() async throws {
         let harness = Harness(); defer { harness.cleanUp() }
         let journal = try ActionJournalStore(fileURL: harness.url)
-        // The clock is read after the first cancellation check, so cancelling from inside it lands
-        // between that check and the one that follows the `dispatching` write.
+        // The clock is first read just after the first cancellation check. Cancelling from inside it
+        // therefore gets past that check, and only the one before the adapter call can stop the request.
         let armed = Mutex(false)
         let executor = try ActionExecutor(journal: journal, adapter: harness.adapter, now: {
             if armed.withLock({ $0 }) { withUnsafeCurrentTask { $0?.cancel() } }
@@ -441,7 +441,7 @@ struct ActionExecutionTests {
         catch { #expect(error is CancellationError) }
         armed.withLock { $0 = false }
         #expect(await harness.adapter.dispatched.isEmpty)
-        // `dispatching` had been written; with the adapter never invoked it is a known non-event, not an unknown.
+        // With the adapter never invoked the attempt is closed as a known non-event, not left unknown.
         #expect(try AtomicJSONFile<ActionJournal>(url: harness.url).load().attempts.map(\.state) == [.failedKnown])
         let retry = self.draft()
         #expect(try await executor.dispatch(retry, approvalID: await executor.approve(retry).id).state == .accepted)

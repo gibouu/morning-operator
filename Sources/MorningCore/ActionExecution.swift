@@ -263,7 +263,7 @@ public actor ActionExecutor {
         // approval may have expired or been withdrawn meanwhile. Check once more, with no suspension
         // between this and the adapter call. The adapter has not been invoked, so stopping here is
         // a known non-event.
-        do { try Task.checkCancellation(); _ = try authorize(intent, approvalID: approvalID, at: now()) } catch {
+        do { _ = try authorize(intent, approvalID: approvalID, at: now()); try Task.checkCancellation() } catch {
             try? await journal.recordKnownFailure(attempt.id, at: now())
             throw error
         }
