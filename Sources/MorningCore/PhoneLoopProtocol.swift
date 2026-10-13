@@ -12,10 +12,16 @@ import Foundation
 // channel that echoes the current run, step and sequence would be accepted, and so would a forged
 // command by the runner. The transport must authenticate both ends and protect integrity.
 
-/// Format constants. A message of another version is refused: there is no negotiation and no
-/// best-effort reading of a newer or older shape.
+/// Format constants. A message whose version is not listed in `readableVersions` is refused:
+/// there is no negotiation and no best-effort reading of a newer shape.
+///
+/// Version 2 adds one optional field to an observation, `refusal`; commands are unchanged.
+/// A version 1 message is still read, exactly as version 1 defined it: its observation has no
+/// refusal, and a `refusal` key in one is not interpreted.
 public enum PhoneLoopWire {
-    public static let version = 1
+    /// The version of every message created here.
+    public static let version = 2
+    public static let readableVersions: ClosedRange<Int> = 1...2
     /// Upper bounds a decoded message must respect, so one message cannot grow without limit.
     public static let maxElements = 400
     public static let maxTextLines = 400
@@ -46,8 +52,32 @@ public enum PhoneLoopProtocolError: Error, Equatable, Sendable {
 /// (`DeviceObservationTests`, `ClockObservationTests`): capture a screen, launch a chosen app,
 /// tap one uniquely labelled navigation element, select one tab, swipe one list up once.
 /// There is no coordinate tap, no text entry and no send or delete; an unknown kind fails to decode.
+///
+/// `scrollListUp` stays (owner's decision, 13 October) although its evidence is weak: the step
+/// is recorded as verified by `rowsChanged`, which says so. See `PhoneVerificationKind`.
 public enum PhoneCommandKind: String, Codable, Sendable, CaseIterable {
     case observe, openApp, tapNavigation, selectTab, scrollListUp
+}
+
+/// Why a runner did not carry out a command (owner's decision, 13 October). It is for diagnosis
+/// only: the session writes it on the step's record and decides nothing from it, because a
+/// runner's word is not evidence; what the screen shows is.
+///
+/// The set is closed: the three refusals of `PhoneCommandGate` and the stops the UI-test driver
+/// already has (`DriverStop`, and `exactElement`'s ambiguous match). There is no free-form reason
+/// and no detail field, so a refusal cannot carry screen text. An unknown value fails to decode,
+/// and the whole observation with it.
+public enum PhoneRunnerRefusal: String, Codable, Sendable, CaseIterable {
+    case foreignRun, replayedOrOutOfOrder, notBasedOnLatestObservation
+    case appNotForeground, missingOrUnhittableTarget, ambiguousTarget, staleTarget, unexpectedPrompt
+
+    public init(_ refusal: PhoneCommandGate.Refusal) {
+        switch refusal {
+        case .foreignRun: self = .foreignRun
+        case .replayedOrOutOfOrder: self = .replayedOrOutOfOrder
+        case .notBasedOnLatestObservation: self = .notBasedOnLatestObservation
+        }
+    }
 }
 
 /// Element classes the driver queries. Anything else on screen is not reported as an element.
@@ -204,9 +234,9 @@ public struct PhoneCommandMessage: Codable, Sendable, Equatable {
     public let timeoutSeconds: TimeInterval
     public let command: PhoneCommand
 
-    init(runID: UUID, stepID: UUID, sequence: Int, basedOnObservationID: UUID?,
+    init(version: Int = PhoneLoopWire.version, runID: UUID, stepID: UUID, sequence: Int, basedOnObservationID: UUID?,
          timeoutSeconds: TimeInterval, command: PhoneCommand) {
-        version = PhoneLoopWire.version
+        self.version = version
         self.runID = runID; self.stepID = stepID; self.sequence = sequence
         self.basedOnObservationID = basedOnObservationID; self.timeoutSeconds = timeoutSeconds; self.command = command
     }
@@ -219,7 +249,7 @@ public struct PhoneCommandMessage: Codable, Sendable, Equatable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         // The version is judged first: nothing else in an unknown format is interpreted.
         let version = try values.decode(Int.self, forKey: .version)
-        guard version == PhoneLoopWire.version else { throw PhoneLoopProtocolError.unsupportedVersion(version) }
+        guard PhoneLoopWire.readableVersions.contains(version) else { throw PhoneLoopProtocolError.unsupportedVersion(version) }
         let kind = try values.decode(PhoneCommandKind.self, forKey: .kind)
         let bundleID = try values.decodeIfPresent(String.self, forKey: .bundleID)
         let target = try values.decodeIfPresent(PhoneElementTarget.self, forKey: .target)
@@ -232,7 +262,7 @@ public struct PhoneCommandMessage: Codable, Sendable, Equatable {
         case (.scrollListUp, nil, let target?): command = .perform(.scrollListUp(target))
         default: throw PhoneLoopProtocolError.inconsistentCommand
         }
-        self.init(runID: try values.decode(UUID.self, forKey: .runID),
+        self.init(version: version, runID: try values.decode(UUID.self, forKey: .runID),
                   stepID: try values.decode(UUID.self, forKey: .stepID),
                   sequence: try values.decode(Int.self, forKey: .sequence),
                   basedOnObservationID: try values.decodeIfPresent(UUID.self, forKey: .basedOnObservationID),
@@ -281,6 +311,10 @@ public struct PhoneCommandMessage: Codable, Sendable, Equatable {
 /// Runner → controller: the screen captured after carrying out one command (for `observe`, just
 /// the capture). It carries evidence only. It has no field saying "done": whether an action
 /// worked is decided by the session from what the screen shows.
+///
+/// A runner that did not carry the command out may still answer, with the screen as it is and
+/// the reason in `refusal`. The screen in such an answer is evidence like any other; the reason
+/// is recorded and decides nothing.
 public struct PhoneObservationMessage: Codable, Sendable, Equatable {
     public let version: Int
     public let runID: UUID
@@ -290,27 +324,38 @@ public struct PhoneObservationMessage: Codable, Sendable, Equatable {
     public let observationID: UUID
     public let freshness: PhoneEvidenceFreshness
     public let screen: PhoneScreenState
+    /// Why the command was not carried out, if the runner says so. Absent in version 1.
+    public let refusal: PhoneRunnerRefusal?
 
     public init(runID: UUID, stepID: UUID, sequence: Int, observationID: UUID = UUID(),
-                freshness: PhoneEvidenceFreshness, screen: PhoneScreenState) throws {
-        version = PhoneLoopWire.version
+                freshness: PhoneEvidenceFreshness, screen: PhoneScreenState, refusal: PhoneRunnerRefusal? = nil) throws {
+        try self.init(version: PhoneLoopWire.version, runID: runID, stepID: stepID, sequence: sequence,
+                      observationID: observationID, freshness: freshness, screen: screen, refusal: refusal)
+    }
+
+    private init(version: Int, runID: UUID, stepID: UUID, sequence: Int, observationID: UUID,
+                 freshness: PhoneEvidenceFreshness, screen: PhoneScreenState, refusal: PhoneRunnerRefusal?) throws {
+        self.version = version
         self.runID = runID; self.stepID = stepID; self.sequence = sequence
-        self.observationID = observationID; self.freshness = freshness; self.screen = screen
+        self.observationID = observationID; self.freshness = freshness; self.screen = screen; self.refusal = refusal
         try validate()
     }
 
-    private enum CodingKeys: String, CodingKey { case version, runID, stepID, sequence, observationID, freshness, screen }
+    private enum CodingKeys: String, CodingKey { case version, runID, stepID, sequence, observationID, freshness, screen, refusal }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let version = try values.decode(Int.self, forKey: .version)
-        guard version == PhoneLoopWire.version else { throw PhoneLoopProtocolError.unsupportedVersion(version) }
-        try self.init(runID: try values.decode(UUID.self, forKey: .runID),
+        guard PhoneLoopWire.readableVersions.contains(version) else { throw PhoneLoopProtocolError.unsupportedVersion(version) }
+        // Version 1 has no such field. From version 2 on, a value outside the closed set throws
+        // here and the observation is refused whole.
+        let refusal = version >= 2 ? try values.decodeIfPresent(PhoneRunnerRefusal.self, forKey: .refusal) : nil
+        try self.init(version: version, runID: try values.decode(UUID.self, forKey: .runID),
                       stepID: try values.decode(UUID.self, forKey: .stepID),
                       sequence: try values.decode(Int.self, forKey: .sequence),
                       observationID: try values.decode(UUID.self, forKey: .observationID),
                       freshness: try values.decode(PhoneEvidenceFreshness.self, forKey: .freshness),
-                      screen: try values.decode(PhoneScreenState.self, forKey: .screen))
+                      screen: try values.decode(PhoneScreenState.self, forKey: .screen), refusal: refusal)
     }
 
     private func validate() throws {

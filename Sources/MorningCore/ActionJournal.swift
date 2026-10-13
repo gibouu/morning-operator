@@ -1,4 +1,6 @@
+import CryptoKit
 import Foundation
+import Synchronization
 
 public enum ExternalActionKind: String, Codable, Sendable, CaseIterable {
     case navigate, readAloud, sendMessage, deleteMessage, updateCalendar
@@ -67,7 +69,59 @@ public struct ActionAttempt: Codable, Sendable, Identifiable, Equatable {
     public let createdAt: Date
     public fileprivate(set) var updatedAt: Date
     /// Only a provider receipt ID or an opaque evidence reference, not message content.
+    /// Whatever is written here from now on has passed `ActionReference.constrained`.
     public fileprivate(set) var receiptReference: String?
+}
+
+/// The one rule for a receipt or evidence reference before it is written to the journal
+/// (decided 13 October). An adapter hands back a string; nothing guarantees it is an identifier
+/// and not a copy of the message, so the journal stores it only in one of these forms:
+///
+/// 1. **Blank** (empty, or whitespace only): nothing is stored.
+/// 2. **Plain**: 1 to 128 characters, each one of the ASCII letters `A-Z a-z`, the digits `0-9`
+///    or `- _ . : / + =`. Stored exactly as given. This covers UUIDs, identifiers made of
+///    UUIDs joined by `:`, hexadecimal and base64 provider IDs.
+/// 3. **Plain but longer than 128**: its first 48 characters, then `#sha256:`, then the 64
+///    lowercase hexadecimal digits of the SHA-256 of the whole string (120 characters).
+/// 4. **Anything else** (a space, a line break, punctuation outside the list, any non-ASCII
+///    character): `#sha256:` and the 64 digits, with none of the original text (72 characters).
+///
+/// The hash is taken over the UTF-8 bytes of the string exactly as given, with no normalization,
+/// so the same string always gives the same stored form and an adapter can recognise a reference
+/// it is able to produce again. `#` is not a plain character: a stored form contains it if and
+/// only if the rule changed the string. Nothing is ever refused, because by the time a reference
+/// exists the action has been sent and the attempt must still be recorded.
+///
+/// What this does and does not buy: text with spaces or line breaks (a message body, a subject)
+/// never reaches the journal file, and nothing longer than 128 characters does. A single short
+/// token with no space cannot be told from an identifier and is kept; and the hash of a short,
+/// guessable text can be found again by trying candidates, so it is not a way to keep a secret.
+/// An adapter that needs its reference back for `reconcile` must return a plain one, or key on
+/// the intent ID.
+public enum ActionReference {
+    public static let maximumLength = 128
+    static let keptPrefixLength = 48
+    static let hashMarker = "#sha256:"
+
+    public static func constrained(_ reference: String?) -> String? {
+        guard let reference, !reference.unicodeScalars.allSatisfy({ $0.properties.isWhitespace }) else { return nil }
+        let bytes = Array(reference.utf8)
+        let isPlain = bytes.allSatisfy(isPlain)
+        if isPlain, bytes.count <= maximumLength { return reference }
+        let digest = SHA256.hash(data: Data(bytes)).map { String(format: "%02x", $0) }.joined()
+        // Plain bytes are ASCII, so a byte prefix is a character prefix.
+        let prefix = isPlain ? String(decoding: bytes.prefix(keptPrefixLength), as: UTF8.self) : ""
+        return prefix + hashMarker + digest
+    }
+
+    private static func isPlain(_ byte: UInt8) -> Bool {
+        switch byte {
+        case UInt8(ascii: "A")...UInt8(ascii: "Z"), UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "0")...UInt8(ascii: "9"),
+             UInt8(ascii: "-"), UInt8(ascii: "_"), UInt8(ascii: "."), UInt8(ascii: ":"), UInt8(ascii: "/"),
+             UInt8(ascii: "+"), UInt8(ascii: "="): true
+        default: false
+        }
+    }
 }
 public enum ActionJournalError: Error, LocalizedError, Equatable, Sendable {
     case approvalMismatch, duplicateIntent, attemptNotFound, invalidTransition
@@ -85,12 +139,55 @@ public struct ActionJournal: Codable, Sendable, Equatable {
     public init(attempts: [ActionAttempt] = []) { self.attempts = attempts }
 }
 
+/// What this process, and only this process, still knows about an attempt that the journal shows
+/// as unsettled: an adapter call that outlasted the executor's deadline, or an answer that came in
+/// time and could not be saved. Never written to the journal file.
+protocol UnsettledKnowledge: Sendable {
+    /// True while an overdue call is still running, and for good once the channel has said that
+    /// it took the action or that the action was delivered.
+    var mayHaveSent: Bool { get }
+    /// True once the adapter call behind this has returned.
+    var isOver: Bool { get }
+    /// Returns once the adapter call behind this has returned.
+    func returned() async
+}
+
 /// Single authoritative writer. No external effect is allowed before beginDispatch succeeds.
 /// Reopening after process interruption marks dispatching attempts unknown, never ready to retry.
 /// One instance/process owns a journal file; this is not a multi-process locking service.
+///
+/// Outside this module a store can be opened and read, nothing more. Its writes are internal and
+/// belong to the one `ActionExecutor` the store has admitted (decided 13 October: the rule lives
+/// here, not in a process-wide registry). "Unknown blocks, reconcile first" only holds when every
+/// write passes through one executor's ordering, so the store admits one executor at a time and
+/// takes the next only after that one has called `ActionExecutor.release()`.
 public actor ActionJournalStore {
+    /// Proof of admission. Only the holder of the current seat can give it back.
+    struct ExecutorSeat: Sendable, Equatable { fileprivate let id = UUID() }
+
     private let file: AtomicJSONFile<ActionJournal>
     private var journal: ActionJournal
+    /// Not actor state: admission is decided synchronously, inside the executor's initializer.
+    private let seat = Mutex<ExecutorSeat?>(nil)
+    /// By attempt, in memory only. Kept here and not in the executor, so that releasing an
+    /// executor while an overdue call is still out does not forget it.
+    private var unsettled: [UUID: [any UnsettledKnowledge]] = [:]
+
+    /// The seat, or `nil` while another executor holds it.
+    nonisolated func admitExecutor() -> ExecutorSeat? {
+        seat.withLock { current in
+            guard current == nil else { return nil }
+            let admitted = ExecutorSeat()
+            current = admitted
+            return admitted
+        }
+    }
+
+    /// Frees the seat if `held` is the current one. A seat already given back frees nothing,
+    /// so a released executor cannot unseat its successor.
+    nonisolated func vacate(_ held: ExecutorSeat) {
+        seat.withLock { current in if current == held { current = nil } }
+    }
 
     public init(fileURL: URL, recoveringAt date: Date = Date()) throws {
         let localFile = AtomicJSONFile<ActionJournal>(url: fileURL)
@@ -107,8 +204,22 @@ public actor ActionJournalStore {
 
     public func snapshot() -> ActionJournal { journal }
 
+    func note(_ knowledge: any UnsettledKnowledge, for attemptID: UUID) { unsettled[attemptID, default: []].append(knowledge) }
+
+    /// Whether, for all this process knows, the action of this attempt could still go through or
+    /// has gone through. While this is true, a "not delivered" answer from the channel is not the
+    /// last word.
+    func actionMayHaveBeenSent(_ attemptID: UUID) -> Bool {
+        // A call that is over and claims nothing has no more to say.
+        unsettled[attemptID]?.removeAll { $0.isOver && !$0.mayHaveSent }
+        return unsettled[attemptID]?.contains { $0.mayHaveSent } ?? false
+    }
+
+    /// For tests: returns once every overdue adapter call still remembered has returned.
+    func overdueCallsReturned() async { for knowledge in unsettled.values.flatMap({ $0 }) { await knowledge.returned() } }
+
     @discardableResult
-    public func prepare(_ intent: ActionIntent, approval: ActionApproval, at date: Date = Date()) throws -> ActionAttempt {
+    func prepare(_ intent: ActionIntent, approval: ActionApproval, at date: Date = Date()) throws -> ActionAttempt {
         guard approval.allows(intent, at: date) else { throw ActionJournalError.approvalMismatch }
         guard !journal.attempts.contains(where: { $0.intent.id == intent.id }) else { throw ActionJournalError.duplicateIntent }
         let attempt = ActionAttempt(id: UUID(), intent: intent, approvalID: approval.id, state: .readyToDispatch,
@@ -121,7 +232,7 @@ public actor ActionJournalStore {
     /// Persist dispatching BEFORE returning permission to invoke the external adapter.
     /// Pass the current policy object so expiry/revocation is rechecked immediately before dispatch.
     @discardableResult
-    public func beginDispatch(_ attemptID: UUID, approval: ActionApproval, at date: Date = Date()) throws -> ActionIntent {
+    func beginDispatch(_ attemptID: UUID, approval: ActionApproval, at date: Date = Date()) throws -> ActionIntent {
         let index = try index(of: attemptID)
         let attempt = journal.attempts[index]
         guard attempt.state == .readyToDispatch else { throw ActionJournalError.invalidTransition }
@@ -131,20 +242,20 @@ public actor ActionJournalStore {
         return attempt.intent
     }
 
-    public func recordAccepted(_ attemptID: UUID, receiptReference: String? = nil, at date: Date = Date()) throws {
+    func recordAccepted(_ attemptID: UUID, receiptReference: String? = nil, at date: Date = Date()) throws {
         try update(attemptID, allowed: [.dispatching], to: .accepted, receipt: receiptReference, at: date)
     }
-    public func recordVerified(_ attemptID: UUID, evidenceReference: String, at date: Date = Date()) throws {
+    func recordVerified(_ attemptID: UUID, evidenceReference: String, at date: Date = Date()) throws {
         try update(attemptID, allowed: [.dispatching, .accepted, .outcomeUnknown], to: .verified, receipt: evidenceReference, at: date)
     }
     /// Use only when evidence establishes no side effect, not for a timeout or lost response.
-    public func recordKnownFailure(_ attemptID: UUID, at date: Date = Date()) throws {
+    func recordKnownFailure(_ attemptID: UUID, at date: Date = Date()) throws {
         try update(attemptID, allowed: [.readyToDispatch, .dispatching, .accepted, .outcomeUnknown], to: .failedKnown, at: date)
     }
-    public func recordUnknown(_ attemptID: UUID, at date: Date = Date()) throws {
+    func recordUnknown(_ attemptID: UUID, at date: Date = Date()) throws {
         try update(attemptID, allowed: [.dispatching, .accepted], to: .outcomeUnknown, at: date)
     }
-    public func cancel(_ attemptID: UUID, at date: Date = Date()) throws {
+    func cancel(_ attemptID: UUID, at date: Date = Date()) throws {
         try update(attemptID, allowed: [.readyToDispatch], to: .cancelled, at: date)
     }
 
@@ -162,8 +273,11 @@ public actor ActionJournalStore {
         var candidate = journal
         candidate.attempts[index].state = state
         candidate.attempts[index].updatedAt = date
-        if let receipt { candidate.attempts[index].receiptReference = receipt }
+        // Every reference passes the rule here, whoever the caller is.
+        if let receipt = ActionReference.constrained(receipt) { candidate.attempts[index].receiptReference = receipt }
         try commit(candidate)
+        // A settled attempt has nothing left to doubt.
+        if state == .verified || state == .failedKnown { unsettled[candidate.attempts[index].id] = nil }
     }
     private func commit(_ candidate: ActionJournal) throws {
         try file.save(candidate)

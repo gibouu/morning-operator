@@ -22,6 +22,38 @@ import MorningCore
 ///    on no other is two recordings on one date, not a repeat.
 /// 3. `duplicateDay`, then `noSampledEvidence`, then `unreadableSamples`.
 /// 4. The comparison policy's reasons, in the order `ObservationTraceWindowReport` checks them.
+/// The part of one recording that a planned scope covers, from a source that knows when the
+/// recording ran. Comparable mornings are then compared over that scope, not over each
+/// movie's own length: the trace lasts `durationSeconds`, keeps only the samples inside the
+/// scope and states which parts of the scope the recording captured.
+public struct ObservationCaptureScope: Sendable, Equatable {
+    /// Where the scope begins on the movie's timeline. Negative when the recording began
+    /// after the scope did. Movie time zero is taken to be the acknowledged recording
+    /// start; that alignment is not measured.
+    public let startOffsetSeconds: Double
+    public let durationSeconds: Double
+    /// In seconds from the start of the scope. Empty when the recording missed it entirely.
+    public let capturedIntervals: [ObservationTraceInterval]
+
+    public init(startOffsetSeconds: Double, durationSeconds: Double,
+                capturedIntervals: [ObservationTraceInterval]) throws {
+        guard startOffsetSeconds.isFinite, durationSeconds.isFinite, durationSeconds > 0 else {
+            throw ObservationTraceError.invalidDuration
+        }
+        var end = 0.0
+        for interval in capturedIntervals {
+            guard interval.startSeconds.isFinite, interval.endSeconds.isFinite, interval.startSeconds >= end,
+                  interval.endSeconds > interval.startSeconds, interval.endSeconds <= durationSeconds else {
+                throw ObservationTraceError.invalidCoverage
+            }
+            end = interval.endSeconds
+        }
+        self.startOffsetSeconds = startOffsetSeconds
+        self.durationSeconds = durationSeconds
+        self.capturedIntervals = capturedIntervals
+    }
+}
+
 public struct ComparableMorningProfile: Sendable, Equatable {
     /// Scheduled days are exactly its included, missing and excluded days.
     public let report: ObservationTraceWindowReport
@@ -42,10 +74,15 @@ public struct ComparableMorningProfile: Sendable, Equatable {
     ///     source that actually knows. Saved observations carry no such declaration, so a
     ///     recording without an entry here is excluded as unknown capture. Nothing is guessed
     ///     from the movie's length or its samples.
+    ///   - captureScopes: for an observation declared to a planned scope such as a learning
+    ///     window, the part of its movie that scope covers. It takes precedence over
+    ///     `declaredCapture` for that observation. `init(window:archive:now:)` builds these
+    ///     from the declarations saved on the observations themselves.
     public init(archive: ObservationArchive, scheduledDays: [Date], timeZoneIdentifier: String,
                 origin: ObservationAcquisitionOrigin, comparisonKey: String,
                 policy: ObservationComparisonPolicy,
-                declaredCapture: [UUID: [ObservationTraceInterval]] = [:]) throws {
+                declaredCapture: [UUID: [ObservationTraceInterval]] = [:],
+                captureScopes: [UUID: ObservationCaptureScope] = [:]) throws {
         let traceOrigin: ObservationTraceOrigin
         switch origin {
         case .human: traceOrigin = .human
@@ -116,8 +153,22 @@ public struct ComparableMorningProfile: Sendable, Equatable {
                         outcome: sample.outcome, appEvidence: row.resolution == .recognized ? sample.context : .unknown)
                 }
             }
-            let trace = try ObservationTrace(id: evidence.id, durationSeconds: evidence.durationSeconds,
-                capturedIntervals: declaredCapture[entry.id], origin: traceOrigin, samples: samples)
+            let trace: ObservationTrace
+            if let scope = captureScopes[entry.id] {
+                // Samples outside the scope are not part of what the mornings share. They
+                // stay in the saved observation and are simply not compared.
+                let scoped = samples.compactMap { sample -> ObservationTraceSample? in
+                    let time = sample.timeSeconds - scope.startOffsetSeconds
+                    guard time >= 0, time <= scope.durationSeconds else { return nil }
+                    return .init(id: sample.id, timeSeconds: time, timeBasis: sample.timeBasis,
+                                 outcome: sample.outcome, appEvidence: sample.appEvidence)
+                }
+                trace = try ObservationTrace(id: evidence.id, durationSeconds: scope.durationSeconds,
+                    capturedIntervals: scope.capturedIntervals, origin: traceOrigin, samples: scoped)
+            } else {
+                trace = try ObservationTrace(id: evidence.id, durationSeconds: evidence.durationSeconds,
+                    capturedIntervals: declaredCapture[entry.id], origin: traceOrigin, samples: samples)
+            }
             days.append(try ObservationTraceDay(date: observed.date, timeZoneIdentifier: timeZoneIdentifier,
                                                 comparisonKey: comparisonKey, trace: trace))
         }

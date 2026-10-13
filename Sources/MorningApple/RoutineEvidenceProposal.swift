@@ -5,6 +5,10 @@ import MorningCore
 public enum RoutineEvidenceProposalError: Error, LocalizedError, Sendable, Equatable {
     case invalidSelection, dateRequired, incompatibleSources, unsupportedSource, insufficientEvidence
     case inputBudgetExceeded, outputBudgetExceeded, tooManySteps, invalidCitation, invalidProposal
+    /// A recording gave no usable evidence and frames of it were left out because MORE's own
+    /// scene was in front. Named apart so that a capture during which the scene never left
+    /// the front can be told from one that simply shows nothing usable.
+    case ownInterfaceLeftNoEvidence
     public var errorDescription: String? {
         switch self {
         case .invalidSelection: String(localized: "Select one to five different saved observations.", bundle: .module)
@@ -12,6 +16,7 @@ public enum RoutineEvidenceProposalError: Error, LocalizedError, Sendable, Equat
         case .incompatibleSources: String(localized: "Select observations in the same time zone and with the same human or synthetic origin.", bundle: .module)
         case .unsupportedSource: String(localized: "This source needs a reviewed written correction before it can support a proposal.", bundle: .module)
         case .insufficientEvidence: String(localized: "Each selected observation needs usable activity evidence. Review its notes or choose another observation.", bundle: .module)
+        case .ownInterfaceLeftNoEvidence: String(localized: "A selected recording has no usable activity evidence. Some of its samples were left out because MORE itself was in front when they were taken. Use your other apps while a recording runs, or choose another observation.", bundle: .module)
         case .inputBudgetExceeded: String(localized: "These saved observations exceed the bounded local workload or contain a text unit too large to send safely. Your complete saved source is unchanged; nothing was silently shortened.", bundle: .module)
         case .outputBudgetExceeded: String(localized: "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened.", bundle: .module)
         case .tooManySteps: String(localized: "This proposal needs more than ten moments, including your kept rituals. Select fewer observations; no kept ritual was removed.", bundle: .module)
@@ -43,6 +48,9 @@ public struct LearningSourceSnapshot: Codable, Equatable, Sendable {
 
 public enum LearningEvidenceOmissionReason: String, Codable, Sendable {
     case unavailableOrTruncatedFrame, unsupportedVisualContext, explicitlyReviewedUnknown
+    /// The app recorded that its own scene was in front when this frame was sampled. This
+    /// comes from the recording's saved spans, not from the frame's text.
+    case ownInterfaceInFront
 }
 
 /// A disclosed pre-inference rejection, never a claim that no activity occurred.
@@ -361,7 +369,11 @@ public enum LearningEvidencePreparation {
     private static let maximumUnitCharacters = 1_100
     private static let maximumUnitUTF8Bytes = 3_000
 
-    public static func prepare(acquisitions: [ObservationAcquisition]) throws -> PreparedLearningEvidence {
+    /// `ownInterfaceMarginSeconds` widens each span in which MORE was in front; see
+    /// `OwnInterfaceIntervals`. Only a native recording that saved such spans is affected.
+    public static func prepare(acquisitions: [ObservationAcquisition],
+                               ownInterfaceMarginSeconds: Double = OwnInterfaceIntervals.defaultMarginSeconds)
+        throws -> PreparedLearningEvidence {
         guard (1...5).contains(acquisitions.count), Set(acquisitions.map(\.id)).count == acquisitions.count else {
             throw RoutineEvidenceProposalError.invalidSelection
         }
@@ -381,10 +393,17 @@ public enum LearningEvidencePreparation {
                 guard LearningEvidencePolicy.isEligibleWrittenContext(correction) else { throw RoutineEvidenceProposalError.insufficientEvidence }
                 units += try makeUnits(text: correction, entry: entry, layer: .correction, sampleID: nil, kind: .userReportedActivity)
             } else if let video = entry.videoEvidence {
+                // Imported files and older recordings carry no spans and are judged by text alone.
+                let ownInterface = entry.recordingContext?.ownInterfaceIntervals
                 for frame in video.frames {
                     let review = entry.frameReviews.first { $0.sampleID == frame.id }
                     if let review, review.label == nil {
                         omissions.append(.init(acquisitionID: entry.id, sampleID: frame.id, reason: .explicitlyReviewedUnknown)); continue
+                    }
+                    // Decided before reading the frame: the fact holds whatever its text says.
+                    if let ownInterface, ownInterface.contains(mediaSeconds: frame.timeSeconds,
+                                                              marginSeconds: ownInterfaceMarginSeconds) {
+                        omissions.append(.init(acquisitionID: entry.id, sampleID: frame.id, reason: .ownInterfaceInFront)); continue
                     }
                     guard frame.canSupportIdentity else {
                         omissions.append(.init(acquisitionID: entry.id, sampleID: frame.id, reason: .unavailableOrTruncatedFrame)); continue
@@ -418,7 +437,10 @@ public enum LearningEvidencePreparation {
                 guard valid else { throw RoutineEvidenceProposalError.insufficientEvidence }
                 units += try makeUnits(text: text, entry: entry, layer: .original, sampleID: nil, kind: kind, startingOffset: sourceOffset)
             }
-            guard units.count > previousCount else { throw RoutineEvidenceProposalError.insufficientEvidence }
+            guard units.count > previousCount else {
+                let byTime = omissions.contains { $0.acquisitionID == entry.id && $0.reason == .ownInterfaceInFront }
+                throw byTime ? RoutineEvidenceProposalError.ownInterfaceLeftNoEvidence : RoutineEvidenceProposalError.insufficientEvidence
+            }
         }
         // No cross-day deduplication. Even identical text keeps independent source IDs.
         // Every eligible source character is retained. Both request limits include identifiers and review metadata.
@@ -614,21 +636,25 @@ private enum EvidenceRevision {
         // Hash source, date, correction, origin, extraction and explicit frame reviews.
         // An empty review list stays absent from the payload so legacy no-review
         // proposals keep their existing source revisions.
-        // Derived classification/warnings and recordingContext are deliberately excluded:
+        // Derived classification/warnings and the recording's start are deliberately excluded:
         // native start metadata is not model input and does not change the assigned day.
         // Adding it to an exact-file retry must not stale an otherwise unchanged proposal.
+        // Own-interface spans decide which frames are eligible, so they are hashed when
+        // present. Absent spans stay out of the payload and keep existing revisions.
         struct Payload: Encodable {
             let id: UUID; let importedAt: Date?; let fileSHA256: String?
             let observedDate: ObservationObservedDate?; let origin: ObservationAcquisitionOrigin
             let sourceKind: ObservationAcquisitionSourceKind; let sourceLabel: String
             let originalText: String; let correctedText: String?; let videoEvidence: ObservationVideoEvidence?
             let frameReviews: [ObservationFrameReview]?
+            let ownInterfaceIntervals: OwnInterfaceIntervals?
         }
         return try hash(Payload(id: value.id, importedAt: value.importedAt, fileSHA256: value.fileSHA256,
             observedDate: value.observedDate, origin: value.origin, sourceKind: value.sourceKind,
             sourceLabel: value.sourceLabel, originalText: value.originalText, correctedText: value.correctedText,
             videoEvidence: value.videoEvidence,
-            frameReviews: value.frameReviews.isEmpty ? nil : value.frameReviews.sorted { $0.sampleID.uuidString < $1.sampleID.uuidString }))
+            frameReviews: value.frameReviews.isEmpty ? nil : value.frameReviews.sorted { $0.sampleID.uuidString < $1.sampleID.uuidString },
+            ownInterfaceIntervals: value.recordingContext?.ownInterfaceIntervals))
     }
 }
 

@@ -221,6 +221,16 @@
         }
       }
     },
+    "A selected recording has no usable activity evidence. Some of its samples were left out because MORE itself was in front when they were taken. Use your other apps while a recording runs, or choose another observation.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un enregistrement sélectionné ne contient aucun élément d’activité exploitable. Certains de ses échantillons ont été écartés parce que MORE était au premier plan au moment de leur capture. Utilisez vos autres apps pendant l’enregistrement, ou choisissez une autre observation."
+          }
+        }
+      }
+    },
     "A visible-context analysis is already running.": {
       "localizations": {
         "fr": {
@@ -1347,6 +1357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seul un enregistrement créé par cette app peut être récupéré."
+          }
+        }
+      }
+    },
+    "Open MORE and start the recording when you are ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez MORE et lancez l’enregistrement quand vous êtes prêt."
           }
         }
       }
@@ -2954,6 +2974,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "« Votre journée » n’est pas prête. Vérifiez « Votre journée » dans Réglages, ou touchez Suivant pour continuer."
+          }
+        }
+      }
+    },
+    "Your learning window is open": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre fenêtre d’apprentissage est ouverte"
           }
         }
       }

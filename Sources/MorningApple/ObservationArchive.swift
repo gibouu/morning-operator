@@ -121,6 +121,10 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
     /// It does not establish physical pickup, PTS-zero alignment or continuous coverage.
     /// Legacy and externally imported recordings have no inferred recording context.
     public let recordingContext: ObservationRecordingContext?
+    /// What this recording captured of one morning of a learning window, written once when
+    /// the recording is declared to that window. Nil for every observation saved before
+    /// learning windows existed and for every one never declared: its capture is unknown.
+    public let windowCapture: ObservationWindowCapture?
     public let origin: ObservationAcquisitionOrigin
     public let sourceKind: ObservationAcquisitionSourceKind
     public let sourceLabel: String
@@ -131,6 +135,10 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
     /// User reviews override the projection only; original model output remains separate.
     public let frameReviews: [ObservationFrameReview]
     public let warnings: [ObservationAcquisitionWarning]
+    /// Set when this observation is one segment of a longer recording session. Entries
+    /// sharing its `sessionID` are one recording kept as several files, in index order.
+    /// Nil for every observation saved before sessions existed and for a single file.
+    public let sessionSegment: ObservationSessionSegmentReference?
     public var effectiveText: String { correctedText ?? originalText }
 
     public init(id: UUID = UUID(), importedAt: Date? = Date(), fileSHA256: String? = nil,
@@ -140,8 +148,16 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                 classification: ObservationContextClassification? = nil,
                 warnings: [ObservationAcquisitionWarning] = [],
                 recordingContext: ObservationRecordingContext? = nil,
-                frameReviews: [ObservationFrameReview] = []) throws {
+                frameReviews: [ObservationFrameReview] = [],
+                sessionSegment: ObservationSessionSegmentReference? = nil,
+                windowCapture: ObservationWindowCapture? = nil) throws {
+        // Only a recorded file can be a segment of a recording session.
+        guard sessionSegment == nil || sourceKind == .video else { throw ObservationArchiveError.invalidSource }
+        self.sessionSegment = sessionSegment
         if let recordingContext, !Self.recordingContextIsValid(recordingContext, sourceKind: sourceKind) {
+            throw ObservationArchiveError.invalidRecordingContext
+        }
+        if let windowCapture, !Self.windowCaptureIsValid(windowCapture, context: recordingContext, evidence: videoEvidence) {
             throw ObservationArchiveError.invalidRecordingContext
         }
         guard importedAt.map(archiveDateIsValid) ?? true else { throw ObservationArchiveError.invalidDate }
@@ -170,6 +186,7 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
         self.fileSHA256 = digest
         self.observedDate = observedDate
         self.recordingContext = recordingContext
+        self.windowCapture = windowCapture
         self.origin = origin
         self.sourceKind = sourceKind
         self.sourceLabel = sourceLabel
@@ -220,6 +237,16 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             timeZoneIdentifier: context.timeZoneIdentifier, provenance: .recordingSession)) != nil
     }
 
+    /// A declaration is only as good as its source: the native recording session of this
+    /// very observation. Its start and zone must be that session's, and its length the
+    /// saved movie's. An imported file has no session and can carry no declaration.
+    private static func windowCaptureIsValid(_ capture: ObservationWindowCapture,
+        context: ObservationRecordingContext?, evidence: ObservationVideoEvidence?) -> Bool {
+        guard let context, let evidence else { return false }
+        return capture.actualStart == context.startedAt && capture.timeZoneIdentifier == context.timeZoneIdentifier &&
+            capture.actualEnd == context.startedAt.addingTimeInterval(evidence.durationSeconds)
+    }
+
     private static func textIsBounded(_ text: String, maximumCharacters: Int) -> Bool {
         text.count <= maximumCharacters && text.utf8.count <= ObservationArchive.maximumTextBytes
     }
@@ -240,7 +267,16 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                   origin: origin ?? self.origin, sourceKind: sourceKind, sourceLabel: sourceLabel, originalText: originalText,
                   correctedText: correctedText, videoEvidence: videoEvidence,
                   classification: classification, warnings: warnings, recordingContext: recordingContext,
-                  frameReviews: frameReviews ?? self.frameReviews)
+                  frameReviews: frameReviews ?? self.frameReviews, sessionSegment: sessionSegment,
+                  windowCapture: windowCapture)
+    }
+
+    fileprivate func declaring(_ capture: ObservationWindowCapture) throws -> Self {
+        try .init(id: id, importedAt: importedAt, fileSHA256: fileSHA256, observedDate: observedDate,
+                  origin: origin, sourceKind: sourceKind, sourceLabel: sourceLabel, originalText: originalText,
+                  correctedText: correctedText, videoEvidence: videoEvidence,
+                  classification: classification, warnings: warnings, recordingContext: recordingContext,
+                  frameReviews: frameReviews, sessionSegment: sessionSegment, windowCapture: capture)
     }
 
     /// Derived interpretation can be discarded independently of valid source. Exact source
@@ -319,7 +355,8 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
 
     private enum CodingKeys: String, CodingKey {
         case id, importedAt, fileSHA256, observedDate, origin, sourceKind, sourceLabel, originalText
-        case correctedText, videoEvidence, classification, warnings, recordingContext, frameReviews
+        case correctedText, videoEvidence, classification, warnings, recordingContext, frameReviews, windowCapture
+        case sessionSegment
     }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -341,6 +378,12 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             restoredContext = nil
             if !warnings.contains(.invalidRecordingContextRemoved) { warnings.append(.invalidRecordingContextRemoved) }
         }
+        // A declaration that cannot be read, or that no longer matches its recording, is
+        // dropped without a warning: the capture is unknown again, as it was before.
+        let videoEvidence = try values.decodeIfPresent(ObservationVideoEvidence.self, forKey: .videoEvidence)
+        var restoredCapture = (try? values.decodeIfPresent(ObservationWindowCapture.self, forKey: .windowCapture)) ?? nil
+        if let capture = restoredCapture,
+           !Self.windowCaptureIsValid(capture, context: restoredContext, evidence: videoEvidence) { restoredCapture = nil }
         var restoredClassification: ObservationContextClassification?
         do { restoredClassification = try values.decodeIfPresent(ObservationContextClassification.self, forKey: .classification) }
         catch {
@@ -348,7 +391,6 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
             if !warnings.contains(.invalidClassificationRemoved) { warnings.append(.invalidClassificationRemoved) }
         }
         let correctedText = try values.decodeIfPresent(String.self, forKey: .correctedText)
-        let videoEvidence = try values.decodeIfPresent(ObservationVideoEvidence.self, forKey: .videoEvidence)
         let restoredReviews: [ObservationFrameReview]
         do {
             let reviews = try values.decodeIfPresent([ObservationFrameReview].self, forKey: .frameReviews) ?? []
@@ -371,7 +413,14 @@ public struct ObservationAcquisition: Codable, Identifiable, Sendable, Equatable
                       originalText: values.decode(String.self, forKey: .originalText),
                       correctedText: correctedText, videoEvidence: videoEvidence,
                       classification: restoredClassification, warnings: warnings, recordingContext: restoredContext,
-                      frameReviews: restoredReviews)
+                      frameReviews: restoredReviews,
+                      // A reference that cannot be read, or that sits on a source that is not a
+                      // recording, leaves an ordinary single observation. It must not cost the
+                      // person its text.
+                      sessionSegment: sourceKind == .video
+                          ? (try? values.decodeIfPresent(ObservationSessionSegmentReference.self, forKey: .sessionSegment))
+                          : nil,
+                      windowCapture: restoredCapture)
     }
 }
 
@@ -397,6 +446,12 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
             guard ids.insert(entry.id).inserted else { throw ObservationArchiveError.duplicateAcquisition }
             if let digest = entry.fileSHA256, !digests.insert(digest).inserted { throw ObservationArchiveError.duplicateDigest }
         }
+        // One segment of a session is one observation: a second entry for the same segment
+        // would count that part of the recording twice.
+        let segments = entries.compactMap { entry in
+            entry.sessionSegment.map { SessionSegmentKey(sessionID: $0.sessionID, segmentIndex: $0.segmentIndex) }
+        }
+        guard Set(segments).count == segments.count else { throw ObservationArchiveError.duplicateAcquisition }
         guard entries.reduce(0, { $0 + $1.textByteCount }) <= Self.maximumAggregateTextBytes,
               entries.reduce(0, { $0 + $1.lineCount }) <= Self.maximumOCRLines else { throw ObservationArchiveError.archiveTooLarge }
         self.entries = entries
@@ -410,12 +465,25 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
     @discardableResult public mutating func insert(_ acquisition: ObservationAcquisition) throws -> UUID {
         if let existing = entry(id: acquisition.id) {
             guard existing.fileSHA256 == acquisition.fileSHA256, existing.sourceKind == acquisition.sourceKind,
-                  existing.originalText.utf8.elementsEqual(acquisition.originalText.utf8) else { throw ObservationArchiveError.duplicateAcquisition }
+                  existing.originalText.utf8.elementsEqual(acquisition.originalText.utf8),
+                  Self.keepsSessionSegment(of: acquisition, in: existing) else { throw ObservationArchiveError.duplicateAcquisition }
             return existing.id
         }
-        if let digest = acquisition.fileSHA256, let existing = entries.first(where: { $0.fileSHA256 == digest }) { return existing.id }
+        if let digest = acquisition.fileSHA256, let existing = entries.first(where: { $0.fileSHA256 == digest }) {
+            guard Self.keepsSessionSegment(of: acquisition, in: existing) else { throw ObservationArchiveError.duplicateDigest }
+            return existing.id
+        }
         self = try Self(entries: entries + [acquisition])
         return acquisition.id
+    }
+
+    /// A segment of a session may only be answered with the entry of that same segment.
+    /// Returning an ordinary observation of the same bytes would lose the segment's place
+    /// in its session: it could no longer be found, resumed or forgotten with the session.
+    /// An observation that is not a segment is answered as before.
+    private static func keepsSessionSegment(of acquisition: ObservationAcquisition,
+                                            in existing: ObservationAcquisition) -> Bool {
+        acquisition.sessionSegment == nil || acquisition.sessionSegment == existing.sessionSegment
     }
 
     /// Enrich an existing exact-file copy only with metadata retained by the caller's
@@ -435,9 +503,20 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
             sourceKind: current.sourceKind, sourceLabel: current.sourceLabel, originalText: current.originalText,
             correctedText: current.correctedText, videoEvidence: current.videoEvidence,
             classification: current.classification, warnings: current.warnings, recordingContext: context,
-            frameReviews: current.frameReviews)
+            frameReviews: current.frameReviews, sessionSegment: current.sessionSegment)
         guard current.recordingContext == nil else { return false }
         try replace(enriched)
+        return true
+    }
+
+    /// Writes a learning window's declaration on a saved native recording, once. A second
+    /// declaration never replaces the first: returns false and changes nothing. The value
+    /// must describe this recording's own session and movie, or it is refused.
+    @discardableResult public mutating func attachWindowCapture(_ capture: ObservationWindowCapture, to id: UUID) throws -> Bool {
+        let current = try required(id)
+        let declared = try current.declaring(capture)
+        guard current.windowCapture == nil else { return false }
+        try replace(declared)
         return true
     }
 
@@ -484,6 +563,21 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
     }
     public mutating func clear() { entries.removeAll() }
 
+    /// The saved segments of one recording session, in the order they were recorded.
+    public func entries(ofSession sessionID: UUID) -> [ObservationAcquisition] {
+        entries.filter { $0.sessionSegment?.sessionID == sessionID }
+            .sorted { $0.sessionSegment!.segmentIndex < $1.sessionSegment!.segmentIndex }
+    }
+
+    /// Removes every observation made from one recording session and nothing else.
+    /// Returns the identifiers removed, in recording order.
+    @discardableResult public mutating func deleteSession(_ sessionID: UUID) throws -> [UUID] {
+        let removed = entries(ofSession: sessionID).map(\.id)
+        guard !removed.isEmpty else { return [] }
+        self = try Self(entries: entries.filter { $0.sessionSegment?.sessionID != sessionID })
+        return removed
+    }
+
     private func required(_ id: UUID) throws -> ObservationAcquisition {
         guard let value = entry(id: id) else { throw ObservationArchiveError.unknownAcquisition }
         return value
@@ -498,6 +592,11 @@ public struct ObservationArchive: Codable, Sendable, Equatable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(entries: values.decode([ObservationAcquisition].self, forKey: .entries))
     }
+}
+
+private struct SessionSegmentKey: Hashable {
+    let sessionID: UUID
+    let segmentIndex: Int
 }
 
 private func archiveDateIsValid(_ date: Date) -> Bool {

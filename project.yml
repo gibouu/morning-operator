@@ -78,6 +78,9 @@ targets:
         TEST_TARGET_NAME: MorningOperator
     dependencies:
       - target: MorningOperator
+      # The phone-loop runner decodes the wire types and uses PhoneCommandGate (#7).
+      - package: MorningOperatorShared
+        product: MorningCore
   MorningBenchmarkInbox:
     type: application
     platform: iOS

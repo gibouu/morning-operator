@@ -73,6 +73,7 @@
 		E4884A1EFD481B4607714D76 /* RecordedObservationModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C6CF87FDCFB10E818EADD0 /* RecordedObservationModelTests.swift */; };
 		E5A4D70F8E286C13671ABAF1 /* AudioRoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED5FFFADBA9C712D53345C8 /* AudioRoutePicker.swift */; };
 		EB9D17B6D326910E328DC7DF /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC47A69EEDB044D3AB6C6C0B /* WeeklyReviewView.swift */; };
+		EF2A3AA8C02606DEA5DC111A /* PhoneLoopRunnerIntake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D1B139754329BEAA236124 /* PhoneLoopRunnerIntake.swift */; };
 		F3C83B1588CAB1A5CF137586 /* ObservationScreenReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BFF5EF3C2F41BB0D40C2C18 /* ObservationScreenReviewTests.swift */; };
 		F595041F5E281180E8DB629E /* MorningActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5DA36C0D75D5473FADCFD1 /* MorningActivityWidget.swift */; };
 		F5D5FAFF3581561C478474ED /* ObservedMorningOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7EA194BD74767684257499 /* ObservedMorningOverviewView.swift */; };
@@ -80,6 +81,7 @@
 		FC6E0DE31197E46226CAFF30 /* PrivacyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289B9292F55FE9F36E473EFE /* PrivacyTests.swift */; };
 		FCEB5801874646D787D3ED15 /* ObservationArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A115980B5BD98DC6D7FA73 /* ObservationArchiveTests.swift */; };
 		FE568D140D396486190C7678 /* MorningRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6747EA739E37D1BC16D620F8 /* MorningRootView.swift */; };
+		FEE385A1EC3B443808EB198E /* MorningCore in Frameworks */ = {isa = PBXBuildFile; productRef = EBD538559CBDD64241C49056 /* MorningCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +163,7 @@
 		60FD6CE6264431F3794EA24E /* MorningObservationBenchmarkUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MorningObservationBenchmarkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6393BAB9D1CD67AB5774B214 /* AppTransitionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTransitionIntent.swift; sourceTree = "<group>"; };
 		6421A7C6E0C7191E7A400BDA /* MorningActivityWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MorningActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		65D1B139754329BEAA236124 /* PhoneLoopRunnerIntake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLoopRunnerIntake.swift; sourceTree = "<group>"; };
 		6747EA739E37D1BC16D620F8 /* MorningRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningRootView.swift; sourceTree = "<group>"; };
 		69F3C0C4BD17FD89E2BA61D7 /* MorningSunriseMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningSunriseMark.swift; sourceTree = "<group>"; };
 		6A679DAEA653A30FEE04B05E /* MorningNotificationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningNotificationDelegate.swift; sourceTree = "<group>"; };
@@ -206,6 +209,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		450F93BB28FB6608EB6F0281 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FEE385A1EC3B443808EB198E /* MorningCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		99BCCD1EAF62DF2AD3672E29 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -285,6 +296,7 @@
 				2BFF5EF3C2F41BB0D40C2C18 /* ObservationScreenReviewTests.swift */,
 				9D2FA2C64FBF1A704B0DB453 /* ObservedMorningOverviewTests.swift */,
 				98E912DF2E476E75231A5383 /* OnDeviceLearningTests.swift */,
+				65D1B139754329BEAA236124 /* PhoneLoopRunnerIntake.swift */,
 				289B9292F55FE9F36E473EFE /* PrivacyTests.swift */,
 				4B3F3A89763BAB2B46F3EEDC /* QuietMorningTests.swift */,
 				35191AAE6C75EE39494AC52A /* RecordedObservationImportTests.swift */,
@@ -483,6 +495,7 @@
 			buildConfigurationList = BBA2190BC552DCAA8D26085A /* Build configuration list for PBXNativeTarget "MorningOperatorUITests" */;
 			buildPhases = (
 				DBBEC9FBD2E18B6E481CE229 /* Sources */,
+				450F93BB28FB6608EB6F0281 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -491,6 +504,7 @@
 			);
 			name = MorningOperatorUITests;
 			packageProductDependencies = (
+				EBD538559CBDD64241C49056 /* MorningCore */,
 			);
 			productName = MorningOperatorUITests;
 			productReference = 725CA4C297C15A6795DCDFC1 /* MorningOperatorUITests.xctest */;
@@ -621,6 +635,7 @@
 				F3C83B1588CAB1A5CF137586 /* ObservationScreenReviewTests.swift in Sources */,
 				7F29AEB85EC179145672FF4A /* ObservedMorningOverviewTests.swift in Sources */,
 				15BB804A00F28C32E321141B /* OnDeviceLearningTests.swift in Sources */,
+				EF2A3AA8C02606DEA5DC111A /* PhoneLoopRunnerIntake.swift in Sources */,
 				FC6E0DE31197E46226CAFF30 /* PrivacyTests.swift in Sources */,
 				3D25D7E50AB57A74D84B2009 /* QuietMorningTests.swift in Sources */,
 				8706D4C28912FC25A45E3D1E /* RecordedObservationImportTests.swift in Sources */,
@@ -1170,6 +1185,10 @@
 		B7FD4DEE56FB0CA68AC509D1 /* MorningApple */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MorningApple;
+		};
+		EBD538559CBDD64241C49056 /* MorningCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MorningCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

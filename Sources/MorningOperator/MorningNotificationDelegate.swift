@@ -15,7 +15,9 @@ final class MorningNotificationDelegate: NSObject, UIApplicationDelegate, UNUser
             title: String(localized: "Start morning"), options: [.foreground, .authenticationRequired])
         let category = UNNotificationCategory(identifier: MorningInvitationService.categoryIdentifier,
             actions: [start], intentIdentifiers: [])
-        center.setNotificationCategories([category])
+        let learning = UNNotificationCategory(identifier: MorningInvitationService.learningReminderCategoryIdentifier,
+            actions: [], intentIdentifiers: [])
+        center.setNotificationCategories([category, learning])
         return true
     }
 
@@ -23,10 +25,15 @@ final class MorningNotificationDelegate: NSObject, UIApplicationDelegate, UNUser
                                             didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping @Sendable () -> Void) {
         let content = response.notification.request.content
-        let matches = content.categoryIdentifier == MorningInvitationService.categoryIdentifier &&
-            response.notification.request.identifier == MorningInvitationService.currentRequestIdentifier &&
+        // A learning reminder is answered by its body only. The saved invitation, not this
+        // payload, tells the app it is a reminder, and the app then starts nothing.
+        let isInvitation = content.categoryIdentifier == MorningInvitationService.categoryIdentifier &&
             (response.actionIdentifier == UNNotificationDefaultActionIdentifier ||
              response.actionIdentifier == MorningInvitationService.startActionIdentifier)
+        let isLearningReminder = content.categoryIdentifier == MorningInvitationService.learningReminderCategoryIdentifier &&
+            response.actionIdentifier == UNNotificationDefaultActionIdentifier
+        let matches = (isInvitation || isLearningReminder) &&
+            response.notification.request.identifier == MorningInvitationService.currentRequestIdentifier
         let payload = matches ? MorningInvitationPayload(userInfo: content.userInfo) : nil
         // Complete on the main actor explicitly. The SDK's async delegate bridge
         // completed on a cooperative worker in the real simulator tap trial, which
