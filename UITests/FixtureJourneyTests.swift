@@ -530,17 +530,6 @@ enum MorningUITestNavigation {
         XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
     }
 
-    /// True when the element exists, has a size, and its centre lies inside the app's
-    /// window. Reads only the frame, which XCTest answers without computing a hit point.
-    static func isOnScreen(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
-        guard element.exists else { return false }
-        let frame = element.frame
-        guard frame.width > 0, frame.height > 0 else { return false }
-        let window = app.windows.firstMatch
-        guard window.exists else { return false }
-        return window.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
-    }
-
     static func tapButton(_ identifier: String, in app: XCUIApplication,
                           file: StaticString = #filePath, line: UInt = #line) {
         if ["run.start", "run.resume", "morning.reviewDraft", "morning.review", "morning.learn", "morning.settings"].contains(identifier) {
@@ -556,13 +545,13 @@ enum MorningUITestNavigation {
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
         // A control on a sheet that is still sliding in exists before it can be
         // touched. Give it a moment before deciding it has to be scrolled to.
-        // Whether it can be touched is judged from its frame, not from `isHittable`:
-        // on the iOS 27.0 simulator XCTest sometimes cannot compute a hit point and
-        // records "Failed to determine hittability … Activation point invalid" as a
-        // failure of the test instead of answering no. A control whose centre lies
-        // inside the window is tapped at that centre; if something covers it, the
-        // checks that follow the tap fail, which is the right outcome.
-        func canBeTouched() -> Bool { isOnScreen(button, in: app) }
+        // Known and left as it is: on the iOS 27.0 simulator XCTest sometimes
+        // cannot compute a control's hit point and records "Failed to determine
+        // hittability … Activation point invalid" as a failure of the test,
+        // instead of answering no. Tolerating it with an expected failure was
+        // tried and removed: a matched expected failure ends the test on the
+        // spot without a failure, so its remaining checks never run.
+        func canBeTouched() -> Bool { button.exists && button.isHittable }
         let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
         _ = XCTWaiter.wait(for: [touchable], timeout: 2)
         for _ in 0..<4 where !canBeTouched() {
@@ -581,8 +570,8 @@ enum MorningUITestNavigation {
             if button.frame.height > 0, button.frame.midY < container.frame.midY { container.swipeDown() }
             else { container.swipeUp() }
         }
-        XCTAssertTrue(canBeTouched(), "Control is not on screen: \(identifier)", file: file, line: line)
-        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(button.isHittable, "Control is not hittable: \(identifier)", file: file, line: line)
+        button.tap()
         if identifier == "run.start" {
             let confirm = app.buttons["morning.confirmStart"]
             XCTAssertTrue(confirm.waitForExistence(timeout: 5),
