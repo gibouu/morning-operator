@@ -1932,9 +1932,9 @@ final class MorningStore {
         cancelStepPlayback()
         speech.stop()
         guard persist() else { pauseAfterSaveFailure(); return }
-        // The greeting, if it was still being read, has just stopped. A hands-free
-        // morning then starts its routine; a normal one keeps waiting for the choice.
-        if !handOverOpening(after: .notSpoken) { runCurrentIfEnabled() }
+        // The greeting or recap, if one was still being read, has just stopped. A
+        // hands-free morning then starts its routine; a normal one keeps waiting.
+        if !openingListeningSettingsChanged() { runCurrentIfEnabled() }
     }
 
     func openCapture(text: String = "", source: QuickCaptureSource = .typed) {

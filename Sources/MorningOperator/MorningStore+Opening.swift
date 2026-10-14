@@ -152,6 +152,20 @@ extension MorningStore {
         return true
     }
 
+    /// Hands free or spoken guidance changed, after their speech was stopped. A recap that
+    /// was playing returns to the choice here, before its task sees the stop, so a
+    /// hands-free morning hands over at once instead of waiting. True when the routine started.
+    func openingListeningSettingsChanged() -> Bool {
+        guard currentOpening != nil else { return false }
+        if openingPresentation?.phase == .brief {
+            openingTask?.cancel()
+            openingTask = nil
+            openingPresentation?.phase = .choosing
+            openingPresentation?.briefText = nil
+        }
+        return handOverOpening(after: .notSpoken)
+    }
+
     /// The one way the opening gives way to its routine. Ending the opening first makes
     /// every later caller, a tap on "Start my routine" included, find nothing to start.
     private func startRoutineFromOpening() {
