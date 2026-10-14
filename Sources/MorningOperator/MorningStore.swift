@@ -335,6 +335,11 @@ final class MorningStore {
             if let archive = ObservationReviewUITestFixture.archive(directory: directory) {
                 observationArchive = archive
             }
+            // A sample run stopped after its first moment and saved, for the recap screenshots (#10).
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-stopped-run"), let approved = routine?.approved() {
+                routine = approved; session = RoutineSession(routine: approved)
+                try? session?.start(); try? session?.advance(); try? session?.stop(); archiveTerminalSession(); persist()
+            }
             #endif
         } else if FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
             do {

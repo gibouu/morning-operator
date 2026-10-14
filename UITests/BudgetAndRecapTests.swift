@@ -16,7 +16,7 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertEqual(steps.count, 4)
 
         // The first target is one the 19-minute plan already fits: nothing to decide.
-        tap("budget.setTarget", in: app)
+        tapAboveInset("budget.setTarget", in: app)
         reveal("budget.within", in: app)
         XCTAssertEqual(element("budget.total", in: app).label, "Planned: 19 minutes")
         XCTAssertFalse(app.buttons["budget.choice.editRoutine"].exists)
@@ -33,7 +33,7 @@ final class BudgetAndRecapTests: XCTestCase {
         attach("budget-over-target-both-choices", app)
 
         // Keep editing leaves the note and the routine exactly as they are.
-        tap("budget.choice.editRoutine", in: app)
+        tapAboveInset("budget.choice.editRoutine", in: app)
         reveal("budget.editHint", in: app)
         XCTAssertTrue(app.buttons["budget.choice.acceptLongerPlan"].exists)
         XCTAssertEqual(stepLabels(in: app), steps)
@@ -47,7 +47,7 @@ final class BudgetAndRecapTests: XCTestCase {
         attach("budget-required-moments-alone-over-target", app)
 
         // Keeping the longer plan quiets the choices and still changes no step.
-        tap("budget.choice.acceptLongerPlan", in: app)
+        tapAboveInset("budget.choice.acceptLongerPlan", in: app)
         reveal("budget.accepted", in: app)
         XCTAssertFalse(app.buttons["budget.choice.editRoutine"].exists)
         XCTAssertFalse(app.buttons["budget.choice.acceptLongerPlan"].exists)
@@ -55,7 +55,7 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertFalse(app.buttons["routine.step.4"].exists)
         attach("budget-longer-plan-kept", app)
 
-        tap("budget.clearTarget", in: app)
+        tapAboveInset("budget.clearTarget", in: app)
         XCTAssertTrue(app.buttons["budget.setTarget"].waitForExistence(timeout: 5))
         XCTAssertFalse(element("budget.total", in: app).exists)
         XCTAssertEqual(stepLabels(in: app), steps)
@@ -127,36 +127,57 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertFalse(app.buttons["routine.approve"].exists, "A stopped run must leave the approved routine approved.")
     }
 
-    /// Named screenshots of both screens for a visual read. No wording is asserted here.
-    func testBudgetAndRecapScreenshotTour() {
-        let tours: [(name: String, arguments: [String])] = [
-            ("en", ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]),
-            ("fr", ["-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"]),
-            ("en-largest-text", ["-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-                                 "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]),
-            ("fr-largest-text", ["-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR",
-                                 "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-        ]
-        for tour in tours {
-            let app = launch(approved: true, language: tour.arguments)
-            stopAfterOneMoment(in: app)
-            MorningUITestNavigation.selectTab("Review", in: app)
-            reveal("recap.ending", in: app)
-            attach("tour-recap-\(tour.name)", app)
-            reveal("recap.enjoyable.no", in: app)
-            attach("tour-recap-questions-\(tour.name)", app)
+    // Named screenshots of both screens for a visual read; no wording is asserted.
+    // Like InterfaceTourTests, each starts from a fresh launch and reaches its screens by
+    // scrolling and tapping identified rows, never through the sunrise dock. The ended run
+    // is seeded (`--ui-testing-stopped-run`: the sample stopped after its first moment, saved).
+    // The largest text size is set for the app alone, so these run in the ordinary pass.
+    func testTourEnglish() { tour("en", language: english) }
+    func testTourFrench() { tour("fr", language: french) }
+    func testTourEnglishLargestText() { tour("en-largest-text", language: english + largestText) }
+    func testTourFrenchLargestText() { tour("fr-largest-text", language: french + largestText) }
 
-            MorningUITestNavigation.reviewAction("review.routine", in: app)
-            tap("budget.setTarget", in: app)
-            lowerTarget(in: app)
-            lowerTarget(in: app)
-            lowerTarget(in: app)
-            reveal("budget.requiredOver", in: app)
-            attach("tour-budget-\(tour.name)", app)
-            reveal("budget.choice.acceptLongerPlan", in: app)
-            attach("tour-budget-choices-\(tour.name)", app)
-            app.terminate()
-        }
+    private var english: [String] { ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"] }
+    private var french: [String] { ["-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"] }
+    private var largestText: [String] {
+        ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+    }
+
+    private func tour(_ name: String, language: [String]) {
+        let app = launch(approved: true, language: language + ["--ui-testing-stopped-run"])
+        MorningUITestNavigation.selectTab("Review", in: app)
+        scrollUntilVisible(element("recap.ending", in: app), in: app)
+        attachSettled("tour-recap-\(name)", app)
+        scrollUntilVisible(element("recap.enjoyable.no", in: app), in: app)
+        attachSettled("tour-recap-questions-\(name)", app)
+
+        scrollUntilVisible(app.buttons["review.routine"], in: app)
+        app.buttons["review.routine"].tap()
+        XCTAssertTrue(element("routine.step.0", in: app).waitForExistence(timeout: 10), app.debugDescription)
+        scrollUntilVisible(app.buttons["budget.setTarget"], in: app)
+        app.buttons["budget.setTarget"].tap()
+        for _ in 0..<3 { lowerTarget(in: app) }
+        scrollUntilVisible(element("budget.requiredOver", in: app), in: app)
+        attachSettled("tour-budget-\(name)", app)
+        scrollUntilVisible(app.buttons["budget.choice.acceptLongerPlan"], in: app)
+        attachSettled("tour-budget-choices-\(name)", app)
+    }
+
+    /// Swipes up until the element exists and can be tapped; at the largest text size a
+    /// row can start far below the fold, and a list row below it is not created yet.
+    private func scrollUntilVisible(_ target: XCUIElement, in app: XCUIApplication,
+                                    file: StaticString = #filePath, line: UInt = #line) {
+        _ = target.waitForExistence(timeout: 10)
+        for _ in 0..<14 where !(target.exists && target.isHittable) { app.swipeUp() }
+        XCTAssertTrue(target.exists && target.isHittable, app.debugDescription, file: file, line: line)
+    }
+
+    private func attachSettled(_ name: String, _ app: XCUIApplication) {
+        // The picture only: a bounded pause lets a scroll or a sheet come to rest.
+        let settled = expectation(description: "Settled")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { settled.fulfill() }
+        wait(for: [settled], timeout: 3)
+        attach(name, app)
     }
 
     private func launch(approved: Bool = false,
@@ -206,6 +227,26 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed, file: file, line: line)
     }
 
+    /// A draft's "Approve this routine" bar covers the bottom of the routine list, and the
+    /// accessibility frame of a row under it still reads as hittable. Scroll the row above
+    /// the bar first, so the tap reaches the row and never the approval.
+    private func tapAboveInset(_ identifier: String, in app: XCUIApplication,
+                               file: StaticString = #filePath, line: UInt = #line) {
+        reveal(identifier, in: app, file: file, line: line)
+        let target = element(identifier, in: app)
+        let approve = app.buttons["routine.approve"]
+        let list = app.collectionViews.containing(.any, identifier: identifier).firstMatch
+        for _ in 0..<6 where approve.exists && target.frame.maxY > approve.frame.minY - 8 && list.exists {
+            list.swipeUp()
+        }
+        if approve.exists {
+            XCTAssertLessThan(target.frame.maxY, approve.frame.minY, "\(identifier) is still under the approval bar",
+                              file: file, line: line)
+        }
+        XCTAssertTrue(target.isHittable, "Not visible: \(identifier)", file: file, line: line)
+        target.tap()
+    }
+
     /// Any element with this identifier, whatever kind the system reports for it.
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
@@ -227,8 +268,14 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertTrue(target.isHittable, "Not visible: \(identifier)", file: file, line: line)
     }
 
+    /// The routine's rows, read from the top of the list: a native list creates only the rows
+    /// near the screen, so after scrolling down to the budget the first rows may not exist.
     private func stepLabels(in app: XCUIApplication) -> [String] {
-        (0..<8).map { app.buttons["routine.step.\($0)"] }.filter(\.exists).map(\.label)
+        let first = app.buttons["routine.step.0"]
+        let list = app.collectionViews.firstMatch
+        for _ in 0..<8 where !(first.exists && first.isHittable) && list.exists { list.swipeDown() }
+        XCTAssertTrue(first.exists, "The routine list did not return to its first row.")
+        return (0..<8).map { app.buttons["routine.step.\($0)"] }.filter(\.exists).map(\.label)
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {
