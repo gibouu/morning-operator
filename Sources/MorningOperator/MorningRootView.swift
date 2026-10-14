@@ -1029,14 +1029,14 @@ private struct MorningActionDock: View {
     }
 
     private func readyBar(_ routine: RoutineVersion) -> some View {
-        let layout = dynamicType.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
-        return layout {
+        // The question sits above its two answers so neither has to squeeze the other.
+        return VStack(spacing: 2) {
             Text(routine.isSynthetic ? "Ready for this sample morning?" : "Ready for your morning?")
-                .font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.caption.weight(.medium)).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("morning.ready")
-            HStack(spacing: 12) {
+            HStack(spacing: 28) {
                 Button("Cancel") { clearReadyState() }
                     .font(.caption).lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: 44, minHeight: 44)
@@ -1054,13 +1054,12 @@ private struct MorningActionDock: View {
                     expanded = false
                     transitionPending = false
                 }.font(.subheadline.weight(.semibold)).foregroundStyle(MorningStyle.accent)
-                    // Longer translations ("Commencer") wrap the question, never the button.
                     .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: 48, minHeight: 44)
                     .accessibilityIdentifier("morning.confirmStart")
-            }.buttonStyle(.plain).layoutPriority(1)
+            }.buttonStyle(.plain)
                 .disabled(store.busy || store.privacyBlocksWork || transitionPending || store.voiceInputBlocksPlayback)
-        }.padding(.horizontal, 14).padding(.vertical, 6)
+        }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 2)
     }
 
     private func clearReadyState() {
