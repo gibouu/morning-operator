@@ -12,7 +12,7 @@ final class PrivacyTests: XCTestCase {
         app.buttons["privacy.cancelForget"].tap()
         XCTAssertTrue(app.navigationBars["Privacy"].exists)
         relaunch(app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 10))
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", in: app)
         openPrivacy(app)
         assertCount("privacy.observations", value: "3", in: app)
         assertCount("privacy.captures", value: "1", in: app)

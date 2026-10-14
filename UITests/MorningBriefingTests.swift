@@ -9,7 +9,7 @@ final class MorningBriefingTests: XCTestCase {
         let app = launchFixture()
         MorningUITestNavigation.openRoutine(in: app)
         MorningUITestNavigation.tapButton("routine.approve", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
         openBriefing(app)
         configureSources(app)
         assertPreparedSources(app)
@@ -21,8 +21,8 @@ final class MorningBriefingTests: XCTestCase {
         XCTAssertTrue(saved.label.contains("Added as a draft"))
         closeBriefingAndSettings(app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["run.start"].exists, "Adding a source-backed operation cannot approve the new routine.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+            "Adding a source-backed operation cannot approve the new routine.")
         MorningUITestNavigation.openRoutine(in: app)
         XCTAssertTrue(app.buttons["routine.step.0"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["routine.step.0"].label.contains("Your day"))
@@ -30,8 +30,7 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.closeRoutine(in: app)
 
         app.terminate(); app.launch()
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
         openBriefing(app)
         let calendar = app.switches["briefing.calendar.synthetic-day-calendar"].firstMatch
         reveal(calendar, app)
