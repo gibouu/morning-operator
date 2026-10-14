@@ -103,12 +103,14 @@ final class MorningOpeningUITests: XCTestCase {
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
-    /// Pictures for a person to look at: English, French and the largest text size.
+    /// Pictures for a person to look at: English and French, light and dark, and the largest text size.
     /// Nothing about wording or layout is asserted here.
     func testOpeningScreenshotsInEnglishFrenchAndLargestText() {
         for (name, arguments) in [
             ("opening-english", ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]),
             ("opening-french", ["-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"]),
+            ("opening-english-dark", ["--dark-preview", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]),
+            ("opening-french-dark", ["--dark-preview", "-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"]),
         ] {
             let app = launch(extra: arguments)
             start(app)
@@ -140,8 +142,9 @@ final class MorningOpeningUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         // An isolated temporary workspace; the fixture keeps speech and hands-free off.
-        app.launchArguments = ["--ui-testing", "--fixture-mode", "--light-preview",
-                               "--ui-testing-workspace=\(UUID().uuidString)"]
+        // The light palette unless a test asks for the dark one.
+        app.launchArguments = ["--ui-testing", "--fixture-mode"] + (extra.contains("--dark-preview") ? [] : ["--light-preview"])
+            + ["--ui-testing-workspace=\(UUID().uuidString)"]
             + (approved ? ["--ui-testing-approved"] : []) + extra
         app.launch()
         return app
