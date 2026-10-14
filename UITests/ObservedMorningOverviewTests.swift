@@ -161,7 +161,7 @@ final class ObservedMorningOverviewTests: XCTestCase {
         tap("routine.approve", in: app)
         MorningUITestNavigation.revealMorningAction("run.start", in: app)
         XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5), app.debugDescription)
-        app.buttons["morning.actions"].tap()
+        MorningUITestNavigation.closeMorningActions(in: app)
     }
 
     private func openReview(in app: XCUIApplication) {

@@ -1,7 +1,7 @@
 name: CI
 
-# Package tests and a simulator build of the app target. UI tests and anything that
-# needs a device or the on-device model stay local.
+# Package tests and a simulator build of the app target. The UI tests run in
+# ui-tests.yml; anything that needs a device or the on-device model stays local.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]

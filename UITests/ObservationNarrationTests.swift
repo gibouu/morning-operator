@@ -16,7 +16,9 @@ final class ObservationNarrationTests: XCTestCase {
 
         tap("narration.hear", in: app)
         let playback = app.descendants(matching: .any).matching(identifier: "narration.playback").firstMatch
-        wait(playback, predicate: "value == %@", argument: "speaking", timeout: 10,
+        // Thirty seconds: the simulator's first speech request has taken more
+        // than ten to start on a slow hosted runner.
+        wait(playback, predicate: "value == %@", argument: "speaking", timeout: 30,
              message: "The real native speech delegate must enter speaking, not merely accept a request.", in: app)
         attach("saved-excerpt-native-preview-speaking", app)
         tap("narration.stop", in: app)
@@ -124,11 +126,10 @@ final class ObservationNarrationTests: XCTestCase {
         tap("narration.done", in: app)
         waitForAbsence(app.navigationBars["A saved moment"], in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists, "Selecting source content cannot approve a new routine.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+            "Selecting source content cannot approve a new routine.")
         relaunchWithoutSeed(app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
     }
 
     private func approveDraft(expectedText: String, in app: XCUIApplication) {
@@ -144,7 +145,7 @@ final class ObservationNarrationTests: XCTestCase {
         app.navigationBars["Make it yours"].buttons["Cancel"].tap()
         waitForAbsence(app.navigationBars["Make it yours"], in: app)
         tap("routine.approve", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5), app.debugDescription)
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
     }
 
     private func enableReadAloud(in app: XCUIApplication) {
@@ -201,9 +202,10 @@ final class ObservationNarrationTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
         for _ in 0..<10 where !element.isHittable {
+            // A full-screen list can report no hit point of its own on iOS 27.0;
+            // a swipe on the window scrolls the same list.
             let container = app.collectionViews.allElementsBoundByIndex.first(where: { $0.isHittable })
-                ?? app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable })
-            guard let container else { break }
+                ?? app.scrollViews.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? app
             if element.exists && element.frame.height > 0 && element.frame.midY < container.frame.midY { container.swipeDown() }
             else { container.swipeUp() }
         }

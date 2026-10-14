@@ -151,7 +151,8 @@ final class FixtureJourneyTests: XCTestCase {
         tapButton("capture.filter.dream", in: app)
         XCTAssertTrue(app.staticTexts[dream].waitForExistence(timeout: 5))
         selectTab("Morning", in: app)
-        selectTab("Review", in: app)
+        // Review reopens at its first screen, so return to Saved thoughts to look.
+        MorningUITestNavigation.reviewAction("review.thoughts", in: app)
         XCTAssertTrue(app.staticTexts[dream].waitForExistence(timeout: 5), "The saved dream must survive leaving its screen.")
         XCTAssertEqual(app.alerts.count, 0, "Local capture must not request external permissions.")
         attachScreenshot("fixture-local-dream", from: app)
@@ -418,6 +419,13 @@ enum MorningUITestNavigation {
         switch title {
         case "Morning":
             let home = app.buttons["morning.home"]
+            // Only the first Review screen carries the way home. From a screen
+            // pushed on top of it, go back the way a person would.
+            let back = app.navigationBars.buttons["BackButton"]
+            for _ in 0..<4 where !home.exists && !app.buttons["morning.actions"].exists && back.exists && back.isHittable {
+                back.tap()
+                _ = home.waitForExistence(timeout: 2)
+            }
             if home.exists {
                 XCTAssertTrue(home.isHittable, app.debugDescription, file: file, line: line)
                 home.tap()
@@ -468,6 +476,39 @@ enum MorningUITestNavigation {
         XCTAssertTrue(action.isHittable, app.debugDescription, file: file, line: line)
     }
 
+    /// The dock's actions do not exist until the sunrise is opened. This opens
+    /// it when needed, checks that `identifier` is offered and `absent` is not,
+    /// then closes it again so the screen is left as it was found.
+    static func assertMorningAction(_ identifier: String, without absent: String? = nil, in app: XCUIApplication,
+                                    timeout: TimeInterval = 10, _ message: String = "",
+                                    file: StaticString = #filePath, line: UInt = #line) {
+        let action = app.buttons[identifier]
+        let sunrise = app.buttons["morning.actions"]
+        let close = app.buttons["morning.closeActions"]
+        let opened = !close.exists
+        if opened {
+            XCTAssertTrue(sunrise.waitForExistence(timeout: timeout),
+                          "Morning must expose its sunrise control. \(message)\n\(app.debugDescription)", file: file, line: line)
+            sunrise.tap()
+        }
+        XCTAssertTrue(action.waitForExistence(timeout: 5),
+                      "Missing morning action: \(identifier). \(message)\n\(app.debugDescription)", file: file, line: line)
+        if let absent {
+            XCTAssertFalse(app.buttons[absent].exists,
+                           "Unexpected morning action: \(absent). \(message)\n\(app.debugDescription)", file: file, line: line)
+        }
+        if opened {
+            closeMorningActions(in: app, file: file, line: line)
+        }
+    }
+
+    static func closeMorningActions(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let close = app.buttons["morning.closeActions"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        close.tap()
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
     static func reviewAction(_ identifier: String, in app: XCUIApplication,
                              file: StaticString = #filePath, line: UInt = #line) {
         selectTab("Review", in: app, file: file, line: line)
@@ -495,8 +536,25 @@ enum MorningUITestNavigation {
             revealMorningAction(identifier, in: app, file: file, line: line)
         }
         let button = app.buttons[identifier]
-        XCTAssertTrue(button.waitForExistence(timeout: 10), "Missing control: \(identifier)", file: file, line: line)
-        for _ in 0..<4 where !button.isHittable {
+        if !button.waitForExistence(timeout: 5) {
+            // A native list creates its rows as they scroll into view, so a row
+            // below the fold does not exist yet. Scroll the list to reach it.
+            let list = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
+            for _ in 0..<8 where !button.exists && list.exists { list.swipeUp() }
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
+        // A control on a sheet that is still sliding in exists before it can be
+        // touched. Give it a moment before deciding it has to be scrolled to.
+        // Known and left as it is: on the iOS 27.0 simulator XCTest sometimes
+        // cannot compute a control's hit point and records "Failed to determine
+        // hittability … Activation point invalid" as a failure of the test,
+        // instead of answering no. Tolerating it with an expected failure was
+        // tried and removed: a matched expected failure ends the test on the
+        // spot without a failure, so its remaining checks never run.
+        func canBeTouched() -> Bool { button.exists && button.isHittable }
+        let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
+        _ = XCTWaiter.wait(for: [touchable], timeout: 2)
+        for _ in 0..<4 where !canBeTouched() {
             let collection = app.collectionViews.containing(.button, identifier: identifier).firstMatch
             let table = app.tables.containing(.button, identifier: identifier).firstMatch
             let scroll = app.scrollViews.containing(.button, identifier: identifier).firstMatch

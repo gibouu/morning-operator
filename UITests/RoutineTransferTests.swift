@@ -6,6 +6,9 @@ import XCTest
 /// No test invokes the Apple model or starts playback.
 @MainActor
 final class RoutineTransferTests: XCTestCase {
+    /// The Files panel runs in another process. On a hosted simulator its first
+    /// appearance has taken more than ten seconds while the export sheet waits, disabled.
+    private let nativePanelWait: TimeInterval = 40
     private let currentTitle = "Your morning"
     private let importedTitle = "Imported calm"
     private let privateExportNote = "SYNTHETIC_PRIVATE_EXPORT_NOTE"
@@ -118,7 +121,7 @@ final class RoutineTransferTests: XCTestCase {
         assertRoutine(currentTitle, count: 4, approved: true, in: app)
         MorningUITestNavigation.closeRoutine(in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
         XCTAssertFalse(app.staticTexts["run.state"].exists,
                        "Restoring an approved plan makes it ready; it must not start it.")
     }
@@ -134,7 +137,7 @@ final class RoutineTransferTests: XCTestCase {
         let nativeBar = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
         XCTAssertFalse(nativeBar.exists)
         tap("export.save", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "Expected the actual native document export panel.\n\(app.debugDescription)")
         attach("native-file-export-panel-before-dismissal-no-file-saved", app)
         // On this iOS 27 panel, AX includes a non-hittable Other named Cancel
@@ -153,7 +156,7 @@ final class RoutineTransferTests: XCTestCase {
 
         XCTAssertFalse(nativeBar.exists)
         tap("routine.import", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "Expected the actual native document import panel.\n\(app.debugDescription)")
         XCTAssertFalse(app.buttons["import.use"].exists,
                        "Opening a file panel must not create a decoded routine preview.")
@@ -162,7 +165,7 @@ final class RoutineTransferTests: XCTestCase {
             NSPredicate(format: "label == %@", "Cancel"))
         if let cancel = nativeCancels.allElementsBoundByIndex.first(where: { $0.isHittable }) {
             cancel.tap()
-            waitAbsent(nativeBar)
+            waitAbsent(nativeBar, timeout: nativePanelWait)
         } else {
             dragDismissDocumentPanel(nativeBar, in: app)
         }
@@ -178,7 +181,7 @@ final class RoutineTransferTests: XCTestCase {
     /// Actual native Files save and selection, with no staged-file import hook.
     /// The UI proves that the exported plan is decoded without notes; it does not
     /// independently inspect provider bytes or establish cloud-provider support.
-    func testNativeSaveAndSelectPlanOnlyFileCreatesManualDraft() {
+    func testNativeSaveAndSelectPlanOnlyFileCreatesManualDraft() throws {
         let app = launch(savedBaseline: true)
         let filename = "MORE-Transfer-\(UUID().uuidString)"
         openRoutine(in: app)
@@ -190,10 +193,21 @@ final class RoutineTransferTests: XCTestCase {
         XCTAssertEqual(includeNotes.value as? String, "0")
         tap("export.save", in: app)
         let nativeBar = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "A real native export panel must appear.\n\(app.debugDescription)")
         let nameField = app.textFields["DOCPicker.filenameTextField"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        guard nameField.waitForExistence(timeout: 10) else {
+            // Issue #95: the iOS 27.0 save panel shows Browse, More, Save and a
+            // search field, and no name field. Without a unique name this test
+            // could select a file it did not save, so it stops here. It runs in
+            // full wherever the panel offers the field.
+            let offeredSave = nativeBar.buttons["DOCPicker.actionButton"]
+            XCTAssertTrue(offeredSave.exists && offeredSave.isEnabled && offeredSave.isHittable,
+                          "The native save panel must at least offer a usable Save action.\n\(app.debugDescription)")
+            XCTAssertEqual(offeredSave.label, "Save")
+            attach("native-save-panel-without-a-filename-field", app)
+            throw XCTSkip("The native save round trip was not run: this system's Files save panel has no filename field, so the test cannot give its file a unique name (issue #95).")
+        }
         XCTAssertTrue(nameField.isHittable)
         let oldName = nameField.value as? String ?? ""
         XCTAssertFalse(oldName.isEmpty)
@@ -206,7 +220,7 @@ final class RoutineTransferTests: XCTestCase {
         XCTAssertEqual(save.label, "Save")
         attach("native-plan-only-file-ready-to-save-unique-synthetic-name", app)
         save.tap()
-        waitAbsent(nativeBar)
+        waitAbsent(nativeBar, timeout: nativePanelWait)
         let status = app.descendants(matching: .any).matching(identifier: "export.status").firstMatch
         reveal(status, in: app)
         XCTAssertTrue(status.label.contains("Routine exported"),
@@ -217,7 +231,7 @@ final class RoutineTransferTests: XCTestCase {
 
         // Enter the actual file importer, not the explicit staged-file seam.
         tap("routine.import", in: app)
-        XCTAssertTrue(nativeBar.waitForExistence(timeout: 10),
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: nativePanelWait),
                       "A real native import panel must appear.\n\(app.debugDescription)")
         let filenamePredicate = NSPredicate(format: "label CONTAINS %@", filename)
         let cells = app.cells.matching(filenamePredicate)
@@ -236,7 +250,7 @@ final class RoutineTransferTests: XCTestCase {
         savedFile.tap()
         XCTAssertTrue(app.buttons["import.use"].waitForExistence(timeout: 15),
                       "Actual provider selection must pass the real bounded loader.\n\(app.debugDescription)")
-        waitAbsent(nativeBar)
+        waitAbsent(nativeBar, timeout: nativePanelWait)
         for (index, title) in [currentTitle, "People and messages", "Make room for the day", "A little time to play"].enumerated() {
             let importedTitle = app.staticTexts["import.step.\(index).title"]
             reveal(importedTitle, in: app)
@@ -334,7 +348,7 @@ final class RoutineTransferTests: XCTestCase {
             assertRoutine(currentTitle, count: 4, approved: false, in: app)
             tap("routine.approve", in: app)
             waitAbsent(app.navigationBars["Your routine"])
-            XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+            MorningUITestNavigation.assertMorningAction("run.start", in: app)
         }
         return app
     }
@@ -382,6 +396,15 @@ final class RoutineTransferTests: XCTestCase {
     private func assertRoutine(_ title: String, count: Int, approved: Bool, in app: XCUIApplication) {
         XCTAssertTrue(app.navigationBars["Your routine"].waitForExistence(timeout: 5))
         let first = app.buttons["routine.step.0"]
+        // The list creates its rows as they scroll into view. After a scroll down
+        // to Import or Export the first row no longer exists, and reveal() cannot
+        // tell which way to go for a row that does not exist: go back up here.
+        if !first.waitForExistence(timeout: 3) {
+            let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+            if let list = lists.first(where: { $0.isHittable }) {
+                for _ in 0..<4 where !first.exists { list.swipeDown() }
+            }
+        }
         reveal(first, in: app)
         XCTAssertTrue(first.label.contains(title))
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "routine.step.")).count, count)
@@ -390,8 +413,7 @@ final class RoutineTransferTests: XCTestCase {
 
     private func assertCannotStart(in app: XCUIApplication) {
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
         XCTAssertFalse(app.staticTexts["run.state"].exists)
     }
 
@@ -427,9 +449,9 @@ final class RoutineTransferTests: XCTestCase {
                        "Expected value \(value).\n\(app.debugDescription)")
     }
 
-    private func waitAbsent(_ element: XCUIElement) {
+    private func waitAbsent(_ element: XCUIElement, timeout: TimeInterval = 5) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed)
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {

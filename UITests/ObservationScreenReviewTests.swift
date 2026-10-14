@@ -148,7 +148,9 @@ final class ObservationScreenReviewTests: XCTestCase {
     private func tapContext(_ label: String, in app: XCUIApplication) {
         tap(context(label, in: app), in: app)
         XCTAssertTrue(app.navigationBars["Source moments"].waitForExistence(timeout: 5), app.debugDescription)
-        let count = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Seen on 1 distinct day.")).firstMatch
+        // The catalog's singular form has read "Seen on 1 day." since the French
+        // work (#32); only the plural keeps "distinct".
+        let count = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Seen on 1 day.")).firstMatch
         XCTAssertTrue(count.waitForExistence(timeout: 5), app.debugDescription)
     }
 
@@ -226,11 +228,14 @@ final class ObservationScreenReviewTests: XCTestCase {
     private func visibleList(in app: XCUIApplication) -> XCUIElement {
         let lists = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
             + app.scrollViews.allElementsBoundByIndex
-        guard let list = lists.first(where: { $0.exists && $0.isHittable }) else {
+        guard lists.contains(where: { $0.exists }) else {
             XCTFail("No visible native list.\n\(app.debugDescription)")
             return app.collectionViews.firstMatch
         }
-        return list
+        // On iOS 27.0 the full-screen list on this page reports no usable hit
+        // point of its own, although it scrolls under the finger. A swipe on the
+        // window reaches the same list, as MorningBriefingTests already does.
+        return app
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
