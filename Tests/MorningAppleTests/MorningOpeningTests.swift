@@ -97,6 +97,23 @@ struct MorningOpeningTests {
         }
     }
 
+    @Test func withdrawnRecapLeavesTheQuestionAndTheChoices() throws {
+        let document = try briefing(calendar: .snapshot(calendar()), weather: .snapshot(weather()))
+        let offered = MorningOpeningComposer.compose(briefing: document, at: now, timeZoneIdentifier: "UTC")
+        #expect(offered.choices == [.brief, .ritual, .stop])
+        let withdrawn = MorningOpeningComposer.compose(briefing: document, at: now, timeZoneIdentifier: "UTC",
+                                                       offersBrief: false)
+        #expect(withdrawn.choices == [.ritual, .stop])
+        #expect(withdrawn.segments.last?.text == "Would you like to start your routine, or stop?")
+        // Only the offer changes: the facts are the same.
+        #expect(withdrawn.segments.dropLast() == offered.segments.dropLast())
+        let french = try briefing(weather: .snapshot(weather()), locale: "fr_FR")
+        let frenchWithdrawn = MorningOpeningComposer.compose(briefing: french, at: now, timeZoneIdentifier: "UTC",
+                                                             offersBrief: false)
+        #expect(frenchWithdrawn.segments.last?.text == "Voulez-vous lancer votre routine ou arrêter ?")
+        #expect(frenchWithdrawn.choices == [.ritual, .stop])
+    }
+
     @Test func currentConditionsAloneNeverSuggestAnUmbrella() throws {
         let raining = try briefing(weather: .snapshot(weather(condition: "Heavy rain")))
         let opening = compose(raining)

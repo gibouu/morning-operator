@@ -286,7 +286,6 @@ struct MorningBriefingDocumentView: View {
     let document: PreparedMorningBriefing
     var operation: RoutineStepAutomation? = .morningBriefing
     var synthetic = false
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -303,22 +302,7 @@ struct MorningBriefingDocumentView: View {
             if operation != .todayCalendar, document.weather.status != .notConfigured {
                 source(String(localized: "Weather"), section: document.weather, isCalendar: false)
                 if let attribution = document.weatherAttribution {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if synthetic {
-                            Text("Synthetic weather attribution").font(.caption)
-                        } else {
-                            AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { phase in
-                                switch phase {
-                                case .success(let image): image.resizable().scaledToFit().frame(height: 18)
-                                case .failure: Text("Apple Weather mark unavailable").font(.caption)
-                                default: ProgressView().accessibilityLabel("Loading Apple Weather mark")
-                                }
-                            }
-                            .frame(maxWidth: 150, alignment: .leading)
-                            .accessibilityLabel("Apple Weather")
-                        }
-                        Link("Weather data sources", destination: attribution.legalURL).font(.caption)
-                    }
+                    MorningWeatherAttributionView(attribution: attribution, synthetic: synthetic)
                 }
             }
         }

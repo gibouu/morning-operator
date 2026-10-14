@@ -57,6 +57,17 @@ final class InterfaceTourTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["routine.step.0"].waitForExistence(timeout: 10), app.debugDescription)
         attach("\(prefix)-routine", app)
         app.terminate()
+
+        // Last, because it starts a morning in this workspace: the opening (issue #28).
+        app = launch(arguments, workspace: workspace)
+        MorningUITestNavigation.revealMorningAction("run.start", in: app)
+        let scroll = app.scrollViews["morning.accessibleScroll"]
+        for _ in 0..<8 where !app.buttons["run.start"].isHittable && scroll.exists { scroll.swipeUp() }
+        MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
+        XCTAssertTrue(app.staticTexts["opening.text"].waitForExistence(timeout: 15), app.debugDescription)
+        for _ in 0..<4 where scroll.exists { scroll.swipeDown() }
+        attach("\(prefix)-opening", app)
+        app.terminate()
     }
 
     private func launch(_ arguments: [String], workspace: UUID) -> XCUIApplication {

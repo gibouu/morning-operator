@@ -530,7 +530,9 @@ enum MorningUITestNavigation {
         XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
     }
 
-    static func tapButton(_ identifier: String, in app: XCUIApplication,
+    /// Starting a morning answers its opening with "start my routine", so a journey about
+    /// the routine continues from the first moment. Pass `keepingOpening` to stay on it.
+    static func tapButton(_ identifier: String, in app: XCUIApplication, keepingOpening: Bool = false,
                           file: StaticString = #filePath, line: UInt = #line) {
         if ["run.start", "run.resume", "morning.reviewDraft", "morning.review", "morning.learn", "morning.settings"].contains(identifier) {
             revealMorningAction(identifier, in: app, file: file, line: line)
@@ -579,6 +581,23 @@ enum MorningUITestNavigation {
             XCTAssertTrue(confirm.isHittable && confirm.isEnabled, app.debugDescription, file: file, line: line)
             confirm.tap()
             XCTAssertTrue(confirm.waitForNonExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            if !keepingOpening { chooseRoutineAtOpening(in: app, file: file, line: line) }
         }
+    }
+
+    /// Every started morning opens with a greeting and a choice (issue #28).
+    static func chooseRoutineAtOpening(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let routine = app.buttons["opening.routine"]
+        XCTAssertTrue(routine.waitForExistence(timeout: 15),
+                      "A started morning must show its opening.\n\(app.debugDescription)", file: file, line: line)
+        // Larger text scrolls the page: the opening may be above or below what is visible.
+        let scroll = app.scrollViews.containing(.button, identifier: "opening.routine").firstMatch
+        for _ in 0..<6 where !routine.isHittable && scroll.exists {
+            if routine.frame.height > 0, routine.frame.midY < scroll.frame.midY { scroll.swipeDown() }
+            else { scroll.swipeUp() }
+        }
+        XCTAssertTrue(routine.isHittable, app.debugDescription, file: file, line: line)
+        routine.tap()
+        XCTAssertTrue(routine.waitForNonExistence(timeout: 5), app.debugDescription, file: file, line: line)
     }
 }
