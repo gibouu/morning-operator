@@ -289,7 +289,10 @@ final class QuietMorningTests: XCTestCase {
         // Quarantined, issue #67: the running page is a few points too tall, so
         // the controls row is clipped and the page scrolls. The check is kept
         // as written; this turns red again as soon as the page fits.
-        XCTExpectFailure("Ten running moments no longer fit on one screen (issue #67).") {
+        // Only the comparison itself is expected to fail, not a failure to read the screen.
+        let onlyTheCount = XCTExpectedFailure.Options()
+        onlyTheCount.issueMatcher = { $0.compactDescription.contains("XCTAssertEqual failed") }
+        XCTExpectFailure("Ten running moments no longer fit on one screen (issue #67).", options: onlyTheCount) {
             XCTAssertEqual(app.scrollViews.count, 0)
         }
     }
