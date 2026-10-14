@@ -176,25 +176,25 @@ struct SleepBriefingControllerTests {
         }
     }
 
-    /// Health turned off while the refresh is still waiting on an earlier source must stop
-    /// the sleep read that follows: dropping its result afterwards would be too late. The
-    /// weather gate holds the refresh at a known point, so the order does not depend on how
-    /// the main actor happens to schedule two tasks.
-    @Test func healthTurnedOffWhileAnEarlierSourceIsReadStopsTheSleepRead() async throws {
+    /// Weather and sleep are read at the same time (#85), so the sleep read starts while
+    /// health is still on. Turning health off while weather is still being read must drop
+    /// the whole refresh, and the reader must never be called at a moment health is off.
+    @Test func healthTurnedOffWhileWeatherIsReadDropsTheRefreshAndNeverReadsWhileExcluded() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let reader = SleepReaderFixture(.samples(night))
         let weather = SleepSuiteWeatherGate()
         let controller = makeController(directory: directory, reader: reader, weather: { _ in try await weather.value() })
+        reader.isExcludedNow = { [weak controller] in controller?.settings.includesHealth == false }
         let location = try WeatherLocation(latitude: 48, longitude: 2, displayName: "Synthetic town")
         try controller.updateSettings(.init(weatherLocation: location, includesHealth: true))
         let attempt = Task { @MainActor in await controller.refresh() }
         await weather.waitUntilCalled()
-        #expect(controller.isPreparing && reader.reads == 0)
+        #expect(controller.isPreparing)
         try controller.updateSettings(.init(weatherLocation: location))
         weather.fail()
         #expect(await attempt.value == nil)
-        #expect(reader.reads == 0, "Excluded means the reader is not called.")
+        #expect(reader.readsWhileExcluded == 0, "Excluded means the reader is not called.")
         #expect(controller.prepared == nil && !controller.settings.includesHealth)
     }
 
@@ -245,6 +245,96 @@ struct SleepBriefingControllerTests {
                 "A night that arrives after the deadline is dropped.")
     }
 
+    /// Weather and sleep wait at the same time, so when neither answers the refresh
+    /// ends at one deadline, not after one deadline each (#85).
+    @Test func whenWeatherAndSleepBothHangTheRefreshEndsAfterOneDeadline() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.held)
+        let weather = SleepSuiteWeatherGate()
+        let clock = ManualTestClock()
+        let calendar = SleepSuiteCalendar()
+        let controller = makeController(directory: directory, reader: reader, calendar: calendar, clock: clock,
+                                        weather: { _ in try await weather.value() })
+        try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: try syntheticLocation(),
+                                           includesHealth: true))
+        let attempt = Task { await controller.refresh() }
+        await weather.waitUntilCalled()
+        await reader.waitUntilCalled()
+        await clock.waitForSleepers(2)
+        clock.advance(by: .seconds(10) - .milliseconds(1))
+        #expect(clock.sleeperCount == 2 && controller.isPreparing, "A deadline fired before its time.")
+        clock.advance(by: .milliseconds(1))
+        #expect(clock.sleeperCount == 0, "Both deadlines end at the same instant.")
+        let prepared = try #require(await attempt.value)
+        #expect(prepared.calendar.status == .fresh)
+        #expect(prepared.weather.status == .unavailable)
+        #expect(prepared.sleep.status == .unavailable && prepared.sleep.issue == .notReadable)
+        // Answers that arrive after the deadline have no recipient.
+        weather.release(try syntheticWeather())
+        reader.release(.samples(night))
+        await Task.yield()
+        #expect(controller.prepared?.id == prepared.id && controller.prepared?.sleepObservation == nil)
+        #expect(controller.prepared?.weather.status == .unavailable)
+    }
+
+    /// The source that answers in time is used; the one that does not is unavailable at the deadline.
+    @Test(arguments: [true, false])
+    func theSourceThatAnswersIsUsedAndTheOtherIsUnavailableAtTheDeadline(sleepAnswers: Bool) async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.held)
+        let weather = SleepSuiteWeatherGate()
+        let clock = ManualTestClock()
+        let controller = makeController(directory: directory, reader: reader, clock: clock,
+                                        weather: { _ in try await weather.value() })
+        try controller.updateSettings(.init(weatherLocation: try syntheticLocation(), includesHealth: true))
+        let attempt = Task { await controller.refresh() }
+        await weather.waitUntilCalled()
+        await reader.waitUntilCalled()
+        await clock.waitForSleepers(2)
+        if sleepAnswers { reader.release(.samples(night)) } else { weather.release(try syntheticWeather()) }
+        // The answered source cancels its own deadline; only the other one is left.
+        while clock.sleeperCount > 1 { await Task.yield() }
+        #expect(controller.isPreparing, "The refresh waits for the source that has not answered.")
+        clock.advance(by: .seconds(10))
+        let prepared = try #require(await attempt.value)
+        #expect(clock.sleeperCount == 0)
+        if sleepAnswers {
+            #expect(prepared.sleep.status == .fresh && prepared.weather.status == .unavailable)
+            weather.release(try syntheticWeather())
+        } else {
+            #expect(prepared.weather.status == .fresh)
+            #expect(prepared.sleep.status == .unavailable && prepared.sleep.issue == .notReadable)
+            reader.release(.samples(night))
+        }
+        await Task.yield()
+        #expect(controller.prepared?.id == prepared.id, "A late answer does not replace the composed recap.")
+    }
+
+    /// Cancelling a refresh while both sources are being read ends both reads and publishes nothing.
+    @Test func cancellingDuringBothReadsEndsBothAndPublishesNothing() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.held)
+        let weather = SleepSuiteWeatherGate()
+        let clock = ManualTestClock()
+        let controller = makeController(directory: directory, reader: reader, clock: clock,
+                                        weather: { _ in try await weather.value() })
+        try controller.updateSettings(.init(weatherLocation: try syntheticLocation(), includesHealth: true))
+        let attempt = Task { await controller.refresh() }
+        await weather.waitUntilCalled()
+        await reader.waitUntilCalled()
+        await clock.waitForSleepers(2)
+        controller.cancelAndClear()
+        #expect(await attempt.value == nil)
+        #expect(clock.sleeperCount == 0, "Both deadlines were cancelled with the refresh.")
+        weather.release(try syntheticWeather())
+        reader.release(.samples(night))
+        await Task.yield()
+        #expect(controller.prepared == nil && !controller.isPreparing && controller.errorMessage == nil)
+    }
+
     private func makeController(directory: URL, reader: SleepReaderFixture, calendar: SleepSuiteCalendar = .init(),
                                 clock: ManualTestClock = ManualTestClock(),
                                 weather: @escaping WeatherObservationService.WeatherProvider = { _ in
@@ -257,6 +347,17 @@ struct SleepBriefingControllerTests {
             sleep: SleepObservationService(provider: reader),
             now: { date }, timeZone: { TimeZone(identifier: "UTC")! }, localeIdentifier: "en_GB",
             clock: clock).watchedForHangs()
+    }
+    private func syntheticLocation() throws -> WeatherLocation {
+        try WeatherLocation(latitude: 48, longitude: 2, displayName: "Synthetic town")
+    }
+    private func syntheticWeather() throws -> WeatherObservationSnapshot {
+        let attribution = try WeatherAttributionInfo(legalURL: URL(string: "https://example.invalid/legal")!,
+            combinedMarkLightURL: URL(string: "https://example.invalid/light")!,
+            combinedMarkDarkURL: URL(string: "https://example.invalid/dark")!, serviceName: "Synthetic Weather")
+        return try WeatherObservationSnapshot(location: try syntheticLocation(), retrievedAt: now,
+            observationAt: now, temperatureCelsius: 18,
+            conditionDescription: "SYNTHETIC_CONDITIONS", symbolName: "sun.max", attribution: attribution)
     }
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("SleepBriefingTests-\(UUID().uuidString)")
@@ -320,7 +421,7 @@ private final class SleepSuiteCalendar: CalendarObservationProviding {
     func events(in interval: DateInterval, calendarIDs: Set<String>) throws -> [CalendarObservationEvent] { [] }
 }
 
-/// Holds the weather read until the test lets it fail, so a test can act while a refresh
+/// Holds the weather read until the test lets it fail or answer, so a test can act while a refresh
 /// is suspended at a known point.
 @MainActor
 private final class SleepSuiteWeatherGate {
@@ -340,5 +441,9 @@ private final class SleepSuiteWeatherGate {
     func fail() {
         let held = waiting; waiting = []
         for continuation in held { continuation.resume(throwing: WeatherObservationError.serviceUnavailable) }
+    }
+    func release(_ value: WeatherObservationSnapshot) {
+        let held = waiting; waiting = []
+        for continuation in held { continuation.resume(returning: value) }
     }
 }

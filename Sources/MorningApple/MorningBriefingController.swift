@@ -447,40 +447,18 @@ public final class MorningBriefingController {
                         }
                     }
                 }
-                if let location = key.settings.weatherLocation {
-                    let cached = try compose(calendar: .notConfigured, weather: nextWeather, at: instant, zone: zone)
-                    if force || cached.weather.status != .fresh {
-                        let service = weather
-                        do {
-                            let value = try await BriefingSourceDeadline<WeatherObservationSnapshot>(clock: clock).run(timeout: sourceTimeout) {
-                                try await service.currentWeather(for: location)
-                            }
-                            nextWeather = .snapshot(value)
-                        } catch is CancellationError { throw CancellationError() }
-                        catch let error as WeatherObservationError {
-                            nextWeather = error == .permissionDenied ? .denied : .unavailable
-                        } catch { nextWeather = .unavailable }
-                    }
-                } else { nextWeather = .notConfigured }
-                // Excluded means the reader is not called at all.
-                if key.settings.includesHealth {
-                    let cached = try compose(calendar: .notConfigured, weather: .notConfigured, sleep: nextSleep, at: instant, zone: zone)
-                    // A read that found no night is read again: the night can arrive later.
-                    if force || cached.sleep.status != .fresh {
-                        let service = sleep
-                        do {
-                            nextSleep = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) { [weak self] in
-                                // This closure runs in its own queued task. Health can be turned
-                                // off, or this attempt cancelled, before it gets its turn: check
-                                // again here, or the reader would be called while excluded.
-                                guard let self, self.revision == expectedRevision, self.refreshAttempt == attempt,
-                                      self.settings.includesHealth else { throw CancellationError() }
-                                return try await service.read(at: instant)
-                            }
-                        } catch is CancellationError { throw CancellationError() }
-                        catch { nextSleep = .notReadable }
-                    }
-                } else { nextSleep = .excluded }
+                // Weather and sleep do not depend on each other, so they are read at the same
+                // time: when both hang, the refresh ends at one deadline, not after two (#85).
+                // `async let` keeps both reads child tasks of this refresh: cancelling it
+                // cancels both, and leaving this scope early (one read cancelled) cancels and
+                // awaits the other. Both still finish here, before the one composition below.
+                let cachedWeather = nextWeather, cachedSleep = nextSleep
+                async let weatherRead = readWeather(cached: cachedWeather, settings: key.settings, force: force,
+                                                    at: instant, zone: zone)
+                async let sleepRead = readSleep(cached: cachedSleep, settings: key.settings, force: force,
+                                                at: instant, zone: zone, attempt: attempt, revision: expectedRevision)
+                nextWeather = try await weatherRead
+                nextSleep = try await sleepRead
                 try Task.checkCancellation()
                 guard revision == expectedRevision, refreshAttempt == attempt,
                       timeZone().identifier == key.timeZoneIdentifier, settings == key.settings else { return nil }
@@ -512,6 +490,43 @@ public final class MorningBriefingController {
         refreshTask = task
         let result = await task.value
         return Task.isCancelled ? nil : result
+    }
+
+    /// The weather part of one refresh. Returns the cached input when it is still fresh.
+    private func readWeather(cached: MorningBriefingInput<WeatherObservationSnapshot>, settings: MorningBriefingSettings,
+                             force: Bool, at instant: Date, zone: TimeZone) async throws -> MorningBriefingInput<WeatherObservationSnapshot> {
+        guard let location = settings.weatherLocation else { return .notConfigured }
+        let current = try compose(calendar: .notConfigured, weather: cached, at: instant, zone: zone)
+        guard force || current.weather.status != .fresh else { return cached }
+        let service = weather
+        do {
+            return .snapshot(try await BriefingSourceDeadline<WeatherObservationSnapshot>(clock: clock).run(timeout: sourceTimeout) {
+                try await service.currentWeather(for: location)
+            })
+        } catch is CancellationError { throw CancellationError() }
+        catch let error as WeatherObservationError { return error == .permissionDenied ? .denied : .unavailable }
+        catch { return .unavailable }
+    }
+
+    /// The sleep part of one refresh. Excluded means the reader is not called at all.
+    private func readSleep(cached: SleepBriefingInput, settings: MorningBriefingSettings, force: Bool,
+                           at instant: Date, zone: TimeZone, attempt: UUID, revision expectedRevision: UUID) async throws -> SleepBriefingInput {
+        guard settings.includesHealth else { return .excluded }
+        let current = try compose(calendar: .notConfigured, weather: .notConfigured, sleep: cached, at: instant, zone: zone)
+        // A read that found no night is read again: the night can arrive later.
+        guard force || current.sleep.status != .fresh else { return cached }
+        let service = sleep
+        do {
+            return try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) { [weak self] in
+                // This closure runs in its own queued task. Health can be turned
+                // off, or this attempt cancelled, before it gets its turn: check
+                // again here, or the reader would be called while excluded.
+                guard let self, self.revision == expectedRevision, self.refreshAttempt == attempt,
+                      self.settings.includesHealth else { throw CancellationError() }
+                return try await service.read(at: instant)
+            }
+        } catch is CancellationError { throw CancellationError() }
+        catch { return .notReadable }
     }
 
     private func compose(calendar: MorningBriefingInput<CalendarSnapshot>,
