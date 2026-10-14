@@ -1038,7 +1038,8 @@ private struct MorningActionDock: View {
                 .accessibilityIdentifier("morning.ready")
             HStack(spacing: 12) {
                 Button("Cancel") { clearReadyState() }
-                    .font(.caption).frame(minWidth: 44, minHeight: 44)
+                    .font(.caption).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 44, minHeight: 44)
                     .accessibilityIdentifier("morning.cancelStart")
                 Button("Start") {
                     guard readyGeneration == store.dataGeneration, store.routine == routine,
@@ -1053,9 +1054,11 @@ private struct MorningActionDock: View {
                     expanded = false
                     transitionPending = false
                 }.font(.subheadline.weight(.semibold)).foregroundStyle(MorningStyle.accent)
+                    // Longer translations ("Commencer") wrap the question, never the button.
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: 48, minHeight: 44)
                     .accessibilityIdentifier("morning.confirmStart")
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).layoutPriority(1)
                 .disabled(store.busy || store.privacyBlocksWork || transitionPending || store.voiceInputBlocksPlayback)
         }.padding(.horizontal, 14).padding(.vertical, 6)
     }
