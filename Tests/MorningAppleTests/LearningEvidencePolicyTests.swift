@@ -73,7 +73,7 @@ struct LearningEvidencePolicyTests {
                 evidenceQuote: "09:00 Team planning meeting", source: "09:00 Team planning meeting", sourceContext: screen,
                 sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
             }
         }
     }
@@ -89,7 +89,7 @@ struct LearningEvidencePolicyTests {
             #expect(LearningEvidencePolicy.isEligibleVisualContext(screen))
         }
         let written = "I opened MORE's morning page while MORE · Recording was visible. Then I checked my calendar."
-        let units = try LearningEvidencePolicy.prepare(written)
+        let units = try LearningEvidencePolicy.prepare(written, as: .writtenReport)
         #expect(units.first?.text == written)
         #expect(units.first?.kind == .userReportedActivity)
     }
@@ -97,8 +97,8 @@ struct LearningEvidencePolicyTests {
     @Test("Native capture home is omitted without changing adjacent external source text")
     func nativeRecordingHomeKeepsAdjacentEvidence() throws {
         let recording = "[Observed frame at 00:00.0]\nmorning\nMORE · Recording\n09:00 Team planning meeting"
-            + "\n[Observed frame at 00:10.0]\n" + LearningEvidenceFixtures.messageContent
-        let units = try LearningEvidencePolicy.prepare(recording)
+            + "\n\n[Observed frame at 00:10.0]\n" + LearningEvidenceFixtures.messageContent
+        let units = try LearningEvidencePolicy.prepare(recording, as: .recording)
         try #require(units.count == 1)
         #expect(units[0].text.utf8.elementsEqual(LearningEvidenceFixtures.messageContent.utf8))
     }
@@ -114,7 +114,7 @@ struct LearningEvidencePolicyTests {
                 evidenceQuote: "09:00 Team planning meeting", source: "09:00 Team planning meeting", sourceContext: screen,
                 sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen)
+                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen, as: .screenshot)
             }
         }
     }
@@ -136,7 +136,7 @@ struct LearningEvidencePolicyTests {
     func glassWelcomeUsesItsCurrentPublicCopy() {
         let screen = "a little more\nmorning.\nShow us a little of your morning.\nWe’ll find the rhythm together."
         #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-            try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen)
+            try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
         }
         for marker in ["Show us a little of your morning.", "We’ll find the rhythm together."] {
             #expect(LearningEvidencePolicy.isEligibleVisualContext("Messages\n" + marker + "\nPlease bring the printed meeting notes tomorrow."))
@@ -152,7 +152,7 @@ struct LearningEvidencePolicyTests {
         #expect(LearningEvidencePolicy.isEligibleVisualContext("Calendar\nmorning\n09:00 Sample morning planning meeting"))
         #expect(LearningEvidencePolicy.isEligibleVisualContext("Calendar\nMorning planning\nHold to arrange\n09:00 Team planning meeting"))
         let written = "I open MORE's morning page, where it says Your rhythm, at your pace and Hold to arrange. Then I check tomorrow’s calendar."
-        let writtenUnits = try LearningEvidencePolicy.prepare(written)
+        let writtenUnits = try LearningEvidencePolicy.prepare(written, as: .writtenReport)
         #expect(writtenUnits.first?.text == written)
         #expect(writtenUnits.first?.kind == .userReportedActivity)
     }
@@ -160,11 +160,11 @@ struct LearningEvidencePolicyTests {
     @Test("Mixed recording keeps external frames byte-exact while rejecting current home and welcome")
     func glassScreensDoNotRemoveAdjacentExternalEvidence() throws {
         let recording = "[Observed frame at 00:00.0]\nmorning\n09:00 Team planning meeting\nYour rhythm, at your pace\nHold to arrange"
-            + "\n[Observed frame at 00:10.0]\n" + LearningEvidenceFixtures.calendarContent
-            + "\n[Observed frame at 00:20.0]\nShow us a little of your morning.\nWe’ll find the rhythm together."
-            + "\n[Observed frame at 00:30.0]\n" + LearningEvidenceFixtures.messageContent
+            + "\n\n[Observed frame at 00:10.0]\n" + LearningEvidenceFixtures.calendarContent
+            + "\n\n[Observed frame at 00:20.0]\nShow us a little of your morning.\nWe’ll find the rhythm together."
+            + "\n\n[Observed frame at 00:30.0]\n" + LearningEvidenceFixtures.messageContent
         let original = Data(recording.utf8)
-        let units = try LearningEvidencePolicy.prepare(recording)
+        let units = try LearningEvidencePolicy.prepare(recording, as: .recording)
         try #require(units.count == 2)
         #expect(units[0].text.trimmingCharacters(in: .whitespacesAndNewlines).utf8.elementsEqual(LearningEvidenceFixtures.calendarContent.utf8))
         #expect(units[1].text.trimmingCharacters(in: .whitespacesAndNewlines).utf8.elementsEqual(LearningEvidenceFixtures.messageContent.utf8))
@@ -174,11 +174,11 @@ struct LearningEvidencePolicyTests {
     @Test("Observed-first overview cannot feed its derived labels back as new activity")
     func observedOverviewRejectsFeedbackAndKeepsIndependentFrames() throws {
         let overview = LearningEvidenceFixtures.observedOverview
-        for source in ["[User-selected screenshot; one moment, not a confirmed habit]\n" + overview,
-                       "[Observed frame at 00:00.0]\n" + overview] {
-            #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare(source)
-            }
+        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
+            try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + overview, as: .screenshot)
+        }
+        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
+            try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + overview, as: .recording)
         }
         let quote = "These samples don't establish app opens, reads or scrolls."
         #expect(ProposalValidation.step(title: "Review mornings", detail: "", kind: "custom", durationMinutes: 3,
@@ -186,10 +186,10 @@ struct LearningEvidencePolicyTests {
             sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
 
         let recording = "[Observed frame at 00:00.0]\n" + overview
-            + "\n[Observed frame at 00:12.0]\n" + LearningEvidenceFixtures.calendarContent
-            + "\n[Observed frame at 00:24.0]\n" + LearningEvidenceFixtures.messageContent
+            + "\n\n[Observed frame at 00:12.0]\n" + LearningEvidenceFixtures.calendarContent
+            + "\n\n[Observed frame at 00:24.0]\n" + LearningEvidenceFixtures.messageContent
         let original = Data(recording.utf8)
-        let retained = try LearningEvidencePolicy.prepare(recording)
+        let retained = try LearningEvidencePolicy.prepare(recording, as: .recording)
         try #require(retained.count == 2)
         #expect(retained[0].text.trimmingCharacters(in: .whitespacesAndNewlines).utf8.elementsEqual(LearningEvidenceFixtures.calendarContent.utf8))
         #expect(retained[1].text.trimmingCharacters(in: .whitespacesAndNewlines).utf8.elementsEqual(LearningEvidenceFixtures.messageContent.utf8))
@@ -211,7 +211,7 @@ struct LearningEvidencePolicyTests {
                 "Your observed mornings\n\(marker)\n09:00 Team planning meeting"))
         }
         let report = "I opened Your observed mornings and reviewed the days with labeled samples. Then I read my calendar."
-        let retained = try LearningEvidencePolicy.prepare(report)
+        let retained = try LearningEvidencePolicy.prepare(report, as: .writtenReport)
         #expect(retained.count == 1)
         #expect(retained.first?.kind == .userReportedActivity)
         #expect(retained.first?.text == report)
@@ -228,7 +228,7 @@ struct LearningEvidencePolicyTests {
         ]
         for screen in screens {
             #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen)
+                try LearningEvidencePolicy.prepare("[User-selected screenshot; one moment, not a confirmed habit]\n" + screen, as: .screenshot)
             }
         }
     }
@@ -236,7 +236,7 @@ struct LearningEvidencePolicyTests {
     @Test("Setup, picker, app marketing and launcher frames abstain without inference")
     func setupOnlyHasNoActivityEvidence() {
         #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
-            try LearningEvidencePolicy.prepare(LearningEvidenceFixtures.setupOnly)
+            try LearningEvidencePolicy.prepare(LearningEvidenceFixtures.setupOnly, as: .recording)
         }
     }
 
@@ -244,9 +244,8 @@ struct LearningEvidencePolicyTests {
     func ownReviewScreenHasNoActivityEvidence() {
         let screenshot = "[User-selected screenshot; one moment, not a confirmed habit]\n" + LearningEvidenceFixtures.ownReviewScreen
         let video = "[Observed frame at 00:15.0]\n" + LearningEvidenceFixtures.ownReviewScreen
-        for source in [screenshot, video] {
-            #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(source) }
-        }
+        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(screenshot, as: .screenshot) }
+        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(video, as: .recording) }
         #expect(ProposalValidation.step(title: "Review routine", detail: "", kind: "custom", durationMinutes: 3,
             evidenceQuote: "Routine timing excludes pauses.", source: LearningEvidenceFixtures.ownReviewScreen,
             sourceKind: .visibleTaskContent, claimedEvidenceKind: "visibleTaskContent") == nil)
@@ -256,7 +255,7 @@ struct LearningEvidencePolicyTests {
     func ownReviewRequiresMultipleDistinctiveMarkers() throws {
         for heading in ["Average routine", "Learning your morning", "THE LAST SEVEN MORNINGS", "Find your rhythm."] {
             let source = "[User-selected screenshot; one moment, not a confirmed habit]\nCalendar\n\(heading)\n09:00 Team planning meeting"
-            let units = try LearningEvidencePolicy.prepare(source)
+            let units = try LearningEvidencePolicy.prepare(source, as: .screenshot)
             #expect(units.count == 1)
             #expect(units[0].text.contains("09:00 Team planning meeting"))
         }
@@ -265,17 +264,17 @@ struct LearningEvidencePolicyTests {
     @Test("Bare app icons or names do not establish that the apps were used")
     func appInventoryCannotBecomeActions() {
         let source = "[User-selected screenshot; one moment, not a confirmed habit]\nCalendar\nMessages\nChess\nMail\nPhotos\nSettings"
-        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(source) }
+        #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(source, as: .screenshot) }
     }
 
     @Test("Useful calendar and message content survive rejected surrounding frames unchanged")
     func mixedRecordingRetainsOnlyEligibleOriginalEvidence() throws {
         let source = LearningEvidenceFixtures.setupOnly
-            + "\n[Observed frame at 00:22.0]\n" + LearningEvidenceFixtures.ownReviewScreen
-            + "\n[Observed frame at 00:25.0]\n" + LearningEvidenceFixtures.calendarContent
-            + "\n[Observed frame at 00:30.0]\n" + LearningEvidenceFixtures.messageContent
+            + "\n\n[Observed frame at 00:22.0]\n" + LearningEvidenceFixtures.ownReviewScreen
+            + "\n\n[Observed frame at 00:25.0]\n" + LearningEvidenceFixtures.calendarContent
+            + "\n\n[Observed frame at 00:30.0]\n" + LearningEvidenceFixtures.messageContent
         let original = source
-        let units = try LearningEvidencePolicy.prepare(source)
+        let units = try LearningEvidencePolicy.prepare(source, as: .recording)
         #expect(units.count == 2)
         #expect(units[0].text.trimmingCharacters(in: .whitespacesAndNewlines) == LearningEvidenceFixtures.calendarContent)
         #expect(units[1].text.trimmingCharacters(in: .whitespacesAndNewlines) == LearningEvidenceFixtures.messageContent)
@@ -286,7 +285,7 @@ struct LearningEvidencePolicyTests {
     @Test("Personal calendar, Messages and chess descriptions are preserved")
     func writtenActivityRemainsPositive() throws {
         let source = "At 07:30 I review today's calendar. I read Messages, then play chess for ten minutes. Later I join a screen sharing workshop."
-        let units = try LearningEvidencePolicy.prepare(source)
+        let units = try LearningEvidencePolicy.prepare(source, as: .writtenReport)
         #expect(units.count == 1)
         #expect(units.first?.kind == .userReportedActivity)
         #expect(units.first?.text == source)
@@ -344,12 +343,12 @@ struct LearningEvidencePolicyTests {
 
     @Test("Equivalent frames deduplicate and many frames share bounded inference batches")
     func repeatedFramesDoNotCreateOneModelSessionEach() throws {
-        let repeated = (0..<24).map { "[Observed frame at 00:\($0)]\n\(LearningEvidenceFixtures.calendarContent)" }.joined(separator: "\n")
-        let unique = try LearningEvidencePolicy.prepare(repeated)
+        let repeated = (0..<24).map { "[Observed frame at 00:\(String(format: "%02d", $0)).0]\n\(LearningEvidenceFixtures.calendarContent)" }.joined(separator: "\n\n")
+        let unique = try LearningEvidencePolicy.prepare(repeated, as: .recording)
         #expect(unique.count == 1)
         #expect(LearningEvidencePolicy.inferenceChunks(unique, maximumCharacters: 1_500).count == 1)
-        let different = (0..<24).map { "[Observed frame at 00:\($0)]\nCalendar\n09:00 Team planning meeting number \($0)" }.joined(separator: "\n")
-        let units = try LearningEvidencePolicy.prepare(different)
+        let different = (0..<24).map { "[Observed frame at 00:\(String(format: "%02d", $0)).0]\nCalendar\n09:00 Team planning meeting number \($0)" }.joined(separator: "\n\n")
+        let units = try LearningEvidencePolicy.prepare(different, as: .recording)
         let chunks = LearningEvidencePolicy.inferenceChunks(units, maximumCharacters: 1_500)
         #expect(units.count == 24)
         #expect(chunks.count <= ObservationText.chunks(different, maximumCharacters: 1_500).count)

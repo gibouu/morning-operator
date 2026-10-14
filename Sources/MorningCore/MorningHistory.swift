@@ -299,6 +299,19 @@ public struct CountSummary: Codable, Sendable, Equatable {
         daysWithEvidence = known.count
         self.windowDayCount = windowDayCount
     }
+
+    private enum CodingKeys: String, CodingKey { case total, daysWithEvidence, windowDayCount }
+    /// Counts of days are never negative, so the difference above cannot overflow.
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        total = try values.decodeIfPresent(Int.self, forKey: .total)
+        daysWithEvidence = try values.decode(Int.self, forKey: .daysWithEvidence)
+        windowDayCount = try values.decode(Int.self, forKey: .windowDayCount)
+        guard daysWithEvidence >= 0, windowDayCount >= 0 else {
+            throw DecodingError.dataCorruptedError(forKey: .daysWithEvidence, in: values,
+                debugDescription: "A count of days cannot be negative.")
+        }
+    }
 }
 
 public struct AppUsageSummary: Codable, Sendable, Identifiable, Equatable {

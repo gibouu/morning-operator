@@ -199,14 +199,80 @@ struct LearningWindowTests {
             timeZoneIdentifier: zone, morningCount: 2, createdAt: at(26, 12, month: 3, zone: zone), limits: limits)
         try edge.start(at: at(27, 12, month: 3, zone: zone))
         try #expect(edge.schedule(asOf: at(27, 12, month: 3, zone: zone)).mornings.map(\.dayKey) == ["2026-03-27", "2026-03-29"])
+
+        // 23:00 is the first minute the clocks skip that Saturday: dropped as well. Five minutes
+        // from 22:55 end exactly where the day does and stay.
+        func nuukMornings(start: Int, duration: Int) throws -> [LearningWindowMorning] {
+            var value = try LearningWindow(startMinuteOfDay: start, durationSeconds: duration, weekdays: everyDay,
+                timeZoneIdentifier: zone, morningCount: 3, createdAt: at(26, 12, month: 3, zone: zone), limits: limits)
+            try value.start(at: at(27, 12, month: 3, zone: zone))
+            return try value.schedule(asOf: at(27, 12, month: 3, zone: zone)).mornings
+        }
+        try #expect(nuukMornings(start: 23 * 60, duration: 600).map(\.dayKey) == ["2026-03-27", "2026-03-29", "2026-03-30"])
+        let lastMinutes = try nuukMornings(start: 22 * 60 + 55, duration: 300)
+        #expect(lastMinutes.map(\.dayKey) == ["2026-03-27", "2026-03-28", "2026-03-29"])
+        #expect(try localTime(lastMinutes[1].expectedStart, zone: zone) == "22:55")
+        #expect(try localTime(lastMinutes[1].expectedEnd, zone: zone) == "00:00")
+        #expect(lastMinutes[2].expectedStart.timeIntervalSince(lastMinutes[1].expectedStart) == 23 * 3_600)
+    }
+
+    @Test func aStartTimeInsideAClockChangeOfAnyLengthMovesToTheFirstInstantAfterIt() throws {
+        func mornings(_ zone: String, start: Int, duration: Int = 600, from day: Int, month: Int, year: Int,
+                      count: Int = 3) throws -> [LearningWindowMorning] {
+            var value = try LearningWindow(startMinuteOfDay: start, durationSeconds: duration, weekdays: everyDay,
+                timeZoneIdentifier: zone, morningCount: count, createdAt: at(day, 0, year: year, month: month, zone: zone),
+                limits: limits)
+            try value.start(at: at(day, 0, year: year, month: month, zone: zone))
+            return try value.schedule(asOf: at(day, 0, year: year, month: month, zone: zone)).mornings
+        }
+        // Lord Howe Island moves its clocks by half an hour: on Sunday 4 October 2026, 02:00
+        // becomes 02:30. A 02:15 window keeps that day and begins at 02:30.
+        let lordHowe = "Australia/Lord_Howe"
+        let half = try mornings(lordHowe, start: 2 * 60 + 15, from: 3, month: 10, year: 2026)
+        #expect(half.map(\.dayKey) == ["2026-10-03", "2026-10-04", "2026-10-05"])
+        try #expect(half.map { try localTime($0.expectedStart, zone: lordHowe) } == ["02:15", "02:30", "02:15"])
+        // 23 hours and 45 minutes after Saturday's, then 23 hours and 45 minutes before Monday's.
+        #expect(half[1].expectedStart.timeIntervalSince(half[0].expectedStart) == 23.75 * 3_600)
+        #expect(half[2].expectedStart.timeIntervalSince(half[1].expectedStart) == 23.75 * 3_600)
+        #expect(half.allSatisfy { $0.expectedEnd.timeIntervalSince($0.expectedStart) == 600 })
+        // The first skipped minute moves too; the first minute after the change does not.
+        try #expect(mornings(lordHowe, start: 2 * 60, from: 3, month: 10, year: 2026)
+            .map { try localTime($0.expectedStart, zone: lordHowe) } == ["02:00", "02:30", "02:00"])
+        try #expect(mornings(lordHowe, start: 2 * 60 + 30, from: 3, month: 10, year: 2026)
+            .map { try localTime($0.expectedStart, zone: lordHowe) } == ["02:30", "02:30", "02:30"])
+        // On the way back, 5 April 2026, 01:30 to 02:00 happens twice: the first occurrence.
+        let back = try mornings(lordHowe, start: 60 + 45, from: 4, month: 4, year: 2026)
+        #expect(back.map(\.dayKey) == ["2026-04-04", "2026-04-05", "2026-04-06"])
+        #expect(back[1].expectedStart.timeIntervalSince(back[0].expectedStart) == 24 * 3_600)
+        #expect(back[2].expectedStart.timeIntervalSince(back[1].expectedStart) == 24.5 * 3_600)
+
+        // Nuuk, when it still changed at 22:00 on a Saturday (26 March 2022): 22:30 is skipped
+        // and the morning begins at 23:00, late on the same day.
+        let nuuk = "America/Nuuk"
+        let evening = try mornings(nuuk, start: 22 * 60 + 30, from: 25, month: 3, year: 2022)
+        #expect(evening.map(\.dayKey) == ["2022-03-25", "2022-03-26", "2022-03-27"])
+        try #expect(evening.map { try localTime($0.expectedStart, zone: nuuk) } == ["22:30", "23:00", "22:30"])
+        // Chatham Islands change at 02:45 to 03:45 (27 September 2026): 03:00 begins at 03:45.
+        let chatham = "Pacific/Chatham"
+        try #expect(mornings(chatham, start: 3 * 60, from: 26, month: 9, year: 2026)
+            .map { try localTime($0.expectedStart, zone: chatham) } == ["03:00", "03:45", "03:00"])
+        // A one-hour change is as it was: 02:30 in Paris on 28 March 2027 begins at 03:00.
+        try #expect(mornings(paris, start: 2 * 60 + 30, from: 27, month: 3, year: 2027)
+            .map { try localTime($0.expectedStart) } == ["02:30", "03:00", "02:30"])
+        // No day is given two mornings and no instant two days, in any of them.
+        for (zone, start, day, month, year) in [(lordHowe, 135, 1, 10, 2026), (nuuk, 23 * 60 + 30, 20, 3, 2026),
+                                                (chatham, 180, 20, 9, 2026), (paris, 150, 20, 3, 2027)] {
+            let plan = try mornings(zone, start: start, from: day, month: month, year: year, count: 20)
+            #expect(Set(plan.map(\.dayKey)).count == plan.count && plan.count == 20)
+            #expect(zip(plan, plan.dropFirst()).allSatisfy { $0.expectedEnd <= $1.expectedStart })
+        }
     }
 
     @Test func aRecordingStillRunningCannotBeDeclaredAndPausesAreBounded() throws {
         var value = try window(mornings: 2)
         try value.start(at: at(12, 6))
         #expect(throws: LearningWindowError.invalidRecording) {
-            try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                              recordedSeconds: 300, declaredAt: at(12, 7, 0, 30))
+            try value.capture(recordingStartedAt: at(12, 7), recordedSeconds: 300, declaredAt: at(12, 7, 0, 30))
         }
         #expect(throws: ObservationWindowCaptureError.invalid) {
             try ObservationWindowCapture(windowID: value.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
@@ -242,18 +308,90 @@ struct LearningWindowTests {
         try #expect(localTime(first.expectedStart, zone: "Asia/Tokyo") == "14:00")
         #expect(first.dayKey == "2026-10-12")
 
-        // A recording made under Tokyo time is refused, at 07:00 Tokyo and at the Paris instant alike.
-        #expect(throws: LearningWindowError.differentTimeZone) {
-            try value.capture(recordingStartedAt: at(13, 7, zone: "Asia/Tokyo"), recordingTimeZoneIdentifier: "Asia/Tokyo",
-                              recordedSeconds: 300, declaredAt: at(13, 9))
+        // Recorded in Tokyo at the window's instant, 14:00 there: it is Monday's morning, whole.
+        let away = try value.capture(recordingStartedAt: at(12, 14, zone: "Asia/Tokyo"), recordedSeconds: 300,
+                                     declaredAt: at(12, 9))
+        let home = try value.capture(recordingStartedAt: at(12, 7), recordedSeconds: 300, declaredAt: at(12, 9))
+        #expect(away == home, "Only instants are read: there is no zone to tell the two apart.")
+        #expect(away.dayKey == "2026-10-12" && away.timeZoneIdentifier == paris)
+        #expect(away.actualStart == first.expectedStart && away.actualEnd == first.expectedEnd)
+        #expect(value.counts(away))
+
+        // Recorded at 07:00 on the Tokyo clock on Tuesday: midnight in Paris, the first instant
+        // of the window's Tuesday. It is declared to that morning and shows as outside it.
+        let ownClock = try value.capture(recordingStartedAt: at(13, 7, zone: "Asia/Tokyo"), recordedSeconds: 300,
+                                         declaredAt: at(13, 9))
+        try #expect(ownClock.actualStart == (at(13, 0)))
+        #expect(ownClock.dayKey == "2026-10-13" && ownClock.actualEnd < ownClock.expectedStart)
+        // One second earlier it is still Monday in Paris, and Tuesday in Tokyo.
+        let before = try value.capture(recordingStartedAt: at(13, 6, 59, 59, zone: "Asia/Tokyo"), recordedSeconds: 300,
+                                       declaredAt: at(13, 9))
+        #expect(before.dayKey == "2026-10-12" && before.actualStart > before.expectedEnd)
+        // Wednesday on the window's calendar is not a morning of this two-morning window.
+        #expect(throws: LearningWindowError.notAScheduledMorning) {
+            try value.capture(recordingStartedAt: at(14, 14, zone: "Asia/Tokyo"), recordedSeconds: 300, declaredAt: at(14, 9))
         }
-        #expect(throws: LearningWindowError.differentTimeZone) {
-            try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: "Asia/Tokyo",
-                              recordedSeconds: 300, declaredAt: at(12, 9))
-        }
-        let home = try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                                     recordedSeconds: 300, declaredAt: at(12, 9))
-        #expect(home.dayKey == "2026-10-12" && home.timeZoneIdentifier == paris)
+    }
+
+    @Test func aTravellersMorningIsMatchedByInstantOnEitherSideOfTheWindowsCalendar() throws {
+        // 05:00 in Paris is 23:00 the evening before in New York and 12:00 in Tokyo.
+        var value = try window(start: 5 * 60, duration: 600, mornings: 3)
+        try value.start(at: at(12, 4))
+        let plan = value.schedule(asOf: try at(12, 4)).mornings
+        #expect(plan.map(\.dayKey) == ["2026-10-12", "2026-10-13", "2026-10-14"])
+        let newYork = try value.capture(recordingStartedAt: at(12, 23, zone: "America/New_York"), recordedSeconds: 600,
+                                        declaredAt: at(13, 6))
+        // Monday evening on the New York calendar, Tuesday's morning on the window's.
+        #expect(newYork.dayKey == "2026-10-13" && newYork.expectedStart == plan[1].expectedStart)
+        #expect(newYork.actualStart == plan[1].expectedStart && value.counts(newYork))
+        // 12:00 on Wednesday in Tokyo is Wednesday's morning.
+        let tokyo = try value.capture(recordingStartedAt: at(14, 12, zone: "Asia/Tokyo"), recordedSeconds: 600,
+                                      declaredAt: at(14, 6))
+        #expect(tokyo.dayKey == "2026-10-14" && tokyo.actualStart == plan[2].expectedStart)
+        let lineIslands = try value.capture(recordingStartedAt: at(12, 17, zone: "Pacific/Kiritimati"), recordedSeconds: 600,
+                                            declaredAt: at(12, 6))
+        // Monday 17:00 on the far side of the date line is Monday 05:00 in Paris.
+        #expect(lineIslands.dayKey == "2026-10-12" && lineIslands.actualStart == plan[0].expectedStart)
+        // No two mornings ever receive the same day key, and no recording two keys.
+        #expect(Set([newYork, tokyo, lineIslands].map(\.dayKey)).count == 3)
+    }
+
+    @Test func aClockChangeInTheTravellersZoneOnlyDoesNotMoveTheWindowsMorning() throws {
+        // New York leaves summer time on Sunday 1 November 2026; Paris left it a week earlier.
+        // 07:00 in Paris is 02:00 in New York on Saturday the 31st and 01:00 on Sunday the 1st,
+        // an hour that happens twice there. The window's mornings stay 24 hours apart.
+        var value = try window(mornings: 2)
+        try value.start(at: at(31, 6))
+        let plan = value.schedule(asOf: try at(31, 6)).mornings
+        #expect(plan.map(\.dayKey) == ["2026-10-31", "2026-11-01"])
+        #expect(plan[1].expectedStart.timeIntervalSince(plan[0].expectedStart) == 24 * 3_600)
+        try #expect(localTime(plan[0].expectedStart, zone: "America/New_York") == "02:00")
+        try #expect(localTime(plan[1].expectedStart, zone: "America/New_York") == "01:00")
+        let saturday = try value.capture(recordingStartedAt: at(31, 2, zone: "America/New_York"), recordedSeconds: 1_200,
+                                         declaredAt: at(31, 8))
+        #expect(saturday.dayKey == "2026-10-31" && saturday.actualStart == plan[0].expectedStart)
+        // The first 01:00 in New York that Sunday is 06:00 in Paris: an hour before the window,
+        // on the window's Sunday. The second 01:00 is the window itself.
+        let firstOne = plan[1].expectedStart.addingTimeInterval(-3_600)
+        try #expect(localTime(firstOne, zone: "America/New_York") == "01:00")
+        let early = try value.capture(recordingStartedAt: firstOne, recordedSeconds: 1_200, declaredAt: at(1, 8, month: 11))
+        #expect(early.dayKey == "2026-11-01" && early.actualEnd < early.expectedStart)
+        let sunday = try value.capture(recordingStartedAt: plan[1].expectedStart, recordedSeconds: 1_200,
+                                       declaredAt: at(1, 8, month: 11))
+        #expect(sunday.dayKey == "2026-11-01" && sunday.actualStart == sunday.expectedStart && value.counts(sunday))
+
+        // The other way round: Paris enters summer time on 28 March 2027, New York had on the
+        // 14th. The window's Sunday morning comes 23 hours after Saturday's, at 01:00 in New York
+        // where Saturday's was at 02:00.
+        var spring = try window(mornings: 2)
+        try spring.start(at: at(27, 6, year: 2027, month: 3))
+        let springPlan = spring.schedule(asOf: try at(27, 6, year: 2027, month: 3)).mornings
+        #expect(springPlan[1].expectedStart.timeIntervalSince(springPlan[0].expectedStart) == 23 * 3_600)
+        try #expect(springPlan.map { try localTime($0.expectedStart, zone: "America/New_York") } == ["02:00", "01:00"])
+        let late = try spring.capture(recordingStartedAt: at(28, 2, year: 2027, month: 3, zone: "America/New_York"),
+                                      recordedSeconds: 1_200, declaredAt: at(28, 12, year: 2027, month: 3))
+        // 02:00 in New York, as on Saturday, is now an hour after the window began.
+        #expect(late.dayKey == "2027-03-28" && late.actualStart == late.expectedEnd.addingTimeInterval(2_400))
     }
 
     @Test func morningsThatBeginDuringAPauseAreNotCountedAndAreReplaced() throws {
@@ -301,8 +439,7 @@ struct LearningWindowTests {
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-10-13", at: at(12, 8)) }
         #expect(throws: LearningWindowError.notAScheduledMorning) { try value.skip(dayKey: "2026-11-30", at: at(12, 8)) }
         #expect(throws: LearningWindowError.morningSkipped) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris,
-                              recordedSeconds: 600, declaredAt: at(13, 8))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 600, declaredAt: at(13, 8))
         }
     }
 
@@ -332,33 +469,31 @@ struct LearningWindowTests {
     @Test func aRecordingBelongsToTheDayItStartedOnAndCarriesBothIntervals() throws {
         var value = try window(mornings: 3)
         try value.start(at: at(12, 6))
-        let late = try value.capture(recordingStartedAt: at(12, 7, 8), recordingTimeZoneIdentifier: paris,
-                                     recordedSeconds: 600, declaredAt: at(12, 7, 30))
+        let late = try value.capture(recordingStartedAt: at(12, 7, 8), recordedSeconds: 600, declaredAt: at(12, 7, 30))
         #expect(late.windowID == value.id && late.dayKey == "2026-10-12")
         try #expect(late.expectedStart == (at(12, 7)) && late.expectedEnd == (at(12, 7, 20)))
         try #expect(late.actualStart == (at(12, 7, 8)) && late.actualEnd == (at(12, 7, 18)))
         #expect(value.counts(late))
 
         // Outside the expected interval on a morning of the window: accepted, and it shows.
-        let evening = try value.capture(recordingStartedAt: at(12, 19), recordingTimeZoneIdentifier: paris,
-                                        recordedSeconds: 600, declaredAt: at(12, 20))
+        let evening = try value.capture(recordingStartedAt: at(12, 19), recordedSeconds: 600, declaredAt: at(12, 20))
         #expect(evening.dayKey == "2026-10-12" && evening.actualStart > evening.expectedEnd)
 
         #expect(throws: LearningWindowError.recordedBeforeStart) {
-            try value.capture(recordingStartedAt: at(12, 5), recordingTimeZoneIdentifier: paris, recordedSeconds: 600, declaredAt: at(12, 8))
+            try value.capture(recordingStartedAt: at(12, 5), recordedSeconds: 600, declaredAt: at(12, 8))
         }
         #expect(throws: LearningWindowError.notAScheduledMorning) {
-            try value.capture(recordingStartedAt: at(15, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 600, declaredAt: at(15, 8))
+            try value.capture(recordingStartedAt: at(15, 7), recordedSeconds: 600, declaredAt: at(15, 8))
         }
         #expect(throws: LearningWindowError.invalidRecording) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 0, declaredAt: at(13, 8))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 0, declaredAt: at(13, 8))
         }
         #expect(throws: LearningWindowError.invalidRecording) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 600, declaredAt: at(13, 6))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 600, declaredAt: at(13, 6))
         }
         let planned = try window()
         #expect(throws: LearningWindowError.windowNotStarted) {
-            try planned.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 600, declaredAt: at(12, 8))
+            try planned.capture(recordingStartedAt: at(12, 7), recordedSeconds: 600, declaredAt: at(12, 8))
         }
     }
 
@@ -368,11 +503,9 @@ struct LearningWindowTests {
         try #expect(value.schedule(asOf: at(12, 6)).mornings.map(\.dayKey) == ["2026-10-13"])
         // 23:58 on Monday belongs to Monday, as in the archive, and Monday is not a morning of this window.
         #expect(throws: LearningWindowError.notAScheduledMorning) {
-            try value.capture(recordingStartedAt: at(12, 23, 58), recordingTimeZoneIdentifier: paris,
-                              recordedSeconds: 900, declaredAt: at(13, 1))
+            try value.capture(recordingStartedAt: at(12, 23, 58), recordedSeconds: 900, declaredAt: at(13, 1))
         }
-        let tuesday = try value.capture(recordingStartedAt: at(13, 0, 6), recordingTimeZoneIdentifier: paris,
-                                        recordedSeconds: 540, declaredAt: at(13, 1))
+        let tuesday = try value.capture(recordingStartedAt: at(13, 0, 6), recordedSeconds: 540, declaredAt: at(13, 1))
         #expect(tuesday.dayKey == "2026-10-13")
     }
 
@@ -381,18 +514,17 @@ struct LearningWindowTests {
         try value.start(at: at(12, 6))
         try value.pause(at: at(12, 7, 30))
         // Recorded 07:00 to 07:20, before Pause; saved while paused.
-        let before = try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                                       recordedSeconds: 1_200, declaredAt: at(12, 7, 40))
+        let before = try value.capture(recordingStartedAt: at(12, 7), recordedSeconds: 1_200, declaredAt: at(12, 7, 40))
         #expect(value.counts(before))
         #expect(throws: LearningWindowError.recordedWhilePaused) {
-            try value.capture(recordingStartedAt: at(12, 7, 35), recordingTimeZoneIdentifier: paris, recordedSeconds: 60, declaredAt: at(12, 7, 40))
+            try value.capture(recordingStartedAt: at(12, 7, 35), recordedSeconds: 60, declaredAt: at(12, 7, 40))
         }
         #expect(throws: LearningWindowError.recordedWhilePaused) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 1_200, declaredAt: at(13, 8))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 1_200, declaredAt: at(13, 8))
         }
         try value.start(at: at(13, 12))
         #expect(throws: LearningWindowError.recordedWhilePaused) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris, recordedSeconds: 1_200, declaredAt: at(13, 13))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 1_200, declaredAt: at(13, 13))
         }
 
         // A copy of the window taken before Pause would still accept a recording begun
@@ -401,14 +533,26 @@ struct LearningWindowTests {
         try current.start(at: at(12, 6))
         let stale = current
         try current.pause(at: at(12, 7, 0, 30))
-        let during = try stale.capture(recordingStartedAt: at(12, 7, 0, 40), recordingTimeZoneIdentifier: paris,
-                                       recordedSeconds: 300, declaredAt: at(12, 7, 10))
+        let during = try stale.capture(recordingStartedAt: at(12, 7, 0, 40), recordedSeconds: 300, declaredAt: at(12, 7, 10))
         #expect(stale.counts(during) && !current.counts(during))
-        // Nor a declaration filed under a day other than the one the recording started on.
-        let wrongDay = try ObservationWindowCapture(windowID: current.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
-            expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(11, 7), actualEnd: at(11, 7, 20),
-            declaredAt: at(12, 6, 30))
-        #expect(!current.counts(wrongDay))
+        // A declaration filed under a day other than the one the recording started on cannot
+        // even be written, nor one whose day is read on the phone's calendar: 23:00 on the 11th
+        // in New York is the window's 12th, not the 11th.
+        #expect(throws: ObservationWindowCaptureError.invalid) {
+            try ObservationWindowCapture(windowID: current.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
+                expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(11, 7), actualEnd: at(11, 7, 20),
+                declaredAt: at(12, 6, 30))
+        }
+        #expect(throws: ObservationWindowCaptureError.invalid) {
+            try ObservationWindowCapture(windowID: current.id, dayKey: "2026-10-11", timeZoneIdentifier: paris,
+                expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(11, 23, zone: "America/New_York"),
+                actualEnd: at(11, 23, 20, zone: "America/New_York"), declaredAt: at(12, 6, 30))
+        }
+        // One under the phone's zone is well formed and counts for nothing: the window's zone is its own.
+        let phoneZone = try ObservationWindowCapture(windowID: current.id, dayKey: "2026-10-12", timeZoneIdentifier: "Asia/Tokyo",
+            expectedStart: at(12, 7), expectedEnd: at(12, 7, 20), actualStart: at(12, 7), actualEnd: at(12, 7, 20),
+            declaredAt: at(12, 7, 25))
+        #expect(!current.counts(phoneZone))
     }
 
     /// Issue #19: "Stop/cancel must end acquisition and prevent later stale data from being
@@ -416,8 +560,7 @@ struct LearningWindowTests {
     @Test func stopEndsTheWindowAndPreventsLaterStaleDataFromBeingAppendedToIt() throws {
         var value = try window(mornings: 3)
         try value.start(at: at(12, 6))
-        let first = try value.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                                      recordedSeconds: 1_200, declaredAt: at(12, 7, 25))
+        let first = try value.capture(recordingStartedAt: at(12, 7), recordedSeconds: 1_200, declaredAt: at(12, 7, 25))
         // Tuesday's recording runs 07:00 to 07:20. The person presses Stop at 07:30, before it is saved.
         let outcome8 = try value.stop(at: at(13, 7, 30))
         #expect(outcome8)
@@ -426,13 +569,11 @@ struct LearningWindowTests {
 
         // The recording made before Stop is stale once Stop was pressed.
         #expect(throws: LearningWindowError.windowStopped) {
-            try value.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris,
-                              recordedSeconds: 1_200, declaredAt: at(13, 7, 31))
+            try value.capture(recordingStartedAt: at(13, 7), recordedSeconds: 1_200, declaredAt: at(13, 7, 31))
         }
         // So is anything recorded afterwards.
         #expect(throws: LearningWindowError.windowStopped) {
-            try value.capture(recordingStartedAt: at(14, 7), recordingTimeZoneIdentifier: paris,
-                              recordedSeconds: 1_200, declaredAt: at(14, 8))
+            try value.capture(recordingStartedAt: at(14, 7), recordedSeconds: 1_200, declaredAt: at(14, 8))
         }
         // What was declared before Stop still counts; a declaration dated at or after Stop
         // does not, even if something wrote it without asking the window.
@@ -451,8 +592,7 @@ struct LearningWindowTests {
         try value.start(at: at(12, 6))
         var other = try window(mornings: 2)
         try other.start(at: at(12, 6))
-        let capture = try other.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                                        recordedSeconds: 1_200, declaredAt: at(12, 8))
+        let capture = try other.capture(recordingStartedAt: at(12, 7), recordedSeconds: 1_200, declaredAt: at(12, 8))
         #expect(other.counts(capture) && !value.counts(capture))
         let shifted = try ObservationWindowCapture(windowID: value.id, dayKey: "2026-10-12", timeZoneIdentifier: paris,
             expectedStart: at(12, 9), expectedEnd: at(12, 9, 20), actualStart: at(12, 9), actualEnd: at(12, 9, 20),

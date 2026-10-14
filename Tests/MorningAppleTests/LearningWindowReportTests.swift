@@ -270,17 +270,18 @@ struct LearningWindowReportTests {
     @Test func onlyANativeRecordingOfTheWindowCanBeDeclaredAndOnlyOnce() throws {
         let learning = try window()
         let imported = try recording(at(12, 7), seconds: 300, native: false)
-        let tokyo = try recording(at(13, 7, zone: "Asia/Tokyo"), seconds: 300, zone: "Asia/Tokyo")
+        // Recorded on a day of the window's calendar that is not one of its four mornings.
+        let later = try recording(at(16, 7), seconds: 300)
         let good = try recording(at(13, 7), seconds: 300)
-        var archive = try ObservationArchive(entries: [imported, tokyo, good])
+        var archive = try ObservationArchive(entries: [imported, later, good])
         let untouched = archive
 
         // An imported file has no recording session: nothing knows when it was recorded.
         #expect(throws: LearningWindowError.recordingStartUnknown) {
             try archive.declareCapture(of: imported.id, to: learning, at: at(13, 9))
         }
-        #expect(throws: LearningWindowError.differentTimeZone) {
-            try archive.declareCapture(of: tokyo.id, to: learning, at: at(13, 9))
+        #expect(throws: LearningWindowError.notAScheduledMorning) {
+            try archive.declareCapture(of: later.id, to: learning, at: at(16, 9))
         }
         #expect(throws: ObservationArchiveError.unknownAcquisition) {
             try archive.declareCapture(of: UUID(), to: learning, at: at(13, 9))
@@ -295,14 +296,15 @@ struct LearningWindowReportTests {
         #expect(archive.entry(id: good.id)?.windowCapture == first)
 
         // A declaration must describe that recording's own session and movie.
-        let other = try learning.capture(recordingStartedAt: at(12, 7), recordingTimeZoneIdentifier: paris,
-                                         recordedSeconds: 300, declaredAt: at(13, 9))
+        let other = try learning.capture(recordingStartedAt: at(12, 7), recordedSeconds: 300, declaredAt: at(13, 9))
         var second = try ObservationArchive(entries: [good, imported])
-        #expect(throws: ObservationArchiveError.invalidRecordingContext) { try second.attachWindowCapture(other, to: good.id) }
-        #expect(throws: ObservationArchiveError.invalidRecordingContext) { try second.attachWindowCapture(first, to: imported.id) }
-        let longer = try learning.capture(recordingStartedAt: at(13, 7), recordingTimeZoneIdentifier: paris,
-                                          recordedSeconds: 301, declaredAt: at(13, 9))
-        #expect(throws: ObservationArchiveError.invalidRecordingContext) { try second.attachWindowCapture(longer, to: good.id) }
+        // Refused under its own name, not as a fault of the recording's session.
+        #expect(throws: ObservationArchiveError.invalidWindowCapture) { try second.attachWindowCapture(other, to: good.id) }
+        #expect(throws: ObservationArchiveError.invalidWindowCapture) { try second.attachWindowCapture(first, to: imported.id) }
+        let longer = try learning.capture(recordingStartedAt: at(13, 7), recordedSeconds: 301, declaredAt: at(13, 9))
+        #expect(throws: ObservationArchiveError.invalidWindowCapture) { try second.attachWindowCapture(longer, to: good.id) }
+        #expect(second == (try ObservationArchive(entries: [good, imported])))
+        #expect(ObservationArchiveError.invalidWindowCapture.errorDescription != ObservationArchiveError.invalidRecordingContext.errorDescription)
     }
 
     /// Issue #19: "Stop/cancel must end acquisition and prevent later stale data from being

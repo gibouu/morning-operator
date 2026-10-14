@@ -55,7 +55,9 @@ public struct LearningWindowReminderPlanner {
     }
 
     /// - Parameters:
-    ///   - observedDayKeys: mornings that already have a recording; they need no reminder.
+    ///   - observedDayKeys: mornings that already have a recording, as the window's own day
+    ///     keys (`LearningWindowMorningReport.dayKey`), never the dates of the phone's
+    ///     calendar; they need no reminder.
     ///   - personRequested: true only when the person has just pressed Start on the window.
     ///     It is the one case that may ask for notification permission.
     @discardableResult

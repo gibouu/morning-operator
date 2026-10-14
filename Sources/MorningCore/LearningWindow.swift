@@ -30,7 +30,7 @@ public enum LearningWindowError: Error, Equatable, Sendable {
     case cannotStart(LearningWindowState), cannotPause(LearningWindowState), clockWentBack, tooManyPauses
     case notAScheduledMorning, morningAlreadyStarted
     // Declaring a recording to the window.
-    case windowNotStarted, windowStopped, differentTimeZone, recordedBeforeStart, recordedAfterEnd
+    case windowNotStarted, windowStopped, recordedBeforeStart, recordedAfterEnd
     case recordedWhilePaused, morningSkipped, recordingStartUnknown, alreadyDeclared, invalidRecording
 }
 
@@ -68,18 +68,23 @@ public struct LearningWindowSchedule: Sendable, Equatable {
 /// person has (Start, Pause, Stop). It starts and stops no recording: the OS requires the
 /// person to start each one, and this type has no access to the recorder.
 ///
-/// Time zone. The window keeps the zone it was created in. Its mornings are that zone's
-/// local days, exactly as the archive dates an observation by a day in the zone recorded
-/// with it and never moves it onto another calendar. A person who travels still sees the
-/// window at the same instants (07:00 in Paris is 14:00 in Tokyo), and a recording made
-/// under another zone is refused rather than counted as a comparable morning.
+/// Time zone. The window keeps the zone it was created in, and its mornings are that zone's
+/// local days. A morning is an instant, not a reading of the phone's clock: 07:00 in Paris
+/// is 14:00 in Tokyo and 01:00 in New York, and a person who travels records at that
+/// instant. A recording is matched to a morning by when it ran, never by the zone the phone
+/// was in: it belongs to the morning whose day, on the window's calendar, contains the
+/// instant it started. The phone's zone is not asked for and refuses nothing. A recording
+/// made on such a day at another hour, 07:00 on the traveller's own clock for instance, is
+/// still declared to that morning, and its interval shows that it ran outside the window.
 ///
 /// Daylight saving. A morning starts at the chosen wall-clock time of its local day, so a
 /// 07:00 window stays at 07:00 on both transition days, 23 or 25 hours after the previous
-/// one. A start time the clocks skip (02:30 on the spring day) begins at the first instant
-/// that exists after it (03:00), and a day on which no such instant is left (the clocks
-/// skip the end of the day, or would carry the morning past midnight) has no morning; a start time that occurs twice (02:30 on the autumn day)
-/// uses the first occurrence. The duration is elapsed time in every case.
+/// one. A start time the clocks skip begins at the first instant that exists after it,
+/// however long the skip: 03:00 for 02:30 on the Paris spring day, 02:30 for 02:15 on Lord
+/// Howe Island, where the clocks move by half an hour. A day on which no such instant is
+/// left (the clocks skip the end of the day), or on which the morning would run past
+/// midnight, has no morning. A start time that occurs twice (02:30 on the autumn day) uses
+/// the first occurrence. The duration is elapsed time in every case.
 ///
 /// Nothing translated is stored: states, weekdays and reasons are fixed identifiers.
 public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
@@ -244,15 +249,12 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
                 guard let noon = calendar.date(byAdding: .day, value: offset, to: firstNoon),
                       let weekday = LearningWindowWeekday(rawValue: calendar.component(.weekday, from: noon)),
                       weekdays.contains(weekday),
-                      let start = calendar.date(bySettingHour: startMinuteOfDay / 60, minute: startMinuteOfDay % 60,
-                                                second: 0, of: noon, matchingPolicy: .nextTime,
-                                                repeatedTimePolicy: .first, direction: .forward),
+                      // Nil where the clocks skip the end of the day: that day has no morning.
+                      let start = Self.firstInstant(atOrAfterMinute: startMinuteOfDay, onDayOf: noon, calendar: calendar),
                       start >= startedAt else { continue }
                 let key = Self.dayKey(noon, calendar: calendar)
-                // Where the clocks skip the end of a day, the chosen time has no instant left
-                // on that day and the search lands on the next one. That day has no morning.
-                // The same goes for a morning the clock change would carry past midnight:
-                // a recording that began in its last minutes would be dated on the next day.
+                // A morning the clock change would carry past midnight is dropped too: a
+                // recording that began in its last minutes would belong to the next day.
                 let end = start.addingTimeInterval(Double(durationSeconds))
                 guard Self.dayKey(start, calendar: calendar) == key,
                       Self.dayKey(end.addingTimeInterval(-1), calendar: calendar) == key else { continue }
@@ -283,15 +285,22 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
     // MARK: Declaring a recording
 
     /// Declares one finished native recording to this window, or says why it does not
-    /// belong. The recording belongs to the local day it started on, the same day the
-    /// archive gives it. A recording on a scheduled morning is accepted even when it ran
-    /// outside the expected interval; the capture then shows that it did.
+    /// belong. Only instants are read: when the recording started and how long it ran.
+    /// The zone the phone was in is not a parameter, so a recording made while travelling
+    /// is judged exactly as one made at home.
+    ///
+    /// The recording belongs to the morning whose day, on the window's own calendar,
+    /// contains the instant it started. At home that is the day the archive gives it; away,
+    /// the archive may date the same recording a day earlier or later on the phone's
+    /// calendar, and the window's day is the one written on the declaration. A recording on
+    /// a scheduled morning is accepted even when it ran outside the expected interval; the
+    /// capture then shows that it did.
     ///
     /// Only a finished recording can be declared: one whose end is still to come is refused.
-    /// Refused: before Start, after Stop, a start during a pause, a skipped morning, a day
-    /// that is not a morning of this window, and a recording made under another time zone.
-    public func capture(recordingStartedAt start: Date, recordingTimeZoneIdentifier: String,
-                        recordedSeconds: Double, declaredAt now: Date) throws -> ObservationWindowCapture {
+    /// Refused: before Start, after Stop, a start during a pause, a skipped morning, and a
+    /// day of the window's calendar that is not a morning of this window.
+    public func capture(recordingStartedAt start: Date, recordedSeconds: Double,
+                        declaredAt now: Date) throws -> ObservationWindowCapture {
         switch state {
         case .planned: throw LearningWindowError.windowNotStarted
         case .stopped: throw LearningWindowError.windowStopped
@@ -301,7 +310,6 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         guard start.timeIntervalSinceReferenceDate.isFinite, now.timeIntervalSinceReferenceDate.isFinite,
               recordedSeconds.isFinite, recordedSeconds > 0, recordedSeconds <= 24 * 60 * 60,
               start.addingTimeInterval(recordedSeconds) <= now else { throw LearningWindowError.invalidRecording }
-        guard recordingTimeZoneIdentifier == timeZoneIdentifier else { throw LearningWindowError.differentTimeZone }
         guard start >= startedAt else { throw LearningWindowError.recordedBeforeStart }
         if let endedAt, start >= endedAt { throw LearningWindowError.recordedAfterEnd }
         guard !startsDuringPause(start) else { throw LearningWindowError.recordedWhilePaused }
@@ -325,6 +333,8 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
     /// that can be read from the saved value is checked again on every reading, so a
     /// declaration written at or after Stop, for a recording begun during a pause, or for
     /// a day other than the one the recording started on counts for nothing, whatever wrote it.
+    /// The day is read on the window's calendar from the instant the recording started, so
+    /// the answer is the same wherever the phone was and wherever it is now.
     public func counts(_ capture: ObservationWindowCapture) -> Bool {
         guard capture.windowID == id, capture.timeZoneIdentifier == timeZoneIdentifier,
               let calendar = Self.calendar(timeZoneIdentifier),
@@ -372,7 +382,31 @@ public struct LearningWindow: Codable, Sendable, Equatable, Identifiable {
         return calendar
     }
 
-    /// The same key the archive gives a day: its date in this zone.
+    /// The first instant of `day`'s local day whose wall-clock time is at or after `minute`
+    /// minutes past midnight. The day is walked one stretch of constant offset at a time, so
+    /// the length of a clock change does not matter: a time the clocks skip gives the first
+    /// instant after the skip, a time that occurs twice gives its first occurrence, and a
+    /// time with nothing left after it on that day gives nil.
+    static func firstInstant(atOrAfterMinute minute: Int, onDayOf day: Date, calendar: Calendar) -> Date? {
+        guard let bounds = calendar.dateInterval(of: .day, for: day) else { return nil }
+        let target = Double(minute * 60)
+        var stretchStart = bounds.start
+        while stretchStart < bounds.end {
+            let change = calendar.timeZone.nextDaylightSavingTimeTransition(after: stretchStart)
+            let stretchEnd = change.map { min($0, bounds.end) } ?? bounds.end
+            guard stretchEnd > stretchStart else { return nil }
+            let clock = calendar.dateComponents([.hour, .minute, .second], from: stretchStart)
+            let reading = Double((clock.hour ?? 0) * 3_600 + (clock.minute ?? 0) * 60 + (clock.second ?? 0))
+            // The clocks jumped over the chosen time to get here.
+            if target < reading { return stretchStart }
+            let instant = stretchStart.addingTimeInterval(target - reading)
+            if instant < stretchEnd { return instant }
+            stretchStart = stretchEnd
+        }
+        return nil
+    }
+
+    /// A day of this zone as the archive writes one: its date in this zone.
     static func dayKey(_ date: Date, calendar: Calendar) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)

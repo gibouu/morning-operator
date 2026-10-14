@@ -6,6 +6,17 @@ public enum ObservationWindowCaptureError: Error, Equatable, Sendable { case inv
 /// interval the window expected and the interval the recording actually ran. A learning
 /// window writes it once, when the saved recording is declared to it.
 ///
+/// What is stored, so that nothing depends on where the phone was or is:
+/// - `expectedStart`, `expectedEnd`, `actualStart`, `actualEnd` and `declaredAt` are
+///   absolute instants. They read the same in every time zone.
+/// - `dayKey` names the morning: the day, on the WINDOW's calendar, that contains
+///   `actualStart`. `timeZoneIdentifier` is that calendar's zone, the window's own. Neither
+///   is the phone's: the zone the recording was made in stays on the recording's session
+///   (`ObservationRecordingContext`), and the day the archive files the observation under
+///   stays on the observation. A morning recorded while travelling can therefore be filed
+///   in the archive under one date and declared here to the window's morning of another.
+/// A value whose day key is not the day of its own instants is refused, not repaired.
+///
 /// The actual interval is when a recording was running, from the start the recording output
 /// acknowledged to that start plus the length of the finalized movie. It says nothing about
 /// what the person did: a locked phone, a blank screen or an unread page inside it is still
@@ -14,6 +25,7 @@ public struct ObservationWindowCapture: Codable, Equatable, Sendable {
     public let windowID: UUID
     /// The scheduled morning, as a day in the window's time zone.
     public let dayKey: String
+    /// The window's time zone, in which `dayKey` is a day. Never the zone of the phone.
     public let timeZoneIdentifier: String
     public let expectedStart: Date
     public let expectedEnd: Date
@@ -30,7 +42,10 @@ public struct ObservationWindowCapture: Codable, Equatable, Sendable {
               expectedEnd > expectedStart, actualEnd > actualStart, declaredAt >= actualEnd,
               expectedEnd.timeIntervalSince(expectedStart) <= 24 * 60 * 60,
               actualEnd.timeIntervalSince(actualStart) <= 24 * 60 * 60,
-              dayKey.utf8.count == 10, TimeZone(identifier: timeZoneIdentifier) != nil else {
+              dayKey.utf8.count == 10, let calendar = LearningWindow.calendar(timeZoneIdentifier),
+              // Both the recording and the morning it is declared to are of that day.
+              LearningWindow.dayKey(actualStart, calendar: calendar) == dayKey,
+              LearningWindow.dayKey(expectedStart, calendar: calendar) == dayKey else {
             throw ObservationWindowCaptureError.invalid
         }
         self.windowID = windowID
