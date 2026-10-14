@@ -252,19 +252,24 @@ final class BudgetAndRecapTests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
-    /// Scrolls the list or page that holds the element until it can be seen.
+    /// Scrolls the list or page until the element can be seen. A native list creates its
+    /// rows only near the screen, so a row below the fold may not exist yet: swipe up then.
     private func reveal(_ identifier: String, in app: XCUIApplication,
                         file: StaticString = #filePath, line: UInt = #line) {
         let target = element(identifier, in: app)
-        XCTAssertTrue(target.waitForExistence(timeout: 5), "Missing: \(identifier)", file: file, line: line)
-        for _ in 0..<8 where !target.isHittable {
-            let collection = app.collectionViews.containing(.any, identifier: identifier).firstMatch
-            let scroll = app.scrollViews.containing(.any, identifier: identifier).firstMatch
-            let container = collection.exists ? collection : scroll
+        _ = target.waitForExistence(timeout: 3)
+        for _ in 0..<10 where !(target.exists && target.isHittable) {
+            // The container that holds the element, or, before it exists, the page's list.
+            let holder = target.exists ? app.collectionViews.containing(.any, identifier: identifier).firstMatch
+                : app.collectionViews.firstMatch
+            let scroll = target.exists ? app.scrollViews.containing(.any, identifier: identifier).firstMatch
+                : app.scrollViews.firstMatch
+            let container = holder.exists ? holder : scroll
             guard container.exists else { break }
-            if target.frame.height > 0, target.frame.midY < container.frame.midY { container.swipeDown() }
+            if target.exists, target.frame.height > 0, target.frame.midY < container.frame.midY { container.swipeDown() }
             else { container.swipeUp() }
         }
+        XCTAssertTrue(target.exists, "Missing: \(identifier)", file: file, line: line)
         XCTAssertTrue(target.isHittable, "Not visible: \(identifier)", file: file, line: line)
     }
 
