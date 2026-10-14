@@ -260,8 +260,10 @@ struct SleepBriefingControllerTests {
                                            includesHealth: true))
         let attempt = Task { await controller.refresh() }
         await weather.waitUntilCalled()
-        await reader.waitUntilCalled()
+        // Read one after the other, only weather's deadline would be waiting here.
         await clock.waitForSleepers(2)
+        try #require(clock.sleeperCount == 2, "Weather and sleep must wait at the same time.")
+        await reader.waitUntilCalled()
         clock.advance(by: .seconds(10) - .milliseconds(1))
         #expect(clock.sleeperCount == 2 && controller.isPreparing, "A deadline fired before its time.")
         clock.advance(by: .milliseconds(1))
@@ -291,8 +293,10 @@ struct SleepBriefingControllerTests {
         try controller.updateSettings(.init(weatherLocation: try syntheticLocation(), includesHealth: true))
         let attempt = Task { await controller.refresh() }
         await weather.waitUntilCalled()
-        await reader.waitUntilCalled()
+        // Read one after the other, only weather's deadline would be waiting here.
         await clock.waitForSleepers(2)
+        try #require(clock.sleeperCount == 2, "Weather and sleep must wait at the same time.")
+        await reader.waitUntilCalled()
         if sleepAnswers { reader.release(.samples(night)) } else { weather.release(try syntheticWeather()) }
         // The answered source cancels its own deadline; only the other one is left.
         while clock.sleeperCount > 1 { await Task.yield() }
@@ -324,8 +328,10 @@ struct SleepBriefingControllerTests {
         try controller.updateSettings(.init(weatherLocation: try syntheticLocation(), includesHealth: true))
         let attempt = Task { await controller.refresh() }
         await weather.waitUntilCalled()
-        await reader.waitUntilCalled()
+        // Read one after the other, only weather's deadline would be waiting here.
         await clock.waitForSleepers(2)
+        try #require(clock.sleeperCount == 2, "Weather and sleep must wait at the same time.")
+        await reader.waitUntilCalled()
         controller.cancelAndClear()
         #expect(await attempt.value == nil)
         #expect(clock.sleeperCount == 0, "Both deadlines were cancelled with the refresh.")
