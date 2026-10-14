@@ -65,8 +65,8 @@ final class ObservationArchiveTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No saved observations"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["observation.row.\(secondID)"].exists)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5),
-                      "Deleting observations must preserve the independently saved routine.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", in: app,
+            "Deleting observations must preserve the independently saved routine.")
     }
 
     func testUndatedImportNeedsExplicitDayAndOriginBeforeAppearingInDayHistory() {
@@ -132,7 +132,7 @@ final class ObservationArchiveTests: XCTestCase {
         // The same file is imported again through the production importer after restart.
         relaunchWithoutSeed(app)
         MorningUITestNavigation.reviewAction("review.learn", in: app)
-        let keptNotice = app.staticTexts["This observation is already saved. Your corrections and its date have been kept."]
+        let keptNotice = app.staticTexts["This observation is already saved. Your corrections and its date have been kept. Your routine is unchanged."]
         XCTAssertTrue(keptNotice.waitForExistence(timeout: 15), "The duplicate import must finish before assertions.")
         waitForNotes(corrected, in: app)
         closeLearn(in: app)
@@ -191,8 +191,10 @@ final class ObservationArchiveTests: XCTestCase {
         assertDetailValue("observation.importedDate", equals: "Import date unknown", in: app)
         assertDetailValue("observation.observedDate", equals: "Date needed", in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5)
-                      || app.buttons["run.start"].waitForExistence(timeout: 5), "Legacy routine must survive migration.")
+        MorningUITestNavigation.revealMorningAction("morning.learn", in: app)
+        XCTAssertTrue(app.buttons["morning.reviewDraft"].exists || app.buttons["run.start"].exists,
+                      "Legacy routine must survive migration.")
+        MorningUITestNavigation.closeMorningActions(in: app)
         attach("archive-legacy-migration-keeps-unknown-dates", app)
     }
 
@@ -278,8 +280,8 @@ final class ObservationArchiveTests: XCTestCase {
         XCTAssertTrue(approve.waitForExistence(timeout: 5))
         XCTAssertTrue(approve.isEnabled)
         approve.tap()
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5),
-                      "The preserved draft can be approved after explicit reset; this test does not start it.")
+        MorningUITestNavigation.assertMorningAction("run.start", in: app,
+            "The preserved draft can be approved after explicit reset; this test does not start it.")
         attach("preferences-explicit-reset-keeps-routine-and-observation", app)
     }
 
