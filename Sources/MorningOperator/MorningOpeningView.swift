@@ -14,12 +14,12 @@ struct MorningOpeningView: View {
             if let opening = presentation.opening {
                 if presentation.phase == .brief, let brief = presentation.briefText {
                     // The recap being read, word for word.
-                    Text(verbatim: brief).font(.body)
+                    Text(verbatim: brief).font(.body).foregroundStyle(MorningStyle.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("opening.briefText")
                 } else {
                     // One string for the screen, VoiceOver and speech.
-                    Text(verbatim: opening.displayText).font(.body)
+                    Text(verbatim: opening.displayText).font(.body).foregroundStyle(MorningStyle.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("opening.text")
                         .accessibilityValue(store.openingSpeechObservation)
@@ -39,7 +39,7 @@ struct MorningOpeningView: View {
                 .accessibilityIdentifier("opening.preparing")
             }
         }
-        .foregroundStyle(MorningStyle.ink)
+        // No colour on the whole block: it would override the prominent button's own label.
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 20))
     }
@@ -73,9 +73,10 @@ struct MorningOpeningView: View {
             .accessibilityIdentifier(identifier(choice))
             // The first choice the opening names is the prominent one.
             if choice == offered.first {
-                button.buttonStyle(.glassProminent).tint(MorningStyle.controlTint)
+                // White on the fixed brown tint in both appearances, as PrimaryButtonStyle does.
+                button.buttonStyle(.glassProminent).tint(MorningStyle.controlTint).foregroundStyle(.white)
             } else {
-                button.buttonStyle(.glass)
+                button.buttonStyle(.glass).foregroundStyle(MorningStyle.ink)
             }
         }
     }
