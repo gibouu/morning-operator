@@ -545,7 +545,9 @@ struct TodayView: View {
             if let routine = store.routine {
                 if !store.sessionActive { routineHeading(routine, compact: compact) }
                 if let opening = store.currentOpening { MorningOpeningView(store: store, presentation: opening) }
-                if store.sessionActive { nowPlaying(compact: compact) }
+                // The first moment's card waits with the routine: it appears once the
+                // opening gives way, by a choice or on its own when hands free (issue #99).
+                else if store.sessionActive { nowPlaying(compact: compact) }
                 if store.session?.status == .completed { closingMoment }
                 compactTimeline(routine, compact: compact)
                 if routine.isSynthetic {
@@ -813,6 +815,7 @@ struct TodayView: View {
             }
             Text(store.currentStep?.title ?? String(localized: "Your morning"))
                 .font(.headline).accessibilityIdentifier("run.step")
+                .accessibilityValue(store.openingRoutineStartObservation)
             if compact {
                 EmptyView()
             } else if store.automatic, !store.automation.message.isEmpty {

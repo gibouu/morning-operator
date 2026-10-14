@@ -2,7 +2,8 @@ import XCTest
 
 /// The app injects explicitly synthetic calendar/weather/search values only in a
 /// UUID-isolated DEBUG workspace. These checks establish no live Apple source,
-/// permission, network, speech audibility or automatic routine progression.
+/// permission, network or speech audibility. Only the hands-free checks (issue #99)
+/// let the routine progress on its own, from the speech coordinator's completion.
 @MainActor
 final class MorningBriefingTests: XCTestCase {
     func testSelectedSourcesPrepareRecapAndAddingItRequiresApprovalAfterRelaunch() {
@@ -122,11 +123,83 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
-    private func launchFixture() -> XCUIApplication {
+    /// Issue #99. Requests real synthesis on a simulator; the speech coordinator's own
+    /// completion, never a listener, is what moves the morning on.
+    func testHandsFreeGreetingIsSpokenThenTheRoutineStartsWithoutATapOrTheRecap() throws {
+        let app = try startHandsFreeWithPreparedSources()
+        let opening = app.staticTexts["opening.text"]
+        XCTAssertEqual(opening.value as? String, "speech requested")
+        XCTAssertTrue(app.buttons["opening.brief"].exists, "The recap is offered; Hands free must not take it.")
+        XCTAssertFalse(app.staticTexts["run.step"].exists, "The Now card waits with the routine.")
+        attach("hands-free-opening-being-spoken", app)
+        // The routine does not start over the greeting.
+        let early = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true"), object: app.staticTexts["run.step"])
+        early.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [early], timeout: 2), .completed, "The routine must wait for the greeting to end.")
+
+        // No tap from here. Watch for the recap while the greeting ends.
+        var recapShown = false
+        let deadline = Date().addingTimeInterval(60)
+        while opening.exists && Date() < deadline {
+            if app.staticTexts["opening.briefText"].exists { recapShown = true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        XCTAssertFalse(opening.exists, "A hands-free morning must not wait for a tap.\n\(app.debugDescription)")
+        XCTAssertFalse(recapShown || app.staticTexts["opening.briefText"].exists, "Hands free never plays the recap unasked.")
+        let step = app.staticTexts["run.step"]
+        XCTAssertTrue(step.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(step.value as? String, "routine started 1")
+        attach("hands-free-routine-started-after-greeting", app)
+        // The first, spoken moment completes by itself and the manual one waits.
+        let manual = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "People and messages"), object: step)
+        XCTAssertEqual(XCTWaiter.wait(for: [manual], timeout: 60), .completed, app.debugDescription)
+        XCTAssertEqual(step.value as? String, "routine started 1")
+        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
+    }
+
+    /// Issue #99: a tap on "Start my routine" while the hands-free greeting is read starts
+    /// the routine once; the greeting's own end then finds nothing left to start.
+    func testStartMyRoutineDuringTheHandsFreeGreetingStartsTheRoutineOnce() throws {
+        let app = try startHandsFreeWithPreparedSources()
+        XCTAssertEqual(app.staticTexts["opening.text"].value as? String, "speech requested")
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
+        let step = app.staticTexts["run.step"]
+        XCTAssertTrue(step.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(step.value as? String, "routine started 1")
+        // Past the greeting's length and through the first spoken moment: still one start.
+        let manual = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "People and messages"), object: step)
+        XCTAssertEqual(XCTWaiter.wait(for: [manual], timeout: 60), .completed, app.debugDescription)
+        XCTAssertEqual(step.value as? String, "routine started 1")
+        XCTAssertFalse(app.staticTexts["opening.text"].exists)
+        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
+    }
+
+    /// Sources prepared, spoken guidance and Hands free on, started; the opening is on screen.
+    private func startHandsFreeWithPreparedSources() throws -> XCUIApplication {
+        #if !targetEnvironment(simulator)
+        guard ProcessInfo.processInfo.environment["MO_VOICE_TEST_ENABLED"] == "1" else {
+            throw XCTSkip("Opt in before playing speech on the selected phone.")
+        }
+        #endif
+        let app = launchFixture(["--ui-testing-hands-free", "--ui-testing-read-aloud"])
+        openBriefing(app)
+        configureSources(app)
+        assertPreparedSources(app)
+        closeBriefingAndSettings(app)
+        MorningUITestNavigation.openRoutine(in: app)
+        MorningUITestNavigation.tapButton("routine.approve", in: app)
+        MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
+        XCTAssertTrue(app.staticTexts["opening.text"].waitForExistence(timeout: 15), app.debugDescription)
+        return app
+    }
+
+    private func launchFixture(_ extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--light-preview",
-            "--ui-testing-workspace=\(UUID().uuidString)", "--ui-testing-briefing-fixture"]
+            "--ui-testing-workspace=\(UUID().uuidString)", "--ui-testing-briefing-fixture"] + extra
         app.launch()
         return app
     }

@@ -137,6 +137,8 @@ final class QuietMorningTests: XCTestCase {
         XCTAssertEqual(app.alerts.count, 0)
         app.navigationBars["Your next morning"].buttons["Done"].tap()
         XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))
+        // The pending entry opens the morning; its first moment follows the choice (issue #99).
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
         XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
         XCTAssertFalse(app.navigationBars["Your next morning"].exists)
     }

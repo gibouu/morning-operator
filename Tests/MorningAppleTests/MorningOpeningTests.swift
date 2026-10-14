@@ -221,6 +221,21 @@ struct MorningOpeningTests {
         #expect(try JSONDecoder().decode(MorningGreetingState.self, from: encoder.encode(MorningGreetingState())) == MorningGreetingState())
     }
 
+    @Test func normalMorningWaitsForTheChoiceHoweverTheGreetingEnds() {
+        for end in MorningGreetingEnd.allCases {
+            #expect(MorningOpeningHandOver.after(end, handsFree: false) == .waitForChoice, "\(end)")
+        }
+    }
+
+    @Test func handsFreeMorningStartsTheRoutineOnceTheGreetingIsOver() {
+        // Spoken and finished, never spoken, or impossible to speak: the routine starts.
+        for end in [MorningGreetingEnd.finished, .notSpoken, .failed] {
+            #expect(MorningOpeningHandOver.after(end, handsFree: true) == .startRoutine, "\(end)")
+        }
+        // Stopped by a choice, Pause, Stop or an interruption: that action decides, not the opening.
+        #expect(MorningOpeningHandOver.after(.stopped, handsFree: true) == .waitForChoice)
+    }
+
     private func compose(_ briefing: PreparedMorningBriefing, at date: Date? = nil, zone: String = "UTC",
                          counts: [MorningOpeningProvider: MorningOpeningCount] = [:],
                          precipitation: MorningPrecipitationForecast? = nil,

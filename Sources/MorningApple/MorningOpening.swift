@@ -218,6 +218,35 @@ private struct MorningOpeningPhrases {
     }
 }
 
+/// How the opening's greeting ended, as the hands-free hand-over sees it (issue #99).
+public enum MorningGreetingEnd: Sendable, Equatable, CaseIterable {
+    /// Nothing was spoken: spoken guidance is off, this morning was already greeted, or
+    /// the microphone holds the audio.
+    case notSpoken
+    /// The speech synthesizer reported the end of the greeting.
+    case finished
+    /// The greeting could not be spoken (no voice, no audio output).
+    case failed
+    /// Something else ended it: a choice, Pause, Stop, an audio interruption or a
+    /// changed listening setting. That action decides what happens next.
+    case stopped
+}
+
+/// What the opening does once its greeting is over (issue #99). A normal morning waits
+/// for the person's choice. A hands-free morning does not wait: it starts the routine.
+/// It never plays the recap on its own; only the person asks for that.
+public enum MorningOpeningHandOver: Sendable, Equatable {
+    case waitForChoice, startRoutine
+
+    public static func after(_ end: MorningGreetingEnd, handsFree: Bool) -> Self {
+        guard handsFree else { return .waitForChoice }
+        switch end {
+        case .notSpoken, .finished, .failed: return .startRoutine
+        case .stopped: return .waitForChoice
+        }
+    }
+}
+
 /// Why the opening might play. Only an explicit morning start may play it.
 public enum MorningOpeningTrigger: String, Sendable, Equatable, CaseIterable {
     case morningStart, settingsPreview, appLaunch, dataRefresh, tabSwitch

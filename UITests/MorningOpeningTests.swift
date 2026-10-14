@@ -19,15 +19,42 @@ final class MorningOpeningUITests: XCTestCase {
             XCTAssertTrue(control.isHittable, identifier)
             XCTAssertFalse(control.label.isEmpty, identifier)
         }
-        XCTAssertEqual(app.staticTexts["run.state"].value as? String, "running")
+        // Issue #99: the first moment's "Now" card waits with the routine. The run controls stay.
+        XCTAssertFalse(app.staticTexts["run.state"].exists, "The Now card is hidden while the opening waits.")
+        XCTAssertFalse(app.staticTexts["run.step"].exists, "The Now card is hidden while the opening waits.")
+        XCTAssertTrue(app.buttons["run.pause"].exists)
         attach("opening-no-source-connected", app)
+        // A normal morning waits for the tap: nothing moves on its own.
+        let leaves = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["opening.routine"])
+        leaves.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [leaves], timeout: 4), .completed, "Without Hands free the opening waits for a choice.")
+        XCTAssertFalse(app.staticTexts["run.step"].exists)
 
         app.buttons["opening.routine"].tap()
         XCTAssertTrue(opening.waitForNonExistence(timeout: 5))
         XCTAssertFalse(app.buttons["opening.routine"].exists)
         XCTAssertEqual(app.staticTexts["run.state"].value as? String, "running")
         XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        XCTAssertEqual(app.staticTexts["run.step"].value as? String, "routine started 1")
         XCTAssertTrue(app.buttons["run.pause"].exists)
+        attach("opening-routine-started-now-card", app)
+    }
+
+    /// Issue #99, with spoken guidance off: a hands-free morning does not wait for a tap.
+    /// The spoken case, with a recap on offer, is in `MorningBriefingTests`.
+    func testHandsFreeStartWithoutSpeechReachesTheFirstStepWithoutATap() {
+        let app = launch(extra: ["--ui-testing-hands-free"])
+        start(app)
+        let step = app.staticTexts["run.step"]
+        XCTAssertTrue(step.waitForExistence(timeout: 15), "A hands-free morning starts its routine on its own.\n\(app.debugDescription)")
+        XCTAssertFalse(app.staticTexts["opening.text"].exists)
+        XCTAssertFalse(app.buttons["opening.routine"].exists)
+        XCTAssertFalse(app.staticTexts["opening.briefText"].exists)
+        XCTAssertEqual(step.label, "Your morning")
+        XCTAssertEqual(step.value as? String, "routine started 1")
+        XCTAssertTrue(app.buttons["run.pause"].exists)
+        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
     func testStopAtTheOpeningEndsTheMorning() {
@@ -141,7 +168,8 @@ final class MorningOpeningUITests: XCTestCase {
     private func launch(approved: Bool = true, extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        // An isolated temporary workspace; the fixture keeps speech and hands-free off.
+        // An isolated temporary workspace; the fixture keeps speech and hands-free off
+        // unless `extra` asks for them.
         // The light palette unless a test asks for the dark one.
         app.launchArguments = ["--ui-testing", "--fixture-mode"] + (extra.contains("--dark-preview") ? [] : ["--light-preview"])
             + ["--ui-testing-workspace=\(UUID().uuidString)"]

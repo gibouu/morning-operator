@@ -22,10 +22,9 @@ struct MorningOpeningPresentation: Equatable {
     var document: PreparedMorningBriefing?
     /// The recap exactly as it is read, shown while it plays.
     var briefText: String?
-    /// True when the opening text was handed to the speech coordinator.
+    /// True when the opening text was handed to the speech coordinator. Its playback
+    /// is `openingTask`: cancelling that task stops this utterance and nothing else.
     var speechRequested = false
-    /// The opening's own utterance, so ending the opening stops nothing else.
-    var playbackID: UUID?
     /// The recap was asked for and could not be read; it is no longer offered.
     var briefWithdrawn = false
 }
@@ -35,6 +34,17 @@ extension MorningStore {
     var currentOpening: MorningOpeningPresentation? {
         guard let openingPresentation, sessionActive, openingPresentation.sessionID == session?.id else { return nil }
         return openingPresentation
+    }
+
+    /// Lets UI tests count how often this morning's opening handed over to its routine.
+    /// Empty outside them.
+    var openingRoutineStartObservation: String {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return "" }
+        return "routine started \(openingRoutineStarts)"
+        #else
+        return ""
+        #endif
     }
 
     /// Lets UI tests read whether speech was requested. Empty outside them, so
@@ -57,17 +67,19 @@ extension MorningStore {
         return greetingState.claimPlayback(for: .morningStart, sessionID: session.id)
     }
 
-    /// Called once, by `start()`, after the new session is saved. Nothing else opens a
-    /// morning: not a launch, a refresh, a preview, a return to the home or a resume.
+    /// Called once, by `start()`, after the new session is saved, whatever asked for the
+    /// start: the Start button, an invitation, a shortcut or a voice request. Nothing else
+    /// opens a morning: not a launch, a refresh, a preview, a return to the home or a
+    /// resume. From here the opening decides when the routine begins.
     func beginOpening(mayGreet: Bool) {
         endOpening()
+        openingRoutineStarts = 0
         guard !privacyBlocksWork, let session, session.status == .running else { return }
         let sessionID = session.id
         openingPresentation = MorningOpeningPresentation(sessionID: sessionID)
         guard briefing.hasConfiguredSources else {
-            // Nothing to read: the opening is on screen before `start()` returns. If it
-            // cannot be composed, `start()` begins the first moment as it always did.
-            if !presentOpening(document: nil, sessionID: sessionID, mayGreet: mayGreet) { endOpening() }
+            // Nothing to read: the opening is on screen before `start()` returns.
+            presentOpening(document: nil, sessionID: sessionID, mayGreet: mayGreet)
             return
         }
         openingTask = Task { [weak self] in
@@ -78,32 +90,74 @@ extension MorningStore {
             guard !Task.isCancelled, openingPresentation?.sessionID == sessionID,
                   openingPresentation?.phase == .preparing else { return }
             openingTask = nil
-            if !presentOpening(document: document, sessionID: sessionID, mayGreet: mayGreet) {
-                // Without an opening the morning simply begins, as it did before.
-                endOpening()
-                runCurrentIfEnabled()
-            }
+            presentOpening(document: document, sessionID: sessionID, mayGreet: mayGreet)
         }
     }
 
-    /// False when no opening can be shown for this session; the caller then lets the morning begin.
-    private func presentOpening(document: PreparedMorningBriefing?, sessionID: UUID, mayGreet: Bool) -> Bool {
+    private func presentOpening(document: PreparedMorningBriefing?, sessionID: UUID, mayGreet: Bool) {
         let now = Date(), zone = TimeZone.current.identifier
         guard !privacyBlocksWork, session?.id == sessionID, session?.status == .running,
-              let source = document ?? briefingWithoutFacts(at: now, timeZoneIdentifier: zone) else { return false }
+              let source = document ?? briefingWithoutFacts(at: now, timeZoneIdentifier: zone) else {
+            // Without an opening the morning simply begins, as it did before.
+            endOpening()
+            runCurrentIfEnabled()
+            return
+        }
         // No counts, forecast or sender share: this version has no source for them, so
         // the composer says nothing about them.
         let opening = MorningOpeningComposer.compose(briefing: source, at: now, timeZoneIdentifier: zone)
-        var presentation = MorningOpeningPresentation(sessionID: sessionID, phase: .choosing,
-                                                      opening: opening, document: document)
+        openingPresentation = MorningOpeningPresentation(sessionID: sessionID, phase: .choosing,
+                                                         opening: opening, document: document)
         if mayGreet, readAloud, !voiceInputBlocksPlayback {
-            // The steps' own speech path. Pause, an interruption and Stop reach it there.
-            speech.speak(opening.spokenText)
-            presentation.speechRequested = true
-            presentation.playbackID = speech.playbackID
+            greet(opening.spokenText, sessionID: sessionID)
+        } else {
+            handOverOpening(after: .notSpoken)
         }
-        openingPresentation = presentation
+    }
+
+    /// Reads the opening once, on the steps' own speech path, so Pause, an interruption and
+    /// Stop reach it there. Its end is handed to `handOverOpening`: a hands-free morning
+    /// starts its routine only after the greeting, never over it (issue #99).
+    private func greet(_ text: String, sessionID: UUID) {
+        openingPresentation?.speechRequested = true
+        openingTask = Task { [weak self] in
+            guard let self else { return }
+            let end: MorningGreetingEnd
+            do {
+                try await speech.speakAndWait(text)
+                end = .finished
+            } catch is CancellationError {
+                end = .stopped
+            } catch {
+                end = .failed
+            }
+            // Ended with the opening (a choice, Pause, Stop, a new morning): nothing to hand over.
+            guard !Task.isCancelled, openingPresentation?.sessionID == sessionID,
+                  openingPresentation?.phase == .choosing else { return }
+            openingTask = nil
+            handOverOpening(after: end)
+        }
+    }
+
+    /// When the opening has nothing more to say, a hands-free morning starts its routine
+    /// on its own; a normal one waits for the person's choice (issue #99). It never plays
+    /// the recap. True when the routine was started. Callers hand over only once nothing
+    /// is being read: the greeting's own end, or a settings change that has just stopped it.
+    @discardableResult
+    func handOverOpening(after end: MorningGreetingEnd) -> Bool {
+        guard !privacyBlocksWork, let presentation = currentOpening, presentation.phase == .choosing,
+              session?.status == .running,
+              MorningOpeningHandOver.after(end, handsFree: automatic) == .startRoutine else { return false }
+        startRoutineFromOpening()
         return true
+    }
+
+    /// The one way the opening gives way to its routine. Ending the opening first makes
+    /// every later caller, a tap on "Start my routine" included, find nothing to start.
+    private func startRoutineFromOpening() {
+        endOpening()
+        openingRoutineStarts += 1
+        runCurrentIfEnabled()
     }
 
     /// The briefing behind an opening when nothing was prepared. A source that is not
@@ -127,8 +181,7 @@ extension MorningStore {
             stop()
         case .ritual:
             guard session?.status == .running, !voiceInputBlocksPlayback else { return }
-            endOpening()
-            runCurrentIfEnabled()
+            startRoutineFromOpening()
         case .brief:
             playOpeningBrief(presentation)
         }
@@ -138,11 +191,10 @@ extension MorningStore {
         guard presentation.phase == .choosing, !presentation.briefWithdrawn, session?.status == .running,
               !voiceInputBlocksPlayback, let quoted = presentation.document else { return }
         let sessionID = presentation.sessionID
+        // The answer ends the opening sentence if it is still being read: cancelling its
+        // task stops that utterance only.
         openingTask?.cancel()
-        // The answer ends the opening sentence if it is still being read.
-        if let id = presentation.playbackID, id == speech.playbackID { speech.stop() }
         openingPresentation?.phase = .brief
-        openingPresentation?.playbackID = nil
         openingTask = Task { [weak self] in
             guard let self else { return }
             @MainActor func stillAsked() -> Bool {
@@ -171,6 +223,7 @@ extension MorningStore {
                 openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: Date(),
                     timeZoneIdentifier: TimeZone.current.identifier, offersBrief: false)
                 notice = String(localized: "This recap needs an update before playback.")
+                handOverOpening(after: .failed)
                 return
             }
             openingPresentation?.document = document
@@ -183,27 +236,30 @@ extension MorningStore {
                 openingTask = nil
                 openingPresentation?.phase = .choosing
                 openingPresentation?.briefText = nil
-                if !(error is CancellationError) { notice = error.localizedDescription }
+                if !(error is CancellationError) {
+                    notice = error.localizedDescription
+                    handOverOpening(after: .failed)
+                }
                 return
             }
             guard openingPresentation?.sessionID == sessionID, openingPresentation?.phase == .brief,
                   session?.id == sessionID, session?.status == .running else { return }
             openingTask = nil
             openingPresentation = nil
+            openingRoutineStarts += 1
             // A first moment that reads this same recap has just been heard.
             if currentStep?.automation == .morningBriefing { advance() } else { runCurrentIfEnabled() }
         }
     }
 
-    /// Ends the opening and its own speech. A step's speech is never stopped from here.
+    /// Ends the opening and its own speech. A step's speech is never stopped from here:
+    /// cancelling the greeting's task stops the greeting's utterance only.
     func endOpening() {
         let task = openingTask
         openingTask = nil
         guard let presentation = openingPresentation else { task?.cancel(); return }
         openingPresentation = nil
         task?.cancel()
-        if presentation.phase == .brief || (presentation.playbackID != nil && presentation.playbackID == speech.playbackID) {
-            speech.stop()
-        }
+        if presentation.phase == .brief { speech.stop() }
     }
 }

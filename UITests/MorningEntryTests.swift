@@ -36,12 +36,18 @@ final class MorningEntryUITests: XCTestCase {
         notification.tap()
         XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 15))
         XCTAssertEqual(app.state, .runningForeground)
+        // The invitation opens the morning like the Start button; its first moment follows the choice.
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
         XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
     }
 
     func testApprovedEntryStartsOnceWithoutAnotherTap() {
         let app = launch(["--ui-testing-approved", "--ui-testing-start-entry"])
         XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))
+        // The entry starts the morning at its opening (issue #99): no Now card until the choice.
+        XCTAssertTrue(app.buttons["opening.routine"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.staticTexts["run.step"].exists)
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
         XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
         XCTAssertFalse(app.buttons["routine.approve"].exists)
         app.buttons["run.next"].tap()
