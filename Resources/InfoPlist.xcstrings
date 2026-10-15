@@ -1,6 +1,24 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "NSAlarmKitUsageDescription": {
+      "comment": "Privacy usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE schedules your morning alarm and opens your approved morning when you stop it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE programme votre réveil et ouvre votre matinée approuvée quand vous l’arrêtez."
+          }
+        }
+      }
+    },
     "NSCalendarsFullAccessUsageDescription": {
       "comment": "Privacy usage description",
       "extractionState": "manual",

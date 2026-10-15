@@ -173,7 +173,7 @@ public struct MorningLiveActivityRecord: Sendable, Equatable {
                 if currentSnapshot?.state.hasSameProgress(as: snapshot.state) != true ||
                     (record?.state == .stale && isForeground) {
                     do { try await provider.update(id: id, snapshot: snapshot,
-                        staleDate: snapshot.state.updatedAt.addingTimeInterval(Self.staleAfter)) }
+                        staleDate: snapshot.state.staleDate(staleAfter: Self.staleAfter)) }
                     catch { throw (error as? MorningLiveActivityError) ?? .updateFailed }
                     guard mayRetain(snapshot) else { try await endAllRecords(); return }
                     currentSnapshot = snapshot
@@ -191,7 +191,7 @@ public struct MorningLiveActivityRecord: Sendable, Equatable {
         requestedGrants.insert(grant); pendingStartGrant = nil
         let id: String
         do { id = try await provider.request(snapshot: snapshot,
-            staleDate: snapshot.state.updatedAt.addingTimeInterval(Self.staleAfter)) }
+            staleDate: snapshot.state.staleDate(staleAfter: Self.staleAfter)) }
         catch { throw (error as? MorningLiveActivityError) ?? .requestFailed }
         activeActivityID = id; currentSnapshot = snapshot
         guard mayRetain(snapshot) else { try await endAllRecords(); return }

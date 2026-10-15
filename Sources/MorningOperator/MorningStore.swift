@@ -147,6 +147,9 @@ final class MorningStore {
     private(set) var pendingRecordingShouldAutoProcess = false
     private var pendingRecordingInterruption: String?
     private var pendingRecordingContext: ObservationRecordingContext?
+    var stepTimerRevision = 0
+    var pendingWebTarget: URL?
+    @ObservationIgnored var stepTimerTask: Task<Void, Never>?
     var calendarBusy: Bool { briefing.isConnectingCalendar }
     var readAloud = true
     var automatic = true
@@ -432,7 +435,7 @@ final class MorningStore {
                 consumedMorningEntryIDs = saved.consumedMorningEntryIDs ?? []
                 greetingState = saved.greeting ?? MorningGreetingState()
                 if !pendingCaptures.isEmpty { notice = String(localized: "A previous Apple app save was interrupted. Check Calendar or Reminders before adding that item again.") }
-                if session?.status == .running {
+                if session?.status == .running, currentStep?.target == nil || activeStepTimer == nil {
                     sessionTimingInterrupted = true
                     try session?.pause()
                     notice = String(localized: "Your previous morning is paused. Resume when you're ready.")
@@ -511,7 +514,7 @@ final class MorningStore {
             guard let self else { return }
             let enabled = self.showMorningOnLockScreen && self.storageIsAvailable && !self.morningActivitySaveBlocked
             let snapshot = MorningActivityProjection.snapshot(session: self.session,
-                needsAttention: self.automation.status != .executing)
+                needsAttention: self.automation.status != .executing, timer: self.activeStepTimer)
             let generation = self.dataGeneration
             do {
                 try await self.morningActivity.synchronize(snapshot: snapshot, enabled: enabled,
@@ -781,7 +784,14 @@ final class MorningStore {
         cancelVoiceCommandTurn()
         endOpening()
         cancelStepPlayback()
+        pauseStepTimer()
         do { try session?.pause(); speech.stop(); notice = nil; persist() }
+        catch { notice = error.localizedDescription }
+    }
+
+    func resumeForNext() {
+        guard !privacyBlocksWork, !voiceInputBlocksPlayback else { return }
+        do { try session?.resume(); if !persist() { pauseAfterSaveFailure() } }
         catch { notice = error.localizedDescription }
     }
 
@@ -806,6 +816,7 @@ final class MorningStore {
         cancelStepPlayback()
         do {
             try session?.advance(skipping: skipping, commandID: commandID)
+            endStepTimer()
             speech.stop()
             notice = nil
             if session?.status == .completed {
@@ -824,6 +835,7 @@ final class MorningStore {
         endOpening()
         cancelStepPlayback()
         speech.stop()
+        endStepTimer()
         do { try session?.stop(); archiveTerminalSession(); notice = nil; persist() }
         catch { notice = error.localizedDescription }
     }
@@ -2040,6 +2052,7 @@ final class MorningStore {
         guard openingPresentation == nil else { return }
         guard !voiceInputBlocksPlayback else { return }
         guard let session, session.status == .running else { return }
+        if beginTargetStep() { return }
         if automatic {
             stepExecutor.spokenEnabled = readAloud
             automation.runCurrentStep(in: session) { [weak self] context in
@@ -2059,6 +2072,7 @@ final class MorningStore {
     }
 
     private func pauseAfterSaveFailure() {
+        pauseStepTimer()
         endOpening()
         cancelStepPlayback()
         speech.stop()
@@ -2186,6 +2200,8 @@ final class MorningStore {
             try ScreenRecordingFiles.removeAllOwnedRecordings()
             #endif
             try await invitation.forget()
+            endStepTimer()
+            try MorningAlarmService.shared.forget()
             try privacyControl.withForgetAccess(expectedGeneration: generation) {
                 try recordingRecovery.removeAllOwnedData()
                 // SEGMENTED SESSIONS (#27) ARE NOT FORGOTTEN HERE YET. Nothing in the app
@@ -2196,7 +2212,7 @@ final class MorningStore {
                 // The sessions' observations go with the archive, which this forget clears.
                 // A package test (SegmentedSessionForgettingGuardTests) fails if the app
                 // starts using the store without calling `forgetAll`.
-                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json"] {
+                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json", "step-timer.json", "morning-alarm.json"] {
                     try removeOwnedPayload(snapshot.url.deletingLastPathComponent().appendingPathComponent(name))
                 }
                 let directory = snapshot.url.deletingLastPathComponent()

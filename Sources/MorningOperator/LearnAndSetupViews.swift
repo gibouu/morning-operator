@@ -308,6 +308,7 @@ struct LearnView: View {
 
 struct SetupView: View {
     @Bindable var store: MorningStore
+    @ViewState<Bool> private var choosingAlarm = false
     @ViewState<Bool> private var choosingVoice = false
     @ViewState<Bool> private var choosingInvitation = false
     @ViewState<Bool> private var showingPrivacy = false
@@ -316,6 +317,9 @@ struct SetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
+            Button("Morning alarm", systemImage: "alarm") { choosingAlarm = true }
+                .accessibilityIdentifier("setup.alarm")
+            NavigationLink("Shortcuts & timers") { ShortcutTemplatesView() }
             CardButton { choosingInvitation = true } content: {
                 HStack(spacing: 14) {
                     Image(systemName: "sun.horizon").font(.title2)
@@ -442,6 +446,7 @@ struct SetupView: View {
         .task { if store.privacyNeedsCleanup { showingPrivacy = true } }
         .sheet(isPresented: $choosingBriefing) { MorningBriefingView(store: store) }
         .sheet(isPresented: $choosingActivity) { MorningActivitySettingsView(store: store) }
+        .sheet(isPresented: $choosingAlarm) { MorningAlarmView() }
         .sheet(isPresented: $choosingVoice) { VoicePickerView(speech: store.speech) }
         .sheet(isPresented: $choosingInvitation) { MorningInvitationView(service: store.invitation) }
     }
@@ -535,6 +540,7 @@ struct StepEditor: View {
                 } footer: {
                     Text(automationExplanation)
                 }
+                StepTargetEditor(target: $step.target)
                 Section {
                     Button("Remove this step", role: .destructive) { choosingRemoval = true }
                         .accessibilityIdentifier("step.remove")
