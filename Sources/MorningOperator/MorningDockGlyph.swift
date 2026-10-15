@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Semantic navigation symbols; the parent button supplies its accessible name.
 enum MorningDockSymbol: Sendable, CaseIterable {
-    case morning, play, pause, review, learn, history, settings
+    case morning, play, pause, review, learn, settings
 }
 
 /// SF Symbols provide Apple's familiar navigation shapes and optical sizing.
@@ -24,14 +24,13 @@ struct MorningDockGlyph: View {
         case .pause: "pause.fill"
         case .review: "list.bullet"
         case .learn: "eye"
-        case .history: "clock.arrow.circlepath"
         case .settings: "gearshape"
         }
     }
 }
 
-/// Only the floating navigation layer gets Liquid Glass. Content keeps its own
-/// appearance, and Reduce Transparency receives an opaque system surface.
+/// Native capsule surfaces for navigation and inline Home playback.
+/// Reduce Transparency receives an opaque system surface.
 struct MorningNavigationSurface<Content: View>: View {
     /// Also lets native component previews exercise the opaque fallback without
     /// changing the person's system accessibility preferences.
@@ -52,7 +51,7 @@ struct MorningNavigationSurface<Content: View>: View {
     }
 }
 
-/// Keep the dock and its transient playback controls in one native glass group.
+/// Let the native system compose the floating dock as one glass group.
 struct MorningNavigationGlassGroup<Content: View>: View {
     @ViewBuilder var content: Content
 
