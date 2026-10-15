@@ -3327,6 +3327,36 @@
           }
         }
       }
+    },
+    "Saved Gmail access is unavailable on this device. Unlock it and try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès Gmail enregistré est indisponible sur cet appareil. Déverrouillez-le et réessayez."
+          }
+        }
+      }
+    },
+    "This saved Gmail connection needs to be connected again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette connexion Gmail enregistrée doit être rétablie."
+          }
+        }
+      }
+    },
+    "The Gmail connection changed. Open Gmail again to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion Gmail a changé. Ouvrez Gmail de nouveau pour continuer."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

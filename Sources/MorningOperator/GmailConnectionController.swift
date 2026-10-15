@@ -6,8 +6,8 @@ import Observation
 import UIKit
 import UniformTypeIdentifiers
 
-/// Explicit foreground Gmail reads. Tokens, messages and local replies live only
-/// for this screen; website sessions never authorize this reader.
+/// Foreground Gmail reader. Only its refresh credential is kept securely; message
+/// content, access sessions and local replies clear when this reader leaves.
 @MainActor @Observable
 final class GmailConnectionController {
     private(set) var snapshot: GmailInboxSnapshot?
@@ -21,6 +21,8 @@ final class GmailConnectionController {
     private(set) var isPreparingReply = false
     private(set) var errorMessage: String?
     private(set) var hasSession = false
+    private(set) var hasSavedConnection = false
+    private(set) var canRetryConnection = false
     @ObservationIgnored private let service = GmailConnectionService()
     @ObservationIgnored private let replyService = GmailReplyDraftService()
     @ObservationIgnored private var session: GmailAccessSession?
@@ -30,6 +32,7 @@ final class GmailConnectionController {
     @ObservationIgnored private var attempt = UUID()
     @ObservationIgnored private var presenter: GmailAuthenticationPresenter?
     @ObservationIgnored private var privacyState: LocalDataControlState?
+    @ObservationIgnored private var restorationAttempted = false
 
     var hasMessageAccess: Bool { session?.canReadMessages == true }
     var isShowingMessage: Bool { selectedMessageID != nil }
@@ -40,17 +43,9 @@ final class GmailConnectionController {
         catch { return safeMessage(error) }
     }
 
-    /// The ordinary connection remains metadata/count only.
-    func connect() { authorize(access: .metadata) }
-
-    /// This separate action is the only entry point requesting message-body access.
-    func readMessages() {
-        guard !isBusy, UIApplication.shared.applicationState == .active else { return }
-        if let session, session.canReadMessages { loadUnreadMessages(using: session) }
-        else { authorize(access: .readMessages) }
-    }
-
-    private func authorize(access: GmailAuthorizationAccess) {
+    /// Only this explicit tap opens Google consent. A successful readonly/offline
+    /// grant is saved before Inbox reads, while its privacy generation is current.
+    func connect() {
         guard !isBusy, UIApplication.shared.applicationState == .active else { return }
         do {
             let configuration = try configuration()
@@ -59,7 +54,7 @@ final class GmailConnectionController {
                 .flatMap(\.windows).first(where: \.isKeyWindow) else { throw GmailPresentationError.noWindow }
             let privacy = try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { $0 }
             clearLocal()
-            privacyState = privacy
+            privacyState = privacy; restorationAttempted = true
             presenter = GmailAuthenticationPresenter(window: window)
             let token = attempt
             isBusy = true
@@ -68,53 +63,96 @@ final class GmailConnectionController {
                 defer { finishOperation(token) }
                 do {
                     try requireCurrent(token)
-                    let request = try GmailAuthorizationRequest(configuration: configuration, access: access)
+                    let request = try GmailAuthorizationRequest(configuration: configuration, access: .readMessages)
                     let url = try await authorizationCallback(for: request, token: token)
                     try requireCurrent(token)
                     let granted = try await service.completeAuthorization(request, callbackURL: url)
                     try requireCurrent(token)
-                    session = granted; hasSession = true
-                    let value = try await service.inboxUnreadCount(session: granted)
+                    try service.saveConnection(session: granted, generation: privacy.generation)
                     try requireCurrent(token)
-                    snapshot = value
-                    if case .readMessages = access {
-                        let messages = try await service.unreadInboxMessages(session: granted)
-                        try requireCurrent(token)
-                        unreadMessages = messages
-                    }
+                    hasSavedConnection = true
+                    session = granted; hasSession = true
+                    try await readInbox(using: granted, token: token)
                 } catch { connectionFailed(error, token: token) }
             }
         } catch { clearLocal(); errorMessage = safeMessage(error) }
     }
 
+    /// Opening or foregrounding this screen can refresh a saved connection, but
+    /// must never open a consent browser or create a new grant.
+    func restoreIfNeeded() {
+        guard !restorationAttempted else { return }
+        restoreSavedConnection()
+    }
+
     func refresh() {
-        guard !isBusy, let session, UIApplication.shared.applicationState == .active else { return }
+        guard !isBusy, UIApplication.shared.applicationState == .active else { return }
+        guard let session, session.expiresAt.timeIntervalSinceNow > 30 else {
+            restoreSavedConnection()
+            return
+        }
         let token = beginOperation()
-        clearMessageContent(); unreadMessages = nil; snapshot = nil
+        clearMessageContent(); snapshot = nil; unreadMessages = nil; canRetryConnection = false
         task = Task { [weak self] in
             guard let self else { return }
             defer { finishOperation(token) }
-            do {
-                try requireCurrent(token)
-                let value = try await service.inboxUnreadCount(session: session)
-                try requireCurrent(token)
-                snapshot = value
-            } catch { connectionFailed(error, token: token) }
+            do { try await readInbox(using: session, token: token) }
+            catch { connectionFailed(error, token: token) }
         }
     }
 
-    private func loadUnreadMessages(using session: GmailAccessSession) {
-        let token = beginOperation()
-        clearMessageContent(); unreadMessages = nil
-        task = Task { [weak self] in
-            guard let self else { return }
-            defer { finishOperation(token) }
-            do {
-                try requireCurrent(token)
-                let messages = try await service.unreadInboxMessages(session: session)
-                try requireCurrent(token)
-                unreadMessages = messages
-            } catch { connectionFailed(error, token: token) }
+    private func restoreSavedConnection() {
+        guard !isBusy, UIApplication.shared.applicationState == .active else { return }
+        do {
+            _ = try configuration()
+            let privacy = try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { $0 }
+            clearLocal()
+            privacyState = privacy; restorationAttempted = true
+            let token = attempt
+            isBusy = true
+            task = Task { [weak self] in
+                guard let self else { return }
+                defer { finishOperation(token) }
+                do {
+                    try requireCurrent(token)
+                    let restored = try await service.restoreConnection(generation: privacy.generation)
+                    try requireCurrent(token)
+                    guard let restored else {
+                        hasSavedConnection = false
+                        return
+                    }
+                    hasSavedConnection = true
+                    session = restored; hasSession = true
+                    try await readInbox(using: restored, token: token)
+                } catch { restorationFailed(error, token: token) }
+            }
+        } catch {
+            clearLocal(); restorationAttempted = true
+            errorMessage = safeMessage(error)
+        }
+    }
+
+    private func readInbox(using session: GmailAccessSession, token: UUID) async throws {
+        try requireCurrent(token)
+        let value = try await service.inboxUnreadCount(session: session)
+        try requireCurrent(token)
+        snapshot = value
+        let messages = try await service.unreadInboxMessages(session: session)
+        try requireCurrent(token)
+        unreadMessages = messages
+    }
+
+    /// Deleting the saved connection is separate from clearing the reader's memory.
+    func disconnect() {
+        clearLocal()
+        restorationAttempted = true
+        do {
+            try service.disconnect()
+            hasSavedConnection = false; canRetryConnection = false
+        } catch {
+            // A failed deletion must not claim the saved credential is gone.
+            canRetryConnection = true
+            errorMessage = safeMessage(error)
         }
     }
 
@@ -129,7 +167,18 @@ final class GmailConnectionController {
             defer { finishOperation(token) }
             do {
                 try requireCurrent(token)
-                let message = try await service.message(id: id, session: session)
+                var readableSession = session
+                if session.expiresAt.timeIntervalSinceNow <= 30 {
+                    guard let privacyState,
+                          let restored = try await service.restoreConnection(generation: privacyState.generation) else {
+                        hasSavedConnection = false
+                        throw GmailConnectionError.savedConnectionInvalid
+                    }
+                    try requireCurrent(token)
+                    self.session = restored; hasSession = true; hasSavedConnection = true
+                    readableSession = restored
+                }
+                let message = try await service.message(id: id, session: readableSession)
                 try requireCurrent(token)
                 guard selectedMessageID == id else { throw CancellationError() }
                 selectedMessage = message
@@ -192,10 +241,10 @@ final class GmailConnectionController {
             try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess {
                 guard $0.generation == privacyState.generation else { throw CancellationError() }
             }
-        } catch { clearLocal() }
+        } catch { clearLocal(); hasSavedConnection = false }
     }
 
-    /// Local removal only. Google account grants are managed separately by the owner.
+    /// Clears volatile content and attempts only. It never deletes Keychain access.
     func clearLocal() {
         attempt = UUID()
         task?.cancel(); task = nil
@@ -205,6 +254,7 @@ final class GmailConnectionController {
         session = nil; hasSession = false; snapshot = nil; unreadMessages = nil
         clearMessageContent(); errorMessage = nil
         privacyState = nil; presenter = nil; isBusy = false; isPreparingReply = false
+        canRetryConnection = false; restorationAttempted = false
     }
 
     private func clearMessageContent() {
@@ -225,7 +275,30 @@ final class GmailConnectionController {
 
     private func connectionFailed(_ error: any Error, token: UUID) {
         guard attempt == token else { return }
-        clearLocal()
+        do { try requireCurrent(token) }
+        catch { clearLocal(); return }
+        if error is CancellationError { clearLocal(); return }
+        let saved = hasSavedConnection
+        clearLocal(); restorationAttempted = true
+        hasSavedConnection = saved
+        canRetryConnection = saved
+        errorMessage = safeMessage(error)
+    }
+
+    private func restorationFailed(_ error: any Error, token: UUID) {
+        guard attempt == token else { return }
+        do { try requireCurrent(token) }
+        catch { clearLocal(); return }
+        if error is CancellationError { clearLocal(); return }
+        clearLocal(); restorationAttempted = true; canRetryConnection = true
+        if let known = error as? GmailConnectionError,
+           [.savedConnectionInvalid, .connectionChanged].contains(known) {
+            hasSavedConnection = false
+        } else {
+            // A transient restore/read failure leaves the saved credential intact.
+            // Retry refreshes it; it never starts another consent browser.
+            canRetryConnection = true
+        }
         errorMessage = safeMessage(error)
     }
 
@@ -238,10 +311,11 @@ final class GmailConnectionController {
         if error is CancellationError {
             clearLocal()
         } else if let known = error as? GmailConnectionError,
-                  [.permissionDenied, .sessionExpired, .readAccessRequired].contains(known) {
+                  [.permissionDenied, .sessionExpired, .readAccessRequired, .savedConnectionInvalid, .connectionChanged].contains(known) {
             connectionFailed(known, token: token)
         } else {
             clearMessageContent()
+            canRetryConnection = hasSavedConnection
             if let known = error as? GmailConnectionError,
                [.invalidResponse, .redirectRejected].contains(known) {
                 errorMessage = String(localized: "This message could not be read. Choose another message or refresh the Inbox.")
@@ -296,7 +370,7 @@ final class GmailConnectionController {
     private func safeMessage(_ error: any Error) -> String {
         if error is CancellationError { return String(localized: "Gmail connection cancelled.") }
         if let known = error as? GmailConnectionError { return known.localizedDescription }
-        return String(localized: "Gmail is unavailable. Try connecting again from this screen.")
+        return String(localized: "Gmail is unavailable. Try again from this screen.")
     }
 }
 

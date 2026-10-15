@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import MorningCore
 import Security
 
 /// Public iOS OAuth client configuration only. No client secret belongs in an installed app.
@@ -79,6 +80,12 @@ public final class GmailAuthorizationRequest: CustomStringConvertible, CustomDeb
             URLQueryItem(name: "code_challenge", value: Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))),
             URLQueryItem(name: "code_challenge_method", value: "S256")
         ]
+        if access == .readMessages {
+            url.queryItems?.append(contentsOf: [
+                .init(name: "access_type", value: "offline"),
+                .init(name: "prompt", value: "consent")
+            ])
+        }
         self.authorizationURL = url.url!
     }
 
@@ -121,12 +128,16 @@ public final class GmailAuthorizationRequest: CustomStringConvertible, CustomDeb
     }
 }
 
-/// Memory-only access. Intentionally neither Codable nor backed by Keychain/UserDefaults.
-/// Drop it on screen dismissal/background/disconnect. A refresh token, if returned, is discarded.
+/// Access is memory-only and clears with screen content. An explicit saved
+/// read-only connection stores only its private refresh credential in Keychain.
 public struct GmailAccessSession: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     fileprivate let accessToken: String
+    fileprivate let refreshToken: String?
+    fileprivate let authorizationClientID: String
+    fileprivate let savedCredentialID: UUID?
     public let expiresAt: Date
     public let canReadMessages: Bool
+    public var canStayConnected: Bool { canReadMessages && refreshToken != nil }
     public var description: String { "GmailAccessSession(redacted)" }
     public var debugDescription: String { description }
 }
@@ -145,6 +156,7 @@ public enum GmailConnectionError: LocalizedError, Sendable, Equatable {
     case configurationMissing, configurationInvalid, authorizationFailed, invalidCallback
     case permissionDenied, sessionExpired, networkUnavailable, rateLimited, serviceUnavailable
     case invalidResponse, redirectRejected, readAccessRequired, messageUnavailable, messageTooLarge
+    case credentialStorageUnavailable, savedConnectionInvalid, connectionChanged
 
     public var errorDescription: String? {
         switch self {
@@ -176,12 +188,18 @@ public enum GmailConnectionError: LocalizedError, Sendable, Equatable {
             String(localized: "This Gmail message is no longer available.", bundle: .module)
         case .messageTooLarge:
             String(localized: "This Gmail message exceeds the supported reading limits.", bundle: .module)
+        case .credentialStorageUnavailable:
+            String(localized: "Saved Gmail access is unavailable on this device. Unlock it and try again.", bundle: .module)
+        case .savedConnectionInvalid:
+            String(localized: "This saved Gmail connection needs to be connected again.", bundle: .module)
+        case .connectionChanged:
+            String(localized: "The Gmail connection changed. Open Gmail again to continue.", bundle: .module)
         }
     }
 }
 
 /// Token exchange and explicit read-only INBOX/message GET requests. No send, label writes,
-/// background refresh, credentials store, telemetry, automatic retries or remote revocation.
+/// background polling, mail persistence, telemetry, automatic retries or remote revocation.
 @MainActor
 public final class GmailConnectionService {
     public nonisolated static let metadataScope = "https://www.googleapis.com/auth/gmail.metadata"
@@ -189,15 +207,34 @@ public final class GmailConnectionService {
     public typealias Transport = @MainActor (URLRequest) async throws -> (Data, URLResponse)
     private let transport: Transport
     private let now: @MainActor () -> Date
+    private let credentialStorage: any GmailCredentialStorage
+    private let privacyControl: LocalDataControl
+    private let configurationProvider: @MainActor () throws -> GmailOAuthConfiguration
+    private let installationID: @MainActor () throws -> UUID
 
     public convenience init() {
         let http = GmailEphemeralTransport()
         self.init(transport: { try await http.data(for: $0) })
     }
 
-    public init(transport: @escaping Transport, now: @escaping @MainActor () -> Date = { Date() }) {
+    public convenience init(transport: @escaping Transport, now: @escaping @MainActor () -> Date = { Date() }) {
+        self.init(transport: transport, now: now, credentialStorage: GmailKeychainCredentialStorage(),
+                  privacyControl: LocalDataControl(directory: LocalDataControl.defaultDirectory),
+                  configurationProvider: Self.bundleConfiguration,
+                  installationID: GmailInstallationIdentifier.current)
+    }
+
+    // Test-only injection avoids live credentials, preferences and app privacy state.
+    init(transport: @escaping Transport, now: @escaping @MainActor () -> Date,
+         credentialStorage: any GmailCredentialStorage, privacyControl: LocalDataControl,
+         configurationProvider: @escaping @MainActor () throws -> GmailOAuthConfiguration,
+         installationID: @escaping @MainActor () throws -> UUID) {
         self.transport = transport
         self.now = now
+        self.credentialStorage = credentialStorage
+        self.privacyControl = privacyControl
+        self.configurationProvider = configurationProvider
+        self.installationID = installationID
     }
 
     public func completeAuthorization(_ attempt: GmailAuthorizationRequest, callbackURL: URL) async throws -> GmailAccessSession {
@@ -212,25 +249,152 @@ public final class GmailConnectionService {
                       "code": code, "code_verifier": attempt.verifier, "grant_type": "authorization_code"]
         request.httpBody = Self.formBody(values)
         let data = try await perform(request, exchangingCode: true)
-        struct TokenResponse: Decodable {
-            let access_token: String
-            let token_type: String
-            let expires_in: Int
-            let scope: String
-        }
-        guard let token = try? JSONDecoder().decode(TokenResponse.self, from: data),
-              token.token_type == "Bearer", token.expires_in > 0, token.expires_in <= 86_400,
-              !token.access_token.isEmpty, token.access_token.utf8.count <= 8_192,
-              token.access_token.utf8.allSatisfy(Self.bearerCharacters.contains) else {
-            throw GmailConnectionError.invalidResponse
-        }
+        let token = try validatedToken(data, fallbackScope: nil)
         let scopes = Set(token.scope.split(separator: " ").map(String.init))
         let hasRequiredScope = attempt.access == .readMessages
             ? scopes.contains(Self.readonlyScope)
             : scopes.contains(Self.metadataScope) || scopes.contains(Self.readonlyScope)
         guard hasRequiredScope else { throw GmailConnectionError.permissionDenied }
-        return GmailAccessSession(accessToken: token.access_token, expiresAt: now().addingTimeInterval(TimeInterval(token.expires_in)),
+        return GmailAccessSession(accessToken: token.accessToken,
+                                  refreshToken: attempt.access == .readMessages ? token.refreshToken : nil,
+                                  authorizationClientID: attempt.configuration.clientID, savedCredentialID: nil,
+                                  expiresAt: now().addingTimeInterval(TimeInterval(token.expiresIn)),
                                   canReadMessages: attempt.access == .readMessages)
+    }
+
+    /// Explicit authorization persistence. The privacy lock covers both generation
+    /// validation and the actual Keychain write; no late callback can cross Forget.
+    public func saveConnection(session: GmailAccessSession, generation: UUID?) throws {
+        try Task.checkCancellation()
+        guard session.canStayConnected, let refresh = session.refreshToken,
+              session.expiresAt > now() else { throw GmailConnectionError.savedConnectionInvalid }
+        let configuration = try configurationProvider()
+        guard configuration.clientID == session.authorizationClientID else { throw GmailConnectionError.savedConnectionInvalid }
+        try withCurrentGeneration(generation) {
+            if let expectedID = session.savedCredentialID {
+                guard let current = try credentialStorage.load(),
+                      let saved = try? JSONDecoder().decode(GmailSavedCredential.self, from: current),
+                      saved.id == expectedID else { throw GmailConnectionError.connectionChanged }
+            }
+            let saved = GmailSavedCredential(clientID: configuration.clientID, refreshToken: refresh,
+                                            generation: generation, installationID: try installationID())
+            try credentialStorage.save(JSONEncoder().encode(saved))
+        }
+    }
+
+    /// Restores authorization, not mail. Network/lock/storage/parse failures keep
+    /// the saved credential intact so Retry never becomes another browser login.
+    public func restoreConnection(generation: UUID?) async throws -> GmailAccessSession? {
+        try Task.checkCancellation()
+        let loaded: (Data, GmailSavedCredential)? = try withCurrentGeneration(generation) {
+            guard let data = try credentialStorage.load() else { return nil }
+            guard data.count <= 16_384,
+                  let saved = try? JSONDecoder().decode(GmailSavedCredential.self, from: data),
+                  saved.schemaVersion == 1 else { throw GmailConnectionError.savedConnectionInvalid }
+            guard saved.installationID == (try installationID()) else {
+                try credentialStorage.remove()
+                return nil
+            }
+            guard saved.generation == generation else { throw GmailConnectionError.connectionChanged }
+            let configuration = try configurationProvider()
+            guard saved.clientID == configuration.clientID, saved.scope == Self.readonlyScope,
+                  Self.validToken(saved.refreshToken) else { throw GmailConnectionError.savedConnectionInvalid }
+            return (data, saved)
+        }
+        guard let (original, saved) = loaded else { return nil }
+        var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!,
+                                 cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = Self.formBody(["client_id": saved.clientID, "refresh_token": saved.refreshToken,
+                                         "grant_type": "refresh_token"])
+        let data: Data
+        do { data = try await perform(request, refreshing: true) }
+        catch GmailRefreshError.revoked {
+            try withCurrentGeneration(generation) {
+                guard try credentialStorage.load() == original else { throw GmailConnectionError.connectionChanged }
+                try credentialStorage.remove()
+            }
+            return nil
+        }
+        let token = try validatedToken(data, fallbackScope: saved.scope)
+        guard token.scope.split(separator: " ").contains(Substring(Self.readonlyScope)) else {
+            // A successfully refreshed grant that explicitly lost read access
+            // needs consent again; Retry cannot restore a permission it lacks.
+            try withCurrentGeneration(generation) {
+                guard try credentialStorage.load() == original else { throw GmailConnectionError.connectionChanged }
+                try credentialStorage.remove()
+            }
+            return nil
+        }
+        return try withCurrentGeneration(generation) {
+            try Task.checkCancellation()
+            guard try credentialStorage.load() == original else { throw GmailConnectionError.connectionChanged }
+            var current = saved
+            if let rotated = token.refreshToken, rotated != saved.refreshToken {
+                current = GmailSavedCredential(clientID: saved.clientID, refreshToken: rotated,
+                                               generation: generation, installationID: saved.installationID)
+                try credentialStorage.save(JSONEncoder().encode(current))
+            }
+            return GmailAccessSession(accessToken: token.accessToken, refreshToken: current.refreshToken,
+                                      authorizationClientID: saved.clientID, savedCredentialID: current.id,
+                                      expiresAt: now().addingTimeInterval(TimeInterval(token.expiresIn)), canReadMessages: true)
+        }
+    }
+
+    public func disconnect() throws {
+        do { try credentialStorage.remove() }
+        catch { throw GmailConnectionError.credentialStorageUnavailable }
+    }
+
+    private func withCurrentGeneration<T>(_ generation: UUID?, _ body: () throws -> T) throws -> T {
+        try Task.checkCancellation()
+        do {
+            return try privacyControl.withReadyAccess { state in
+                try Task.checkCancellation()
+                guard state.generation == generation else { throw GmailConnectionError.connectionChanged }
+                return try body()
+            }
+        } catch is CancellationError { throw CancellationError() }
+        catch is LocalDataControlError { throw GmailConnectionError.connectionChanged }
+        catch let error as GmailConnectionError { throw error }
+        catch { throw GmailConnectionError.credentialStorageUnavailable }
+    }
+
+    private static func bundleConfiguration() throws -> GmailOAuthConfiguration {
+        let schemes = (Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? [])
+            .flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
+        return try GmailOAuthConfiguration(clientID: Bundle.main.object(forInfoDictionaryKey: "MOREGoogleClientID") as? String ?? "",
+                                           registeredURLSchemes: schemes)
+    }
+
+    private struct ValidatedToken {
+        let accessToken: String
+        let refreshToken: String?
+        let scope: String
+        let expiresIn: Int
+    }
+
+    private func validatedToken(_ data: Data, fallbackScope: String?) throws -> ValidatedToken {
+        struct Response: Decodable {
+            let access_token: String
+            let token_type: String
+            let expires_in: Int
+            let scope: String?
+            let refresh_token: String?
+        }
+        guard let token = try? JSONDecoder().decode(Response.self, from: data),
+              token.token_type == "Bearer", token.expires_in > 0, token.expires_in <= 86_400,
+              Self.validToken(token.access_token), let scope = token.scope ?? fallbackScope,
+              !scope.isEmpty, scope.utf8.count <= 4_096 else { throw GmailConnectionError.invalidResponse }
+        if let refresh = token.refresh_token, !Self.validToken(refresh) { throw GmailConnectionError.invalidResponse }
+        return ValidatedToken(accessToken: token.access_token, refreshToken: token.refresh_token,
+                              scope: scope, expiresIn: token.expires_in)
+    }
+
+    private static func validToken(_ token: String) -> Bool {
+        !token.isEmpty && token.utf8.count <= 8_192 && token.utf8.allSatisfy(Self.bearerCharacters.contains)
     }
 
     public func inboxUnreadCount(session: GmailAccessSession) async throws -> GmailInboxSnapshot {
@@ -315,7 +479,7 @@ public final class GmailConnectionService {
         return request
     }
 
-    private func perform(_ request: URLRequest, exchangingCode: Bool = false, maximumBytes: Int = 65_536) async throws -> Data {
+    private func perform(_ request: URLRequest, exchangingCode: Bool = false, refreshing: Bool = false, maximumBytes: Int = 65_536) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -330,6 +494,10 @@ public final class GmailConnectionService {
         }
         guard let http = response as? HTTPURLResponse, http.url == request.url else {
             throw GmailConnectionError.invalidResponse
+        }
+        if refreshing, http.statusCode == 400, data.count <= maximumBytes, http.mimeType == "application/json",
+           let error = try? JSONDecoder().decode(GmailRefreshFailure.self, from: data), error.error == "invalid_grant" {
+            throw GmailRefreshError.revoked
         }
         switch http.statusCode {
         case 200: break
@@ -405,3 +573,6 @@ private final class GmailEphemeralTransport {
 
     deinit { session.invalidateAndCancel() }
 }
+
+private enum GmailRefreshError: Error { case revoked }
+private struct GmailRefreshFailure: Decodable { let error: String }

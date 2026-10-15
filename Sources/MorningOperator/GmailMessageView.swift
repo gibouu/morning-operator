@@ -5,6 +5,7 @@ import SwiftUI
 /// no send, Gmail draft write or compose-permission path exists here.
 struct GmailMessageView: View {
     @Bindable var controller: GmailConnectionController
+    @State private var showsFullMessage = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,9 +28,17 @@ struct GmailMessageView: View {
                 } else {
                     Card {
                         Text(verbatim: message.plainTextBody).font(.body).textSelection(.enabled)
+                            .lineLimit(showsFullMessage ? nil : 5)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("gmail.message.body")
                     }
+                    Button {
+                        showsFullMessage.toggle()
+                    } label: {
+                        if showsFullMessage { Text("Show less") }
+                        else { Text("Read full message") }
+                    }.buttonStyle(.plain).font(.footnote).frame(minHeight: 44)
+                        .accessibilityIdentifier("gmail.message.expand")
                 }
                 if message.bodyWasTruncated {
                     Text("Only part of this message is available. You can write a reply below.")
@@ -41,6 +50,7 @@ struct GmailMessageView: View {
                 ProgressView("Reading message…").accessibilityIdentifier("gmail.message.loading")
             }
         }
+        .onChange(of: controller.selectedMessageID) { _, _ in showsFullMessage = false }
     }
 
     private func replyComposer(_ message: GmailMessage) -> some View {

@@ -15132,6 +15132,106 @@
           }
         }
       }
+    },
+    "Your connection stays saved. Messages and local replies clear when you leave this screen or background MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre connexion reste enregistrée. Les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan."
+          }
+        }
+      }
+    },
+    "Connection saved securely on this iPhone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion enregistrée en sécurité sur cet iPhone."
+          }
+        }
+      }
+    },
+    "Connect once to read Gmail and prepare replies. Google asks for read-only access.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous une fois pour lire Gmail et préparer des réponses. Google demande un accès en lecture seule."
+          }
+        }
+      }
+    },
+    "Retry Gmail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayer Gmail"
+          }
+        }
+      }
+    },
+    "Disconnect Gmail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecter Gmail"
+          }
+        }
+      }
+    },
+    "Read full message": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire le message entier"
+          }
+        }
+      }
+    },
+    "Show less": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher moins"
+          }
+        }
+      }
+    },
+    "Gmail is unavailable. Try again from this screen.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail est indisponible. Réessayez depuis cet écran."
+          }
+        }
+      }
+    },
+    "Connection details": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails de la connexion"
+          }
+        }
+      }
+    },
+    "Disconnect removes this iPhone’s saved login. Manage Google access in your Google Account.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecter efface la connexion enregistrée sur cet iPhone. Gérez l’accès Google dans votre compte Google."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

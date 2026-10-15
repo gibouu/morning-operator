@@ -2324,6 +2324,7 @@ final class MorningStore {
             try MorningAlarmService.shared.forget()
             await WebMorningController.clearAllSignIns()
             try privacyControl.withForgetAccess(expectedGeneration: generation) {
+                try GmailCredentialStore.removeSavedConnection()
                 try recordingRecovery.removeAllOwnedData()
                 // SEGMENTED SESSIONS (#27) ARE NOT FORGOTTEN HERE YET. Nothing in the app
                 // creates one today. The change that first constructs a

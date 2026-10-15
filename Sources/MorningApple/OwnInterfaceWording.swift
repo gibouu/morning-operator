@@ -310,14 +310,17 @@ enum OwnInterfaceWording {
             shown("Connect my websites", fr: "Connecter mes sites")
         ]),
         Screen(name: "Gmail connection", copy: [
-            shown("Choose message reading or an unread count only.", fr: "Choisissez de lire vos messages ou de consulter seulement leur nombre."),
-            shown("This Gmail session, messages and local replies clear when you leave this screen or background MORE. Manage Google access in your Google Account.", fr: "La session Gmail, les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan. Gérez l’accès Google dans votre compte Google."),
+            shown("Connect once to read Gmail and prepare replies. Google asks for read-only access.", fr: "Connectez-vous une fois pour lire Gmail et préparer des réponses. Google demande un accès en lecture seule."),
+            shown("Connection saved securely on this iPhone.", fr: "Connexion enregistrée en sécurité sur cet iPhone."),
+            shown("Your connection stays saved. Messages and local replies clear when you leave this screen or background MORE.", fr: "Votre connexion reste enregistrée. Les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan."),
+            earlier("Choose message reading or an unread count only.", "Choisissez de lire vos messages ou de consulter seulement leur nombre."),
+            earlier("This Gmail session, messages and local replies clear when you leave this screen or background MORE. Manage Google access in your Google Account.", "La session Gmail, les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan. Gérez l’accès Google dans votre compte Google."),
             earlier("Read the number of unread messages in your Gmail inbox. Google asks for read-only metadata access; MORE does not read message bodies.", "Consultez le nombre de messages non lus dans votre boîte Gmail. Google demande l’accès aux métadonnées en lecture seule ; MORE ne lit pas le contenu des messages."),
             earlier("This session and its count clear when you leave this screen or background MORE. Manage the Google account grant in your Google Account.", "La session et son résultat sont effacés en quittant cet écran ou en passant MORE en arrière-plan. Gérez l’autorisation Google dans votre compte Google.")
         ], controls: [
-            shown("Read messages", fr: "Lire les messages"),
-            shown("Connect Gmail · count only", fr: "Connecter Gmail · nombre uniquement"),
-            earlier("Connect Gmail", "Connecter Gmail", "Refresh Gmail", "Actualiser Gmail")
+            shown("Connect Gmail", fr: "Connecter Gmail"),
+            shown("Disconnect Gmail", fr: "Déconnecter Gmail"),
+            earlier("Read messages", "Lire les messages", "Connect Gmail · count only", "Connecter Gmail · nombre uniquement", "Refresh Gmail", "Actualiser Gmail")
         ]),
         Screen(name: "Gmail local reply", copy: [
             shown("Your reply, in a few words", fr: "Votre réponse en quelques mots"),

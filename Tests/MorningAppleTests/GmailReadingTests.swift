@@ -15,7 +15,9 @@ struct GmailReadingTests {
         let request = try attempt(.readMessages)
         let items = URLComponents(url: request.authorizationURL, resolvingAgainstBaseURL: false)!.queryItems!
         #expect(items.first(where: { $0.name == "scope" })?.value == GmailConnectionService.readonlyScope)
-        #expect(!items.contains(where: { ["access_type", "client_secret", "include_granted_scopes"].contains($0.name) }))
+        #expect(items.first(where: { $0.name == "access_type" })?.value == "offline")
+        #expect(items.first(where: { $0.name == "prompt" })?.value == "consent")
+        #expect(!items.contains(where: { ["client_secret", "include_granted_scopes"].contains($0.name) }))
         let read = try await session(.readMessages)
         #expect(read.canReadMessages)
         let count = try await session(.metadata, grant: GmailConnectionService.readonlyScope)

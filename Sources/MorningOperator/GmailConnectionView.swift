@@ -1,8 +1,8 @@
 import MorningApple
 import SwiftUI
 
-/// Explicit Gmail reads during setup or a morning moment. Count-only access and
-/// message-reading permission are separate choices, each usable from a fresh screen.
+/// One saved readonly Gmail connection, restored silently when this reader opens.
+/// Only an explicit Connect tap may start Google consent.
 struct GmailConnectionView: View {
     var allowsReading = true
     @State private var controller = GmailConnectionController()
@@ -20,14 +20,25 @@ struct GmailConnectionView: View {
                 Text(error).font(.footnote).foregroundStyle(MorningStyle.muted)
                     .accessibilityIdentifier("gmail.error")
             }
-            Text("This Gmail session, messages and local replies clear when you leave this screen or background MORE. Manage Google access in your Google Account.")
+            Text("Your connection stays saved. Messages and local replies clear when you leave this screen or background MORE.")
                 .font(.caption).foregroundStyle(MorningStyle.muted)
+            DisclosureGroup("Connection details") {
+                Text("Disconnect removes this iPhone’s saved login. Manage Google access in your Google Account.")
+                    .font(.caption).foregroundStyle(MorningStyle.muted)
+            }.font(.caption).foregroundStyle(MorningStyle.muted)
         }
         .foregroundStyle(MorningStyle.ink)
-        .onChange(of: scenePhase) { _, phase in if phase == .background { controller.clearLocal() } }
-        .onChange(of: allowsReading) { _, allowed in if !allowed { controller.clearLocal() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { controller.clearLocal() }
+            else if phase == .active && allowsReading { controller.restoreIfNeeded() }
+        }
+        .onChange(of: allowsReading) { _, allowed in
+            if !allowed { controller.clearLocal() }
+            else if scenePhase == .active { controller.restoreIfNeeded() }
+        }
         .onDisappear { controller.clearLocal() }
         .task {
+            if canRead { controller.restoreIfNeeded() }
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
                 controller.clearIfPrivacyChanged()
@@ -36,43 +47,40 @@ struct GmailConnectionView: View {
     }
 
     @ViewBuilder private var connectionOverview: some View {
-        Text("Choose message reading or an unread count only.")
-            .font(.footnote).foregroundStyle(MorningStyle.muted)
+        if controller.hasSavedConnection {
+            Text("Connection saved securely on this iPhone.")
+                .font(.footnote).foregroundStyle(MorningStyle.muted)
+        } else {
+            Text("Connect once to read Gmail and prepare replies. Google asks for read-only access.")
+                .font(.footnote).foregroundStyle(MorningStyle.muted)
+        }
         if let configurationError = controller.configurationError {
             Text(configurationError).font(.footnote).foregroundStyle(MorningStyle.muted)
                 .accessibilityIdentifier("gmail.configuration")
         } else {
             if let snapshot = controller.snapshot { countSummary(snapshot) }
-            if !controller.hasMessageAccess {
-                Text("To read messages, Google will ask for read-only access to message text.")
-                    .font(.footnote).foregroundStyle(MorningStyle.muted)
+            if controller.hasSession || controller.hasSavedConnection || controller.canRetryConnection {
+                Button { controller.refresh() } label: {
+                    if controller.canRetryConnection { Label("Retry Gmail", systemImage: "arrow.clockwise") }
+                    else { Label("Refresh Gmail", systemImage: "arrow.clockwise") }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(!canRead || controller.isBusy)
+                .accessibilityIdentifier("gmail.refresh")
+            } else {
+                Button { controller.connect() } label: { Text("Connect Gmail") }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(!canRead || controller.isBusy)
+                    .accessibilityIdentifier("gmail.connect")
             }
-            Button {
-                controller.readMessages()
-            } label: {
-                if controller.hasMessageAccess { Label("Refresh unread messages", systemImage: "arrow.clockwise") }
-                else { Label("Read messages", systemImage: "envelope.open") }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!canRead || controller.isBusy)
-            .accessibilityIdentifier("gmail.readMessages")
-            Button {
-                if controller.hasSession { controller.refresh() } else { controller.connect() }
-            } label: {
-                if controller.hasSession { Text("Refresh unread count") }
-                else { Text("Connect Gmail · count only") }
-            }
-            .buttonStyle(SecondaryButtonStyle())
-            .disabled(!canRead || controller.isBusy)
-            .accessibilityIdentifier("gmail.connect")
             if controller.isBusy {
                 ProgressView().accessibilityLabel("Reading Gmail")
             }
             if let snapshot = controller.unreadMessages { inboxMessages(snapshot) }
-            if controller.hasSession {
-                Button("Clear this Gmail session") { controller.clearLocal() }
-                    .font(.footnote).frame(minHeight: 44)
-                    .accessibilityIdentifier("gmail.clear")
+            if controller.hasSession || controller.hasSavedConnection || controller.canRetryConnection {
+                Button("Disconnect Gmail") { controller.disconnect() }
+                    .font(.footnote).frame(minHeight: 44).disabled(!canRead)
+                    .accessibilityIdentifier("gmail.disconnect")
             }
         }
     }
