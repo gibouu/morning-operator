@@ -1287,30 +1287,10 @@ private struct MorningSunHome: View {
                     .scrollBounceBehavior(.basedOnSize)
                     .padding(.horizontal, 20).padding(.bottom, 20)
                     .transition(still ? .opacity : .opacity.combined(with: .offset(y: 12)))
-                } else if let attribution = clock.weatherAttribution, !weatherSynthetic {
-                    weatherCredit(attribution, night: night)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24).padding(.bottom, 8)
                 }
             }
             .foregroundStyle(night > 0.5 ? Color(red: 0.91, green: 0.91, blue: 0.96) : MorningStyle.ink)
         }
-    }
-
-    private func weatherCredit(_ attribution: WeatherAttributionInfo, night: Double) -> some View {
-        Link(destination: attribution.legalURL) {
-            AsyncImage(url: night > 0.5 ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFit().frame(width: 100, height: 18)
-                } else {
-                    Text(attribution.serviceName).font(.raleway(.caption))
-                }
-            }
-            .frame(minWidth: 100, minHeight: 44, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .accessibilityLabel(attribution.serviceName)
-        .accessibilityIdentifier("morning.weatherCredit")
     }
 
     private var controls: some View {
