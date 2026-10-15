@@ -163,11 +163,12 @@ public enum ScreenTimeAppCatalog {
 }
 
 public extension ScreenTimeAppCatalog {
-    /// Only reviewed, known URL schemes become executable targets. Screen Time's
-    /// bundle identifier is not a launch URL; unknown apps stay manual.
+    /// Only supported in-MORE readers or reviewed app URL schemes become targets.
+    /// Screen Time's bundle identifier is not a launch URL; unknown apps stay manual.
     static func routineTarget(for bundleIdentifier: String) -> RoutineStepTarget? {
         let app: StepApp
         switch bundleIdentifier {
+        case "com.google.Gmail": return .inAppWeb(site: WebMorningSite.gmail.table.startURL)
         case "com.apple.MobileSMS": app = .messages
         case "com.apple.mobilemail": app = .mail
         case "net.whatsapp.WhatsApp": app = .whatsapp
