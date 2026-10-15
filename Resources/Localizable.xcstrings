@@ -14422,6 +14422,326 @@
           }
         }
       }
+    },
+    "This day could not be displayed in the current time zone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce jour ne peut pas être affiché dans le fuseau horaire actuel."
+          }
+        }
+      }
+    },
+    "Hides the day strip.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masque les jours."
+          }
+        }
+      }
+    },
+    "Shows the day strip here on Home.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiche les jours ici, sur l’accueil."
+          }
+        }
+      }
+    },
+    "Previous day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour précédent"
+          }
+        }
+      }
+    },
+    "Next day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour suivant"
+          }
+        }
+      }
+    },
+    "Shows saved evidence. Does not start the routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiche les éléments enregistrés. Ne lance pas la routine."
+          }
+        }
+      }
+    },
+    "No saved personal activity": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune activité personnelle enregistrée"
+          }
+        }
+      }
+    },
+    "Saved on this day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré ce jour-là"
+          }
+        }
+      }
+    },
+    "No personal run or confirmed observation is saved for this day.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune session personnelle ni observation confirmée n’est enregistrée pour ce jour."
+          }
+        }
+      }
+    },
+    "Samples and unconfirmed sources are not included.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les exemples et les sources non confirmées sont exclus."
+          }
+        }
+      }
+    },
+    "Routine finished": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routine terminée"
+          }
+        }
+      }
+    },
+    "Routine stopped": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routine arrêtée"
+          }
+        }
+      }
+    },
+    "%lld of %lld moments completed · %lld skipped": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld moments terminés sur %lld · %lld passés"
+          }
+        }
+      }
+    },
+    "%lld saved observations": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld observations enregistrées"
+          }
+        }
+      }
+    },
+    "%lld app observations": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld observations d’apps"
+          }
+        }
+      }
+    },
+    "Saved local day · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour local enregistré · %@"
+          }
+        }
+      }
+    },
+    "%lld observations have no saved day and are not shown here.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld observations n’ont pas de jour enregistré et ne sont pas affichées ici."
+          }
+        }
+      }
+    },
+    "Edit this moment": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier ce moment"
+          }
+        }
+      }
+    },
+    "Your moments": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos moments"
+          }
+        }
+      }
+    },
+    "Tap a moment to edit. Drag to change the order. Changes save as a draft and need your approval.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touchez un moment pour le modifier. Faites-le glisser pour changer l’ordre. Les modifications sont enregistrées en brouillon et doivent être approuvées."
+          }
+        }
+      }
+    },
+    "Your daily routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre routine de chaque jour"
+          }
+        }
+      }
+    },
+    "%lld moments · %lld min planned": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld moments · %lld min prévues"
+          }
+        }
+      }
+    },
+    "Draft · review before approval": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brouillon · à relire avant approbation"
+          }
+        }
+      }
+    },
+    "Finish or end this morning before editing your routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez ou arrêtez cette matinée avant de modifier votre routine."
+          }
+        }
+      }
+    },
+    "Routine files": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fichiers de routine"
+          }
+        }
+      }
+    },
+    "Open a saved MORE plan and review it before making any changes. Import saves a draft; approval stays separate.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez un plan MORE enregistré et relisez-le avant toute modification. L’import enregistre un brouillon ; l’approbation reste distincte."
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aujourd’hui"
+          }
+        }
+      }
+    },
+    "Your change couldn't be saved right now. Finish the current activity and check local storage before trying again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre modification ne peut pas être enregistrée maintenant. Terminez l’activité en cours et vérifiez le stockage local avant de réessayer."
+          }
+        }
+      }
+    },
+    "Your routine changed while this moment was open. Cancel and reopen the moment to edit the current version.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre routine a changé pendant que ce moment était ouvert. Annulez et rouvrez le moment pour modifier la version actuelle."
+          }
+        }
+      }
+    },
+    "Saved days are unavailable. Try again later.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les jours enregistrés sont indisponibles. Réessayez plus tard."
+          }
+        }
+      }
+    },
+    "Past days show saved activity. Return to Today to continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les jours passés montrent l’activité enregistrée. Revenez à Aujourd’hui pour poursuivre votre matinée."
+          }
+        }
+      }
+    },
+    "Import or export your saved routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importer ou exporter votre routine enregistrée"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

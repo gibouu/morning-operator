@@ -7,6 +7,7 @@ import MorningApple
 struct MorningOpeningView: View {
     let store: MorningStore
     let presentation: MorningOpeningPresentation
+    var canOperate: () -> Bool = { true }
     @Environment(\.dynamicTypeSize) private var dynamicType
 
     var body: some View {
@@ -62,7 +63,10 @@ struct MorningOpeningView: View {
 
     @ViewBuilder private func buttons(_ offered: [MorningOpeningChoice]) -> some View {
         ForEach(offered, id: \.self) { choice in
-            let button = Button { store.chooseOpening(choice) } label: {
+            let button = Button {
+                guard choice == .stop || canOperate() else { return }
+                store.chooseOpening(choice)
+            } label: {
                 Label(title(choice), systemImage: symbol(choice))
                     .font(.subheadline.weight(.semibold))
                     .multilineTextAlignment(.leading)
@@ -71,6 +75,7 @@ struct MorningOpeningView: View {
             }
             .accessibilityLabel(title(choice))
             .accessibilityIdentifier(identifier(choice))
+            .disabled(choice != .stop && !canOperate())
             // The first choice the opening names is the prominent one.
             if choice == offered.first {
                 // The ink control carries the matching on-ink text in each appearance.

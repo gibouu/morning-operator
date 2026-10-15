@@ -339,12 +339,20 @@ struct LearnView: View {
 
 struct SetupView: View {
     @Bindable var store: MorningStore
+    var onInteractionChanged: (Bool) -> Void = { _ in }
+    @ViewState<Bool> private var routineDataBusy = false
+    @ViewState<Bool> private var isVisible = false
     @ViewState<Bool> private var choosingAlarm = false
     @ViewState<Bool> private var choosingVoice = false
     @ViewState<Bool> private var choosingInvitation = false
     @ViewState<Bool> private var showingPrivacy = false
     @ViewState<Bool> private var choosingBriefing = false
     @ViewState<Bool> private var choosingActivity = false
+
+    private var isInteracting: Bool {
+        choosingAlarm || choosingVoice || choosingInvitation || showingPrivacy ||
+        choosingBriefing || choosingActivity || routineDataBusy
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -361,6 +369,14 @@ struct SetupView: View {
                     .padding(MorningTheme.Space.card)
                     .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
             }.buttonStyle(.plain).accessibilityIdentifier("setup.connections")
+            NavigationLink {
+                MorningRoutineDataView(store: store, onInteractionChanged: { routineDataBusy = $0 })
+            } label: {
+                LinkRow(title: String(localized: "Routine files"),
+                        detail: String(localized: "Import or export your saved routine"), symbol: "doc")
+                    .padding(MorningTheme.Space.card)
+                    .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
+            }.buttonStyle(.plain).accessibilityIdentifier("setup.routineFiles")
             CardButton { choosingAlarm = true } content: {
                 LinkRow(title: String(localized: "Morning alarm"), detail: "", symbol: "alarm")
             }.accessibilityIdentifier("setup.alarm")
@@ -490,6 +506,19 @@ struct SetupView: View {
         .fullScreenCover(isPresented: $choosingAlarm) { MorningAlarmView() }
         .sheet(isPresented: $choosingVoice) { VoicePickerView(speech: store.speech) }
         .sheet(isPresented: $choosingInvitation) { MorningInvitationView(service: store.invitation) }
+        .onAppear {
+            isVisible = true
+            onInteractionChanged(isInteracting)
+        }
+        .onChange(of: isVisible && isInteracting) { _, value in onInteractionChanged(value) }
+        .onChange(of: store.dataGeneration) { _, _ in
+            choosingAlarm = false; choosingVoice = false; choosingInvitation = false
+            choosingBriefing = false; choosingActivity = false; routineDataBusy = false
+        }
+        .onDisappear {
+            isVisible = false
+            onInteractionChanged(false)
+        }
     }
 
     @ViewBuilder private var voiceControls: some View {
