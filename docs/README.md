@@ -1,16 +1,12 @@
 # MORE documentation
 
-MORE is a native iPhone app. The Mac is its development and test environment. The repository and Xcode project retain the Morning Operator name.
+MORE is a native iPhone app. Build from `main`; the Mac is its development/test environment. Current runtime inspection is `8e25b20`, with demo planning merged at `b8a6c93`. Ordinary MORE build 1518 was installed; owner-confirmed Gmail reading and Screen Time proposal approval are partial proof, not a completed morning.
 
-**App source `1952d9f` is installed and launched on the owner’s iPhone; owner acceptance remains open.** The owner rejected the previous corner popover. On `codex/more-quiet-morning`, the revised home has a centered sunrise that expands into four horizontal actions, Play → Ready → Start, per-moment durations, concise details, a dawn/sunset-inspired background and an optional manual English/French sample. The direct invitation editor, observed-first Review and batched long-text learning remain. See [V2 design](V2-DESIGN.md).
+**Start here:** [Current onboarding](ONBOARDING.md) · [Demo requirements](DEMO-REQUIREMENTS.md) · [Normal iPhone acceptance](DEMO-TEST-PLAN.md) · [iOS stories, modules and ownership](IOS-TEAM-GUIDE.md).
 
-**Testing on your phone:** signed `1952d9f` was installed and launched on 10 October, preserving the saved routine. Six focused native checks and one largest-text check pass for this source. Earlier failed iterations and exact scopes are preserved in [PHASE-ONE](PHASE-ONE.md); no full-suite, personal capture, listener or connected-inbox pass is implied.
+**Architecture and gaps:** [Dated source audit](audit/2026-10-15-IOS-AUDIT.md) · [Local/PCC model and recording plan](APPLE-MODEL-PLAN.md) · [Gmail reading and saved connection](GMAIL-READING.md) · [Current visual/navigation direction](CURRENT-DIRECTION.md).
 
-**Start here:** [Teammate handoff](HANDOFF.md) · [Repeatable digest protocol](DIGEST-TEST-PROTOCOL.md). **Direction:** [Low-effort morning experience](PRODUCT-DIRECTION.md) · [Business hypotheses](BUSINESS.md) · [Long-recording test plan](LONG-RECORDING-TEST-PLAN.md).
-
-Native recording remains bounded to **30 minutes** with a monitored **256 MiB** size stop; import remains **31 minutes / 512 MiB / at most 24 sampled frames**. Longer text batches do not mean complete video coverage. See the [long-recording test plan](LONG-RECORDING-TEST-PLAN.md).
-
-English/French sample content does not mean a fully bilingual app. Greeting and selected purpose copy also adapt; complete French UI localization remains [issue #31](https://github.com/gibouu/morning-operator/issues/31).
+Current navigation has Home, Learn/Routine and Settings, with days inline on Home. Historical design/feature guides below retain implementation context and older evidence; their menu labels do not override current onboarding. Full normal-phone rehearsal remains open. No fixtures or test control substitute for that proof.
 
 ## Use the app
 
@@ -26,9 +22,9 @@ English/French sample content does not mean a fully bilingual app. Greeting and 
 | [Saved moments](SAVED-MOMENTS.md) | Select an exact historical excerpt, preview it and hear it in an approved routine |
 | [Voice commands](VOICE.md) | Use an explicit listening turn; understand commands, audio handoff and outstanding device checks |
 | [Voice audit](VOICE-AUDIT.md) | What Apple documents about Personal Voice and Siri voices, and what a custom voice would require; none is offered |
-| [V2 design contract](V2-DESIGN.md) | Morning and Review, explicit spoken/typed completion capture, and accessible layout fallbacks |
+| [V2 design history](V2-DESIGN.md) | Earlier design contract; current navigation is in ONBOARDING and CURRENT-DIRECTION |
 | [Short morning trial checklist](DEVICE-SETUP.md#tomorrow-morning-checklist) | The recording checks and recovery boundaries retained from the earlier physical trial |
-| [Onboarding](ONBOARDING.md) | Current sunrise/date/home navigation, plus how either collaborator builds and installs the selected source branch |
+| [Onboarding](ONBOARDING.md) | Current three-destination flow and local developer setup |
 | [Device setup](DEVICE-SETUP.md) | Signing, paired-device tests, recording, Shortcuts and the separate HomePod experiment |
 
 ## Understand and build it
@@ -51,13 +47,13 @@ English/French sample content does not mean a fully bilingual app. Greeting and 
 | [Physical verification record](PHASE-ONE.md) | Read source, device, scope and outcome before carrying a phone result over to new code |
 | [Digest test protocol](DIGEST-TEST-PROTOCOL.md) | Three fresh seeds, actual inference, exact source facts, speech and independent multi-day evidence |
 | [Digest scorer contract](../Benchmarks/morning-digest-contract.md) | Versioned facts, withheld truth, runtime evidence and separate transcript checks; the digest model adapter remains unfinished |
-| [Teammate handoff](HANDOFF.md) | Bounded next tasks, failure history and current issue coverage |
+| [Historical teammate handoff](HANDOFF.md) | Earlier tasks and failure history; current ownership is in IOS-TEAM-GUIDE |
 | [Test report template](TEST-REPORT-TEMPLATE.md) | Record a pass, failure, skip or environment block without uploading personal artifacts |
 | [Recording benchmark](OBSERVATION-BENCHMARK.md) | Reproduce real capture of two native fixture apps; distinguish extraction success, known actions and failed model inference |
 | [Controlled benchmark #23](https://github.com/gibouu/morning-operator/issues/23) | Compare known phone actions and visible evidence against extraction and model claims |
 
 **Implemented** means the source contains the behavior. **Verified** means a specified check actually passed. **Planned** means further design or implementation remains. A simulator navigation pass is not a physical recording test; a passing synthetic import is not native capture; successful capture is not proof that proposed habits are correct.
 
-V2 Review opens periods and days and preserves observations across imports. Its new explicit source-selection flow can prepare a reviewed update without replacing the current routine, but its real averages still describe routine runs. Unknown observed dates remain in Date needed until explicitly assigned. Observed-habit averages and ongoing adaptive profiles remain planned. Configured-app callbacks have separate, partial coverage; missing observations stay unknown. Saved thoughts live under Review. Completion offers Speak, Write or Not now; spoken words stay in memory until explicitly saved from review, with no retained audio file or open conversation.
+Observations, source corrections, routine versions, saved thoughts and run recaps have distinct lifecycles. Missing days and unresolved origins stay unknown. Sampled evidence cannot establish continuous phone usage, and recorded routine time is not measured external-app time. Follow current onboarding for access paths and the privacy guide for retained copies.
 
 The private source PRD, personal recordings, OCR, workspace snapshots and device-test media stay outside these shared guides. [Research-data feasibility #24](https://github.com/gibouu/morning-operator/issues/24) does not authorize retention or upload of those artifacts.

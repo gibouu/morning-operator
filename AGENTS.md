@@ -4,7 +4,7 @@ Personal Apple development prototype. Shared setup, priorities and verified resu
 
 - Build real, inspectable behavior; label fixtures and unavailable capabilities.
 - Keep XCTest phone control in the UI-test target, never in the ordinary app target.
-- Keep Apple inference and screen content local. No silent remote-model fallback.
+- Keep inference and raw screen recordings local by default. A future Apple Private Cloud Compute route needs explicit selected-input consent, supported public APIs, a granted entitlement and the gates in `docs/APPLE-MODEL-PLAN.md`. No silent remote-model fallback; no cloud upload is enabled by this plan.
 - Do not commit recordings, screenshots, inbox content, tokens, pairing secrets or signing credentials.
 - The first useful slice is teach → review/edit → approve → run with local speech.
 - Model output proposes actions; validated application policy decides execution.
