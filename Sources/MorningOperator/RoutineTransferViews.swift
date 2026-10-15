@@ -105,7 +105,7 @@ struct RoutineExportView: View {
                     Label("Save file…", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(showingFileExporter || !canExport(preview))
                 .accessibilityIdentifier("export.save")
                 .padding(20).background(.regularMaterial)
@@ -223,7 +223,7 @@ struct RoutineImportView: View {
                     Label("Use as a draft", systemImage: "square.and.pencil")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("import.use")
                 .padding(20).background(.regularMaterial)
             }

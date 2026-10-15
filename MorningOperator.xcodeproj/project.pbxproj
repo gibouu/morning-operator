@@ -60,6 +60,7 @@
 		A71F2DD1E977583E1F72289B /* QuickCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1435A178A34F6AADC746A82 /* QuickCaptureView.swift */; };
 		AD6A46591444FFDC8EA621DC /* ObservationReviewUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F5E80A4E3FEC576BDAA690 /* ObservationReviewUITestFixture.swift */; };
 		B9CA3F9A24974695EE25E264 /* RecordingLearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F84B24064F307F7E5025342 /* RecordingLearningTests.swift */; };
+		BA19D8D71012CE0A14F61918 /* RisoThemeSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3879EF0AE67267B2D4FFAD10 /* RisoThemeSnapshotTests.swift */; };
 		BF4BCBC13775223D50E313FE /* RoutineEvidenceProposalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3765EFB295A6146697D4D03 /* RoutineEvidenceProposalView.swift */; };
 		C2C11F3D62BD2E61A4A92900 /* RecordMorningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93DDD575BBAE60C4911CB3B3 /* RecordMorningView.swift */; };
 		C89488C560BA0C1CDB663B20 /* ObservationPeriodReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36F09DCDAEA82D58D6A3421 /* ObservationPeriodReviewView.swift */; };
@@ -157,6 +158,7 @@
 		31A115980B5BD98DC6D7FA73 /* ObservationArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationArchiveTests.swift; sourceTree = "<group>"; };
 		31C92D40B6EFA01488AD3742 /* InterfaceTourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceTourTests.swift; sourceTree = "<group>"; };
 		35191AAE6C75EE39494AC52A /* RecordedObservationImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordedObservationImportTests.swift; sourceTree = "<group>"; };
+		3879EF0AE67267B2D4FFAD10 /* RisoThemeSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RisoThemeSnapshotTests.swift; sourceTree = "<group>"; };
 		3BD6C7D6B53E7A1D66705679 /* MorningStore+UITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+UITestObservation.swift"; sourceTree = "<group>"; };
 		3D556BEEB3AC9A6AC02E433A /* MorningStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningStore.swift; sourceTree = "<group>"; };
 		3F39360C318E365C8426AEB6 /* BudgetAndRecapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetAndRecapTests.swift; sourceTree = "<group>"; };
@@ -321,6 +323,7 @@
 				02C6CF87FDCFB10E818EADD0 /* RecordedObservationModelTests.swift */,
 				1F84B24064F307F7E5025342 /* RecordingLearningTests.swift */,
 				E2B07E2228630BD1678C3BD3 /* RecordingProvenanceTests.swift */,
+				3879EF0AE67267B2D4FFAD10 /* RisoThemeSnapshotTests.swift */,
 				479AB234D28356AD1BD23AF8 /* RoutineEvidenceProposalTests.swift */,
 				7A6237A39EB8759262EEFC1F /* RoutineTransferTests.swift */,
 				BFB9060C58B99BC4484E2765 /* SunriseDockTests.swift */,
@@ -668,6 +671,7 @@
 				E4884A1EFD481B4607714D76 /* RecordedObservationModelTests.swift in Sources */,
 				B9CA3F9A24974695EE25E264 /* RecordingLearningTests.swift in Sources */,
 				0CE520513564C2856C889BC2 /* RecordingProvenanceTests.swift in Sources */,
+				BA19D8D71012CE0A14F61918 /* RisoThemeSnapshotTests.swift in Sources */,
 				12E45878E7091717E2E2BECF /* RoutineEvidenceProposalTests.swift in Sources */,
 				026CCCD1AF6995B662735A45 /* RoutineTransferTests.swift in Sources */,
 				4AAD181B44E400DDE3F36360 /* SunriseDockTests.swift in Sources */,

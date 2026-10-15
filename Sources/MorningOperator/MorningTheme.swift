@@ -80,6 +80,8 @@ struct MorningTheme {
     var dot: Color { dynamic(\.dot) }
     /// Hairlines.
     var line: Color { ink.opacity(0.18) }
+    /// Opaque paper tint for selection; texture never sits under selected-row text.
+    var selected: Color { dynamic(\.selectedSurface) }
 
     private func dynamic(_ token: KeyPath<MorningPaletteValues, MorningRGB>,
                          highContrast: KeyPath<MorningPaletteValues, MorningRGB>? = nil) -> Color {
@@ -162,7 +164,7 @@ struct MorningPaper: View {
         ZStack(alignment: .topTrailing) {
             theme.paper
             if !reduceTransparency {
-                MorningHalftone(color: theme.dot, opacity: scheme == .dark ? 0.16 : 0.11)
+                MorningHalftone(color: theme.dot, opacity: scheme == .dark ? 0.065 : 0.04)
                 if showsSun {
                     MorningHalftoneSun(progress: progress)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: progress)
@@ -190,9 +192,14 @@ struct MorningHalftone: View {
             var row = 0
             while y < size.height + cell {
                 var x: CGFloat = (row % 2 == 0) ? cell / 2 : cell
+                var column = 0
                 while x < size.width + cell {
-                    path.addEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+                    // Deterministic ink variation: a printed screen, not a moving noise field.
+                    let grain = CGFloat((row * 73 + column * 37) % 11) / 10
+                    let r = radius * (0.65 + grain * 0.5)
+                    path.addEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
                     x += cell
+                    column += 1
                 }
                 y += cell * 0.866
                 row += 1
@@ -207,7 +214,7 @@ struct MorningHalftone: View {
 /// the top corner and rises with the morning's progress.
 struct MorningHalftoneSun: View {
     var progress: Double
-    var diameter: CGFloat = 220
+    var diameter: CGFloat = 160
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -235,7 +242,7 @@ struct MorningHalftoneSun: View {
             context.fill(path, with: .color(theme.accent))
         }
         .frame(width: diameter, height: diameter)
-        .opacity(scheme == .dark ? 0.55 : 0.75)
+        .opacity(scheme == .dark ? 0.25 : 0.35)
         .offset(x: diameter * 0.28, y: -diameter * 0.62 + diameter * 0.55 - lift)
     }
 }

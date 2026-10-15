@@ -113,8 +113,8 @@ struct WeeklyReviewView: View {
             .accessibilityLabel("Next seven days").accessibilityIdentifier("review.nextWeek")
         }
         // A dark pill anchors the week, matching the primary buttons.
-        .buttonStyle(.plain).foregroundStyle(MorningStyle.surface)
-        .background(MorningStyle.accent, in: Capsule())
+        .buttonStyle(.plain).foregroundStyle(MorningStyle.onControl)
+        .background(MorningStyle.controlTint, in: Capsule())
         .simultaneousGesture(DragGesture(minimumDistance: 55).onEnded { value in
             guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
             changeWeek(by: value.translation.width > 0 ? -1 : 1)
@@ -160,7 +160,7 @@ struct WeeklyReviewView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 26))
+        .padding(22).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
     }
 
     private var hasSampleRunsInPeriod: Bool {
@@ -413,7 +413,7 @@ private struct RoutineReviewEditor: View {
                     } label: {
                         Label("Approve this routine", systemImage: "checkmark").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(store.busy || store.sessionActive || importLoading || routine.steps.isEmpty || store.routinePreferencesIssue != nil)
                     .accessibilityIdentifier("routine.approve")
                     .padding(20).background(MorningStyle.background)
@@ -516,7 +516,7 @@ private struct RoutineReviewEditor: View {
         HStack(spacing: 12) {
             Image(systemName: MorningStyle.symbol(for: step.kind))
                 .font(.body).frame(width: 34, height: 34)
-                .background(MorningStyle.color(for: step.kind), in: RoundedRectangle(cornerRadius: 11))
+                .background(MorningStyle.selected, in: RoundedRectangle(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 4) {
                 Text(step.title).font(.subheadline.weight(.medium))
                 Text(step.automation == nil ? "\(step.durationMinutes) min planned · Your own pace" : "\(step.durationMinutes) min planned · Spoken guidance")
@@ -565,7 +565,7 @@ private struct RoutinePreferencesView: View {
             } else {
                 ForEach(store.routinePreferences.entries) { preference in
                     Section {
-                        Text(preference.targetTitle).font(.headline)
+                        Text(preference.targetTitle).font(MorningTheme.Typography.heading)
                             .accessibilityIdentifier("preferences.title.\(preference.targetID.uuidString)")
                         if preference.presence == .exclude {
                             Text("Leave out of future suggestions")
@@ -617,7 +617,7 @@ private struct ReviewDayDetail: View {
             }
             if day.runs.isEmpty {
                 Section {
-                    Text("No routine saved for this day.").font(.headline)
+                    Text("No routine saved for this day.").font(MorningTheme.Typography.heading)
                     Text("A missing run stays unknown. It isn't counted as a zero-minute morning.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                 } header: { Text("Routine runs") }

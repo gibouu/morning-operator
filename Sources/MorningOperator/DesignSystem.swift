@@ -21,7 +21,7 @@ enum MorningStyle {
     static var background: Color { MorningTheme.current.paper }
     static var surface: Color { MorningTheme.current.surface }
     /// A tinted surface for a selected chip.
-    static var selected: Color { MorningTheme.current.ink.opacity(0.12) }
+    static var selected: Color { MorningTheme.current.selected }
 
     static func symbol(for kind: StepKind) -> String {
         switch kind {

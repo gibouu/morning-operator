@@ -189,7 +189,7 @@ struct ObservationHistoryView: View {
             } label: {
                 Label("Suggest an update", systemImage: "sparkles").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(selectionIssue != nil || store.busy || store.sessionActive || !store.storageIsAvailable || !store.canSuggestSavedObservations)
             .accessibilityIdentifier("observations.suggestUpdate")
         }.padding(20).background(.regularMaterial)

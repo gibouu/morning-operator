@@ -55,16 +55,16 @@ struct MorningVoiceCommandView: View {
     @ViewBuilder private var controls: some View {
         if store.voiceCommands.state == .listening {
             Button("I'm done speaking", systemImage: "checkmark") { store.voiceCommands.finishListening() }
-                .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("voiceCommand.finish")
         } else if store.voiceCommandPreparing || store.voiceCommands.isBusy {
             ProgressView("Getting ready…").accessibilityIdentifier("voiceCommand.progress")
         } else if store.voiceCommands.needsAudioRelease {
             Button("Release microphone", systemImage: "mic.slash") { store.cancelVoiceCommandTurn() }
-                .buttonStyle(.glass).accessibilityIdentifier("voiceCommand.release")
+                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("voiceCommand.release")
         } else {
             Button("Tap to speak", systemImage: "mic") { store.listenForCommand(language: language) }
-                .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("voiceCommand.listen")
         }
     }
