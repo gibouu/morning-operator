@@ -118,6 +118,29 @@ struct BrowserRhythmScriptTests {
         #expect(context.exception == nil)
     }
 
+    @Test("Stop disconnects listeners even after native has removed or closed its message bridge")
+    func removedBridgeStillCleansUp() throws {
+        for removal in ["delete window.webkit.messageHandlers.moreRhythm",
+                        "window.webkit.messageHandlers.moreRhythm.postMessage=()=>{throw Error('Bridge closed');}"] {
+            let context = try page()
+            context.evaluateScript(BrowserRhythmPolicy.script(site: .instagram, nonce: nonce))
+            context.evaluateScript("event('pointerdown',nested);clock=100;nested.scrollTop=120;event('scroll',nested);\(removal);globalThis.__moreRhythm.stop('\(nonce.uuidString)');")
+            #expect(context.evaluateScript("Object.keys(hooks).length")?.toInt32() == 0)
+            #expect(context.evaluateScript("globalThis.__moreRhythm === undefined")?.toBool() == true)
+            #expect(context.exception == nil)
+        }
+    }
+
+    @Test("Listener cleanup runs even when the final safety check throws")
+    func failedFlushStillCleansUp() throws {
+        let context = try page()
+        context.evaluateScript(BrowserRhythmPolicy.script(site: .instagram, nonce: nonce))
+        context.evaluateScript("document.querySelector=()=>{throw Error('Document unavailable');};try{globalThis.__moreRhythm.stop('\(nonce.uuidString)');}catch(_){}")
+        #expect(context.evaluateScript("Object.keys(hooks).length")?.toInt32() == 0)
+        #expect(context.evaluateScript("globalThis.__moreRhythm === undefined")?.toBool() == true)
+        #expect(context.exception == nil)
+    }
+
     @Test("An inline credential form or hidden document immediately removes the collector")
     func credentialsAndBackground() throws {
         for change in ["password=true", "document.hidden=true", "location.pathname='/accounts/login/'"] {

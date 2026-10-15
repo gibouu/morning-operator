@@ -11,22 +11,39 @@ extension MorningStore {
 
     func refreshScreenTimeAccess() { screenTimeAccess = screenTimeSource.access }
 
+    /// Keep a canceled read owned until its SDK call actually returns. Forget must
+    /// wait for this before treating an in-flight authorization or read as stopped.
+    var screenTimeReadIsQuiescent: Bool { screenTimeTask == nil }
+
+    func cancelScreenTimeRead() { screenTimeTask?.cancel() }
+
     func learnFromScreenTime() {
-        guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive, !voiceInputBlocksPlayback, !screenTimeBusy else { return }
+        guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive, !voiceInputBlocksPlayback,
+              !screenTimeBusy, screenTimeTask == nil else { return }
         screenTimeBusy = true
         screenTimeMessage = nil
         let generation = dataGeneration
         let source = screenTimeSource
-        Task { @MainActor [weak self] in
+        let taskID = UUID()
+        screenTimeTaskID = taskID
+        screenTimeTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            defer { if self.dataGeneration == generation { self.screenTimeBusy = false } }
+            defer {
+                if self.screenTimeTaskID == taskID {
+                    self.screenTimeTask = nil
+                    self.screenTimeTaskID = nil
+                    if self.dataGeneration == generation { self.screenTimeBusy = false }
+                }
+            }
             do {
+                try Task.checkCancellation()
+                guard self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 guard source.access != .unavailable else {
                     self.screenTimeMessage = String(localized: "Learning from Screen Time needs iOS 26.4 or later.")
                     return
                 }
                 if source.access != .approved { try await source.requestAccess() }
-                guard self.dataGeneration == generation, !self.privacyBlocksWork else { return }
+                guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 self.refreshScreenTimeAccess()
                 guard self.screenTimeAccess == .approved else {
                     self.screenTimeMessage = self.screenTimeAccessExplanation
@@ -35,8 +52,9 @@ extension MorningStore {
                 let calendar = Calendar.current
                 let end = Date()
                 let queryStart = calendar.date(byAdding: .day, value: -Self.screenTimeDaysRequested, to: calendar.startOfDay(for: end)) ?? end
+                try Task.checkCancellation()
                 let hours = try await source.hours(from: queryStart, to: end)
-                guard self.dataGeneration == generation, !self.privacyBlocksWork else { return }
+                guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 var own: Set<String> = []
                 if let id = Bundle.main.bundleIdentifier { own.insert(id) }
                 self.screenTimeDailyUsage = ScreenTimeDailyUsage.summarize(hours: hours, calendar: calendar, ownBundleIdentifiers: own)
@@ -49,6 +67,10 @@ extension MorningStore {
                 guard var proposal = ScreenTimeRoutineProposal.make(from: learning, nextMorning: nextMorning,
                                                                     baseRoutineID: self.routine?.id, calendar: calendar, now: end),
                       proposal.applyPreferences(self.routinePreferences) else {
+                    // An answered refresh supersedes the earlier suggestion even when
+                    // no morning qualifies. Preserve it only if the removal cannot save.
+                    if self.pendingScreenTimeProposal != nil,
+                       !self.discardPendingScreenTimeProposal() { return }
                     self.screenTimeMessage = learning.earliestData == nil
                         ? String(localized: "Screen Time has no app minutes on this iPhone yet. Try again tomorrow morning.")
                         : String(localized: "Screen Time returned app use, but no complete morning could be identified yet.")
@@ -60,7 +82,7 @@ extension MorningStore {
                     self.screenTimeMessage = String(localized: "The suggestion couldn't be saved. Your routine is unchanged.")
                 }
             } catch {
-                guard self.dataGeneration == generation, !self.privacyBlocksWork else { return }
+                guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 self.refreshScreenTimeAccess()
                 self.screenTimeMessage = self.screenTimeAccess == .approved
                     ? String(localized: "Screen Time didn't answer this time. Try again in a moment.")

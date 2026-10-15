@@ -108,11 +108,17 @@ extension MorningStore {
         StepTimerAlert.cancel(); stepTimerRevision += 1
     }
 
-    func endStepTimer() {
+    @discardableResult
+    func endStepTimer() -> Bool {
         stepTimerTask?.cancel(); stepTimerTask = nil
-        StepTimerFile.clear(); StepTimerAlert.cancel()
+        let retired = StepTimerFile.clear()
+        StepTimerAlert.cancel()
         pendingWebTarget = nil
         stepTimerRevision += 1
+        if !retired, !privacyBlocksWork {
+            notice = String(localized: "The timer couldn't be stopped safely. Try again before leaving this moment.")
+        }
+        return retired
     }
 
     func nextTargetStep(sessionID: UUID?, stepID: UUID?, skipping: Bool = false) {

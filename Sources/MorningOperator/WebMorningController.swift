@@ -93,7 +93,16 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @discardableResult
     func run(_ task: WebMorningTask) async -> WebMorningOutcome {
         guard privacyIsCurrent, actionsEnabled, !isLearning, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
+        let generation = pageGeneration
+        let page = webView.url
+        let privacyEpoch = privacyAtCreation?.generation
         let result = await evaluate(task)
+        // A navigation, opt-out or privacy reset may have happened during the
+        // WebKit await. Return to the original caller without publishing its
+        // result into the replacement page or writing a stale action log.
+        guard let privacy = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
+              !privacy.forgetPending, privacy.generation == privacyEpoch, actionsEnabled,
+              generation == pageGeneration, page == webView.url else { return result }
         outcome = result
         Self.record(result.logLine(site: site, task: task))
         return result

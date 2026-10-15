@@ -20,7 +20,7 @@ The app icon and Live Activity use the dotted sunrise. The Lock Screen stays cre
 
 ## Latest verification
 
-- Complete local package suite: **1,204 tests** (4 Health, 569 Core, 631 Apple) across **130 suites** pass.
+- Complete local package suite: **1,209 tests** (4 Health, 572 Core, 633 Apple) across **131 suites** pass.
 - Normal signed iOS app and widget build pass with Screen Time and WeatherKit entitlements. Ordinary MORE was installed on the connected iPhone; its existing data was backed up locally before the update. No XCTest runner, test arguments or sample-seeding launch was used for this installation.
 - Browser collector has real JavaScript execution checks for nested scrolling, inputs, untrusted events and credential/visibility boundaries. The +2 request now transports an exact string token and preserves replay/stale-deadline rejection.
 - Native component renders and two Island concept plates were inspected. They are design proofs, not final iPhone navigation or system-control proof.

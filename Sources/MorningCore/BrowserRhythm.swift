@@ -69,7 +69,11 @@ public enum BrowserRhythmPolicy {
           const safe = () => window.top === window && !document.hidden && location.protocol === 'https:' &&
             hosts.includes(location.hostname.toLowerCase()) && !paths.some(p => (location.pathname.toLowerCase() + '/').includes(p)) &&
             !document.querySelector('input[type="password"],input[type="email"],input[autocomplete="username"],input[autocomplete="current-password"],input[autocomplete="new-password"],input[autocomplete="one-time-code"],form[action*="login" i],form[action*="signin" i]');
-          const post = body => window.webkit.messageHandlers.moreRhythm.postMessage({nonce, ...body});
+          const post = body => {
+            // Native revokes the bridge before asking this document to stop.
+            // Missing or closed bridges must never prevent DOM cleanup.
+            try { window.webkit?.messageHandlers?.moreRhythm?.postMessage({nonce, ...body}); } catch (_) {}
+          };
           const flush = () => {
             if (pending) clearTimeout(pending);
             pending = null;
@@ -111,16 +115,19 @@ public enum BrowserRhythmPolicy {
           const observer = new MutationObserver(changed);
           function stop(requested, blocked = false) {
             if (requested !== nonce || ended) return;
-            if (!blocked) flush();
-            ended = true;
-            clearTimeout(pending);
-            for (const name of ['pointerdown', 'touchstart', 'wheel']) document.removeEventListener(name, input, true);
-            document.removeEventListener('scroll', scroll, true);
-            document.removeEventListener('click', click, true);
-            document.removeEventListener('visibilitychange', changed, true);
-            observer.disconnect();
-            if (blocked) post({blocked: true});
-            if (globalThis.__moreRhythm?.nonce === nonce) delete globalThis.__moreRhythm;
+            try {
+              if (!blocked) flush();
+            } finally {
+              ended = true;
+              clearTimeout(pending);
+              for (const name of ['pointerdown', 'touchstart', 'wheel']) document.removeEventListener(name, input, true);
+              document.removeEventListener('scroll', scroll, true);
+              document.removeEventListener('click', click, true);
+              document.removeEventListener('visibilitychange', changed, true);
+              observer.disconnect();
+              if (blocked) post({blocked: true});
+              if (globalThis.__moreRhythm?.nonce === nonce) delete globalThis.__moreRhythm;
+            }
             return {distance, movingSeconds, scrollBursts, clicks};
           }
           if (!safe()) return false;

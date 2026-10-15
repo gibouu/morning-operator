@@ -68,7 +68,7 @@ public struct StepTimer: Codable, Hashable, Sendable {
     /// two minutes once. Nil (a voice command) always applies. An expired timer gets two
     /// minutes from now, not from its past end.
     public mutating func extend(expectedEnd: Date?, at now: Date) -> ExtensionResult {
-        if let expectedEnd, abs(expectedEnd.timeIntervalSince(endsAt)) > 0.5 { return .duplicate }
+        if let expectedEnd, expectedEnd.timeIntervalSinceReferenceDate.bitPattern != endsAt.timeIntervalSinceReferenceDate.bitPattern { return .duplicate }
         guard extensionCount < Self.maximumExtensions else { return .limitReached }
         endsAt = max(endsAt, pausedAt ?? now).addingTimeInterval(Self.extensionSeconds)
         extensionCount += 1

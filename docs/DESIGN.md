@@ -57,4 +57,4 @@ Before the dotted-journey revision, a separate MORE QA app passed the five-phase
 
 ## 15 October direction
 
-MORE always selects light appearance; its five clock palettes still move warm paper from dawn to night. System dark mode does not invert the app or Lock Screen art. The latest signed ordinary app/widget build and full 1,204-test package run pass. No further scripted iPhone routines run after the owner’s request. Final phone acceptance remains manual; see [CURRENT-DIRECTION.md](CURRENT-DIRECTION.md).
+MORE always selects light appearance; its five clock palettes still move warm paper from dawn to night. System dark mode does not invert the app or Lock Screen art. The latest signed ordinary app/widget build and full 1,209-test package run pass. No further scripted iPhone routines run after the owner’s request. Final phone acceptance remains manual; see [CURRENT-DIRECTION.md](CURRENT-DIRECTION.md).

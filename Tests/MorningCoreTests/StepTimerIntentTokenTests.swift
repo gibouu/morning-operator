@@ -59,6 +59,20 @@ struct StepTimerIntentTokenTests {
         #expect(timer.extensionCount == 0)
     }
 
+    @Test("Even a 0.2-second resume invalidates the exact displayed deadline")
+    func subsecondResumeInvalidatesToken() throws {
+        var timer = StepTimer(sessionID: UUID(), stepID: UUID(), minutes: 3, at: now)
+        let stale = try #require(StepTimer.deadline(fromExtensionToken: StepTimer.extensionToken(for: timer.endsAt)))
+        timer.pause(at: now.addingTimeInterval(10))
+        timer.resume(at: now.addingTimeInterval(10.2))
+        let resumed = timer.endsAt
+        #expect(timer.extend(expectedEnd: stale, at: now.addingTimeInterval(11)) == .duplicate)
+        #expect(timer.endsAt == resumed)
+        #expect(timer.extensionCount == 0)
+        let fresh = try #require(StepTimer.deadline(fromExtensionToken: StepTimer.extensionToken(for: resumed)))
+        #expect(timer.extend(expectedEnd: fresh, at: now.addingTimeInterval(11)) == .extended(resumed.addingTimeInterval(120)))
+    }
+
     @Test("Malformed, future-version and nonfinite tokens fail closed")
     func invalidTokens() {
         for token in ["", "end1:", "end1:xyz", "end2:41c83df730000000", "end1:10000000000000000",

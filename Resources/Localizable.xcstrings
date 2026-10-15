@@ -14312,6 +14312,26 @@
           }
         }
       }
+    },
+    "Screen Time is still stopping. Try removal again in a moment.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps d’écran s’arrête encore. Réessayez la suppression dans un instant."
+          }
+        }
+      }
+    },
+    "The timer couldn't be stopped safely. Try again before leaving this moment.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le minuteur n’a pas pu être arrêté en sécurité. Réessayez avant de quitter ce moment."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -13,28 +13,47 @@ import UserNotifications
 /// them, all on the main actor, so two taps arriving together are applied one after the
 /// other and the second one sees the first one's end.
 @MainActor public enum StepTimerFile {
-    public static var url: URL { LocalDataControl.defaultDirectory.appendingPathComponent("step-timer.json") }
-    private static var file: AtomicJSONFile<StepTimer> { AtomicJSONFile(url: url, maximumBytes: 8_192) }
-
-    public static func load() -> StepTimer? {
-        try? LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { _ in try file.load() }
+    public static var url: URL { timerURL(in: LocalDataControl.defaultDirectory) }
+    /// A failed retirement blocks this process until a new timer is durably saved.
+    private static var blockedURLs: Set<URL> = []
+    private static func timerURL(in directory: URL) -> URL { directory.appendingPathComponent("step-timer.json") }
+    private static func file(in directory: URL) -> AtomicJSONFile<StepTimer?> {
+        AtomicJSONFile(url: timerURL(in: directory), maximumBytes: 8_192)
     }
-    public static func save(_ timer: StepTimer) throws {
-        try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { _ in try file.save(timer) }
-    }
-    public static func clear() { try? FileManager.default.removeItem(at: url) }
 
-    /// Applies `change` to the saved timer of this step and saves it. Nil when there is no
-    /// saved timer for that session and step (or none at all), or the save fails.
+    public static func load(directory: URL = LocalDataControl.defaultDirectory) -> StepTimer? {
+        guard !blockedURLs.contains(timerURL(in: directory)) else { return nil }
+        return try? LocalDataControl(directory: directory).withReadyAccess { _ in try file(in: directory).load() }
+    }
+    public static func save(_ timer: StepTimer, directory: URL = LocalDataControl.defaultDirectory) throws {
+        try LocalDataControl(directory: directory).withReadyAccess { _ in try file(in: directory).save(timer) }
+        blockedURLs.remove(timerURL(in: directory))
+    }
+
+    /// Retire atomically under the same lock as mutation. A null envelope persists
+    /// retirement without relying on deletion, so old controls cannot revive a timer.
+    @discardableResult
+    public static func clear(directory: URL = LocalDataControl.defaultDirectory) -> Bool {
+        blockedURLs.insert(timerURL(in: directory))
+        do {
+            try LocalDataControl(directory: directory).withReadyAccess { _ in try file(in: directory).save(nil) }
+            return true
+        } catch { return false }
+    }
+
+    /// Applies a change to the saved active timer of this step. Retired or unreadable
+    /// storage and failed saves return nil without publishing or scheduling effects.
     @discardableResult
     public static func update<Result>(sessionID: UUID?, stepID: UUID?,
+                                      directory: URL = LocalDataControl.defaultDirectory,
                                       _ change: (inout StepTimer) -> Result) -> (StepTimer, Result)? {
-        try? LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { _ -> (StepTimer, Result)? in
-            var timer = try file.load()
+        guard !blockedURLs.contains(timerURL(in: directory)) else { return nil }
+        return try? LocalDataControl(directory: directory).withReadyAccess { _ -> (StepTimer, Result)? in
+            guard var timer = try file(in: directory).load() else { return nil }
             if let sessionID, timer.sessionID != sessionID { return nil }
             if let stepID, timer.stepID != stepID { return nil }
             let result = change(&timer)
-            try file.save(timer)
+            try file(in: directory).save(timer)
             return (timer, result)
         }
     }

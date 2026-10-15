@@ -142,6 +142,8 @@ final class MorningStore {
     var screenTimeDailyUsage: [ScreenTimeDailyUsage] = []
     var screenTimeLearning: ScreenTimeLearning?
     @ObservationIgnored let screenTimeSource: any ScreenTimeSource = ScreenTimeSources.make()
+    @ObservationIgnored var screenTimeTask: Task<Void, Never>?
+    @ObservationIgnored var screenTimeTaskID: UUID?
     private(set) var routinePreferences = RoutinePreferenceJournal()
     private(set) var routinePreferencesIssue: String?
     private var unreadablePreferences: RecoverableRoutinePreferences?
@@ -827,9 +829,10 @@ final class MorningStore {
         // choice does not, except that a hands-free morning never waits for the answer.
         endOpening()
         cancelStepPlayback()
+        let previousSession = session
         do {
             try session?.advance(skipping: skipping, commandID: commandID)
-            endStepTimer()
+            guard endStepTimer() else { session = previousSession; return }
             speech.stop()
             notice = nil
             if session?.status == .completed {
@@ -848,7 +851,7 @@ final class MorningStore {
         endOpening()
         cancelStepPlayback()
         speech.stop()
-        endStepTimer()
+        guard endStepTimer() else { return }
         do { try session?.stop(); archiveTerminalSession(); notice = nil; persist() }
         catch { notice = error.localizedDescription }
     }
@@ -1419,7 +1422,7 @@ final class MorningStore {
     func approvePendingScreenTimeProposal() -> Bool {
         guard !privacyBlocksWork else { return false }
         guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
-        guard !busy, !sessionActive, !voiceInputBlocksPlayback, storageIsAvailable,
+        guard !busy, !screenTimeBusy, !sessionActive, !voiceInputBlocksPlayback, storageIsAvailable,
               let proposal = pendingScreenTimeProposal else { return false }
         guard proposal.baseRoutineID == routine?.id else {
             notice = String(localized: "Your routine changed since this suggestion was made. Learn from Screen Time again for a fresh one.")
@@ -1432,6 +1435,7 @@ final class MorningStore {
         let oldPrevious = previousRoutine
         let oldSession = session
         let oldHistory = history
+        let oldBudget = budgetAndFeedback
         archiveTerminalSession()
         if let oldRoutine, oldRoutine.isApproved { previousRoutine = oldRoutine }
         routine = draft.approved()
@@ -1442,6 +1446,7 @@ final class MorningStore {
             previousRoutine = oldPrevious
             session = oldSession
             history = oldHistory
+            budgetAndFeedback = oldBudget
             pendingScreenTimeProposal = proposal
             return false
         }
@@ -1452,7 +1457,9 @@ final class MorningStore {
 
     @discardableResult
     func discardPendingScreenTimeProposal() -> Bool {
-        guard !privacyBlocksWork, !busy, let proposal = pendingScreenTimeProposal else { return false }
+        // A successful refresh may invalidate this independent derived value
+        // while an unrelated observation analysis is running.
+        guard !privacyBlocksWork, let proposal = pendingScreenTimeProposal else { return false }
         pendingScreenTimeProposal = nil
         guard persist() else { pendingScreenTimeProposal = proposal; return false }
         notice = String(localized: "Suggestion discarded. Your current morning is unchanged.")
@@ -2275,6 +2282,7 @@ final class MorningStore {
         analysisAttempt = nil
         let oldAnalysis = analysisTask
         oldAnalysis?.cancel()
+        cancelScreenTimeRead()
         briefing.cancelAndClear()
         stepExecutor.clear()
         endOpening()
@@ -2286,6 +2294,15 @@ final class MorningStore {
         MorningIntentRouter.shared.resetPendingRequests()
         do {
             try await morningActivity.endAllForPrivacy()
+            // SDK streams may ignore cancellation. Never report successful
+            // removal while a private Screen Time query still owns its task.
+            for _ in 0..<50 where !screenTimeReadIsQuiescent {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            guard screenTimeReadIsQuiescent else {
+                throw NSError(domain: "MORE.Privacy", code: 1, userInfo: [NSLocalizedDescriptionKey:
+                    String(localized: "Screen Time is still stopping. Try removal again in a moment.")])
+            }
             // Vision/file-provider work must finish before its source is removed.
             // Delayed callbacks are independently rejected by the attempt/epoch.
             await oldAnalysis?.value
