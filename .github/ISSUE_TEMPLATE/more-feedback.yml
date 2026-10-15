@@ -1,0 +1,34 @@
+name: MORE feedback
+description: Report a problem or suggest an improvement in the current MORE build.
+title: "[MORE] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Build and iPhone
+      placeholder: Commit or build number, iPhone model, iOS version
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did it happen?
+      options:
+        - First setup and sign-in
+        - Screen Time and learning
+        - Review and approval
+        - Running a morning
+        - Browser
+        - Alarm or Siri
+        - Lock Screen or Dynamic Island
+        - Design and wording
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: Include what you tapped or said, what you expected, and what actually happened. Leave out passwords, messages, and other account content.
+    validations:
+      required: true
+  - type: textarea
+    id: repeat
+    attributes:
+      label: Can you repeat it?
+      placeholder: Steps, frequency, or a suggested design change.

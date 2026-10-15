@@ -117,6 +117,16 @@
         }
       }
     },
+    "Finish": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer"
+          }
+        }
+      }
+    },
     "Last update": {
       "localizations": {
         "fr": {
@@ -169,6 +179,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "MORE. Mise à jour nécessaire. Dernière progression enregistrée : %1$@. %2$@. Ouvrez MORE pour mettre à jour."
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivant"
           }
         }
       }

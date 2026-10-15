@@ -23,8 +23,8 @@ struct RecordMorningView: View {
     private var unavailable: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                Image(systemName: "rectangle.dashed.badge.record")
-                    .font(.largeTitle).foregroundStyle(MorningStyle.accent)
+                MorningDottedIcon(systemName: "record.circle")
+                    .frame(width: 42, height: 42).foregroundStyle(MorningStyle.accent)
                 Text("Bring a recording you've made")
                     .font(.title2.weight(.semibold))
                 Text("Recording from inside Morning Operator needs an iPhone or iPad with iOS 27 or later. You can still choose an existing screen recording, screenshot or text file from Learn.")
@@ -52,10 +52,10 @@ private struct RecordMorningContent: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Image(systemName: recording.state == .recording ? "record.circle" : "rectangle.on.rectangle")
-                        .scaledFont(42, relativeTo: .largeTitle, weight: .light)
+                    MorningDottedIcon(systemName: recording.state == .recording ? "record.circle" : "rectangle.on.rectangle")
+                        .frame(width: 42, height: 42)
                         .foregroundStyle(recording.state == .recording ? Color.red : MorningStyle.accent)
-                    Text(title).font(.system(.largeTitle, design: .serif))
+                    Text(title).font(MorningTheme.Typography.display)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(recording.message).font(.body).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -65,7 +65,9 @@ private struct RecordMorningContent: View {
                             .scaledFont(44, relativeTo: .largeTitle, weight: .medium, design: .rounded).monospacedDigit()
                             .accessibilityLabel("Recording duration")
                         Button { recording.stopRecording() } label: {
-                            Label("Stop recording", systemImage: "stop.fill")
+                            Label { Text("Stop recording") } icon: {
+                                MorningDottedIcon(systemName: "stop.fill").frame(width: 22, height: 22)
+                            }
                         }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("record.stop")
                     } else if recording.state == .ready {
@@ -74,7 +76,9 @@ private struct RecordMorningContent: View {
                             _ = recording.takeRecording()
                             dismiss()
                         } label: {
-                            Label("Use this recording", systemImage: "checkmark")
+                            Label { Text("Use this recording") } icon: {
+                                MorningDottedIcon(systemName: "checkmark").frame(width: 22, height: 22)
+                            }
                         }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("record.use")
                         Button("Discard recording", role: .destructive) { confirmingDiscard = true }

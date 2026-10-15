@@ -1,6 +1,6 @@
 # MORE — ink, paper and the time of day
 
-The reference is the owner's two-ink lake print: ultramarine, warm paper and a quiet halftone. The portable riso-paper kit supplies the spacing, print-like rules and burnt-orange accent. The native system serif keeps the look without a font download or a new font licence dependency.
+The reference is the owner's two-ink lake print: ultramarine, warm paper and a quiet halftone. The owner's next pass makes separate round dots the shared language for the sunrise, app icon, navigation, controls and quiet card edges. Patrick Hand gives short titles a handwritten voice; plain native text carries longer reading and controls. The font is bundled under SIL OFL 1.1, with its licence and provenance in `Resources/Fonts`.
 
 ## Light research and its limits
 
@@ -31,19 +31,19 @@ The pure logic can accept future solar times. Short winter days compress the day
 
 ## Type, texture and space
 
-- Large title and headings: native system serif, medium weight. Body and notes: native serif. Small labels and time: native monospaced styles with tabular numbers. Every size follows Dynamic Type.
-- Side gutter 24 pt; card inset 18 pt; section spacing 16 pt; card radius 10 pt. Reading surfaces have an opaque fill and a hairline.
+- Display and section titles: Patrick Hand Regular. Body, notes and controls: native sans serif. Times keep tabular numbers. Every size follows Dynamic Type; no font request occurs at runtime.
+- Side gutter 24 pt; card inset 18 pt; section spacing 16 pt; card radius 10 pt. Reading surfaces stay opaque, with sparse dotted edges.
 - One static Canvas path draws a small halftone screen. No animated noise, image download, shader loop or per-frame timer. Dots and the sun are decorative and ignore touch and VoiceOver.
-- Reduce Transparency removes the paper texture and sun. Reduce Motion disables the sun's progress animation and existing dock transitions. Increase Contrast promotes secondary ink to primary ink. The native floating glass bar follows the system's accessibility treatment.
-- The top sun reflects completed steps. The bottom sunrise remains the home control and uses the same phase ink. Texture stays behind content, never over type.
+- Reduce Transparency removes the decorative texture and sky. Reduce Motion disables sun/moon interpolation and existing dock transitions. Increase Contrast promotes secondary ink to primary ink and strengthens small dotted glyphs.
+- The sun starts at the lower centre around dawn, rises towards midday and returns towards sunset. A dotted crescent rises after sunset and lowers before dawn. Positions follow local clock time independently of routine completion, using the same fixed solar reference as the palette. The drawing is decorative, not measured astronomy. Texture stays behind content, with opaque reading surfaces.
 
 ## Controls and copy
 
-One filled primary action per immediate decision. Other actions use outline or quiet text. Learn keeps Record and Choose as the initial decision; the suggestion control remains unavailable until there is content. Existing run controls and their identifiers remain intact. Destructive confirmation keeps its explicit warning and a separate, readable red fill.
+Primary actions are printed paper tickets with dotted ink edges and handwritten labels. Secondary actions use dotted underlines or quiet text; they are not filled system capsules. Learn keeps Record and Choose as the initial decision; the suggestion control remains unavailable until there is content. Existing run controls and their identifiers remain intact. Destructive confirmation keeps its explicit warning and a separate, readable red fill.
 
-Glass belongs to system navigation and a floating command bar. Routine tiles, brief cards, first use and ordinary actions use ink and opaque paper. System sheets and bottom action bars may retain native material.
+Four icon-only destinations keep the bottom bar quiet: Morning, Routine, Learn and Settings. Accessible names remain explicit. The date opens history. Routine, Learn and Settings use full-page presentations; compact capture, voice and invitation tasks may use sheets. Large settings pages use the same full-page treatment. Browser chrome uses the same paper, dot icons and short labels while the website stays visible. Reads and scroll requests still require a tap; the saved routine timer remains shared.
 
-Cut text that repeats a heading, button label or nearby explanation. Keep source labels, fixtures, errors, consent, privacy scope and unavailable-feature statements. Move optional details behind existing disclosure controls. Every changed string has an English and French value; no UI-test action identifier changes.
+Cut text that repeats a heading, button label or nearby explanation. Keep source labels, fixtures, errors, consent, privacy scope and unavailable-feature statements. Move optional details behind disclosure controls. Changed product copy has English and French values. Stored observations can still recognize earlier MORE wording, even after it leaves the visible interface.
 
 ## Verification and honest visual scope
 
@@ -53,4 +53,8 @@ The full shared package tests and generic iOS Simulator build-for-testing can ru
 
 A separate, local macOS ImageRenderer harness renders the real `MorningTheme`, shared cards, type, buttons and sunrise at a phone-sized canvas. It is a native component proof, not evidence that iPhone navigation, text sizes or safe areas work. Screenshots stay outside Git. The localhost review companion keeps both visual revisions and saves right-click notes with page coordinates and stable screen identifiers.
 
-On the connected iPhone 15 Pro Max, a separate MORE QA app passed the five-phase Home/running tour and the English-light/French-dark main-screen journey. Twenty-two design screenshots plus two web-routine screenshots were captured and visually inspected. This establishes the captured standard text size, not every Dynamic Type or accessibility setting. The first Privacy screenshot assertion was corrected to check its visible inventory rather than an offscreen lazy button.
+Before the dotted-journey revision, a separate MORE QA app passed the five-phase Home/running tour and the English-light/French-dark main-screen journey on the connected iPhone 15 Pro Max. Twenty-two design screenshots plus two web-routine screenshots remain available for comparison. The new revision must be captured and reviewed again. Captures establish their standard text size, not every Dynamic Type or accessibility setting.
+
+## 15 October direction
+
+MORE always selects light appearance; its five clock palettes still move warm paper from dawn to night. System dark mode does not invert the app or Lock Screen art. The latest signed ordinary app/widget build and full 1,204-test package run pass. No further scripted iPhone routines run after the owner’s request. Final phone acceptance remains manual; see [CURRENT-DIRECTION.md](CURRENT-DIRECTION.md).

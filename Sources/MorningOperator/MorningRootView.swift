@@ -9,6 +9,7 @@ struct MorningRootView: View {
     @ViewState<Bool> private var showingInvitation = false
     @ViewState<Bool> private var showingLearn = false
     @ViewState<Bool> private var showingRoutineEditor = false
+    @ViewState<Bool> private var learnAfterRoutineDismissal = false
     @ViewState<UUID> private var reviewRootIdentity = UUID()
     @ViewState<Bool> private var resetReviewAfterSettingsDismissal = false
     @ViewState<Bool> private var presentingIntentCapture = false
@@ -16,6 +17,8 @@ struct MorningRootView: View {
     @ViewState<Bool> private var testObservedBackground = false
     @ViewState<Bool> private var showingActions = false
     @ViewState<Bool> private var actionTransitionPending = false
+    private enum EntryPresentation: Hashable { case settings, learn, routine, invitation }
+    @ViewState<Set<EntryPresentation>> private var activeEntryPresentations = []
     @ViewState<CGFloat> private var dockWidth = 430
     @Environment(\.scenePhase) private var scenePhase
 
@@ -44,9 +47,10 @@ struct MorningRootView: View {
                                      if store.voiceInputBlocksPlayback { store.voiceCommandPresented = true }
                                      else { showingSettings = true }
                                  }, showingRoutineEditor: $showingRoutineEditor)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 84) }
                     .background(MorningStyle.background)
                     .toolbar { ToolbarItem(placement: .topBarLeading) {
-                        Button { store.tab = .today } label: { Image(systemName: "sun.horizon") }
+                        Button { store.tab = .today } label: { MorningDockGlyph(symbol: .morning).frame(width: 26, height: 26) }
                             .accessibilityLabel("Back to morning").accessibilityIdentifier("morning.home")
                     } }
             }
@@ -71,12 +75,12 @@ struct MorningRootView: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { dockWidth = $0 }
         .overlay(alignment: .bottom) {
-            if store.tab == .today {
+            if store.tab == .today || store.tab == .review {
                 MorningActionDock(store: store, expanded: $showingActions,
                     transitionPending: $actionTransitionPending, availableWidth: dockWidth,
                     edit: openRoutineReview,
                     learn: { showingLearn = true },
-                    review: { reviewRootIdentity = UUID(); store.tab = .review },
+                    review: openRoutineReview,
                     settings: {
                         if store.voiceInputBlocksPlayback { store.voiceCommandPresented = true }
                         else { showingSettings = true }
@@ -97,21 +101,45 @@ struct MorningRootView: View {
         .tint(MorningStyle.accent)
         .foregroundStyle(MorningStyle.ink)
         .font(MorningTheme.Typography.body)
-        .sheet(isPresented: $showingSettings, onDismiss: {
+        .fullScreenCover(isPresented: $showingSettings, onDismiss: {
+            activeEntryPresentations.remove(.settings)
             if resetReviewAfterSettingsDismissal {
                 resetReviewAfterSettingsDismissal = false
                 reviewRootIdentity = UUID()
             }
             processPendingEntries()
         }) {
-            detailSheet(String(localized: "Settings")) { SetupView(store: store) }
+            destinationPage(String(localized: "Settings")) { SetupView(store: store) }
+                .onAppear { activeEntryPresentations.insert(.settings) }
         }
-        .sheet(isPresented: $showingInvitation, onDismiss: processPendingEntries) {
+        .sheet(isPresented: $showingInvitation, onDismiss: {
+            activeEntryPresentations.remove(.invitation)
+            processPendingEntries()
+        }) {
             MorningInvitationView(service: store.invitation)
                 .interactiveDismissDisabled(store.privacyBlocksWork)
+                .onAppear { activeEntryPresentations.insert(.invitation) }
         }
-        .sheet(isPresented: $showingLearn, onDismiss: processPendingEntries) {
-            detailSheet(String(localized: "Learn my morning")) { LearnView(store: store) }
+        .fullScreenCover(isPresented: $showingLearn, onDismiss: {
+            activeEntryPresentations.remove(.learn)
+            processPendingEntries()
+        }) {
+            destinationPage(String(localized: "Learn my morning"), displayTitle: String(localized: "Learn")) { LearnView(store: store) }
+                .onAppear { activeEntryPresentations.insert(.learn) }
+        }
+        .fullScreenCover(isPresented: $showingRoutineEditor, onDismiss: {
+            activeEntryPresentations.remove(.routine)
+            if learnAfterRoutineDismissal {
+                learnAfterRoutineDismissal = false
+                showingLearn = true
+            }
+            processPendingEntries()
+        }) {
+            RoutineReviewEditor(store: store, onLearn: {
+                learnAfterRoutineDismissal = true
+                showingRoutineEditor = false
+            })
+            .onAppear { activeEntryPresentations.insert(.routine) }
         }
         .sheet(isPresented: $store.capturePresented, onDismiss: captureReviewDismissed) {
             QuickCaptureView(store: store)
@@ -132,6 +160,7 @@ struct MorningRootView: View {
             showingActions = false
             actionTransitionPending = false
             showingLearn = false; showingRoutineEditor = false; showingInvitation = false
+            learnAfterRoutineDismissal = false
             presentingIntentCapture = false; pendingObservationReview = false
             // Keep the presenting Review stack stable while Privacy is open.
             // Replacing its tab identity during confirmation dismissal can strand
@@ -149,8 +178,6 @@ struct MorningRootView: View {
         }
         .onChange(of: store.completionInvitationSessionID) { _, _ in processPendingEntries() }
         .onChange(of: store.session?.id) { _, _ in store.completionSessionChanged() }
-        .onChange(of: showingRoutineEditor) { _, showing in if !showing { processPendingEntries() } }
-        .onChange(of: showingInvitation) { _, showing in if !showing { processPendingEntries() } }
         .onChange(of: store.tab) { _, value in
             showingActions = false
             if value == .learn { store.tab = .review; showingLearn = true }
@@ -206,12 +233,13 @@ struct MorningRootView: View {
         .onChange(of: observationReviewCanPresent) { _, ready in if ready { processPendingEntries() } }
         .onChange(of: store.busy) { _, busy in if !busy { processPendingEntries() } }
         .onOpenURL { url in
-            if let next = StepNavigation.parseNext(url) {
+            let scheme = Bundle.main.object(forInfoDictionaryKey: "MorningURLScheme") as? String ?? "more"
+            if let next = StepNavigation.parseNext(url, scheme: scheme) {
                 store.tab = .today
                 store.nextTargetStep(sessionID: next.sessionID, stepID: next.stepID)
                 return
             }
-            guard url.scheme == "more", url.host == "morning", url.path.isEmpty,
+            guard url.scheme == scheme, url.host == "morning", url.path.isEmpty,
                   url.query == nil, url.fragment == nil, !store.privacyBlocksWork else { return }
             // Revealing progress is not a request to start or resume. Keep any
             // unfinished review sheet intact rather than discarding the draft.
@@ -253,15 +281,14 @@ struct MorningRootView: View {
     }
 
     private func openRoutineReview() {
-        store.tab = .review
         showingRoutineEditor = true
     }
 
     private func presentPendingIntentCapture() {
-        guard !store.privacyBlocksWork, scenePhase == .active, !presentingIntentCapture, !store.capturePresented, !store.captureVoicePresented, !store.hasPendingSpokenCapture,
+        guard !store.privacyBlocksWork, activeEntryPresentations.isEmpty, scenePhase == .active, !presentingIntentCapture, !store.capturePresented, !store.captureVoicePresented, !store.hasPendingSpokenCapture,
               !store.voiceInputBlocksPlayback, !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending,
               !store.morningDetailPresented,
-              !showingLearn, !showingRoutineEditor, !store.voiceCommandPresented,
+              !showingLearn, !showingRoutineEditor, !learnAfterRoutineDismissal, !store.voiceCommandPresented,
               !store.observationDetailPresented, !store.observationSelectionPresented, !store.routineProposalPresented,
               let text = MorningIntentRouter.shared.pendingCaptureText else { return }
         presentingIntentCapture = true
@@ -296,8 +323,9 @@ struct MorningRootView: View {
     /// review. Watch this eligibility separately so closing another detail or
     /// ending a session resumes review even when a failed recording stays pending.
     private var observationReviewCanPresent: Bool {
+        guard activeEntryPresentations.isEmpty || (showingLearn && activeEntryPresentations == [.learn]) else { return false }
         guard !store.privacyBlocksWork, scenePhase == .active, !store.busy, !store.sessionActive,
-              !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending, !showingRoutineEditor, !presentingIntentCapture,
+              !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending, !showingRoutineEditor, !learnAfterRoutineDismissal, !presentingIntentCapture,
               !store.capturePresented, !store.voiceCommandPresented, !store.captureVoicePresented,
               !store.hasPendingSpokenCapture, !store.voiceInputBlocksPlayback,
               !store.morningDetailPresented, !store.observationDetailPresented,
@@ -314,7 +342,7 @@ struct MorningRootView: View {
         #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
         if #available(iOS 27.0, *) { recordingBusy = ScreenRecordingService.shared.isBusy }
         #endif
-        return store.privacyBlocksWork || showingActions || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutineEditor || presentingIntentCapture ||
+        return store.privacyBlocksWork || !activeEntryPresentations.isEmpty || showingActions || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutineEditor || learnAfterRoutineDismissal || presentingIntentCapture ||
             store.capturePresented || store.voiceCommandPresented || store.captureVoicePresented ||
             store.hasPendingSpokenCapture || store.morningDetailPresented || store.observationDetailPresented ||
             store.observationSelectionPresented || store.routineProposalPresented || store.voiceInputBlocksPlayback ||
@@ -323,7 +351,7 @@ struct MorningRootView: View {
     }
 
     private var recordingCanProcess: Bool {
-        !store.privacyBlocksWork && !showingActions && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutineEditor && !presentingIntentCapture &&
+        !store.privacyBlocksWork && activeEntryPresentations.isEmpty && !showingActions && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutineEditor && !learnAfterRoutineDismissal && !presentingIntentCapture &&
         !store.capturePresented && !store.voiceCommandPresented && !store.captureVoicePresented &&
         !store.hasPendingSpokenCapture && !store.voiceInputBlocksPlayback &&
         !store.morningDetailPresented && !store.observationDetailPresented &&
@@ -385,7 +413,8 @@ struct MorningRootView: View {
         }
     }
 
-    private func detailSheet<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func destinationPage<Content: View>(_ title: String, displayTitle: String? = nil,
+                                               @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
@@ -393,12 +422,20 @@ struct MorningRootView: View {
                     if let notice = store.notice { NoticeView(text: notice, dismiss: { store.notice = nil }) }
                 }.padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity)
             }
-            .background(MorningPaper(showsSun: false)).navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { showingSettings = false; showingLearn = false }
+            .background(MorningPaper(showsSun: false)).navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .accessibilityLabel(title)
+            .toolbar {
+                ToolbarItem(placement: .principal) { Text(displayTitle ?? title).font(MorningTheme.Typography.title) }
+                ToolbarItem(placement: .topBarLeading) {
+                Button { showingSettings = false; showingLearn = false } label: {
+                    MorningDottedIcon(systemName: "xmark").frame(width: 24, height: 24).frame(width: 44, height: 44)
+                }.buttonStyle(.plain).foregroundStyle(MorningStyle.ink)
+                    .accessibilityLabel("Done").accessibilityIdentifier("destination.close")
                     .disabled(store.privacyBlocksWork)
-            } }
-        }.presentationDragIndicator(.visible)
+                }.sharedBackgroundVisibility(.hidden)
+            }
+        }
             .interactiveDismissDisabled(store.privacyBlocksWork)
     }
 }
@@ -450,7 +487,7 @@ struct TodayView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(alignment: .center, spacing: 14) {
-                            Image(systemName: MorningStyle.symbol(for: step.kind))
+                            MorningDottedIcon(systemName: MorningStyle.symbol(for: step.kind)).frame(width: 26, height: 26)
                                 .font(.title3).foregroundStyle(MorningStyle.accent)
                                 .frame(width: 48, height: 48)
                                 .background(MorningStyle.selected, in: Circle())
@@ -476,7 +513,9 @@ struct TodayView: View {
                             }.font(.subheadline).tint(MorningStyle.accent)
                         }
                         if step.automation == nil {
-                            Label(step.kind == .messages ? (isFrench ? "Non connecté" : "Not connected") : (isFrench ? "À votre rythme" : "At your pace"), systemImage: step.kind == .messages ? "arrow.up.forward.app" : "hand.tap")
+                            Label { Text(step.kind == .messages ? (isFrench ? "Non connecté" : "Not connected") : (isFrench ? "À votre rythme" : "At your pace")) } icon: {
+                                MorningDottedIcon(systemName: step.kind == .messages ? "arrow.up.forward.app" : "hand.tap").frame(width: 18, height: 18)
+                            }
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
                                 .accessibilityIdentifier("moment.manual")
                         }
@@ -500,23 +539,25 @@ struct TodayView: View {
                                 Text("Move").font(.caption).foregroundStyle(MorningStyle.muted)
                                 Spacer()
                                 if index > 0 {
-                                    Button("Move earlier", systemImage: "arrow.up") {
+                                    Button {
                                         store.moveStep(step.id, onto: routine.steps[index - 1].id,
                                             expectedRoutineID: routine.id, expectedGeneration: generation)
-                                    }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
+                                    } label: { MorningDottedIcon(systemName: "arrow.up").frame(width: 22, height: 22) }
+                                        .accessibilityLabel("Move earlier").frame(minWidth: 44, minHeight: 44)
                                         .accessibilityIdentifier("morning.moveEarlier")
                                 }
                                 if index + 1 < routine.steps.count {
-                                    Button("Move later", systemImage: "arrow.down") {
+                                    Button {
                                         store.moveStep(step.id, onto: routine.steps[index + 1].id,
                                             expectedRoutineID: routine.id, expectedGeneration: generation)
-                                    }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
+                                    } label: { MorningDottedIcon(systemName: "arrow.down").frame(width: 22, height: 22) }
+                                        .accessibilityLabel("Move later").frame(minWidth: 44, minHeight: 44)
                                         .accessibilityIdentifier("morning.moveLater")
                                 }
                             }.buttonStyle(SecondaryButtonStyle())
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(24)
-                }.navigationTitle("This moment").navigationBarTitleDisplayMode(.inline)
+                }.navigationTitle("").navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { viewingStep = nil } } }
                 }
             }.presentationDetents([.medium, .large])
@@ -538,7 +579,7 @@ struct TodayView: View {
                         storedObservationStatus
                         #endif
                     }.padding(24)
-                }.navigationTitle("Your morning").navigationBarTitleDisplayMode(.inline)
+                }.navigationTitle("").navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingNotice = false } } }
             }.presentationDetents([.medium, .large])
         }
@@ -559,7 +600,7 @@ struct TodayView: View {
     @ViewBuilder private var savedObservationReview: some View {
         if store.hasImportedObservation {
             Button(action: reviewAfterNotice) {
-                Label("Review your saved observation", systemImage: "text.viewfinder")
+                Label { Text("Review your saved observation") } icon: { MorningDottedIcon(systemName: "text.viewfinder").frame(width: 18, height: 18) }
                     .font(.caption.weight(.medium))
             }.buttonStyle(QuietButtonStyle()).accessibilityIdentifier("observation.review")
         }
@@ -588,7 +629,7 @@ struct TodayView: View {
                 welcome
                 HStack(spacing: 12) {
                     Button(action: showLearn) {
-                        Label("Learn my morning", systemImage: "record.circle")
+                        Label { Text("Learn my morning") } icon: { MorningDottedIcon(systemName: "record.circle").frame(width: 24, height: 24) }
                             .padding(.horizontal, 8).padding(.vertical, 8)
                     }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("learn.begin")
                     Button("Try a sample") { store.loadSample() }
@@ -606,15 +647,16 @@ struct TodayView: View {
                 HStack(spacing: 8) {
                     Text(Date.now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                         .font(.caption.weight(.medium))
-                    Image(systemName: "chevron.down").font(.caption2.weight(.regular))
+                    MorningDottedIcon(systemName: "chevron.down").frame(width: 16, height: 16).font(.caption2.weight(.regular))
                 }.foregroundStyle(MorningStyle.ink).frame(minHeight: 44).contentShape(Rectangle())
+                    .background(MorningStyle.background)
             }.buttonStyle(.plain).accessibilityIdentifier("morning.date")
                 .accessibilityHint("Review this week and previous mornings")
             Spacer()
             #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
             if #available(iOS 27.0, *), ScreenRecordingService.shared.captureMayBeActive {
                 Button { showingNotice = true } label: {
-                    Label("MORE · Recording", systemImage: "record.circle.fill").font(.caption.weight(.medium)).foregroundStyle(.red)
+                    Label { Text("MORE · Recording") } icon: { MorningDottedIcon(systemName: "record.circle.fill").frame(width: 18, height: 18) }.font(.caption.weight(.medium)).foregroundStyle(.red)
                 }.buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("morning.recording")
             }
             #endif
@@ -622,7 +664,7 @@ struct TodayView: View {
                 Button { showingNotice = true } label: { ProgressView().controlSize(.small) }
                     .accessibilityLabel("Understanding your morning. View progress")
             } else if store.notice != nil || store.observationIssue != nil || store.hasPendingRecording {
-                Button { showingNotice = true } label: { Image(systemName: "exclamationmark.circle").frame(width: 44, height: 44) }
+                Button { showingNotice = true } label: { MorningDottedIcon(systemName: "exclamationmark.circle").frame(width: 24, height: 24).frame(width: 44, height: 44) }
                     .buttonStyle(.plain).accessibilityLabel("Your morning needs attention")
                     .accessibilityIdentifier("morning.attention")
             }
@@ -630,31 +672,26 @@ struct TodayView: View {
     }
 
     private var welcome: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Image(systemName: "sun.horizon")
-                .scaledFont(28, relativeTo: .title, weight: .regular)
-                .foregroundStyle(.primary.opacity(0.75)).accessibilityHidden(true)
-            Text("Your morning")
-                .font(MorningTheme.Typography.display)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Show us your morning.\nKeep what works for you.")
-                .font(.subheadline).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
-        }
+        // The morning artwork carries this empty state; Learn and Sample are its actions.
+        Color.clear.frame(height: 24).accessibilityHidden(true)
     }
 
     private func routineHeading(_ routine: RoutineVersion, compact: Bool) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(isFrench ? "bonjour" : "good morning").font(MorningTheme.Typography.title)
+                .background(MorningStyle.background)
                 .accessibilityIdentifier("morning.heading")
                 .accessibilityValue(store.session?.status == .stopped ? "stopped" : "")
             morningInvitationButton
             if !routine.isApproved {
                 Text("Draft").font(.caption2).foregroundStyle(MorningStyle.muted)
+                    .background(MorningStyle.background)
                     .accessibilityIdentifier("morning.draft")
                     .accessibilityLabel("Draft, review before starting")
             }
             Spacer(minLength: 8)
             Text("\(routine.totalDurationMinutes) min").font(.caption.monospacedDigit()).foregroundStyle(MorningStyle.muted)
+                .background(MorningStyle.background)
                 .accessibilityLabel("\(routine.totalDurationMinutes) minutes planned")
         }.padding(.bottom, 2)
     }
@@ -668,11 +705,12 @@ struct TodayView: View {
             let upcoming = scheduled.flatMap { $0 > context.date ? $0 : nil }
             Button(action: showInvitation) {
                 HStack(spacing: 4) {
-                    Image(systemName: "clock")
+                    MorningDottedIcon(systemName: "clock").frame(width: 18, height: 18)
                     if let upcoming {
                         Text(upcoming.formatted(date: .omitted, time: .shortened)).monospacedDigit()
                     }
                 }.font(.caption2).foregroundStyle(MorningStyle.muted).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                    .background(MorningStyle.background)
             }.buttonStyle(.plain)
                 .accessibilityLabel(upcoming == nil ? "Set morning invitation" : "Edit morning invitation")
                 .accessibilityValue(upcoming?.formatted(date: .complete, time: .shortened) ?? String(localized: "No upcoming invitation"))
@@ -718,18 +756,19 @@ struct TodayView: View {
             : AnyLayout(HStackLayout(spacing: 12))
         return layout {
             if store.session?.status == .paused {
-                Button("Continue", systemImage: "play.fill") { if current() { store.resume() } }
+                Button { if current() { store.resume() } } label: { Label { Text("Continue") } icon: { MorningDottedIcon(systemName: "play.fill").frame(width: 20, height: 20) } }
                     .accessibilityIdentifier("run.detailResume")
             } else {
-                Button("Pause", systemImage: "pause.fill") { if current() { store.pause() } }
+                Button { if current() { store.pause() } } label: { Label { Text("Pause") } icon: { MorningDottedIcon(systemName: "pause.fill").frame(width: 20, height: 20) } }
                     .accessibilityIdentifier("run.detailPause")
-                Button("Next", systemImage: "arrow.right") {
+                Button {
                     guard current() else { return }
                     viewingStep = nil
                     store.advance()
-                }.accessibilityIdentifier("run.detailNext")
+                } label: { Label { Text("Next") } icon: { MorningDottedIcon(systemName: "arrow.right").frame(width: 20, height: 20) } }
+                    .accessibilityIdentifier("run.detailNext")
             }
-            Button("Again", systemImage: "arrow.counterclockwise") { if current() { store.readCurrent() } }
+            Button { if current() { store.readCurrent() } } label: { Label { Text("Again") } icon: { MorningDottedIcon(systemName: "arrow.clockwise").frame(width: 20, height: 20) } }
                 .accessibilityIdentifier("run.detailAgain")
         }.buttonStyle(SecondaryButtonStyle())
             .disabled(store.privacyBlocksWork || store.voiceInputBlocksPlayback)
@@ -792,7 +831,7 @@ struct TodayView: View {
         let current = store.sessionActive && store.currentStep?.id == step.id
         return Button { viewingStep = step } label: {
             HStack(spacing: 13) {
-                Image(systemName: complete ? "checkmark" : skipped ? "forward.end" : MorningStyle.symbol(for: step.kind))
+                MorningDottedIcon(systemName: complete ? "checkmark" : skipped ? "forward.end" : MorningStyle.symbol(for: step.kind)).frame(width: 20, height: 20)
                     .scaledFont(16, relativeTo: .body, weight: .regular)
                     .foregroundStyle(complete || skipped ? MorningStyle.muted : MorningStyle.ink).frame(width: 25)
                 Text(step.title).font(.subheadline.weight(.medium))
@@ -808,7 +847,7 @@ struct TodayView: View {
         }
         .buttonStyle(.plain)
         .background(current ? MorningStyle.selected : MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
-        .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(current ? MorningStyle.ink : MorningStyle.line, lineWidth: current ? 1.5 : 1))
+        .overlay(MorningDottedFrame(cornerRadius: MorningTheme.Space.radius).fill(current ? MorningStyle.ink : MorningStyle.line))
         .accessibilityLabel(complete ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, completed" : skipped ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, skipped" : "\(index + 1). \(step.title), \(step.durationMinutes) minutes")
         .accessibilityHint(canArrange ? "Opens details. Hold to move this moment." : "Opens details")
         .accessibilityIdentifier("morning.step.\(index)")
@@ -832,7 +871,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 HStack(spacing: 6) {
-                    Image(systemName: store.session?.status == .paused ? "pause.fill" : "waveform")
+                    MorningDottedIcon(systemName: store.session?.status == .paused ? "pause.fill" : "waveform").frame(width: 18, height: 18)
                         .accessibilityHidden(true)
                     Text(store.session?.status == .paused ? "Paused" : "Now")
                         .accessibilityIdentifier("run.state").accessibilityValue(store.stateLabel)
@@ -868,10 +907,14 @@ struct TodayView: View {
     }
 
     @ViewBuilder private var reflectionButtons: some View {
-        Button("Speak", systemImage: "mic") { store.openCompletionCapture() }
+        Button { store.openCompletionCapture() } label: {
+            Label { Text("Speak") } icon: { MorningDottedIcon(systemName: "mic").frame(width: 22, height: 22) }
+        }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(store.voiceInputBlocksPlayback).accessibilityIdentifier("morning.speakReflection")
-        Button("Write", systemImage: "square.and.pencil") { store.openCapture() }
+        Button { store.openCapture() } label: {
+            Label { Text("Write") } icon: { MorningDottedIcon(systemName: "square.and.pencil").frame(width: 20, height: 20) }
+        }
             .buttonStyle(.borderless).accessibilityIdentifier("morning.reflect")
         Button("Not now") { store.discardCompletionReflection() }
             .buttonStyle(.borderless).accessibilityIdentifier("morning.dismissReflection")
@@ -882,14 +925,14 @@ struct TodayView: View {
         if store.sessionActive {
             HStack(spacing: 12) {
                 if store.session?.status == .paused {
-                    Button { store.resume() } label: { Label("Continue", systemImage: "play.fill").frame(maxWidth: .infinity).padding(.vertical, 9) }
+                    Button { store.resume() } label: { Label { Text("Continue") } icon: { MorningDottedIcon(systemName: "play.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("run.resume")
                         .disabled(store.voiceInputBlocksPlayback)
                 } else {
-                    Button { store.pause() } label: { Label("Pause", systemImage: "pause.fill").frame(maxWidth: .infinity).padding(.vertical, 9) }
+                    Button { store.pause() } label: { Label { Text("Pause") } icon: { MorningDottedIcon(systemName: "pause.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
                         .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("run.pause")
                     if !store.automatic || [.waitingForUser, .unavailable, .failed].contains(store.automation.status) {
-                        Button { store.advance() } label: { Image(systemName: "arrow.right").frame(width: 32, height: 32) }
+                        Button { store.advance() } label: { MorningDottedIcon(systemName: "arrow.right").frame(width: 25, height: 25).frame(width: 32, height: 32) }
                             .buttonStyle(PrimaryButtonStyle()).accessibilityLabel("Next moment").accessibilityIdentifier("run.next")
                     }
                 }
@@ -904,7 +947,7 @@ struct TodayView: View {
                     Button("Skip this moment") { store.advance(skipping: true) }.disabled(store.session?.status != .running)
                     Button("Read aloud") { store.readCurrent() }.disabled(store.voiceInputBlocksPlayback)
                     Button("Save a thought") { store.openCapture() }
-                } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }
+                } label: { MorningDottedIcon(systemName: "ellipsis").frame(width: 25, height: 25).frame(width: 32, height: 32) }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityLabel("Morning controls").accessibilityIdentifier("run.controls")
             }.controlSize(.large)
         }
@@ -916,16 +959,16 @@ struct NoticeView: View {
     let dismiss: () -> Void
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "info.circle")
+            MorningDottedIcon(systemName: "info.circle").frame(width: 20, height: 20)
             Text(text).font(.caption).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Button(action: dismiss) { Image(systemName: "xmark").padding(5) }.accessibilityLabel("Dismiss message")
+            Button(action: dismiss) { MorningDottedIcon(systemName: "xmark").frame(width: 18, height: 18).padding(5) }.accessibilityLabel("Dismiss message")
         }.foregroundStyle(MorningStyle.muted).padding(16).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityIdentifier("app.notice")
     }
 }
 
-/// The artwork has no glass shell. Only the revealed command bar uses native glass.
+/// Four quiet destinations. Playback appears only when the morning sun is opened.
 private struct MorningActionDock: View {
     @Bindable var store: MorningStore
     @Binding var expanded: Bool
@@ -935,7 +978,6 @@ private struct MorningActionDock: View {
     var learn: () -> Void
     var review: () -> Void
     var settings: () -> Void
-    @Namespace private var glassNamespace
     @ViewState<RoutineVersion?> private var readyRoutine = nil
     @ViewState<UUID?> private var readyGeneration = nil
     @Environment(\.dynamicTypeSize) private var dynamicType
@@ -947,31 +989,41 @@ private struct MorningActionDock: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
+        VStack(spacing: 10) {
             if expanded {
                 actionBar
-                    .glassEffect(.regular, in: Capsule())
-                    .glassEffectID("sunrise-dock", in: glassNamespace)
-                    .glassEffectTransition(.materialize)
+                    .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(MorningDottedFrame(cornerRadius: 12).fill(MorningStyle.line))
                     .accessibilityAction(.escape) { expanded = false }
-            } else {
-                Button { expanded = true } label: {
-                    MorningSunriseMark()
-                        .contentShape(Rectangle())
+            }
+            HStack(spacing: 12) {
+                Button {
+                    if store.tab != .today { store.tab = .today; expanded = false }
+                    else { expanded.toggle() }
+                } label: {
+                    MorningDockGlyph(symbol: .morning).frame(width: 28, height: 28)
+                        .frame(width: 48, height: 48).contentShape(Rectangle())
                 }
                 .buttonStyle(SunriseTouchStyle())
-                .transition(.opacity)
-                .accessibilityLabel("Morning actions")
-                .accessibilityValue("Collapsed")
-                .accessibilityHint("Opens playback, learning, history and settings")
+                .accessibilityLabel("Morning")
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+                .accessibilityHint("Opens playback controls")
                 .accessibilityIdentifier("morning.actions")
                 .disabled(store.privacyBlocksWork || transitionPending)
+                action(String(localized: "Your routine"), symbol: .review, id: "morning.review", review)
+                action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
+                action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
             }
+            .padding(.horizontal, 16).padding(.vertical, 6)
+            .foregroundStyle(MorningStyle.ink)
+            .background(MorningStyle.background, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(MorningDottedFrame(cornerRadius: 10, spacing: 7).fill(MorningStyle.line))
         }
-        .animation(reduceMotion ? nil : .smooth(duration: 0.28), value: expanded)
+        .frame(maxWidth: 320)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.22), value: expanded)
         .onChange(of: expanded) { _, open in if !open { clearReadyState() } }
         .onChange(of: store.routine) { _, _ in clearReadyState() }
-        .onChange(of: store.sessionActive) { _, active in if active { clearReadyState() } }
+        .onChange(of: store.sessionActive) { _, active in if active { collapse() } }
         .onChange(of: store.dataGeneration) { _, _ in collapse() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { collapse() } }
     }
@@ -989,8 +1041,8 @@ private struct MorningActionDock: View {
             } else {
                 HStack(spacing: 0) { actionItems }.padding(4)
             }
-        }.frame(width: barWidth,
-                height: readyRoutine != nil ? nil : dynamicType.isAccessibilitySize ? 104 : 58)
+        }.frame(width: readyRoutine != nil ? barWidth : 64,
+                height: readyRoutine != nil ? nil : 58)
     }
 
     @ViewBuilder private var actionItems: some View {
@@ -1024,9 +1076,6 @@ private struct MorningActionDock: View {
         } else {
             action(String(localized: "Sample"), symbol: .play, id: "morning.sample") { store.loadSample() }
         }
-        action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
-        action(String(localized: "History"), symbol: .history, id: "morning.review", review)
-        action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
     }
 
     private func action(_ title: String, symbol: MorningDockSymbol, id: String, disabled: Bool = false,
@@ -1035,18 +1084,14 @@ private struct MorningActionDock: View {
         return Button {
             guard generation == store.dataGeneration, scenePhase == .active,
                   !store.privacyBlocksWork, !store.busy, !transitionPending else { return }
-            // This is an in-place glass transition, not a modal dismissal. Reserve
-            // and establish the destination synchronously before releasing entry
+            // Establish the destination synchronously before releasing entry
             // occupancy; no timer or delayed closure can reopen a forgotten session.
             transitionPending = true
             perform()
             if !keepsExpanded { expanded = false }
             transitionPending = false
         } label: {
-            VStack(spacing: 3) {
-                MorningDockGlyph(symbol: symbol).frame(width: 23, height: 23)
-                Text(title).font(.caption2.weight(.medium)).fixedSize(horizontal: true, vertical: false)
-            }
+            MorningDockGlyph(symbol: symbol).frame(width: 27, height: 27)
             .foregroundStyle(MorningStyle.ink)
             .frame(minWidth: 54, maxWidth: dynamicType.isAccessibilitySize ? nil : .infinity, minHeight: 48)
             .padding(.horizontal, 3)

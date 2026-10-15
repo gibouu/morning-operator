@@ -40,7 +40,7 @@ enum MorningStyle {
     }
 }
 
-/// A mono, letter-spaced kicker: the print's small label.
+/// A small, letter-spaced kicker: the print's small label.
 struct Eyebrow: View {
     let text: String
     var body: some View {
@@ -54,16 +54,17 @@ struct StatusPill: View {
         Label { Text(text) } icon: { Circle().fill(color).frame(width: 6, height: 6) }
             .font(MorningTheme.Typography.label).foregroundStyle(color)
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .overlay(Capsule().strokeBorder(color.opacity(0.5), lineWidth: 1))
+            .background(MorningStyle.surface, in: Capsule())
+            .overlay(MorningDottedFrame(cornerRadius: 100, spacing: 6).fill(color.opacity(0.65)))
     }
 }
-/// A printed label: the surface with a hairline, square-ish corners.
+/// Opaque reading paper with sparse dotted frame accents.
 struct Card<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         content.padding(MorningTheme.Space.card).frame(maxWidth: .infinity, alignment: .leading)
             .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
-            .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line, lineWidth: 1))
+            .overlay(MorningCardFrame())
     }
 }
 /// A card that is one button: the whole surface responds to a tap.
@@ -72,9 +73,9 @@ struct CardButton<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         Button(action: action) {
-            content.padding(MorningTheme.Space.card).frame(maxWidth: .infinity, alignment: .leading)
+            content.padding(MorningTheme.Space.card).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
-                .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line, lineWidth: 1))
+                .overlay(MorningCardFrame())
                 .contentShape(RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
         }.buttonStyle(.plain)
     }
@@ -87,7 +88,7 @@ struct LinkRow: View {
     var body: some View {
         HStack(spacing: 14) {
             if let symbol {
-                Image(systemName: symbol).font(.body).foregroundStyle(MorningStyle.accent).frame(width: 24)
+                MorningDottedIcon(systemName: symbol).foregroundStyle(MorningStyle.accent).frame(width: 24, height: 24)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(MorningTheme.Typography.heading)
@@ -97,8 +98,8 @@ struct LinkRow: View {
                 }
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(MorningStyle.muted)
-        }.foregroundStyle(MorningStyle.ink)
+            MorningDottedIcon(systemName: "chevron.right").foregroundStyle(MorningStyle.muted).frame(width: 18, height: 18)
+        }.frame(minHeight: 44).foregroundStyle(MorningStyle.ink)
     }
 }
 struct PageHeading: View {
@@ -123,12 +124,23 @@ struct EmptyMoment: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Image(systemName: symbol).scaledFont(26, relativeTo: .title, weight: .light).foregroundStyle(MorningStyle.accent)
+            MorningDottedIcon(systemName: symbol).frame(width: 30, height: 30).foregroundStyle(MorningStyle.accent)
             Text(title).font(MorningTheme.Typography.title)
             Text(detail).font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(MorningTheme.Space.card + 4)
             .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
-            .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line, lineWidth: 1))
+            .overlay(MorningCardFrame())
+    }
+}
+
+/// Decorative only. Higher contrast makes the same separated dots more visible.
+private struct MorningCardFrame: View {
+    @Environment(\.colorSchemeContrast) private var contrast
+    var body: some View {
+        MorningDottedFrame(cornerRadius: MorningTheme.Space.radius,
+                           dotRadius: contrast == .increased ? 1.05 : 0.85)
+            .fill(MorningStyle.ink.opacity(contrast == .increased ? 0.75 : 0.28))
+            .accessibilityHidden(true).allowsHitTesting(false)
     }
 }
 

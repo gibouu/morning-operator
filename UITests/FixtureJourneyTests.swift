@@ -436,15 +436,15 @@ enum MorningUITestNavigation {
                           "Morning must expose its sunrise control.\n\(app.debugDescription)", file: file, line: line)
         case "Review":
             if app.buttons["morning.home"].exists { return }
+            let destinationClose = app.buttons["destination.close"]
+            if destinationClose.exists, destinationClose.isHittable { destinationClose.tap() }
+            let closeActions = app.buttons["morning.closeActions"]
+            if closeActions.exists, closeActions.isHittable { closeActions.tap() }
             let date = app.buttons["morning.date"]
-            let expandedReview = app.buttons["morning.review"]
-            if expandedReview.exists, expandedReview.isHittable {
-                expandedReview.tap()
-            } else if date.waitForExistence(timeout: 5), date.isHittable {
+            if date.waitForExistence(timeout: 5), date.isHittable {
                 date.tap()
             } else {
-                revealMorningAction("morning.review", in: app, file: file, line: line)
-                app.buttons["morning.review"].tap()
+                XCTFail("Morning history must open from its date control.", file: file, line: line)
             }
             XCTAssertTrue(app.buttons["morning.home"].waitForExistence(timeout: 5),
                           "Review must expose its return to Morning.\n\(app.debugDescription)", file: file, line: line)
@@ -516,17 +516,21 @@ enum MorningUITestNavigation {
     }
 
     static func openRoutine(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        reviewAction("review.routine", in: app, file: file, line: line)
-        XCTAssertTrue(app.navigationBars["Your routine"].waitForExistence(timeout: 5), file: file, line: line)
+        if app.buttons["morning.review"].exists {
+            tapButton("morning.review", in: app, file: file, line: line)
+        } else {
+            reviewAction("review.routine", in: app, file: file, line: line)
+        }
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch.waitForExistence(timeout: 5), file: file, line: line)
     }
 
     static func closeRoutine(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let sheet = app.navigationBars["Your routine"]
-        XCTAssertTrue(sheet.waitForExistence(timeout: 5), file: file, line: line)
-        let done = sheet.buttons["Done"]
+        let editor = app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), file: file, line: line)
+        let done = app.buttons["destination.close"]
         XCTAssertTrue(done.isHittable, file: file, line: line)
         done.tap()
-        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: editor)
         XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
     }
 
@@ -587,6 +591,8 @@ enum MorningUITestNavigation {
 
     /// Every started morning opens with a greeting and a choice (issue #28).
     static func chooseRoutineAtOpening(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let close = app.buttons["morning.closeActions"]
+        if close.exists && close.isHittable { close.tap() }
         let routine = app.buttons["opening.routine"]
         XCTAssertTrue(routine.waitForExistence(timeout: 15),
                       "A started morning must show its opening.\n\(app.debugDescription)", file: file, line: line)

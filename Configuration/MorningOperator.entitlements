@@ -4,5 +4,9 @@
 <dict>
     <key>com.apple.developer.weatherkit</key>
     <true/>
+    <key>com.apple.developer.family-controls</key>
+    <true/>
+    <key>com.apple.developer.family-controls.app-and-website-usage</key>
+    <true/>
 </dict>
 </plist>

@@ -33,6 +33,16 @@ public enum MorningActivityStatus: String, Codable, Hashable, Sendable, CaseIter
 public enum MorningActivityNamespace: Codable, Hashable, Sendable {
     case production
     case testing(workspaceID: UUID)
+
+    /// One namespace for both app publications and background timer intents.
+    /// A malformed test directory cannot fall through to production activities.
+    public static func workspace(directory: URL, isUITesting: Bool) -> Self? {
+        guard isUITesting else { return .production }
+        let prefix = "MorningOperatorUITests-"
+        let name = directory.lastPathComponent
+        guard name.hasPrefix(prefix), let id = UUID(uuidString: String(name.dropFirst(prefix.count))) else { return nil }
+        return .testing(workspaceID: id)
+    }
 }
 
 public enum MorningActivityValidationError: Error, Sendable, Equatable {
@@ -45,15 +55,31 @@ public struct MorningActivityStepTimer: Codable, Hashable, Sendable {
     public let stepID: UUID
     public let destination: StepDestination
     public let endsAt: Date
+    /// Actual persisted step start. Nil for older payloads; artwork must not invent it.
+    public let startedAt: Date?
     /// Nil when the next step stays in MORE or there is no next step.
     public let nextDestination: StepDestination?
     public let hasNextStep: Bool
     public let pausedRemaining: TimeInterval?
     public init(stepID: UUID, destination: StepDestination, endsAt: Date,
-                nextDestination: StepDestination?, hasNextStep: Bool, pausedRemaining: TimeInterval? = nil) {
+                nextDestination: StepDestination?, hasNextStep: Bool, pausedRemaining: TimeInterval? = nil,
+                startedAt: Date? = nil) {
         self.stepID = stepID; self.destination = destination; self.endsAt = endsAt
         self.nextDestination = nextDestination; self.hasNextStep = hasNextStep
         self.pausedRemaining = pausedRemaining
+        self.startedAt = startedAt
+    }
+
+    /// A snapshot fraction of the current time budget, not a background animation.
+    /// Unknown starts stay unknown; paused payloads use their frozen remaining time.
+    public func elapsedFraction(at date: Date) -> Double? {
+        guard let startedAt, startedAt.timeIntervalSinceReferenceDate.isFinite,
+              endsAt.timeIntervalSinceReferenceDate.isFinite else { return nil }
+        let duration = endsAt.timeIntervalSince(startedAt)
+        guard duration > 0 else { return nil }
+        let remaining = pausedRemaining ?? endsAt.timeIntervalSince(date)
+        guard remaining.isFinite else { return nil }
+        return min(1, max(0, 1 - max(0, remaining) / duration))
     }
 
     /// "Next: Instagram", "Next: MORE" or "Finish".
@@ -137,7 +163,7 @@ public enum MorningActivityProjection {
             let next = StepNavigation.nextStep(in: session)
             stepTimer = MorningActivityStepTimer(stepID: step.id, destination: target.destination, endsAt: timer.endsAt,
                 nextDestination: next?.target?.destination, hasNextStep: next != nil,
-                pausedRemaining: timer.pausedAt == nil ? nil : timer.remaining(at: date))
+                pausedRemaining: timer.pausedAt == nil ? nil : timer.remaining(at: date), startedAt: timer.startedAt)
         }
         guard let state = try? MorningActivityContentState(category: category, status: status,
             completedSteps: session.currentStepIndex, totalSteps: session.routine.steps.count, updatedAt: date,

@@ -1,6 +1,6 @@
 # MORE
 
-> **Build the current app from `main`.** This homepage documents the installed development build; its source was merged into `main` on 13 October 2026 ([#26](https://github.com/gibouu/morning-operator/pull/26), which carried [#22](https://github.com/gibouu/morning-operator/pull/22)).
+> **Build MORE from `main`.** [Current direction, demo story and remaining checks](docs/CURRENT-DIRECTION.md) · [Report feedback](https://github.com/gibouu/morning-operator/issues/new/choose). PR #131 combines the current browser, timers, learning and dotted design.
 
 **Less phone handling. More of the morning you enjoy.**
 
@@ -19,11 +19,11 @@ flowchart LR
 
 ## A quieter morning
 
-**App source `1952d9f` is installed and launched on the owner’s iPhone; owner acceptance remains open.** The owner rejected the previous corner-popover design. Source on `main` now centers a shell-free glowing sunrise beneath the plan, reveals four custom-icon actions in a compact native-glass bar, and asks for an explicit Start after Play. Moment durations, concise details and an optional English/French sample sit over a dawn/sunset-inspired background. [PHASE-ONE](docs/PHASE-ONE.md) records actual builds, installations and test outcomes; this description does not establish them.
+The current app uses cream paper, dotted sunrise artwork, handwritten headings and an icon-only dock. Its day-to-night scene follows local time while the app keeps its own light paper palette. Learn starts with actual Screen Time, explicit teaching and guided website sign-ins. [The current direction](docs/CURRENT-DIRECTION.md) supersedes the older visual details below.
 
 | Experience | V2 source behavior |
 |---|---|
-| Morning | A compact date, “good morning” or “bonjour” and total planned minutes sit above tappable tiles showing each moment’s duration. The centered sunrise expands into Play, Learn, History and Settings; Play opens Ready, then explicit Start begins an approved morning. Drafts offer Review; an active run offers Pause or Continue. Tap the background to collapse the dock. There is no permanent tab bar. |
+| Morning | A compact date, “good morning” or “bonjour” and total planned minutes sit above tappable tiles showing each moment’s duration. The persistent dock opens Morning playback, Routine, Learn and Settings; the date opens history; Play opens Ready, then explicit Start begins an approved morning. Drafts offer Review; an active run offers Pause or Continue. Tap the background to collapse the dock. There is no permanent tab bar. |
 | Arrange your morning | Use native drag on iOS 27, or tap a tile and choose Move earlier/later in its details, while no morning is running or paused. A changed order becomes a draft requiring approval. |
 | Review | Tap the date or choose History. Open a seven-day period and its days; revisit dated observations and originals, edit and approve your routine, find saved thoughts, and open settings. The home control returns to Morning. |
 | Try a sample | An explicit sample action creates eight editable, manual moments in English or French: calendar/weather, separate messaging apps, Mail, a feed and a thought. It is labeled synthetic, needs approval and has no live inbox access or mandatory meditation. Existing routines are not migrated. |

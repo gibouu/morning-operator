@@ -35,7 +35,7 @@ struct MorningActivitySettingsView: View {
                 }
                 Section {
                     Text("Tap the activity to return to your morning.")
-                    Text("For now, your morning pauses when you leave MORE. Come back and choose Resume when you're ready.")
+                    Text("Timed app steps keep running outside MORE. Other steps pause until you return.")
                 } footer: {
                     Text("This shows a morning you've chosen to start. It doesn't start recording or listen in the background.")
                 }

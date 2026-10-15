@@ -1,118 +1,148 @@
 import SwiftUI
 
-/// A small, app-owned family for the dock's six actions.
-enum MorningDockSymbol: Sendable {
-    case play, pause, review, learn, history, settings
+/// Existing callers keep their six cases; morning adds the dotted sunrise home mark.
+enum MorningDockSymbol: Sendable, CaseIterable {
+    case morning, play, pause, review, learn, history, settings
 }
 
-/// Decorative vector artwork; the enclosing button supplies its accessible name.
-/// Place in a square frame. The inherited foreground style and stroke both scale
-/// with that frame; the design's reference size is 24 points.
+/// An app-owned dotted family. The parent button supplies the name and selected state.
 struct MorningDockGlyph: View {
     let symbol: MorningDockSymbol
 
     var body: some View {
-        GeometryReader { geometry in
-            let side = max(0, min(geometry.size.width, geometry.size.height))
-            ZStack {
-                MorningDockOutline(symbol: symbol)
-                    .stroke(style: StrokeStyle(
-                        lineWidth: side * (1.7 / 24),
-                        lineCap: .round,
-                        lineJoin: .round
-                    ))
-                MorningDockAccent(symbol: symbol)
-                    .fill(.foreground)
-            }
-        }
+        MorningDottedIcon(systemName: name)
         .aspectRatio(1, contentMode: .fit)
         .accessibilityHidden(true)
     }
+
+    private var name: String {
+        switch symbol {
+        case .morning: "sunrise"
+        case .play: "play.fill"
+        case .pause: "pause.fill"
+        case .review: "list.bullet"
+        case .learn: "eye"
+        case .history: "clock.arrow.circlepath"
+        case .settings: "slider.horizontal.3"
+        }
+    }
 }
 
-private struct MorningDockOutline: Shape {
-    let symbol: MorningDockSymbol
+/// A familiar call-site vocabulary rendered entirely as circles. Known system-name
+/// strings select original dot patterns; there is no SF Symbol or stroke fallback.
+/// Typical control size is 24–28 pt. The containing button still needs a 44 pt target.
+struct MorningDottedIcon: View {
+    let systemName: String
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        MorningDottedIconShape(pattern: pattern, strong: contrast == .increased)
+            .fill(.foreground)
+            .aspectRatio(1, contentMode: .fit)
+            .accessibilityHidden(true)
+    }
+
+    private var pattern: [String] {
+        switch systemName {
+        case "play", "play.fill":
+            ["..x......", "..xx.....", "..xxx....", "..xxxx...", "..xxxxx..", "..xxxx...", "..xxx....", "..xx.....", "..x......"]
+        case "pause", "pause.fill":
+            [".........", "..x...x..", "..x...x..", "..x...x..", "..x...x..", "..x...x..", "..x...x..", "..x...x..", "........."]
+        case "stop", "stop.fill":
+            [".........", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", "........."]
+        case "checkmark", "checkmark.circle", "checkmark.circle.fill":
+            ["..xxxxx..", ".x.....x.", "x......xx", "x.....x.x", "x.x..x..x", "x..xx...x", "x.......x", ".x.....x.", "..xxxxx.."]
+        case "sunrise", "sunrise.fill", "sun.horizon", "sun.horizon.fill", "sun.max", "sun.max.fill":
+            ["....x....", ".x..x..x.", "..xxxxx..", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", "xxxxxxxxx", ".........", "..xxxxx.."]
+        case "record.circle", "record.circle.fill":
+            ["..xxxxx..", ".x.....x.", "x.......x", "x..xxx..x", "x..xxx..x", "x..xxx..x", "x.......x", ".x.....x.", "..xxxxx.."]
+        case "eye", "eye.fill", "viewfinder":
+            [".........", "...xxx...", "..x...x..", ".x..x..x.", "x..xxx..x", ".x..x..x.", "..x...x..", "...xxx...", "........."]
+        case "calendar":
+            ["..x...x..", ".xxxxxxx.", ".xx...xx.", ".xxxxxxx.", ".x.....x.", ".x.x.x.x.", ".x.....x.", ".x.x.x.x.", ".xxxxxxx."]
+        case "list.bullet", "list.bullet.clipboard":
+            [".........", ".x..xxxx.", ".........", ".........", ".x..xxxx.", ".........", ".........", ".x..xxxx.", "........."]
+        case "arrow.clockwise", "clock.arrow.circlepath":
+            ["..xxxxx..", ".x.....x.", "x......xx", "x.....xxx", "x........", "x........", "x.......x", ".x.....x.", "..xxxxx.."]
+        case "info.circle", "info.circle.fill", "exclamationmark.circle":
+            ["..xxxxx..", ".x.....x.", "x...x...x", "x.......x", "x..xx...x", "x...x...x", "x..xxx..x", ".x.....x.", "..xxxxx.."]
+        case "newspaper", "newspaper.fill", "doc.text":
+            [".xxxxxxx.", ".x.....x.", ".x.xxx.x.", ".x.....x.", ".x.x.x.x.", ".x.x.x.x.", ".x.....x.", ".x.xxx.x.", ".xxxxxxx."]
+        case "globe", "network":
+            ["..xxxxx..", ".x.x.x.x.", "x..x.x..x", "x..x.x..x", "xxxxxxxxx", "x..x.x..x", "x..x.x..x", ".x.x.x.x.", "..xxxxx.."]
+        case "clock", "clock.fill":
+            ["..xxxxx..", ".x.....x.", "x...x...x", "x...x...x", "x...xxx.x", "x.......x", "x.......x", ".x.....x.", "..xxxxx.."]
+        case "alarm", "alarm.fill":
+            [".xx...xx.", "x..xxx..x", "..x...x..", ".x..x..x.", ".x..xxx..", ".x.....x.", "..x...x..", "...xxx...", "..x...x.."]
+        case "timer", "stopwatch", "stopwatch.fill":
+            ["...xxx...", "....x..x.", "..xxxxx..", ".x.....x.", "x...x...x", "x...x...x", "x...xxx.x", ".x.....x.", "..xxxxx.."]
+        case "slider.horizontal.3", "gearshape", "gearshape.fill":
+            [".........", ".....x...", ".xxxx.xxx", ".....x...", "..x......", ".x.xxxxx.", "..x......", ".....x...", ".xxxx.xxx"]
+        case "arrow.right", "chevron.right", "forward.end", "forward.end.fill":
+            [".........", "....x....", ".....x...", "......x..", ".xxxxxxx.", "......x..", ".....x...", "....x....", "........."]
+        case "arrow.left", "chevron.left":
+            [".........", "....x....", "...x.....", "..x......", ".xxxxxxx.", "..x......", "...x.....", "....x....", "........."]
+        case "plus", "plus.circle", "plus.circle.fill":
+            [".........", "....x....", "....x....", "....x....", ".xxxxxxx.", "....x....", "....x....", "....x....", "........."]
+        case "circle.fill":
+            [".........", "...xxx...", "..xxxxx..", ".xxxxxxx.", ".xxxxxxx.", ".xxxxxxx.", "..xxxxx..", "...xxx...", "........."]
+        case "circle":
+            [".........", "...xxx...", "..x...x..", ".x.....x.", ".x.....x.", ".x.....x.", "..x...x..", "...xxx...", "........."]
+        case "xmark", "xmark.circle", "xmark.circle.fill":
+            [".........", ".x.....x.", "..x...x..", "...x.x...", "....x....", "...x.x...", "..x...x..", ".x.....x.", "........."]
+        case "ellipsis", "ellipsis.circle":
+            [".........", ".........", ".........", ".........", ".x..x..x.", ".........", ".........", ".........", "........."]
+        case "mic", "mic.fill", "waveform":
+            ["...xxx...", "...x.x...", "...x.x...", "...x.x...", ".x.xxx.x.", ".x.....x.", "..xxxxx..", "....x....", "..xxxxx.."]
+        case "speaker.wave.2", "speaker.wave.2.fill":
+            [".........", "....x..x.", "...xx...x", ".xxxx.x.x", ".xxxx.x.x", ".xxxx.x.x", "...xx...x", "....x..x.", "........."]
+        case "bubble.left.and.bubble.right.fill", "message", "message.fill", "bubble.left":
+            [".xxxxxx..", "x......x.", "x......x.", "x......x.", "x......x.", ".xxx.xxx.", "...x.x...", "...xx....", "........."]
+        case "envelope", "envelope.fill", "envelope.badge", "mail":
+            [".........", ".xxxxxxx.", ".xx...xx.", ".x.x.x.x.", ".x..x..x.", ".x.....x.", ".x.....x.", ".xxxxxxx.", "........."]
+        case "leaf", "leaf.fill", "heart", "heart.fill":
+            [".........", "..xx.xx..", ".x..x..x.", ".x.....x.", "..x...x..", "...x.x...", "....x....", ".........", "........."]
+        case "moon", "moon.fill", "moon.stars", "moon.stars.fill":
+            ["...xxxx..", "..xx.....", ".xx......", ".xx......", ".xx......", ".xxx.....", "..xxxx.xx", "...xxxxx.", "........."]
+        case "arrow.up", "arrow.up.circle":
+            ["....x....", "...xxx...", "..x.x.x..", ".x..x..x.", "....x....", "....x....", "....x....", "....x....", "........."]
+        case "lock.shield", "lock.shield.fill", "lock", "lock.fill":
+            ["...xxx...", "..x...x..", "..x...x..", ".xxxxxxx.", ".x.....x.", ".x..x..x.", ".x..x..x.", ".x.....x.", ".xxxxxxx."]
+        case "platter.filled.top.iphone", "iphone", "iphone.gen3":
+            ["..xxxxx..", "..x...x..", "..xxxxx..", "..x...x..", "..x...x..", "..x...x..", "..x...x..", "..x.x.x..", "..xxxxx.."]
+        case "rectangle.on.rectangle", "rectangle.on.rectangle.angled":
+            ["..xxxxxx.", "..x....x.", "xxxxxxxx.", "x.....xx.", "x.....xx.", "x.....xx.", "x.....xx.", "x.....x..", "xxxxxxx.."]
+        case "chevron.down":
+            [".........", ".........", ".x.....x.", "..x...x..", "...x.x...", "....x....", ".........", ".........", "........."]
+        case "chevron.up":
+            [".........", ".........", "....x....", "...x.x...", "..x...x..", ".x.....x.", ".........", ".........", "........."]
+        case "arrow.down", "arrow.down.circle":
+            [".........", "....x....", "....x....", "....x....", "....x....", ".x..x..x.", "..x.x.x..", "...xxx...", "....x...."]
+        case "square.and.pencil", "pencil", "pencil.and.outline":
+            [".......x.", "......xxx", ".....xxx.", "....xxx..", "...xxx...", "..xxx....", ".xxx.....", ".xx......", "........."]
+        default:
+            // A distinct cluster is preferable to quietly reintroducing a stroke icon.
+            ["....x....", "....x....", "..x.x.x..", "...xxx...", "xxxxxxxxx", "...xxx...", "..x.x.x..", "....x....", "....x...."]
+        }
+    }
+}
+
+private struct MorningDottedIconShape: Shape {
+    let pattern: [String]
+    let strong: Bool
 
     func path(in rect: CGRect) -> Path {
+        let side = min(rect.width, rect.height)
+        let cell = side / 10
+        let radius = cell * (strong ? 0.40 : 0.34)
         var path = Path()
-        switch symbol {
-        case .play:
-            // The triangle sits slightly right of center for optical balance.
-            path.move(to: CGPoint(x: 7, y: 4.5))
-            path.addLine(to: CGPoint(x: 19, y: 12))
-            path.addLine(to: CGPoint(x: 7, y: 19.5))
-            path.closeSubpath()
-
-        case .pause:
-            path.move(to: CGPoint(x: 8.25, y: 5))
-            path.addLine(to: CGPoint(x: 8.25, y: 19))
-            path.move(to: CGPoint(x: 15.75, y: 5))
-            path.addLine(to: CGPoint(x: 15.75, y: 19))
-
-        case .review:
-            path.addEllipse(in: CGRect(x: 4, y: 4, width: 16, height: 16))
-            path.move(to: CGPoint(x: 7.8, y: 12.1))
-            path.addLine(to: CGPoint(x: 10.7, y: 15))
-            path.addLine(to: CGPoint(x: 16.4, y: 9.1))
-
-        case .learn:
-            // Open observing arcs around one point, distinct from a record button.
-            path.move(to: CGPoint(x: 4.1, y: 10.5))
-            path.addCurve(to: CGPoint(x: 19.9, y: 10.5),
-                          control1: CGPoint(x: 8.1, y: 3.7),
-                          control2: CGPoint(x: 15.9, y: 3.7))
-            path.move(to: CGPoint(x: 4.1, y: 13.5))
-            path.addCurve(to: CGPoint(x: 19.9, y: 13.5),
-                          control1: CGPoint(x: 8.1, y: 20.3),
-                          control2: CGPoint(x: 15.9, y: 20.3))
-
-        case .history:
-            path.addRoundedRect(in: CGRect(x: 4, y: 5.5, width: 16, height: 14.5),
-                                cornerSize: CGSize(width: 3, height: 3))
-            path.move(to: CGPoint(x: 8, y: 3.5))
-            path.addLine(to: CGPoint(x: 8, y: 7.5))
-            path.move(to: CGPoint(x: 16, y: 3.5))
-            path.addLine(to: CGPoint(x: 16, y: 7.5))
-            path.move(to: CGPoint(x: 4.2, y: 10))
-            path.addLine(to: CGPoint(x: 19.8, y: 10))
-            path.move(to: CGPoint(x: 8, y: 13.5))
-            path.addLine(to: CGPoint(x: 16, y: 13.5))
-            path.move(to: CGPoint(x: 8, y: 16.5))
-            path.addLine(to: CGPoint(x: 12.5, y: 16.5))
-
-        case .settings:
-            // Split each rail at the knob so the open circles stay clear.
-            for (y, centerX) in [(6.0, 15.0), (12.0, 9.0), (18.0, 14.0)] {
-                let radius = 2.1
-                path.move(to: CGPoint(x: 4, y: y))
-                path.addLine(to: CGPoint(x: centerX - radius, y: y))
-                path.move(to: CGPoint(x: centerX + radius, y: y))
-                path.addLine(to: CGPoint(x: 20, y: y))
-                path.addEllipse(in: CGRect(x: centerX - radius, y: y - radius,
-                                           width: radius * 2, height: radius * 2))
+        for (row, line) in pattern.enumerated() {
+            for (column, value) in line.enumerated() where value == "x" {
+                let x = rect.midX + (CGFloat(column) - 4) * cell
+                let y = rect.midY + (CGFloat(row) - 4) * cell
+                path.addEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
             }
         }
-        return fittedDockPath(path, in: rect)
+        return path
     }
-}
-
-private struct MorningDockAccent: Shape {
-    let symbol: MorningDockSymbol
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        if case .learn = symbol {
-            path.addEllipse(in: CGRect(x: 10.15, y: 10.15, width: 3.7, height: 3.7))
-        }
-        return fittedDockPath(path, in: rect)
-    }
-}
-
-private func fittedDockPath(_ path: Path, in rect: CGRect) -> Path {
-    let side = max(0, min(rect.width, rect.height))
-    let scale = side / 24
-    return path.applying(CGAffineTransform(
-        a: scale, b: 0, c: 0, d: scale,
-        tx: rect.midX - side / 2, ty: rect.midY - side / 2
-    ))
 }

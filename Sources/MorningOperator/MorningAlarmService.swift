@@ -18,7 +18,29 @@ final class MorningAlarmService {
     private(set) var status = String(localized: "Off")
     private(set) var busy = false
     private var recorded: ScheduledMorningAlarm?
-    private var isIsolatedTest: Bool { ProcessInfo.processInfo.arguments.contains("--ui-testing") }
+    #if DEBUG
+    /// Scalar diagnostics only: no alarm identities or account data enter test evidence.
+    var nativeDiagnostic: String {
+        let auth: String
+        switch AlarmManager.shared.authorizationState {
+        case .authorized: auth = "authorized"
+        case .denied: auth = "denied"
+        case .notDetermined: auth = "notDetermined"
+        @unknown default: auth = "unknown"
+        }
+        guard let alarms = try? AlarmManager.shared.alarms else { return "auth:\(auth)|scheduled:unknown" }
+        let owned = recorded.map { record in alarms.filter { $0.id == record.id }.count } ?? 0
+        return "auth:\(auth)|scheduled:\(alarms.count)|recorded:\(recorded == nil ? 0 : 1)|owned:\(owned)"
+    }
+    #endif
+    private var isIsolatedTest: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        if Bundle.main.bundleIdentifier == "com.gibouu.morningoperator.qa",
+           arguments.contains("--qa-system-checks") { return false }
+        #endif
+        return arguments.contains("--ui-testing")
+    }
     private let file = AtomicJSONFile<MorningAlarmFile>(url: LocalDataControl.defaultDirectory.appendingPathComponent("morning-alarm.json"))
     private init() {
         guard let saved = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess({ _ in try file.load() }) else { return }

@@ -24,11 +24,14 @@ private struct RoutineWebStepPresenter: ViewModifier {
                     .id(step.id)
             } else {
                 VStack(spacing: 24) {
-                    ContentUnavailableView("Page unavailable", systemImage: "globe",
-                        description: Text("Choose another website in your routine."))
-                    Button("Close") { store.pendingWebTarget = nil }
-                        .buttonStyle(PrimaryButtonStyle())
-                }.padding(24)
+                    MorningDottedIcon(systemName: "globe").frame(width: 48, height: 48)
+                        .accessibilityHidden(true)
+                    Text("Page unavailable").font(.subheadline).foregroundStyle(MorningStyle.muted)
+                    Button { store.pendingWebTarget = nil } label: {
+                        MorningDottedIcon(systemName: "xmark").frame(width: 24, height: 24).frame(width: 44, height: 44)
+                    }.accessibilityLabel("Close").buttonStyle(.plain)
+                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(MorningPaper(showsSun: false)).foregroundStyle(MorningStyle.ink)
             }
         }
     }

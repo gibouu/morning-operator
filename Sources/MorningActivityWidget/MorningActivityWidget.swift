@@ -9,52 +9,61 @@ struct MorningActivityWidgetBundle: WidgetBundle {
     var body: some Widget { MorningActivityWidget() }
 }
 
-/// No storage, network, intents or private routine strings enter this extension.
-/// Opening the URL only selects the app's Morning screen; the app owns all effects.
+/// Closed category names and timer destinations only. The widget's dot artwork is
+/// local vector geometry; actions retain the app-owned intent/deep-link policy.
 struct MorningActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MorningActivityAttributes.self) { context in
-            MorningActivityLockScreen(state: context.state, isStale: context.isStale, sessionID: context.attributes.sessionID)
+            MorningActivityLockScreen(state: context.state, isStale: context.isStale,
+                                      sessionID: context.attributes.sessionID)
                 .widgetURL(MorningActivityPresentation.destination)
         } dynamicIsland: { context in
             let presentation = MorningActivityPresentation(state: context.state, isStale: context.isStale)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("MORE").font(.caption.weight(.semibold)).tracking(2)
+                    MorningWidgetLivingMark(fraction: presentation.artworkProgress)
+                        .frame(width: 36, height: 26)
                         .foregroundStyle(MorningActivityPalette.islandAccent)
+                        .accessibilityHidden(true)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Label(presentation.status, systemImage: presentation.statusSymbol)
-                        .font(.caption).fixedSize(horizontal: false, vertical: true)
-                        .foregroundStyle(.white)
+                    Text(presentation.status).font(.caption.weight(.medium))
+                        .foregroundStyle(.white).lineLimit(2)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    MorningActivityIslandDetail(presentation: presentation, sessionID: context.attributes.sessionID)
+                    MorningActivityIslandDetail(presentation: presentation,
+                                                sessionID: context.attributes.sessionID)
                 }
             } compactLeading: {
-                Image(systemName: presentation.leadingSymbol)
-                    .foregroundStyle(MorningActivityPalette.islandAccent)
-                    .accessibilityLabel(presentation.accessibilitySummary)
+                HStack(spacing: 0) {
+                    MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 22, height: 22)
+                        .foregroundStyle(MorningActivityPalette.islandAccent)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(presentation.accessibilitySummary)
             } compactTrailing: {
                 if context.isStale {
-                    Image(systemName: "exclamationmark.circle")
-                        .foregroundStyle(.white).accessibilityLabel("Update needed. Open MORE.")
+                    Text("!").font(.caption.weight(.semibold)).foregroundStyle(.white)
+                        .accessibilityLabel("Update needed. Open MORE.")
+                } else if let timer = context.state.stepTimer {
+                    StepCountdown(timer: timer, state: context.state)
+                        .font(.caption2.monospacedDigit()).foregroundStyle(.white)
+                        .frame(maxWidth: 52)
                 } else {
-                    if let timer = context.state.stepTimer {
-                        StepCountdown(timer: timer, state: context.state).font(.caption2.monospacedDigit()).frame(maxWidth: 50)
-                    } else {
                     Text(presentation.shortProgress).font(.caption2.monospacedDigit())
                         .foregroundStyle(.white).accessibilityLabel(presentation.progress)
-                    }
                 }
             } minimal: {
-                Image(systemName: presentation.leadingSymbol)
-                    .foregroundStyle(MorningActivityPalette.islandAccent)
-                    .accessibilityLabel(presentation.accessibilitySummary)
+                HStack(spacing: 0) {
+                    MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 22, height: 22)
+                        .foregroundStyle(MorningActivityPalette.islandAccent)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(presentation.accessibilitySummary)
             }
             .widgetURL(MorningActivityPresentation.destination)
             .keylineTint(MorningActivityPalette.islandAccent)
-            .contentMargins(.all, 24, for: .expanded)
+            .contentMargins(.all, 14, for: .expanded)
         }
     }
 }
@@ -63,68 +72,64 @@ private struct MorningActivityLockScreen: View {
     let state: MorningActivityContentState
     let isStale: Bool
     let sessionID: UUID
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var presentation: MorningActivityPresentation { .init(state: state, isStale: isStale) }
-    private var accent: Color { colorScheme == .dark ? MorningActivityPalette.islandAccent : MorningActivityPalette.purple }
-    private var background: Color { colorScheme == .dark ? MorningActivityPalette.dark : MorningActivityPalette.cream }
+    private var ink: Color { MorningActivityPalette.ink }
+    private var accent: Color { MorningActivityPalette.rust }
+    private var muted: Color { MorningActivityPalette.muted }
+    private var background: Color { MorningActivityPalette.paper }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 36, height: 28)
+                    .foregroundStyle(accent).accessibilityHidden(true)
+                Text("MORE").font(.caption.weight(.semibold)).foregroundStyle(ink)
+                Spacer(minLength: 8)
+                Text(presentation.status).font(.caption.weight(.medium)).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let timer = state.stepTimer {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(timer.destination.displayName).font(.headline)
-                    StepCountdown(timer: timer, state: state).font(.title2.monospacedDigit())
-                    StepActivityControls(sessionID: sessionID, timer: timer)
-                }
-            } else if dynamicTypeSize.isAccessibilitySize {
-                // Two essential facts remain visible without a narrow icon column,
-                // time row or progress decoration competing with enlarged text.
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("MORE").font(.caption2.weight(.semibold)).foregroundStyle(accent)
-                    Text(presentation.heading).font(.subheadline.weight(.semibold))
-                        .lineLimit(2).minimumScaleFactor(0.8)
-                    Text(isStale ? "Open MORE" : "\(presentation.status) · \(presentation.shortProgress)")
-                        .font(.caption).lineLimit(2)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text("MORE").font(.caption.weight(.semibold)).tracking(2).foregroundStyle(accent)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        timerDetails(timer)
+                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent)
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: 16) {
+                        timerDetails(timer)
                         Spacer(minLength: 4)
-                        Label(presentation.status, systemImage: presentation.statusSymbol)
-                            .font(.caption).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent)
                     }
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: presentation.leadingSymbol).font(.title3).foregroundStyle(accent)
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(presentation.heading).font(.headline)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(isStale ? String(localized: "Open MORE to update.") : presentation.progress)
-                                .font(.subheadline).foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    HStack(spacing: 4) {
-                        Text("Last update")
-                        Text(state.updatedAt, style: .time)
-                    }.font(.caption2).foregroundStyle(.secondary)
                 }
+                MorningWidgetBudgetProgress(timer: timer, state: state, tint: accent)
+                    .frame(height: 4).padding(.top, 3)
+            } else {
+                Text(presentation.heading).font(.headline).foregroundStyle(ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(isStale ? String(localized: "Open MORE to update.") : presentation.progress)
+                    .font(.caption).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 18).padding(.vertical, 14)
+        .padding(.horizontal, 18).padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(.primary)
         .activityBackgroundTint(background)
         .activitySystemActionForegroundColor(accent)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(presentation.accessibilitySummary)
         .accessibilityHint("Opens MORE's Morning screen.")
-        // No timer, implied countdown or explicit animation. Counts change only
-        // when the app publishes a real session update, including with Reduce Motion.
+    }
+
+    private func timerDetails(_ timer: MorningActivityStepTimer) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(timer.destination.displayName).font(.subheadline.weight(.medium)).foregroundStyle(ink)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            StepCountdown(timer: timer, state: state)
+                .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(ink)
+                .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
+        }
     }
 }
 
@@ -134,21 +139,33 @@ private struct MorningActivityIslandDetail: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        Group {
             if let timer = presentation.state.stepTimer {
-                Text(timer.destination.displayName).font(.headline)
-                StepCountdown(timer: timer, state: presentation.state).font(.title3.monospacedDigit())
-                StepActivityControls(sessionID: sessionID, timer: timer)
+                VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(timer.destination.displayName).font(.caption.weight(.medium))
+                            .foregroundStyle(.white.opacity(0.85)).lineLimit(2)
+                        StepCountdown(timer: timer, state: presentation.state)
+                            .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(.white)
+                            .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
+                    }
+                    Spacer(minLength: 4)
+                    StepActivityControls(sessionID: sessionID, timer: timer, ink: .white,
+                                         accent: MorningActivityPalette.islandAccent)
+                }
+                MorningWidgetBudgetProgress(timer: timer, state: presentation.state,
+                                            tint: MorningActivityPalette.islandAccent).frame(height: 4)
+                }
             } else {
-            Text(presentation.heading)
-                .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
-                .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
-            Text(presentation.isStale ? String(localized: "Open MORE to update.") : presentation.progress)
-                .font(.caption).foregroundStyle(.white.opacity(0.8))
-                .fixedSize(horizontal: false, vertical: true)
-            Text(presentation.lastUpdate)
-                .font(.caption2).foregroundStyle(.white.opacity(0.65))
-                .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(presentation.heading)
+                        .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
+                        .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                    Text(presentation.isStale ? String(localized: "Open MORE to update.") : presentation.progress)
+                        .font(.caption).foregroundStyle(.white.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -161,46 +178,27 @@ private struct MorningActivityIslandDetail: View {
 private struct MorningActivityPresentation {
     let state: MorningActivityContentState
     let isStale: Bool
-    static let destination = URL(string: "more://morning")!
+    static var destination: URL { URL(string: "\(scheme)://morning")! }
+    static var scheme: String { Bundle.main.object(forInfoDictionaryKey: "MorningURLScheme") as? String ?? "more" }
 
     var heading: String { isStale ? String(localized: "Update needed") : state.category.displayName }
     var status: String { isStale ? String(localized: "Update needed") : state.status.displayName }
+    var artworkProgress: Double? { state.stepTimer?.elapsedFraction(at: state.updatedAt) }
     var shortProgress: String { "\(state.completedSteps)/\(state.totalSteps)" }
     var progress: String { String(localized: "\(state.completedSteps) of \(state.totalSteps) moments passed") }
-    // A static timestamp remains truthful even when the system defers a stale
-    // presentation refresh. No timer implies that the app is still executing.
     var lastUpdate: String { String(localized: "Last update \(state.updatedAt.formatted(date: .omitted, time: .shortened))") }
     var accessibilitySummary: String {
         if isStale { return String(localized: "MORE. Update needed. Last saved progress: \(progress). \(lastUpdate). Open MORE to update.") }
         return String(localized: "MORE. \(state.category.displayName). \(status). \(progress). \(lastUpdate).")
     }
-    var statusSymbol: String {
-        if isStale { return "exclamationmark.circle" }
-        return switch state.status {
-        case .running: "circle.fill"
-        case .paused: "pause.fill"
-        case .needsAttention: "hand.tap"
-        }
-    }
-    var leadingSymbol: String {
-        if isStale { return "exclamationmark.circle" }
-        if state.status == .paused { return "pause.fill" }
-        return switch state.category {
-        case .briefing: "sun.horizon.fill"
-        case .messages: "bubble.left.and.bubble.right.fill"
-        case .calendar: "calendar"
-        case .wellbeing: "heart.fill"
-        case .entertainment: "sparkles.tv"
-        case .custom: "leaf.fill"
-        }
-    }
 }
 
 private enum MorningActivityPalette {
-    static let purple = Color(red: 0.43, green: 0.34, blue: 0.70)
-    static let islandAccent = Color(red: 0.73, green: 0.65, blue: 0.94)
-    static let cream = Color(red: 0.98, green: 0.973, blue: 0.952)
-    static let dark = Color(red: 0.10, green: 0.11, blue: 0.13)
+    static let ink = Color(red: 0.102, green: 0.184, blue: 0.431)
+    static let paper = Color(red: 0.957, green: 0.925, blue: 0.867)
+    static let rust = Color(red: 0.608, green: 0.227, blue: 0.071)
+    static let muted = Color(red: 0.310, green: 0.333, blue: 0.420)
+    static let islandAccent = Color(red: 0.949, green: 0.635, blue: 0.435)
 }
 
 private struct StepCountdown: View {
@@ -218,14 +216,186 @@ private struct StepCountdown: View {
 private struct StepActivityControls: View {
     let sessionID: UUID
     let timer: MorningActivityStepTimer
+    let ink: Color
+    let accent: Color
+
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             Button(intent: AddStepTimeIntent(sessionID: sessionID, stepID: timer.stepID, expectedEnd: timer.endsAt)) {
-                Text("+2 min")
+                VStack(spacing: 3) {
+                    MorningWidgetControlGlyph(kind: .extend).frame(width: 23, height: 23)
+                        .foregroundStyle(accent)
+                    Text("+2 min").font(.caption2.weight(.medium)).foregroundStyle(ink)
+                }.frame(minWidth: 50, minHeight: 44).contentShape(Rectangle())
             }
-            Link(destination: StepNavigation.nextURL(sessionID: sessionID, stepID: timer.stepID)) {
-                Text(timer.nextLabel)
+            .accessibilityLabel("+2 min")
+            .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).extend")
+            Link(destination: StepNavigation.nextURL(sessionID: sessionID, stepID: timer.stepID,
+                                                     scheme: MorningActivityPresentation.scheme)) {
+                VStack(spacing: 3) {
+                    MorningWidgetControlGlyph(kind: timer.hasNextStep ? .next : .finish)
+                        .frame(width: 23, height: 23).foregroundStyle(accent)
+                    if timer.hasNextStep { Text("Next").font(.caption2.weight(.medium)).foregroundStyle(ink) }
+                    else { Text("Finish").font(.caption2.weight(.medium)).foregroundStyle(ink) }
+                }.frame(minWidth: 50, minHeight: 44).contentShape(Rectangle())
             }
-        }.buttonStyle(.bordered)
+            .accessibilityLabel(timer.nextLabel)
+            .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).next")
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The extension repeats the app's small dot silhouette without importing app UI.
+/// Each impression is its own circle; no old category logo, emoji or stroked symbol.
+private struct MorningWidgetSunrise: Shape {
+    func path(in rect: CGRect) -> Path {
+        widgetDots(["....x....", ".x..x..x.", "..xxxxx..", ".xxxxxxx.", ".xxxxxxx.",
+                    ".xxxxxxx.", "xxxxxxxxx", ".........", "..xxxxx.."], in: rect)
+    }
+}
+
+private struct MorningWidgetControlGlyph: Shape {
+    enum Kind { case extend, next, finish }
+    let kind: Kind
+    func path(in rect: CGRect) -> Path {
+        let rows: [String]
+        switch kind {
+        case .extend:
+            rows = [".........", "....x....", "....x....", "....x....", ".xxxxxxx.", "....x....", "....x....", "....x....", "........."]
+        case .next:
+            rows = [".........", "....x....", ".....x...", "......x..", ".xxxxxxx.", "......x..", ".....x...", "....x....", "........."]
+        case .finish:
+            rows = [".........", ".......x.", "......x..", ".....x...", ".x..x....", "..xx.....", "...x.....", ".........", "........."]
+        }
+        return widgetDots(rows, in: rect)
+    }
+}
+
+private func widgetDots(_ rows: [String], in rect: CGRect) -> Path {
+    let side = min(rect.width, rect.height)
+    let cell = side / 10, radius = cell * 0.36
+    var path = Path()
+    for (row, text) in rows.enumerated() {
+        for (column, value) in text.enumerated() where value == "x" {
+            let x = rect.midX + (CGFloat(column) - 4) * cell
+            let y = rect.midY + (CGFloat(row) - 4) * cell
+            path.addEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+        }
+    }
+    return path
+}
+
+/// Two original print concepts. Production uses the rising sun; the quiet crescent
+/// remains available to native design previews without claiming a separate capability.
+private enum MorningWidgetArtworkConcept { case risingSun, quietMoon }
+
+/// The position changes only with published content, using the real persisted start.
+/// Short transitions are allowed; no TimelineView, repeated animation or background loop.
+private struct MorningWidgetLivingMark: View {
+    let fraction: Double?
+    var concept: MorningWidgetArtworkConcept = .risingSun
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isLuminanceReduced) private var reducedLuminance
+
+    var body: some View {
+        GeometryReader { geometry in
+            if fraction == nil, concept == .risingSun {
+                MorningWidgetSunrise()
+            } else {
+                let progress = min(1, max(0, fraction ?? 0))
+                let side = min(geometry.size.width * 0.72, geometry.size.height * 0.72)
+                ZStack {
+                    MorningWidgetCelestialDisc(crescent: concept == .quietMoon)
+                        .frame(width: side, height: side)
+                        .position(x: geometry.size.width / 2,
+                                  y: geometry.size.height * (0.74 - 0.34 * progress))
+                    MorningWidgetHorizon().frame(height: 3)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height * 0.86)
+                }
+                .clipped()
+                .animation(reduceMotion || reducedLuminance ? nil : .easeInOut(duration: 0.35), value: fraction)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct MorningWidgetCelestialDisc: Shape {
+    var crescent = false
+    func path(in rect: CGRect) -> Path {
+        let side = min(rect.width, rect.height), cell = side / 9
+        var path = Path()
+        for row in 0..<9 {
+            for column in 0..<9 {
+                let x = (CGFloat(column) + 0.5) / 9, y = (CGFloat(row) + 0.5) / 9
+                let distance = hypot(x - 0.5, y - 0.5)
+                guard distance < 0.5 else { continue }
+                if crescent, hypot(x - 0.72, y - 0.30) < 0.47 { continue }
+                let radius = cell * (0.28 + 0.10 * (1 - distance * 2))
+                let center = CGPoint(x: rect.midX + (x - 0.5) * side, y: rect.midY + (y - 0.5) * side)
+                path.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
+                                          width: radius * 2, height: radius * 2))
+            }
+        }
+        return path
+    }
+}
+
+private struct MorningWidgetHorizon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let radius = min(1.1, rect.height / 2)
+        for index in 0..<7 {
+            let x = rect.width * (0.12 + CGFloat(index) * 0.126)
+            path.addEllipse(in: CGRect(x: x - radius, y: rect.midY - radius,
+                                      width: radius * 2, height: radius * 2))
+        }
+        return path
+    }
+}
+
+/// The system updates this date-based progress without asking the app to run.
+/// Its mask turns the native linear indicator into separated print impressions.
+/// A paused budget uses its frozen snapshot; older payloads simply omit this track.
+private struct MorningWidgetBudgetProgress: View {
+    let timer: MorningActivityStepTimer
+    let state: MorningActivityContentState
+    let tint: Color
+    var body: some View {
+        Group {
+            if let start = timer.startedAt, start.timeIntervalSinceReferenceDate.isFinite,
+               timer.endsAt.timeIntervalSinceReferenceDate.isFinite, start < timer.endsAt,
+               state.status != .paused {
+                ProgressView(timerInterval: start...timer.endsAt, countsDown: false)
+                    .progressViewStyle(.linear).labelsHidden().tint(tint)
+                    .mask(MorningWidgetProgressDots())
+            } else if let fraction = timer.elapsedFraction(at: state.updatedAt) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        MorningWidgetProgressDots().fill(tint.opacity(0.2))
+                        MorningWidgetProgressDots().fill(tint)
+                            .mask(alignment: .leading) {
+                                Rectangle().frame(width: geometry.size.width * fraction)
+                            }
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct MorningWidgetProgressDots: Shape {
+    func path(in rect: CGRect) -> Path {
+        let count = max(2, Int(rect.width / 10))
+        let radius = min(1.7, rect.height / 2)
+        var path = Path()
+        for index in 0..<count {
+            let x = radius + (rect.width - radius * 2) * CGFloat(index) / CGFloat(count - 1)
+            path.addEllipse(in: CGRect(x: x - radius, y: rect.midY - radius,
+                                      width: radius * 2, height: radius * 2))
+        }
+        return path
     }
 }

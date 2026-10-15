@@ -12,26 +12,33 @@ struct MorningOperatorApp: App {
 
     init() { MorningAppShortcuts.updateAppShortcutParameters() }
 
-    private var testAppearance: ColorScheme? {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("--ui-testing") else { return nil }
-        if arguments.contains("--light-preview") { return .light }
-        if arguments.contains("--dark-preview") { return .dark }
-        return nil
-    }
-
     var body: some Scene {
         WindowGroup {
+            Group {
             #if DEBUG
             if let site = Self.webMorningLaunchSite, showingWebPreview {
                 WebMorningView(site: site, minutes: 10, onClose: { showingWebPreview = false })
             } else {
                 MorningRootView(store: store)
-                    .preferredColorScheme(testAppearance)
             }
             #else
             MorningRootView(store: store)
-                .preferredColorScheme(testAppearance)
+            #endif
+            }
+            // MORE's local-time palette owns the day-to-night journey. System
+            // appearance must not replace its paper, controls or website chrome.
+            .preferredColorScheme(.light)
+            #if DEBUG
+            .overlay(alignment: .topLeading) {
+                if ProcessInfo.processInfo.arguments.contains("--qa-system-checks"),
+                   ["com.gibouu.morningoperator.qa", "com.gibouu.morningoperator.systemqa"].contains(Bundle.main.bundleIdentifier ?? "") {
+                    Text(verbatim: "QA")
+                        .font(.caption2).padding(4)
+                        .accessibilityIdentifier("system.qaIdentity")
+                        .accessibilityLabel(Text(verbatim: "\(Bundle.main.bundleIdentifier ?? "missing")|\(Bundle.main.object(forInfoDictionaryKey: "MorningURLScheme") as? String ?? "missing")"))
+                        .allowsHitTesting(false)
+                }
+            }
             #endif
         }
     }

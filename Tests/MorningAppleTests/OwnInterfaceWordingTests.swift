@@ -150,12 +150,10 @@ private struct ShippedCatalogs {
 private enum OwnScreenFixtures {
     static let learn = [
         "Your rhythm", "Make your morning yours.",
-        "You'll review every suggestion.",
         "Show us your morning",
-        "Record a short part of your morning, or choose a saved file.",
+        "Record a moment, or add a file.",
         "Record", "Choose",
-        "A screenshot or text file works too. You choose what to share.",
-        "Add context, if you like", "Build it myself",
+        "A few words", "What would make a good morning?", "Build it myself",
         "Suggest a routine", "About on-device learning",
         "Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.",
         "A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention.",
@@ -172,19 +170,17 @@ private enum OwnScreenFixtures {
         "Settings & connections", "Voice, calendar and preferences"
     ]
     static let settings = [
-        "Your next morning", "Your day", "Calendar & weather",
-        "Morning at a glance", "Keep your place on the Lock Screen.",
-        "A voice to guide you", "Companion voice", "Read each step aloud",
-        "Try the voice", "Listen where you like",
-        "Use the audio output picker to choose an available speaker, including a HomePod on your network.",
+        "Morning alarm", "Shortcuts & timers", "Your next morning", "Calendar & weather",
+        "Lock Screen", "Voice", "Read each step aloud",
+        "Try the voice", "Audio output", "Choose a speaker or HomePod.",
         "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet.",
-        "Privacy & data", "Saved on this device", "Apple Intelligence", "Check again",
+        "Privacy & data", "Apple Intelligence", "Check again",
         "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable.",
         "Connecting a phone to a Mac doesn't automatically give this app control of the phone. The separate development test runner is needed for the phone-control experiment.",
         "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."
     ]
     static let routine = [
-        "Your routine", "A draft for you to review",
+        "Your routine",
         "%lld min planned · Your own pace", "%lld min planned · Spoken guidance", "%lld min planned · Your own pace",
         "%lld min planned · Spoken guidance", "%lld min planned · Your own pace", "%lld min planned · Spoken guidance",
         "%lld min planned · Your own pace", "%lld min planned · Spoken guidance", "%lld min planned · Your own pace",
@@ -340,7 +336,7 @@ private enum OwnScreenFixtures {
     /// Learn after a recording: the text just read from it, to correct, and its sampled screens.
     static let learnReview = ContentScreen(name: "Learn, what we could see", top: [.shown("Learn my morning"), .shown("Done")], body: [
         .shown("What we could see"),
-        .shown("Correct the text below. The original stays in Saved observations."),
+        .shown("Edit what we found. Your original stays saved."),
         meeting, reply, .shown("A glimpse of this recording"),
         .other("42 seconds · 9 samples · 7 with complete text", "42 secondes · 9 échantillons · 7 avec texte complet"),
         .shown("See sampled screens"),
@@ -601,7 +597,7 @@ struct OwnInterfaceWordingTests {
         }
         #expect(german.drift(of: phrases).count >= phrases.filter { $0.catalogKey != nil }.count)
         // A sentence the policy matches by one clause is rewritten.
-        let sentence = "A screenshot or text file works too. You choose what to share."
+        let sentence = "Edit what we found. Your original stays saved."
         #expect(try catalogs.changing(sentence, french("Une image ou un fichier texte convient aussi."))
             .drift(of: phrases).count == 2)
         // One plural form of a counted line loses the recognized words.
@@ -634,8 +630,13 @@ struct OwnInterfaceWordingTests {
             let expected = phrase.isPartOfCatalogString ? literal(phrase.wordings[0]) : "\"\(literal(key))\""
             #expect(sources.contains(expected), "No view shows \(expected) any more.")
         }
-        // The Learn button itself, not only some string with the same text.
-        #expect(sources.contains(#"Label("Record", systemImage: "record.circle")"#))
+        // The visible and spoken labels belong to the identified Record control.
+        // A custom icon may use Label's closure form; recognition does not depend on it.
+        let recordIdentifier = try #require(sources.range(of: #".accessibilityIdentifier("learn.record")"#))
+        let recordStart = try #require(sources[..<recordIdentifier.lowerBound].range(of: #"\bButton\b"#, options: [.regularExpression, .backwards]))
+        let recordControl = sources[recordStart.lowerBound..<recordIdentifier.upperBound]
+        #expect(recordControl.contains(#""Record""#))
+        #expect(recordControl.contains(#""Record a little of my morning""#))
         // The table's own literals are not counted as the app showing them.
         #expect(!sources.contains("enum OwnInterfaceWording"))
     }
@@ -685,6 +686,37 @@ struct OwnInterfaceWordingTests {
                 }
             }
         }
+    }
+
+    @Test("Compact Settings is recognized from its current destinations without expanding explanations", arguments: ["en", "fr"])
+    func compactSettingsWithoutExplanations(language: String) throws {
+        let catalogs = try ShippedCatalogs.load()
+        let lines = try OwnScreenFixtures.lines(["Morning alarm", "Shortcuts & timers", "Your next morning", "Calendar & weather", "Lock Screen", "Voice"], language, from: catalogs)
+        #expect(isOwnInterface(lines.joined(separator: "\n")))
+        #expect(!isOwnInterface("Calendar\nMorning alarm\nCalendar & weather\n09:00 Team planning meeting"))
+        #expect(!OwnInterfaceWording.identifies(.init("Settings\nLock Screen\nVoice\nAudio output")))
+        #expect(!OwnInterfaceWording.identifies(.init("Notes\nSaved on this device\nVoice\nMeet Laura to plan the train journey")))
+    }
+
+    @Test("Retired copy remains recognized without being tied to today's catalogs")
+    func retiredCopyRemainsHistorical() throws {
+        let historical = [
+            ("You'll review every suggestion.", "Record"),
+            ("Vous validerez chaque suggestion.", "Enregistrer"),
+            ("Record a short part of your morning, or choose a saved file.", "Your rhythm"),
+            ("Enregistrez un court moment de votre matinée ou choisissez un fichier.", "Choisir"),
+            ("Correct the text below", "Record"),
+            ("Corrigez le texte ci-dessous", "Enregistrer"),
+            ("Keep your place on the Lock Screen.", "Morning at a glance"),
+            ("Gardez votre progression sur l’écran verrouillé.", "La matinée en un coup d’œil")
+        ]
+        for (copy, control) in historical {
+            let phrase = try #require(OwnInterfaceWording.all.first { $0.wordings.contains(copy) })
+            #expect(phrase.catalogKey == nil, "Retired copy must not depend on a live catalog: \(copy)")
+            #expect(isOwnInterface("\(copy)\n\(control)"), "Earlier observation stopped being recognized: \(copy)")
+        }
+        // The replacement clauses are current and remain guarded by catalog drift checks.
+        #expect(OwnInterfaceWording.all.contains { $0.catalogKey == "Edit what we found. Your original stays saved." })
     }
 
     @Test("Hand-written English and French screens are rejected, and their text cannot ground a step")

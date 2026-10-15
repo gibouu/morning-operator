@@ -39,6 +39,22 @@ public struct StepTimer: Codable, Hashable, Sendable {
         self.sessionID == sessionID && self.stepID == stepID
     }
 
+    /// App Intent Date parameters describe calendar values and must not carry a
+    /// deadline's concurrency token. A String preserves the exact timestamp
+    /// through intent serialization without locale or date-component conversion.
+    public static func extensionToken(for end: Date) -> String {
+        "end1:" + String(end.timeIntervalSinceReferenceDate.bitPattern, radix: 16)
+    }
+
+    public static func deadline(fromExtensionToken token: String) -> Date? {
+        guard token.hasPrefix("end1:") else { return nil }
+        let digits = token.dropFirst(5)
+        guard (1...16).contains(digits.count), let bits = UInt64(digits, radix: 16) else { return nil }
+        let interval = Double(bitPattern: bits)
+        guard interval.isFinite else { return nil }
+        return Date(timeIntervalSinceReferenceDate: interval)
+    }
+
     public enum ExtensionResult: Equatable, Sendable {
         case extended(Date)
         /// The tap was made against an end that has already moved: a double tap, or a
@@ -99,13 +115,18 @@ public enum StepNavigation {
     }
 
     /// `more://next?session=…&step=…`, the Live Activity's Next link.
-    public static func nextURL(sessionID: UUID, stepID: UUID) -> URL {
-        URL(string: "more://next?session=\(sessionID.uuidString)&step=\(stepID.uuidString)")!
+    public static func nextURL(sessionID: UUID, stepID: UUID, scheme: String = "more") -> URL {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = "next"
+        components.queryItems = [URLQueryItem(name: "session", value: sessionID.uuidString),
+                                 URLQueryItem(name: "step", value: stepID.uuidString)]
+        return components.url!
     }
 
     /// The session and step a Next link names, or nil for any other URL.
-    public static func parseNext(_ url: URL) -> (sessionID: UUID, stepID: UUID)? {
-        guard url.scheme == "more", url.host == "next", url.path.isEmpty, url.fragment == nil,
+    public static func parseNext(_ url: URL, scheme: String = "more") -> (sessionID: UUID, stepID: UUID)? {
+        guard url.scheme == scheme, url.host == "next", url.path.isEmpty, url.fragment == nil,
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               items.count == 2,
               let session = items.first(where: { $0.name == "session" })?.value.flatMap(UUID.init(uuidString:)),

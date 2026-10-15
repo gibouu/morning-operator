@@ -9,18 +9,24 @@ struct StepTimerView: View {
                 Text(store.currentStep?.target?.destination.displayName ?? "MORE")
                     .font(.subheadline.weight(.semibold))
                 if case let .inAppWeb(url) = store.currentStep?.target {
-                    Button("Open page") { store.pendingWebTarget = url }
-                        .accessibilityIdentifier("stepTimer.openPage")
+                    Button { store.pendingWebTarget = url } label: {
+                        MorningDottedIcon(systemName: "globe").frame(width: 23, height: 23).frame(width: 44, height: 44)
+                    }.accessibilityLabel("Open page").accessibilityIdentifier("stepTimer.openPage")
                 }
                 Spacer()
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(Duration.seconds(timer.remaining(at: context.date).rounded(.up)), format: .time(pattern: .minuteSecond))
                         .monospacedDigit().accessibilityIdentifier("stepTimer.remaining")
+                        #if DEBUG
+                        .accessibilityValue(["com.gibouu.morningoperator.qa", "com.gibouu.morningoperator.systemqa"].contains(Bundle.main.bundleIdentifier ?? "")
+                            ? UserDefaults.standard.string(forKey: "qa.stepIntentOutcome") ?? "noIntentResult" : "")
+                        #endif
                 }
-                Button("+2 min") { Task { await store.extendStepTimer(expectedTimer: timer) } }
-                    .accessibilityIdentifier("stepTimer.extend")
+                Button { Task { await store.extendStepTimer(expectedTimer: timer) } } label: {
+                    Text("+2").font(.subheadline.monospacedDigit()).frame(width: 44, height: 44)
+                }.accessibilityLabel("Add two minutes").accessibilityIdentifier("stepTimer.extend")
             }
-            .font(.subheadline).padding(.vertical, 10)
+            .font(.subheadline).buttonStyle(.plain).foregroundStyle(MorningStyle.ink).padding(.vertical, 4)
         }
     }
 }

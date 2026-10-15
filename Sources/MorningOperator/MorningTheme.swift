@@ -14,6 +14,7 @@ final class MorningThemeClock {
     static let shared = MorningThemeClock()
 
     private(set) var blend: MorningPhaseBlend
+    private(set) var celestial: MorningCelestialScene
     /// Sunrise and sunset in minutes. Fixed hours until a solar source supplies them.
     var solar: MorningSolarDay = .fixed
     /// A pinned phase for previews, snapshots and tests. `nil` follows the clock.
@@ -23,6 +24,7 @@ final class MorningThemeClock {
 
     init(now: Date = .now) {
         blend = MorningDayClock.blend(at: now)
+        celestial = MorningCelestialClock.scene(at: now)
         pinnedPhase = Self.phaseFromArguments()
         if pinnedPhase != nil { refresh(now: now) }
     }
@@ -30,6 +32,8 @@ final class MorningThemeClock {
     func refresh(now: Date = .now) {
         let next = pinnedPhase.map(MorningPhaseBlend.steady) ?? MorningDayClock.blend(at: now, solar: solar)
         if next != blend { blend = next }
+        let art = pinnedPhase.map(MorningCelestialClock.scene(for:)) ?? MorningCelestialClock.scene(at: now, solar: solar)
+        if art != celestial { celestial = art }
     }
 
     /// `--theme-phase=dawn` (UI tests, debug) or `MO_THEME_PHASE=dawn` (snapshots).
@@ -49,7 +53,7 @@ final class MorningThemeClock {
 }
 
 /// The resolved tokens for the current light. Colours are dynamic: they follow the
-/// appearance and Increase Contrast on their own, so a view only ever asks for `ink`.
+/// local time and Increase Contrast. System dark mode does not change MORE's paper.
 struct MorningTheme {
     let blend: MorningPhaseBlend
     var phase: MorningDayPhase { blend.dominant }
@@ -88,15 +92,14 @@ struct MorningTheme {
         let blend = blend
         #if os(iOS)
         return Color(uiColor: UIColor { traits in
-            let values = MorningPaletteValues.resolve(blend, dark: traits.userInterfaceStyle == .dark)
+            let values = MorningPaletteValues.resolve(blend, dark: false)
             let key = traits.accessibilityContrast == .high ? (highContrast ?? token) : token
             let c = values[keyPath: key]
             return UIColor(red: c.red, green: c.green, blue: c.blue, alpha: 1)
         })
         #else
-        return Color(nsColor: NSColor(name: nil) { appearance in
-            let dark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let values = MorningPaletteValues.resolve(blend, dark: dark)
+        return Color(nsColor: NSColor(name: nil) { _ in
+            let values = MorningPaletteValues.resolve(blend, dark: false)
             let high = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
             let c = values[keyPath: high ? (highContrast ?? token) : token]
             return NSColor(red: c.red, green: c.green, blue: c.blue, alpha: 1)
@@ -105,29 +108,21 @@ struct MorningTheme {
     }
 
     /// The plain values, for drawing code that needs numbers rather than a dynamic colour.
-    func values(dark: Bool) -> MorningPaletteValues { MorningPaletteValues.resolve(blend, dark: dark) }
+    func values(dark: Bool) -> MorningPaletteValues { MorningPaletteValues.resolve(blend, dark: false) }
 
     // MARK: Type
 
-    /// Native system serif keeps the print character, scales with Dynamic Type,
-    /// and adds no font download or licence dependency. Mono carries labels.
+    /// A human handwritten voice for short titles; calm native text for reading.
+    /// Patrick Hand is bundled unmodified under OFL1.1. Sizes follow Dynamic Type.
     enum Typography {
-        /// A page title.
-        static let display = Font.system(.largeTitle, design: .serif, weight: .medium)
-        /// A card or section title.
-        static let title = Font.system(.title2, design: .serif, weight: .medium)
-        /// A small heading inside a card.
-        static let heading = Font.system(.headline, design: .serif, weight: .semibold)
-        /// Reading text.
-        static let body = Font.system(.body, design: .serif)
-        /// Secondary reading text.
-        static let note = Font.system(.subheadline, design: .serif)
-        /// Eyebrows, dates, counts: mono, small caps feel.
-        static let label = Font.system(.caption, design: .monospaced, weight: .medium)
-        /// Minutes and times.
-        static let number = Font.system(.caption, design: .monospaced).monospacedDigit()
-        /// Buttons.
-        static let control = Font.system(.subheadline, design: .serif, weight: .semibold)
+        static let display = Font.custom("PatrickHand-Regular", size: 38, relativeTo: .largeTitle)
+        static let title = Font.custom("PatrickHand-Regular", size: 29, relativeTo: .title2)
+        static let heading = Font.system(.headline, weight: .semibold)
+        static let body = Font.system(.body)
+        static let note = Font.system(.subheadline)
+        static let label = Font.system(.caption, weight: .medium)
+        static let number = Font.system(.caption).monospacedDigit()
+        static let control = Font.system(.subheadline, weight: .semibold)
     }
 
     // MARK: Space
@@ -148,27 +143,22 @@ struct MorningTheme {
 
 // MARK: - Paper
 
-/// The printed sheet: paper, a halftone dot screen and a faint grain. Static, drawn
-/// in one Canvas pass. Nothing here is interactive or announced. Reduce Transparency keeps
-/// the plain paper only.
+/// Opaque paper with decorative dots. Reduce Transparency keeps the plain sheet.
+/// The solar journey follows local time; the retained progress argument is source
+/// compatible with older callers and does not move the sky with routine completion.
 struct MorningPaper: View {
     var showsSun = true
-    /// 0...1: how far the morning has come. The sun climbs with it.
     var progress: Double = 0
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let theme = MorningTheme.current
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             theme.paper
             if !reduceTransparency {
                 MorningHalftone(color: theme.dot, opacity: scheme == .dark ? 0.065 : 0.04)
-                if showsSun {
-                    MorningHalftoneSun(progress: progress)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: progress)
-                }
+                if showsSun { MorningCelestialArtwork(scene: MorningThemeClock.shared.celestial) }
             }
         }
         .ignoresSafeArea()
@@ -210,84 +200,67 @@ struct MorningHalftone: View {
     }
 }
 
-/// The sun of the print: a disc whose dots grow towards the centre. It sits behind
-/// the top corner and rises with the morning's progress.
+/// Compatibility wrapper for earlier previews. New screens use the full local-time scene.
 struct MorningHalftoneSun: View {
     var progress: Double
     var diameter: CGFloat = 160
-    @Environment(\.colorScheme) private var scheme
-
     var body: some View {
-        let theme = MorningTheme.current
-        let lift = diameter * 0.55 * min(1, max(0, progress))
-        Canvas(opaque: false, rendersAsynchronously: true) { context, size in
-            let cell: CGFloat = 9
-            let centre = CGPoint(x: size.width / 2, y: size.height / 2)
-            let maxRadius = size.width / 2
-            var path = Path()
-            var y: CGFloat = cell / 2
-            while y < size.height {
-                var x: CGFloat = cell / 2
-                while x < size.width {
-                    let d = hypot(x - centre.x, y - centre.y) / maxRadius
-                    if d < 1 {
-                        // Big dots in the middle, fading to pinpricks at the rim.
-                        let r = max(0.6, (1 - d * d) * cell * 0.46)
-                        path.addEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
-                    }
-                    x += cell
-                }
-                y += cell
-            }
-            context.fill(path, with: .color(theme.accent))
-        }
-        .frame(width: diameter, height: diameter)
-        .opacity(scheme == .dark ? 0.25 : 0.35)
-        .offset(x: diameter * 0.28, y: -diameter * 0.62 + diameter * 0.55 - lift)
+        MorningDottedDisc().fill(MorningTheme.current.accent)
+            .frame(width: diameter, height: diameter)
     }
 }
 
 // MARK: - Controls
 
-/// The one primary action on a screen: an ink pill with paper text. Pressed, it
-/// tints; disabled, it fades.
+/// A printed paper ticket. The dotted edge and offset ink impression belong to
+/// MORE; no system capsule or glass is involved.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(MorningTheme.Typography.control)
-            .padding(.horizontal, 22).padding(.vertical, 14)
-            .foregroundStyle(theme.onInk)
-            .background(theme.ink.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
-            .contentShape(Capsule())
+        configuration.label.font(.custom("PatrickHand-Regular", size: 23, relativeTo: .headline))
+            .padding(.horizontal, 22).padding(.vertical, 12)
+            .frame(minHeight: 48)
+            .foregroundStyle(theme.ink)
+            .background(theme.selected, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(MorningDottedFrame(cornerRadius: 8, spacing: 5, dotRadius: 1.15).fill(theme.ink))
+            .offset(y: configuration.isPressed ? 2 : 0)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
-/// The primary fill at the secondary size, for the one case where two actions must
+/// The same printed ticket at a smaller size, for the case where two actions must
 /// sit side by side (record / choose).
 struct CompactPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(MorningTheme.Typography.control)
+        configuration.label.font(.custom("PatrickHand-Regular", size: 21, relativeTo: .headline))
             .padding(.horizontal, 18).padding(.vertical, 12)
-            .foregroundStyle(theme.onInk)
-            .background(theme.ink.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
-            .contentShape(Capsule())
+            .frame(minHeight: 44)
+            .foregroundStyle(theme.ink)
+            .background(theme.selected, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(MorningDottedFrame(cornerRadius: 8, spacing: 5, dotRadius: 1).fill(theme.ink))
+            .offset(y: configuration.isPressed ? 2 : 0)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
-/// Every other action: an outlined ink pill on the paper.
+/// Secondary actions read like an ink annotation with a dotted underline.
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
         configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 18).padding(.vertical, 12)
+            .frame(minHeight: 44)
             .foregroundStyle(theme.ink)
-            .background(theme.surface.opacity(configuration.isPressed ? 0.5 : 1), in: Capsule())
-            .overlay(Capsule().strokeBorder(theme.ink.opacity(0.7), lineWidth: 1.2))
-            .contentShape(Capsule())
+            .background(theme.surface.opacity(configuration.isPressed ? 0.65 : 1), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(alignment: .bottom) {
+                MorningDottedFrame(cornerRadius: 0, spacing: 6, dotRadius: 0.9)
+                    .fill(theme.ink.opacity(0.7)).frame(height: 3).padding(.horizontal, 10)
+            }
+            .contentShape(Rectangle())
             .opacity(isEnabled ? 1 : 0.4)
     }
 }

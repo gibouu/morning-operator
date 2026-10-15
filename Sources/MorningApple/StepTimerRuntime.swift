@@ -139,7 +139,7 @@ import UserNotifications
         let old = activity.content.state
         let stepTimer = MorningActivityStepTimer(stepID: current.stepID, destination: current.destination,
             endsAt: timer.endsAt, nextDestination: current.nextDestination, hasNextStep: current.hasNextStep,
-            pausedRemaining: timer.pausedAt == nil ? nil : timer.remaining(at: Date()))
+            pausedRemaining: timer.pausedAt == nil ? nil : timer.remaining(at: Date()), startedAt: timer.startedAt)
         guard let state = try? MorningActivityContentState(category: old.category, status: old.status,
             completedSteps: old.completedSteps, totalSteps: old.totalSteps, updatedAt: Date(), stepTimer: stepTimer) else { return }
         let staleDate = timeIsUp ? Date().addingTimeInterval(MorningLiveActivityCoordinator.staleAfter * 15)
@@ -153,8 +153,10 @@ import UserNotifications
 
     #if canImport(ActivityKit) && os(iOS)
     private static func activity(for sessionID: UUID) -> Activity<MorningActivityAttributes>? {
-        Activity<MorningActivityAttributes>.activities.first {
-            $0.attributes.namespace == .production && $0.attributes.sessionID == sessionID &&
+        guard let namespace = MorningActivityNamespace.workspace(directory: LocalDataControl.defaultDirectory,
+            isUITesting: ProcessInfo.processInfo.arguments.contains("--ui-testing")) else { return nil }
+        return Activity<MorningActivityAttributes>.activities.first {
+            $0.attributes.namespace == namespace && $0.attributes.sessionID == sessionID &&
                 ($0.activityState == .active || $0.activityState == .stale)
         }
     }

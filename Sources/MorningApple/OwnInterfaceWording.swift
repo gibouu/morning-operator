@@ -206,8 +206,8 @@ enum OwnInterfaceWording {
         [earlier("Start my morning"), earlier("Update my morning")],
         [earlier("A little perspective."), shown("Settings & connections", fr: "Réglages et connexions")],
         [earlier("More room for your day."), earlier("Anything you’d like to remember?")],
-        [part("Show us your morning", fr: "Montrez-nous votre matinée", of: "Show us your morning.\nKeep what works for you.", earlier: "Show us a little of your morning", "Montrez-nous un peu de votre matinée", "Show MORE a little of your morning"),
-         part("Keep what works for you", fr: "Gardez ce qui vous convient", of: "Show us your morning.\nKeep what works for you.", earlier: "We’ll find the rhythm together", "Nous trouverons le rythme ensemble")]
+        [earlier("Show us your morning", "Montrez-nous votre matinée", "Show us a little of your morning", "Montrez-nous un peu de votre matinée", "Show MORE a little of your morning"),
+         earlier("Keep what works for you", "Gardez ce qui vous convient", "We’ll find the rhythm together", "Nous trouverons le rythme ensemble")]
     ]
 
     /// Screens that show text MORE did not write (an earlier observation, a suggestion from
@@ -215,6 +215,12 @@ enum OwnInterfaceWording {
     /// bars that stay while the text scrolls or around the text itself. Every piece of a group
     /// must begin or end a line.
     static let labelGroups: [[Phrase]] = [
+        // Compact Settings keeps its explanations folded away. Four fixed destination
+        // labels together identify it; an ordinary alarm/calendar label alone does not.
+        [shown("Morning alarm", fr: "Réveil du matin"), shown("Shortcuts & timers", fr: "Raccourcis et minuteurs"),
+         shown("Your next morning", fr: "Votre prochaine matinée"), shown("Calendar & weather", fr: "Calendrier et météo")],
+        [shown("Shortcuts & timers", fr: "Raccourcis et minuteurs"), shown("Lock Screen", fr: "Écran verrouillé"),
+         shown("Voice", fr: "Voix"), shown("Audio output", fr: "Sortie audio")],
         // The suggested update, wherever it is scrolled, quotations included: the title and
         // both buttons of the bars that stay. Two of the three are what any updater shows.
         [shown("Suggested update", fr: "Mise à jour suggérée"), shown("Keep current", fr: "Garder l’actuelle"),
@@ -231,17 +237,53 @@ enum OwnInterfaceWording {
         [shown("Sampled moment", fr: "Moment échantillonné"), shown("Done", fr: "Terminé")]
     ]
 
-    /// The Learn, Review, Settings, routine, recording and voice screens as they read today,
-    /// then the screens that display an earlier observation or a suggestion.
+    /// Current and historical screen wording share recognition rules. `shown` and `part`
+    /// follow the live catalogs; `earlier` keeps saved observations readable after a redesign.
+    /// Shorter current labels remain controls and cannot identify a screen by themselves.
     static let screens: [Screen] = [
+        Screen(name: "Screen Time", copy: [
+            shown("Start with your app use", fr: "Commencez par votre usage des apps"),
+            shown("Connect Screen Time, then show MORE a moment of your morning.", fr: "Connectez Temps d’écran, puis montrez un moment de votre matinée à MORE.")
+        ], controls: [
+            shown("Connect Screen Time", fr: "Connecter Temps d’écran"),
+            shown("What Screen Time can show", fr: "Ce que montre Temps d’écran")
+        ]),
+        Screen(name: "Screen Time review", copy: [
+            shown("Your morning, from Screen Time", fr: "Votre matin, d’après Temps d’écran"),
+            shown("Your current routine stays ready until you approve. Approving replaces it with the apps you keep here.", fr: "Votre routine actuelle reste prête jusqu’à votre accord. Approuver la remplace par les apps gardées ici.")
+        ], controls: [
+            shown("Approve update", fr: "Approuver la mise à jour"),
+            shown("Keep current", fr: "Garder l’actuelle"),
+            shown("Minutes measured", fr: "Minutes mesurées"),
+            shown("Minutes estimated", fr: "Minutes estimées")
+        ]),
+        Screen(name: "Website setup", copy: [
+            shown("A little setup. Then you're home.", fr: "Un instant de préparation. Puis à vous de jouer."),
+            shown("Sign in once, here. Your morning uses these same pages.", fr: "Connectez-vous ici une fois. Votre matin utilisera ces mêmes pages.")
+        ], controls: [
+            shown("Your websites", fr: "Vos sites"),
+            shown("Connect my websites", fr: "Connecter mes sites")
+        ]),
+        Screen(name: "Browser learning", copy: [
+            shown("Learning your scroll and tap rhythm", fr: "Apprentissage du rythme de vos gestes"),
+            shown("Only this page. This estimate does not replay your gestures.", fr: "Cette page seulement. Cette estimation ne reproduit pas vos gestes.")
+        ], controls: [
+            shown("Stop learning", fr: "Arrêter l’apprentissage"),
+            shown("Save to Learn", fr: "Garder pour apprendre")
+        ]),
         Screen(name: "Learn", copy: [
+            shown("Record a moment, or add a file.", fr: "Enregistrez un moment ou ajoutez un fichier."),
+            shown("What would make a good morning?", fr: "À quoi ressemble un bon matin pour vous ?"),
+            part("Edit what we found", fr: "Corrigez le texte trouvé", of: "Edit what we found. Your original stays saved."),
+            part("Your original stays saved", fr: "Votre original reste enregistré", of: "Edit what we found. Your original stays saved."),
             shown("Make your morning yours.", fr: "Faites de votre matinée la vôtre."),
-            shown("You'll review every suggestion.", fr: "Vous validerez chaque suggestion.", earlier: "You'll review every suggestion before it becomes your routine", "Vous relirez chaque suggestion avant qu’elle ne devienne votre routine"),
-            shown("Show us your morning", fr: "Montrez-nous votre matinée"),
-            shown("Record a short part of your morning, or choose a saved file.", fr: "Enregistrez un court moment de votre matinée ou choisissez un fichier.", earlier: "Start an explicitly shared recording or bring one you already made", "Lancez un enregistrement que vous partagez explicitement, ou apportez-en un existant"),
+            earlier("You'll review every suggestion.", "Vous validerez chaque suggestion.", "You'll review every suggestion before it becomes your routine", "Vous relirez chaque suggestion avant qu’elle ne devienne votre routine"),
+            earlier("Show us your morning", "Montrez-nous votre matinée"),
+            shown("2 · Show your morning", fr: "2 · Montrez votre matin"),
+            earlier("Record a short part of your morning, or choose a saved file.", "Enregistrez un court moment de votre matinée ou choisissez un fichier.", "Start an explicitly shared recording or bring one you already made", "Lancez un enregistrement que vous partagez explicitement, ou apportez-en un existant"),
             earlier("Go through a short part of your morning, then review what we can see", "Vivez une courte partie de votre matinée, puis relisez ce que nous voyons"),
-            part("A screenshot or text file works too", fr: "Une capture ou un fichier texte conviennent aussi", of: "A screenshot or text file works too. You choose what to share.", earlier: "A screenshot or text file works too", "Une capture d’écran ou un fichier texte fonctionne aussi"),
-            part("You choose what to share", fr: "Vous choisissez quoi partager", of: "A screenshot or text file works too. You choose what to share.", earlier: "recording never starts automatically", "l’enregistrement ne démarre jamais automatiquement"),
+            earlier("A screenshot or text file works too", "Une capture ou un fichier texte conviennent aussi", "A screenshot or text file works too", "Une capture d’écran ou un fichier texte fonctionne aussi"),
+            earlier("You choose what to share", "Vous choisissez quoi partager", "recording never starts automatically", "l’enregistrement ne démarre jamais automatiquement"),
             earlier("Your routine stays in your hands", "Votre routine reste entre vos mains"),
             earlier("Your current routine stays ready while you review a suggestion", "Votre routine actuelle reste prête pendant que vous relisez une suggestion"),
             shown("About on-device learning", fr: "À propos de l’apprentissage sur l’appareil"),
@@ -261,8 +303,8 @@ enum OwnInterfaceWording {
                  fr: "Elle ne lance pas d’autres apps et n’approuve pas de routine à votre place",
                  of: "Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you."),
             // Under "What we could see": the text of the observation just made, and its sampled screens.
-            part("Correct the text below", fr: "Corrigez le texte ci-dessous", of: "Correct the text below. The original stays in Saved observations.", earlier: "Review the text we found and correct anything we missed", "Relisez le texte trouvé et corrigez ce qui nous a échappé"),
-            part("The original stays in Saved observations", fr: "L’original reste dans les observations enregistrées", of: "Correct the text below. The original stays in Saved observations.", earlier: "Visible words don't always mean you performed an activity", "Des mots visibles ne signifient pas toujours que vous avez fait une activité"),
+            earlier("Correct the text below", "Corrigez le texte ci-dessous", "Review the text we found and correct anything we missed", "Relisez le texte trouvé et corrigez ce qui nous a échappé"),
+            earlier("The original stays in Saved observations", "L’original reste dans les observations enregistrées", "Visible words don't always mean you performed an activity", "Des mots visibles ne signifient pas toujours que vous avez fait une activité"),
             part("These are occasional views of your screen", fr: "Ce sont des aperçus ponctuels de votre écran",
                  of: "These are occasional views of your screen. They can't count every scroll, prove a message was read, or measure complete app use."),
             part("They can't count every scroll, prove a message was read, or measure complete app use",
@@ -286,8 +328,9 @@ enum OwnInterfaceWording {
             shown("Record", fr: "Enregistrer"),
             shown("Choose", fr: "Choisir"),
             shown("Your rhythm", fr: "Votre rythme"),
+            shown("A few words", fr: "Quelques mots"),
             // Advice any app might give; as complete lines they confirm, they do not count as sentences.
-            shown("Add context, if you like", fr: "Ajoutez du contexte, si vous le souhaitez"),
+            earlier("Add context, if you like", "Ajoutez du contexte, si vous le souhaitez"),
             shown("What we could see", fr: "Ce que nous avons pu voir"),
             shown("Build it myself", fr: "La créer moi-même")
         ]),
@@ -329,15 +372,14 @@ enum OwnInterfaceWording {
             shown("Settings & connections", fr: "Réglages et connexions")
         ]),
         Screen(name: "Settings", copy: [
+            shown("Choose a speaker or HomePod.", fr: "Choisissez une enceinte ou un HomePod."),
             earlier("A few things, your way.", "Quelques réglages, à votre façon."),
             earlier("Choose what to connect and how you'd like your morning to sound.", "Choisissez ce que vous connectez et comment votre matinée doit sonner."),
             earlier("A little context before your morning begins.", "Un peu de contexte avant que votre matinée commence."),
-            shown("Keep your place on the Lock Screen.", fr: "Gardez votre progression sur l’écran verrouillé."),
+            earlier("Keep your place on the Lock Screen.", "Gardez votre progression sur l’écran verrouillé."),
             earlier("Hear the next step as you move through your routine.", "Entendez l’étape suivante au fil de votre routine."),
-            shown("Saved on this device", fr: "Enregistré sur cet appareil", earlier: "What stays here, and what you can remove.", "Ce qui reste ici, et ce que vous pouvez supprimer."),
-            part("Use the audio output picker to choose an available speaker",
-                 fr: "Utilisez le sélecteur de sortie audio pour choisir un haut-parleur disponible",
-                 of: "Use the audio output picker to choose an available speaker, including a HomePod on your network."),
+            earlier("Saved on this device", "Enregistré sur cet appareil", "What stays here, and what you can remove.", "Ce qui reste ici, et ce que vous pouvez supprimer."),
+            earlier("Use the audio output picker to choose an available speaker", "Utilisez le sélecteur de sortie audio pour choisir un haut-parleur disponible"),
             part("Speaker output doesn't connect a HomePod microphone",
                  fr: "La sortie vers un haut-parleur ne connecte pas le micro d’un HomePod",
                  of: "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet."),
@@ -346,25 +388,20 @@ enum OwnInterfaceWording {
             part("You can capture thoughts and dreams, edit a routine, and use spoken guidance",
                  fr: "Vous pouvez noter pensées et rêves, modifier une routine et utiliser le guidage vocal",
                  of: "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable."),
-            part("Connecting a phone to a Mac doesn't automatically give this app control of the phone",
-                 fr: "Connecter un téléphone à un Mac ne donne pas automatiquement à cette app le contrôle du téléphone",
-                 of: "Connecting a phone to a Mac doesn't automatically give this app control of the phone. The separate development test runner is needed for the phone-control experiment."),
-            part("Messages and email aren't connected here yet", fr: "Les messages et les e-mails ne sont pas encore connectés ici",
-                 of: "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."),
-            part("Automatic room detection and continuous voice commands also need further work",
-                 fr: "La détection automatique de pièce et les commandes vocales continues demandent aussi du travail",
-                 of: "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work.")
+            earlier("Connecting a phone to a Mac doesn't automatically give this app control of the phone", "Connecter un téléphone à un Mac ne donne pas automatiquement à cette app le contrôle du téléphone"),
+            earlier("Messages and email aren't connected here yet", "Les messages et les e-mails ne sont pas encore connectés ici"),
+            earlier("Automatic room detection and continuous voice commands also need further work", "La détection automatique de pièce et les commandes vocales continues demandent aussi du travail")
         ], controls: [
             shown("Check again", fr: "Vérifier à nouveau"),
             earlier("Make yourself at home", "Faites comme chez vous"),
             shown("Calendar & weather", fr: "Calendrier et météo"),
             shown("Your next morning", fr: "Votre prochaine matinée"),
             shown("Your day", fr: "Votre journée"),
-            shown("Morning at a glance", fr: "La matinée en un coup d’œil"),
-            shown("A voice to guide you", fr: "Une voix pour vous guider"),
-            shown("Companion voice", fr: "Voix d’accompagnement"),
+            earlier("Morning at a glance", "La matinée en un coup d’œil"),
+            earlier("A voice to guide you", "Une voix pour vous guider"),
+            earlier("Companion voice", "Voix d’accompagnement"),
             shown("Read each step aloud", fr: "Lire chaque étape à voix haute"),
-            shown("Listen where you like", fr: "Écoutez où vous voulez"),
+            earlier("Listen where you like", "Écoutez où vous voulez"),
             shown("Privacy & data", fr: "Confidentialité et données"),
             shown("Try the voice", fr: "Essayer la voix")
         ]),
@@ -378,8 +415,8 @@ enum OwnInterfaceWording {
                   fr: "Restaurer une routine ne modifie pas vos choix enregistrés pour les futures suggestions.")
         ], controls: [
             shown("Your routine", fr: "Votre routine"),
-            shown("Your approved routine", fr: "Votre routine approuvée"),
-            shown("A draft for you to review", fr: "Un brouillon à relire"),
+            earlier("Your approved routine", "Votre routine approuvée"),
+            earlier("A draft for you to review", "Un brouillon à relire"),
             shown("Add a moment", fr: "Ajouter un moment"),
             shown("Restore previous routine", fr: "Restaurer la routine précédente"),
             shown("Export routine", fr: "Exporter la routine"),

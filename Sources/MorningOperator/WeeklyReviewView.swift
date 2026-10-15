@@ -13,7 +13,6 @@ struct WeeklyReviewView: View {
     @ViewState<Date> private var today = Date()
     @ViewState<Bool> private var showingDays = false
     @ViewState<Bool> private var showingRoutineTiming = false
-    @ViewState<Bool> private var learnAfterDismissal = false
     @Environment(\.scenePhase) private var scenePhase
 
     private var periodEnd: Date {
@@ -61,14 +60,6 @@ struct WeeklyReviewView: View {
             }.padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("review.week")
-        .sheet(isPresented: $showingRoutineEditor, onDismiss: {
-            if learnAfterDismissal { learnAfterDismissal = false; onLearn() }
-        }) {
-            RoutineReviewEditor(store: store, onLearn: {
-                learnAfterDismissal = true
-                showingRoutineEditor = false
-            })
-        }
         .onChange(of: scenePhase) { _, phase in if phase == .active { today = Date() } }
     }
 
@@ -93,7 +84,7 @@ struct WeeklyReviewView: View {
     private var periodSelector: some View {
         HStack(spacing: 8) {
             Button { changeWeek(by: -1) } label: {
-                Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                MorningDottedIcon(systemName: "chevron.left").frame(width: 18, height: 18).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Previous seven days").accessibilityIdentifier("review.previousWeek")
             Button {
@@ -101,13 +92,13 @@ struct WeeklyReviewView: View {
             } label: {
                 HStack(spacing: 6) {
                     Text(periodTitle).font(.subheadline.weight(.medium)).multilineTextAlignment(.center)
-                    Image(systemName: showingDays ? "chevron.up" : "chevron.down").font(.caption2.weight(.semibold))
+                    MorningDottedIcon(systemName: showingDays ? "chevron.up" : "chevron.down").frame(width: 16, height: 16).font(.caption2.weight(.semibold))
                 }.frame(maxWidth: .infinity, minHeight: 44)
             }
             .accessibilityLabel(showingDays ? "\(periodTitle), hide days" : "\(periodTitle), show days")
             .accessibilityIdentifier("review.period")
             Button { changeWeek(by: 1) } label: {
-                Image(systemName: "chevron.right").frame(width: 44, height: 44)
+                MorningDottedIcon(systemName: "chevron.right").frame(width: 16, height: 16).frame(width: 44, height: 44)
             }
             .disabled(weekOffset == 0)
             .accessibilityLabel("Next seven days").accessibilityIdentifier("review.nextWeek")
@@ -155,7 +146,7 @@ struct WeeklyReviewView: View {
                     .font(.caption).foregroundStyle(MorningStyle.muted)
             }
             if hasSampleRunsInPeriod {
-                Label("Sample runs stay out of your personal averages.", systemImage: "sparkles")
+                Label { Text("Sample runs stay out of your personal averages.") } icon: { MorningDottedIcon(systemName: "sparkles").frame(width: 18, height: 18) }
                     .font(.caption).foregroundStyle(MorningStyle.muted)
             }
         }
@@ -190,7 +181,7 @@ struct WeeklyReviewView: View {
                         Spacer()
                         Text(daySummaryText(day))
                             .font(.caption).foregroundStyle(MorningStyle.muted)
-                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                        MorningDottedIcon(systemName: "chevron.right").frame(width: 16, height: 16).font(.caption2).foregroundStyle(.tertiary)
                     }.padding(.vertical, 13).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("review.day.\(day.dayKey)")
@@ -270,13 +261,13 @@ struct WeeklyReviewView: View {
 
     private func actionRow(_ title: String, detail: String, symbol: String) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: symbol).font(.body).foregroundStyle(MorningStyle.accent).frame(width: 24)
+            MorningDottedIcon(systemName: symbol).frame(width: 24, height: 24).font(.body).foregroundStyle(MorningStyle.accent).frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.subheadline.weight(.medium))
-                Text(detail).font(.caption).foregroundStyle(MorningStyle.muted)
+                if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(MorningStyle.muted) }
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+            MorningDottedIcon(systemName: "chevron.right").frame(width: 16, height: 16).font(.caption2).foregroundStyle(.tertiary)
         }.padding(.vertical, 16).contentShape(Rectangle()).foregroundStyle(.primary)
     }
 
@@ -296,7 +287,7 @@ struct WeeklyReviewView: View {
     }
 }
 
-private struct RoutineReviewEditor: View {
+struct RoutineReviewEditor: View {
     @Bindable var store: MorningStore
     var onLearn: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -330,12 +321,8 @@ private struct RoutineReviewEditor: View {
                         .moveDisabled(store.busy || store.sessionActive || importLoading)
                         Button {
                             editingStep = RoutineStep(title: "", kind: .custom, durationMinutes: 5)
-                        } label: { Label("Add a moment", systemImage: "plus") }
+                        } label: { Label { Text("Add a moment") } icon: { MorningDottedIcon(systemName: "plus").frame(width: 22, height: 22) } }
                             .disabled(store.busy || store.sessionActive || importLoading).accessibilityIdentifier("routine.add")
-                    } header: {
-                        Text(routine.isApproved ? "Your approved routine" : "A draft for you to review")
-                    } footer: {
-                        Text("Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine.")
                     }
                     RoutineTimeBudgetSection(store: store, isDisabled: importLoading)
                     Section {
@@ -344,23 +331,25 @@ private struct RoutineReviewEditor: View {
                                 .disabled(store.busy || store.sessionActive || importLoading).accessibilityIdentifier("routine.restore")
                         }
                         savedChoicesLink
-                        Button("Export routine", systemImage: "square.and.arrow.up") { exportSnapshot = routine }
+                        Button { exportSnapshot = routine } label: {
+                            Label { Text("Export routine") } icon: { MorningDottedIcon(systemName: "square.and.arrow.up").frame(width: 22, height: 22) }
+                        }
                             .disabled(importLoading)
                             .accessibilityIdentifier("routine.export")
-                        Button("Learn from an observation", systemImage: "sparkles", action: onLearn)
+                        Button(action: onLearn) {
+                            Label { Text("Learn from an observation") } icon: { MorningDottedIcon(systemName: "sparkles").frame(width: 22, height: 22) }
+                        }
                             .disabled(store.busy || store.sessionActive || importLoading).accessibilityIdentifier("learn.refine")
-                    } footer: {
-                        Text("Restoring a routine leaves your saved choices for future suggestions unchanged.")
                     }
                     if routine.isSynthetic {
-                        Label("Sample routine · not observed behavior", systemImage: "sparkles")
+                        Label { Text("Sample routine · not observed behavior") } icon: { MorningDottedIcon(systemName: "sparkles").frame(width: 18, height: 18) }
                             .font(.caption).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("routine.source")
                     }
                 } else {
                     Section {
-                        Text("Start with a small part of your morning. You can change every step before approving it.")
-                            .foregroundStyle(MorningStyle.muted)
-                        Button("Learn my morning", systemImage: "sparkles", action: onLearn)
+                        Button(action: onLearn) {
+                            Label { Text("Learn my morning") } icon: { MorningDottedIcon(systemName: "sparkles").frame(width: 22, height: 22) }
+                        }
                             .disabled(importLoading)
                             .accessibilityIdentifier("learn.begin")
                         Button("Build it myself") { store.useManualRoutine() }.disabled(importLoading)
@@ -369,10 +358,12 @@ private struct RoutineReviewEditor: View {
                     }
                 }
                 Section {
-                    Button("Import routine", systemImage: "square.and.arrow.down") {
+                    Button {
                         guard !store.privacyBlocksWork else { return }
                         importGeneration = store.dataGeneration
                         importing = true
+                    } label: {
+                        Label { Text("Import routine") } icon: { MorningDottedIcon(systemName: "square.and.arrow.down").frame(width: 22, height: 22) }
                     }
                         .disabled(store.busy || store.sessionActive || importLoading)
                         .accessibilityIdentifier("routine.import")
@@ -388,21 +379,33 @@ private struct RoutineReviewEditor: View {
                         Text(importError).font(.footnote).foregroundStyle(MorningStyle.muted)
                             .accessibilityIdentifier("routine.importError")
                     }
-                } footer: {
-                    Text("Open a saved MORE plan and review it before making any changes.")
+                }
+                Section {
+                    DisclosureGroup("About this routine") {
+                        Text("Minutes are planned. Editing creates a new draft; your saved mornings keep their original routine.")
+                        Text("Restoring a routine leaves your saved choices for future suggestions unchanged.")
+                        Text("Open a saved MORE plan and review it before making any changes.")
+                    }.font(.footnote).foregroundStyle(MorningStyle.muted)
                 }
                 if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(MorningStyle.muted) }
             }
             .scrollContentBackground(.hidden).background(MorningStyle.background)
-            .navigationTitle("Your routine")
+            .accessibilityIdentifier("routine.editor")
+            .navigationTitle("Your routine").navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) { Text("Routine").font(MorningTheme.Typography.title) }
                 #if os(iOS)
                 ToolbarItem(placement: .primaryAction) {
                     EditButton().disabled(store.routine == nil || store.busy || store.sessionActive || importLoading)
                         .accessibilityIdentifier("routine.edit")
                 }
                 #endif
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: {
+                        MorningDottedIcon(systemName: "xmark").frame(width: 24, height: 24).frame(width: 44, height: 44)
+                    }.buttonStyle(.plain).foregroundStyle(MorningStyle.ink)
+                        .accessibilityLabel("Done").accessibilityIdentifier("destination.close")
+                }.sharedBackgroundVisibility(.hidden)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if let routine = store.routine, !routine.isApproved {
@@ -411,7 +414,7 @@ private struct RoutineReviewEditor: View {
                         dismiss()
                         store.tab = .today
                     } label: {
-                        Label("Approve this routine", systemImage: "checkmark").frame(maxWidth: .infinity)
+                        Label { Text("Approve this routine") } icon: { MorningDottedIcon(systemName: "checkmark").frame(width: 22, height: 22) }.frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(store.busy || store.sessionActive || importLoading || routine.steps.isEmpty || store.routinePreferencesIssue != nil)
@@ -514,7 +517,7 @@ private struct RoutineReviewEditor: View {
 
     private func stepRow(_ step: RoutineStep) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: MorningStyle.symbol(for: step.kind))
+            MorningDottedIcon(systemName: MorningStyle.symbol(for: step.kind)).frame(width: 22, height: 22)
                 .font(.body).frame(width: 34, height: 34)
                 .background(MorningStyle.selected, in: RoundedRectangle(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 4) {
@@ -523,15 +526,16 @@ private struct RoutineReviewEditor: View {
                     .font(.caption).foregroundStyle(MorningStyle.muted)
             }
             Spacer(minLength: 4)
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+            MorningDottedIcon(systemName: "chevron.right").frame(width: 16, height: 16).font(.caption2).foregroundStyle(.tertiary)
         }.foregroundStyle(.primary).padding(.vertical, 4)
     }
 
     @ViewBuilder private var savedChoicesLink: some View {
         if !store.routinePreferences.entries.isEmpty || store.routinePreferencesIssue != nil {
             NavigationLink { RoutinePreferencesView(store: store) } label: {
-                Label(store.routinePreferencesIssue == nil ? "Saved choices" : "Saved choices need review",
-                      systemImage: store.routinePreferencesIssue == nil ? "heart.text.clipboard" : "exclamationmark.circle")
+                Label { Text(store.routinePreferencesIssue == nil ? "Saved choices" : "Saved choices need review") } icon: {
+                    MorningDottedIcon(systemName: store.routinePreferencesIssue == nil ? "heart.text.clipboard" : "exclamationmark.circle").frame(width: 22, height: 22)
+                }
             }.accessibilityIdentifier("routine.preferences")
                 .disabled(importLoading)
         }
@@ -633,7 +637,7 @@ private struct ReviewDayDetail: View {
                     }
                     ForEach(run.routine.steps) { step in
                         HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: run.completedStepIDs.contains(step.id) ? "checkmark.circle" : run.skippedStepIDs.contains(step.id) ? "forward.end.circle" : "circle")
+                            MorningDottedIcon(systemName: run.completedStepIDs.contains(step.id) ? "checkmark.circle" : run.skippedStepIDs.contains(step.id) ? "forward.end.circle" : "circle").frame(width: 20, height: 20)
                                 .foregroundStyle(MorningStyle.muted)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(step.title).font(.subheadline)

@@ -242,6 +242,26 @@ struct StepNavigationTests {
         #expect(StepNavigation.parseNext(URL(string: "evil://next?session=\(session)&step=\(step)")!) == nil)
     }
 
+    @Test("QA Next links stay in their own app scheme")
+    func separateAppScheme() {
+        let session = UUID(), step = UUID()
+        let qa = StepNavigation.nextURL(sessionID: session, stepID: step, scheme: "moreqa")
+        #expect(qa.scheme == "moreqa")
+        let parsed = StepNavigation.parseNext(qa, scheme: "moreqa")
+        #expect(parsed?.sessionID == session && parsed?.stepID == step)
+        #expect(StepNavigation.parseNext(qa) == nil)
+        #expect(StepNavigation.parseNext(StepNavigation.nextURL(sessionID: session, stepID: step), scheme: "moreqa") == nil)
+    }
+
+    @Test("Timer intents resolve the same isolated Activity namespace as the app")
+    func activityWorkspace() {
+        let id = UUID()
+        let directory = URL(fileURLWithPath: "/tmp/MorningOperatorUITests-\(id.uuidString)")
+        #expect(MorningActivityNamespace.workspace(directory: directory, isUITesting: true) == .testing(workspaceID: id))
+        #expect(MorningActivityNamespace.workspace(directory: directory, isUITesting: false) == .production)
+        #expect(MorningActivityNamespace.workspace(directory: URL(fileURLWithPath: "/tmp/unknown"), isUITesting: true) == nil)
+    }
+
     @Test("The Lock Screen timer appears only for the current step's own timer")
     func activityTimer() throws {
         let session = try running([insta, tea])

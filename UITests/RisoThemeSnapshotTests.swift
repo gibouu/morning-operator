@@ -13,6 +13,8 @@ final class RisoThemeSnapshotTests: XCTestCase {
             app.buttons["run.start"].tap()
             XCTAssertTrue(app.buttons["morning.confirmStart"].waitForExistence(timeout: 5))
             app.buttons["morning.confirmStart"].tap()
+            XCTAssertTrue(app.buttons["morning.closeActions"].waitForNonExistence(timeout: 3),
+                "Starting a morning must remove the playback overlay so its opening choices can be tapped.")
             MorningUITestNavigation.chooseRoutineAtOpening(in: app)
             XCTAssertTrue(app.staticTexts["run.step"].waitForExistence(timeout: 10))
             XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))

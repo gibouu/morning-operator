@@ -2,10 +2,11 @@ import Foundation
 import MorningCore
 import Observation
 import OSLog
+import UIKit
 import WebKit
 
-/// One visible browser. Each script needs one foreground user request. No injected
-/// user scripts, message handlers, background readers or automatic page actions.
+/// One visible browser. Page actions require a foreground request; optional
+/// learning observes numeric rhythm only after an explicit Start learning tap.
 @MainActor @Observable
 final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     static let storeIdentifier: UUID = {
@@ -33,6 +34,25 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var isClearing = false
     /// The presenting view revokes this whenever it leaves the foreground.
     var actionsEnabled = false
+    var learningAllowed = false {
+        didSet { if !learningAllowed { stopLearning() } }
+    }
+    private(set) var isLearning = false
+    private(set) var isFinishingLearning = false
+    private(set) var learningSummary: BrowserRhythmSummary?
+    @ObservationIgnored private var rhythm: BrowserRhythmAccumulator?
+    @ObservationIgnored private var learningNonce: UUID?
+    @ObservationIgnored private var learningReviewNonce: UUID?
+    @ObservationIgnored private var learningStarted = 0.0
+    @ObservationIgnored private var learningGeneration = 0
+    @ObservationIgnored private var rhythmHandler: BrowserRhythmMessageHandler?
+    @ObservationIgnored private var learningMonitor: Task<Void, Never>?
+    private static let rhythmWorld = WKContentWorld.world(name: "MOREBrowserRhythm")
+    var canLearn: Bool {
+        privacyIsCurrent && learningAllowed && UIApplication.shared.applicationState == .active &&
+            !isSignInPage && !isClearing && !isRunning && !isFinishingLearning && !webView.isLoading &&
+            BrowserRhythmPolicy.permits(site: site, url: webView.url)
+    }
     @ObservationIgnored private var pageGeneration = 0
     @ObservationIgnored private let privacyAtCreation: LocalDataControlState?
     @ObservationIgnored private let startURL: URL
@@ -72,11 +92,103 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     @discardableResult
     func run(_ task: WebMorningTask) async -> WebMorningOutcome {
-        guard privacyIsCurrent, actionsEnabled, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
+        guard privacyIsCurrent, actionsEnabled, !isLearning, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
         let result = await evaluate(task)
         outcome = result
         Self.record(result.logLine(site: site, task: task))
         return result
+    }
+
+    @discardableResult func startLearning() async -> Bool {
+        guard canLearn, !isLearning else { return false }
+        let nonce = UUID()
+        learningNonce = nonce; learningGeneration = pageGeneration
+        learningReviewNonce = nil
+        learningStarted = ProcessInfo.processInfo.systemUptime
+        rhythm = BrowserRhythmAccumulator(site: site)
+        learningSummary = nil
+        isLearning = true
+        let handler = BrowserRhythmMessageHandler(owner: self)
+        rhythmHandler = handler
+        webView.configuration.userContentController.add(handler, contentWorld: Self.rhythmWorld, name: "moreRhythm")
+        let installed = try? await webView.evaluateJavaScript(BrowserRhythmPolicy.script(site: site, nonce: nonce), contentWorld: Self.rhythmWorld)
+        guard learningNonce == nonce, isLearning, canLearn, installed as? Bool == true else {
+            if learningNonce == nonce { stopLearning() }
+            return false
+        }
+        learningMonitor = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self, self.learningNonce == nonce else { return }
+                guard self.privacyIsCurrent else { self.discardLearning(); return }
+                if !self.learningAllowed || UIApplication.shared.applicationState != .active ||
+                    ProcessInfo.processInfo.systemUptime - self.learningStarted >= 900 {
+                    self.stopLearning(); return
+                }
+            }
+        }
+        return true
+    }
+
+    /// Revoke native acceptance synchronously; remove passive DOM listeners in
+    /// their isolated world. No listener is installed automatically on a new page.
+    func stopLearning() {
+        guard let nonce = learningNonce else { return }
+        learningMonitor?.cancel(); learningMonitor = nil
+        learningNonce = nil; isLearning = false
+        learningReviewNonce = nonce
+        isFinishingLearning = true
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "moreRhythm", contentWorld: Self.rhythmWorld)
+        rhythmHandler = nil
+        let elapsed = ProcessInfo.processInfo.systemUptime - learningStarted
+        let finished = rhythm
+        if privacyIsCurrent, let rhythm {
+            learningSummary = rhythm.summary(durationSeconds: elapsed)
+        } else { learningSummary = nil }
+        rhythm = nil
+        let source = "globalThis.__moreRhythm?.stop('\(nonce.uuidString)')"
+        Task { [weak self] in
+            guard let self else { return }
+            defer { if self.learningReviewNonce == nonce { self.isFinishingLearning = false } }
+            let final = try? await self.webView.evaluateJavaScript(source, contentWorld: Self.rhythmWorld)
+            guard self.learningReviewNonce == nonce, self.privacyIsCurrent,
+                  let body = final as? [String: Any], let totals = Self.rhythmTotals(body), var finished else { return }
+            if finished.update(totals) { self.learningSummary = finished.summary(durationSeconds: elapsed) }
+        }
+    }
+
+    func discardLearning() {
+        stopLearning()
+        learningReviewNonce = nil
+        isFinishingLearning = false
+        learningSummary = nil
+    }
+
+    fileprivate func receiveRhythm(_ message: WKScriptMessage) {
+        guard privacyIsCurrent else { discardLearning(); return }
+        guard isLearning, learningAllowed, privacyIsCurrent,
+              UIApplication.shared.applicationState == .active,
+              message.webView === webView, message.frameInfo.isMainFrame,
+              message.frameInfo.securityOrigin.protocol == "https",
+              site.table.allowedHosts.contains(message.frameInfo.securityOrigin.host.lowercased()),
+              message.frameInfo.securityOrigin.port == 0 || message.frameInfo.securityOrigin.port == 443,
+              learningGeneration == pageGeneration,
+              let body = message.body as? [String: Any],
+              let nonce = learningNonce, body["nonce"] as? String == nonce.uuidString else { return }
+        if body.count == 2, body["blocked"] as? Bool == true { stopLearning(); return }
+        guard BrowserRhythmPolicy.permits(site: site, url: webView.url),
+              Set(body.keys) == Set(["nonce", "distance", "movingSeconds", "scrollBursts", "clicks"]),
+              let value = Self.rhythmTotals(body),
+              var rhythm else { return }
+        guard rhythm.update(value) else { return }
+        self.rhythm = rhythm
+        if ProcessInfo.processInfo.systemUptime - learningStarted >= 900 { stopLearning() }
+    }
+
+    private static func rhythmTotals(_ body: [String: Any]) -> BrowserRhythmTotals? {
+        guard let distance = body["distance"] as? Double, let seconds = body["movingSeconds"] as? Double,
+              let bursts = body["scrollBursts"] as? Int, let clicks = body["clicks"] as? Int else { return nil }
+        return BrowserRhythmTotals(distance: distance, movingSeconds: seconds, scrollBursts: bursts, clicks: clicks)
     }
 
     private func evaluate(_ task: WebMorningTask) async -> WebMorningOutcome {
@@ -105,6 +217,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard privacyIsCurrent, !isClearing else { return }
         isClearing = true
         defer { isClearing = false }
+        discardLearning()
         actionsEnabled = false
         webView.stopLoading()
         pageGeneration += 1
@@ -123,6 +236,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard privacyIsCurrent, let url = navigationAction.request.url, url.scheme?.lowercased() == "https",
               url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
         if navigationAction.targetFrame?.isMainFrame != false {
+            stopLearning()
             pageGeneration += 1
             displayedHost = url.host ?? ""
             isSignInPage = true
@@ -157,6 +271,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func failed(_ error: any Error) {
         let code = (error as NSError).code
         guard code != NSURLErrorCancelled else { return }
+        stopLearning()
         loadFailed = true
         isSignInPage = true
         Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)")
@@ -182,5 +297,14 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 try folder.setResourceValues(values)
             } catch { record("WEBMORNING backupExclusion=unverified") }
         }
+    }
+}
+
+/// WebKit retains the handler; the handler must not retain its browser owner.
+@MainActor private final class BrowserRhythmMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var owner: WebMorningController?
+    init(owner: WebMorningController) { self.owner = owner }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        owner?.receiveRhythm(message)
     }
 }
