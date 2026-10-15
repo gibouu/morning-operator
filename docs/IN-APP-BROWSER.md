@@ -20,7 +20,7 @@ Routine callers must use Plan B's `RoutineStep.target`, saved `StepTimer.endsAt`
 | YouTube | One Shorts feed scroll | Not tested. A scroll request is not proof that another video plays. |
 | Le Monde | Up to five matching headline titles | iPhone WKWebView loaded the site's consent/subscription choice. Timer extension, close/reopen and Next passed in a synthetic routine. No consent choice or headline extraction was performed. |
 | WhatsApp | Visible unread markers inside the chat list; desktop user agent | Not tested. No claim that iPhone WKWebView loads or links successfully. Zero markers report unsupported. |
-| Gmail | Inbox number from a matching title | Not tested. No observed Google error is claimed. Use an official API with a supported sign-in flow for the product. |
+| Gmail | Native metadata API reader replaces title scraping and embedded sign-in; saved Gmail moments open that reader. | Client configuration is absent and live Google consent/read is unverified. See [connection evidence](CONNECTION-EVIDENCE.md). Opening Mail or marking a website ready is not inbox access. |
 
 Core policy/parser/script tests and an unsigned generic iOS app build run on the Mac. A signed, separate MORE QA bundle passed the shared routine/timer phone journey described above. Instagram sign-in and one matching unread result are owner-confirmed; other account flows, count accuracy across layouts and video progression remain unverified. Simulator runtime is unavailable here.
 

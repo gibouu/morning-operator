@@ -3087,6 +3087,126 @@
           }
         }
       }
+    },
+    "This build needs a Google iOS OAuth client before Gmail can connect.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version nécessite un client OAuth Google pour iOS avant de pouvoir connecter Gmail."
+          }
+        }
+      }
+    },
+    "This build's Google OAuth client and callback scheme need checking.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le client OAuth Google et le schéma de retour de cette version doivent être vérifiés."
+          }
+        }
+      }
+    },
+    "Google could not authorize Gmail access. Check the app's Google setup and try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google n’a pas pu autoriser l’accès à Gmail. Vérifiez la configuration Google de l’app et réessayez."
+          }
+        }
+      }
+    },
+    "The Google sign-in response could not be verified. Connect again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse de connexion Google n’a pas pu être vérifiée. Reconnectez-vous."
+          }
+        }
+      }
+    },
+    "Gmail access was not granted. Check Google consent and account policy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à Gmail n’a pas été autorisé. Vérifiez le consentement Google et les règles du compte."
+          }
+        }
+      }
+    },
+    "This Gmail session has expired. Connect again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette session Gmail a expiré. Reconnectez-vous."
+          }
+        }
+      }
+    },
+    "Gmail could not connect. Try again when a connection is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion à Gmail a échoué. Réessayez lorsqu’une connexion est disponible."
+          }
+        }
+      }
+    },
+    "Gmail is limiting requests. Wait before refreshing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail limite les demandes. Patientez avant d’actualiser."
+          }
+        }
+      }
+    },
+    "Gmail is unavailable right now. Your morning can continue without it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail est indisponible pour le moment. Votre matin peut continuer sans ce service."
+          }
+        }
+      }
+    },
+    "Gmail returned an incomplete response. No inbox count is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail a renvoyé une réponse incomplète. Aucun nombre de messages n’est disponible."
+          }
+        }
+      }
+    },
+    "Gmail returned an unexpected redirect. No inbox count is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail a renvoyé une redirection inattendue. Aucun nombre de messages n’est disponible."
+          }
+        }
+      }
+    },
+    "Calendar changed while it was being read. Refresh the briefing to use the current schedule.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le calendrier a changé pendant sa lecture. Actualisez le récapitulatif pour utiliser le planning actuel."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -38,15 +38,18 @@ public struct CalendarSnapshot: Sendable, Equatable {
     public let events: [CalendarEventSummary]
     public let timeZoneIdentifier: String
     public let selectedCalendars: [CalendarChoice]
+    /// In-memory EventKit change generation at this read; never a server sync token.
+    public let changeRevision: UInt64
     public var selectedCalendarIDs: [String] { selectedCalendars.map(\.id) }
     public var sourceLabels: [String] { Array(Set(selectedCalendars.map(\.sourceTitle))).sorted() }
 
     public init(retrievedAt: Date, dayStart: Date, dayEnd: Date, events: [CalendarEventSummary],
                 timeZoneIdentifier: String = TimeZone.current.identifier,
-                selectedCalendars: [CalendarChoice] = []) {
+                selectedCalendars: [CalendarChoice] = [], changeRevision: UInt64 = 0) {
         self.retrievedAt = retrievedAt; self.dayStart = dayStart; self.dayEnd = dayEnd
         self.events = events; self.timeZoneIdentifier = timeZoneIdentifier
         self.selectedCalendars = selectedCalendars
+        self.changeRevision = changeRevision
     }
 }
 
@@ -78,10 +81,17 @@ public struct CalendarObservationEvent: Sendable, Equatable {
 @MainActor
 public protocol CalendarObservationProviding {
     var isAuthorized: Bool { get }
+    /// Advances when the provider knows its local calendar data changed.
+    var changeRevision: UInt64 { get }
     func requestAccess() async throws -> Bool
     func calendarChoices() throws -> [CalendarChoice]
     /// May return extra candidates. The service enforces the exact requested day and selection.
     func events(in interval: DateInterval, calendarIDs: Set<String>) throws -> [CalendarObservationEvent]
+}
+
+public extension CalendarObservationProviding {
+    /// Providers without a change source retain time-based freshness checks.
+    var changeRevision: UInt64 { 0 }
 }
 
 public enum CalendarObservationError: LocalizedError, Sendable, Equatable {
@@ -92,6 +102,7 @@ public enum CalendarObservationError: LocalizedError, Sendable, Equatable {
     case selectedCalendarsUnavailable
     case invalidCalendarData
     case invalidEventData
+    case changedDuringRead
 
     public var errorDescription: String? {
         switch self {
@@ -109,6 +120,8 @@ public enum CalendarObservationError: LocalizedError, Sendable, Equatable {
             String(localized: "The available calendar list could not be read reliably. Please refresh it.", bundle: .module)
         case .invalidEventData:
             String(localized: "The selected calendar returned an event that could not be read reliably. Please refresh it.", bundle: .module)
+        case .changedDuringRead:
+            String(localized: "Calendar changed while it was being read. Refresh the briefing to use the current schedule.", bundle: .module)
         }
     }
 }
@@ -132,6 +145,7 @@ public final class CalendarObservationService {
     }
 
     public var isAuthorized: Bool { provider.isAuthorized }
+    public var changeRevision: UInt64 { provider.changeRevision }
 
     /// Call only for an explicit Connect Calendar action. Listing and snapshotting never prompt.
     public func requestAccess() async throws {
@@ -170,6 +184,7 @@ public final class CalendarObservationService {
                          calendarIDs: Set<String>) throws -> CalendarSnapshot {
         guard isAuthorized else { throw CalendarObservationError.notAuthorized }
         guard !calendarIDs.isEmpty, !calendarIDs.contains("") else { throw CalendarObservationError.selectionRequired }
+        let readRevision = changeRevision
         let choices = try calendarChoices()
         guard calendarIDs.isSubset(of: Set(choices.map(\.id))) else {
             throw CalendarObservationError.selectedCalendarsUnavailable
@@ -185,6 +200,7 @@ public final class CalendarObservationService {
         guard calendarIDs.isSubset(of: Set(refreshed.map(\.id))) else {
             throw CalendarObservationError.selectedCalendarsUnavailable
         }
+        guard changeRevision == readRevision else { throw CalendarObservationError.changedDuringRead }
         let selected = refreshed.filter { calendarIDs.contains($0.id) }
         let selectedByID = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
         var events: [CalendarEventSummary] = []
@@ -212,8 +228,10 @@ public final class CalendarObservationService {
         events.sort(by: Self.eventPrecedes)
         var seen: Set<String> = []
         events = events.filter { seen.insert($0.id).inserted }
+        guard changeRevision == readRevision else { throw CalendarObservationError.changedDuringRead }
         return CalendarSnapshot(retrievedAt: now(), dayStart: interval.start, dayEnd: interval.end,
-            events: events, timeZoneIdentifier: calendar.timeZone.identifier, selectedCalendars: selected)
+            events: events, timeZoneIdentifier: calendar.timeZone.identifier, selectedCalendars: selected,
+            changeRevision: readRevision)
     }
 
     private static func eventPrecedes(_ lhs: CalendarEventSummary, _ rhs: CalendarEventSummary) -> Bool {
@@ -237,8 +255,25 @@ public final class CalendarObservationService {
 }
 
 @MainActor
-private final class EventKitCalendarObservationProvider: CalendarObservationProviding {
-    private let store = EKEventStore()
+final class EventKitCalendarObservationProvider: NSObject, CalendarObservationProviding {
+    private let store: EKEventStore
+    private(set) var changeRevision: UInt64 = 0
+
+    override convenience init() { self.init(store: EKEventStore()) }
+
+    init(store: EKEventStore, notificationCenter: NotificationCenter = .default) {
+        self.store = store
+        super.init()
+        // EventKit posts this notification on the main actor. Selector observers
+        // are removed automatically on deallocation; no closure retains the store.
+        notificationCenter.addObserver(self, selector: #selector(eventStoreChanged(_:)),
+            name: .EKEventStoreChanged, object: store)
+    }
+
+    @objc private func eventStoreChanged(_ notification: Notification) {
+        changeRevision &+= 1
+    }
+
     var isAuthorized: Bool { EKEventStore.authorizationStatus(for: .event) == .fullAccess }
     func requestAccess() async throws -> Bool { try await store.requestFullAccessToEvents() }
 

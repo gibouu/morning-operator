@@ -105,9 +105,13 @@ public final class MorningBriefingController {
                 if document.calendar.status == .notConfigured, !settings.calendarIDs.isEmpty { return false }
                 if document.calendar.status == .fresh {
                     guard calendar.isAuthorized, !settings.calendarIDs.isEmpty,
-                          document.selectedCalendarIDs == settings.calendarIDs else { return false }
+                          document.selectedCalendarIDs == settings.calendarIDs,
+                          calendarPlaybackAdmissions[document.id]?.changeRevision == calendar.changeRevision
+                    else { return false }
                     let availableIDs = Set(try calendar.calendarChoices().map(\.id))
-                    guard settings.calendarIDs.isSubset(of: availableIDs) else { return false }
+                    guard settings.calendarIDs.isSubset(of: availableIDs),
+                          calendarPlaybackAdmissions[document.id]?.changeRevision == calendar.changeRevision
+                    else { return false }
                 }
                 if document.weather.status == .notConfigured, settings.weatherLocation != nil { return false }
                 if document.weather.status == .fresh {
@@ -147,6 +151,9 @@ public final class MorningBriefingController {
     @ObservationIgnored private var suggestionAttempt: UUID?
     @ObservationIgnored private var suggestionTask: Task<Void, Never>?
     @ObservationIgnored private var calendarInput: MorningBriefingInput<CalendarSnapshot> = .notConfigured
+    /// Metadata only for still-current pinned documents. A refreshed document must
+    /// never reauthorize older text that predates a known Calendar change.
+    @ObservationIgnored private var calendarPlaybackAdmissions: [UUID: CalendarPlaybackAdmission] = [:]
     @ObservationIgnored private var weatherInput: MorningBriefingInput<WeatherObservationSnapshot> = .notConfigured
     @ObservationIgnored private var sleepInput: SleepBriefingInput = .excluded
     @ObservationIgnored private var preparingKey: PreparationKey?
@@ -437,7 +444,7 @@ public final class MorningBriefingController {
                 else if !calendar.isAuthorized { nextCalendar = .denied; calendarChoices = [] }
                 else {
                     let cached = try compose(calendar: nextCalendar, weather: .notConfigured, at: instant, zone: zone)
-                    if force || cached.calendar.status != .fresh {
+                    if force || cached.calendar.status != .fresh || !calendarRevisionMatches(nextCalendar) {
                         do {
                             calendarChoices = try calendar.calendarChoices()
                             nextCalendar = .snapshot(try calendar.snapshot(for: instant, calendar: dayCalendar,
@@ -472,12 +479,25 @@ public final class MorningBriefingController {
                             calendarChoices = try calendar.calendarChoices()
                             if !key.settings.calendarIDs.isSubset(of: Set(calendarChoices.map(\.id))) {
                                 nextCalendar = .unavailable
+                            } else if !calendarRevisionMatches(nextCalendar) {
+                                // EventKit can change while weather/sleep is suspended.
+                                // Re-read this date range before publishing fresh facts.
+                                nextCalendar = .snapshot(try calendar.snapshot(for: instant, calendar: dayCalendar,
+                                    calendarIDs: key.settings.calendarIDs))
                             }
                         } catch { nextCalendar = calendar.isAuthorized ? .unavailable : .denied }
                     }
                 }
                 let completedAt = max(instant, now())
                 let document = try compose(calendar: nextCalendar, weather: nextWeather, sleep: nextSleep, at: completedAt, zone: zone)
+                calendarPlaybackAdmissions = calendarPlaybackAdmissions.filter {
+                    $0.value.changeRevision == calendar.changeRevision && $0.value.validUntil > completedAt
+                }
+                if document.calendar.status == .fresh,
+                   case .snapshot(let snapshot) = nextCalendar, let validUntil = document.calendar.validUntil {
+                    calendarPlaybackAdmissions[document.id] = .init(changeRevision: snapshot.changeRevision,
+                        validUntil: validUntil)
+                }
                 calendarInput = nextCalendar; weatherInput = nextWeather; sleepInput = nextSleep; prepared = document
                 if !document.hasUsableFacts { errorMessage = String(localized: "No current briefing facts are available. Review your sources or try refreshing.", bundle: .module) }
                 return document
@@ -537,6 +557,11 @@ public final class MorningBriefingController {
             temperatureUnit: settings.temperatureUnit, policy: policy)
     }
 
+    private func calendarRevisionMatches(_ input: MorningBriefingInput<CalendarSnapshot>) -> Bool {
+        guard case .snapshot(let snapshot) = input else { return true }
+        return snapshot.changeRevision == calendar.changeRevision
+    }
+
     private func invalidateWork(clearChoices: Bool) {
         revision = UUID()
         refreshAttempt = nil; accessAttempt = nil; searchAttempt = nil; suggestionAttempt = nil
@@ -544,6 +569,7 @@ public final class MorningBriefingController {
         refreshTask = nil; accessTask = nil; searchTask = nil; suggestionTask = nil; preparingKey = nil
         isPreparing = false; isConnectingCalendar = false; isSearchingCities = false
         prepared = nil; calendarInput = .notConfigured; weatherInput = .notConfigured; sleepInput = .excluded
+        calendarPlaybackAdmissions = [:]
         cityQuery = ""; cityResults = []; citySuggestions = []; citySearchOutcome = nil
         if clearChoices { calendarChoices = []; weather.forgetCitySuggestions() }
     }
@@ -592,6 +618,11 @@ public final class MorningBriefingController {
         let settings: MorningBriefingSettings
         let dayStart: Date
         let timeZoneIdentifier: String
+    }
+
+    private struct CalendarPlaybackAdmission {
+        let changeRevision: UInt64
+        let validUntil: Date
     }
 }
 

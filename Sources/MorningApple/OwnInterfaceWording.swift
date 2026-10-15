@@ -259,10 +259,18 @@ enum OwnInterfaceWording {
         ]),
         Screen(name: "Website setup", copy: [
             shown("A little setup. Then you're home.", fr: "Un instant de préparation. Puis à vous de jouer."),
-            shown("Sign in once, here. Your morning uses these same pages.", fr: "Connectez-vous ici une fois. Votre matin utilisera ces mêmes pages.")
+            shown("Connect Gmail below, or sign in to the websites your morning uses.", fr: "Connectez Gmail ci-dessous ou identifiez-vous sur les sites de votre matin."),
+            earlier("Sign in once, here. Your morning uses these same pages.", "Connectez-vous ici une fois. Votre matin utilisera ces mêmes pages.")
         ], controls: [
             shown("Your websites", fr: "Vos sites"),
             shown("Connect my websites", fr: "Connecter mes sites")
+        ]),
+        Screen(name: "Gmail connection", copy: [
+            shown("Read the number of unread messages in your Gmail inbox. Google asks for read-only metadata access; MORE does not read message bodies.", fr: "Consultez le nombre de messages non lus dans votre boîte Gmail. Google demande l’accès aux métadonnées en lecture seule ; MORE ne lit pas le contenu des messages."),
+            shown("This session and its count clear when you leave this screen or background MORE. Manage the Google account grant in your Google Account.", fr: "La session et son résultat sont effacés en quittant cet écran ou en passant MORE en arrière-plan. Gérez l’autorisation Google dans votre compte Google.")
+        ], controls: [
+            shown("Connect Gmail", fr: "Connecter Gmail"),
+            shown("Refresh Gmail", fr: "Actualiser Gmail")
         ]),
         Screen(name: "Browser learning", copy: [
             shown("Learning your scroll and tap rhythm", fr: "Apprentissage du rythme de vos gestes"),

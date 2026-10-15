@@ -65,6 +65,7 @@
 		825B43B445A3BADB2147F675 /* ObservationNarrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446C7E5A7C1248176AF21D8B /* ObservationNarrationView.swift */; };
 		83694FFB1D487DA12331A735 /* AddStepTimeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E00F7E37441A95A894E9C5 /* AddStepTimeIntent.swift */; };
 		8706D4C28912FC25A45E3D1E /* RecordedObservationImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35191AAE6C75EE39494AC52A /* RecordedObservationImportTests.swift */; };
+		8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */; };
 		9282FCF2D0B6E5576779EF9D /* WebRoutineJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDCC683CD3C90B5FFD65B77C /* WebRoutineJourneyTests.swift */; };
 		9A8B244DD216406D67AD84A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */; };
 		9B28A88BA0E5408F61414951 /* FixtureJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129D71BF80F7E591EEEBD1A0 /* FixtureJourneyTests.swift */; };
@@ -79,6 +80,7 @@
 		B9CA3F9A24974695EE25E264 /* RecordingLearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F84B24064F307F7E5025342 /* RecordingLearningTests.swift */; };
 		BA19D8D71012CE0A14F61918 /* RisoThemeSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3879EF0AE67267B2D4FFAD10 /* RisoThemeSnapshotTests.swift */; };
 		BB54B9C368EB20EC7A70A705 /* PlanBSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DA39ECB4DB4D344A67FD89 /* PlanBSettingsViews.swift */; };
+		BC03B0A17545825849E082F4 /* GmailConnectionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A4E32627DA271ED0E49A94 /* GmailConnectionController.swift */; };
 		BC67016209498589093FA638 /* RoutineReviewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E6ADF52C122F1C6A7F8B68 /* RoutineReviewComponents.swift */; };
 		BD762E7FB3BC8C8CCF4D5D41 /* RoutineWebStepPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34EDFEF90F8F7152F8BBF814 /* RoutineWebStepPresenter.swift */; };
 		BF4BCBC13775223D50E313FE /* RoutineEvidenceProposalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3765EFB295A6146697D4D03 /* RoutineEvidenceProposalView.swift */; };
@@ -251,6 +253,7 @@
 		BDCC683CD3C90B5FFD65B77C /* WebRoutineJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebRoutineJourneyTests.swift; sourceTree = "<group>"; };
 		BFB9060C58B99BC4484E2765 /* SunriseDockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunriseDockTests.swift; sourceTree = "<group>"; };
 		C1DA39ECB4DB4D344A67FD89 /* PlanBSettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanBSettingsViews.swift; sourceTree = "<group>"; };
+		C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailConnectionView.swift; sourceTree = "<group>"; };
 		C5E00F7E37441A95A894E9C5 /* AddStepTimeIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStepTimeIntent.swift; sourceTree = "<group>"; };
 		C62855ECFE0F19EBCDB332FC /* MorningSolarArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningSolarArtwork.swift; sourceTree = "<group>"; };
 		CB01EC0C464A9A8C729788A1 /* AppActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivityView.swift; sourceTree = "<group>"; };
@@ -262,6 +265,7 @@
 		DF2A1E48120A6B3AB7369321 /* MorningInlineDayStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningInlineDayStrip.swift; sourceTree = "<group>"; };
 		E1435A178A34F6AADC746A82 /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
 		E2B07E2228630BD1678C3BD3 /* RecordingProvenanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingProvenanceTests.swift; sourceTree = "<group>"; };
+		E3A4E32627DA271ED0E49A94 /* GmailConnectionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailConnectionController.swift; sourceTree = "<group>"; };
 		E5E6ADF52C122F1C6A7F8B68 /* RoutineReviewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineReviewComponents.swift; sourceTree = "<group>"; };
 		E606BC30A53C585226160F40 /* ClockObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockObservationTests.swift; sourceTree = "<group>"; };
 		EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMorningController.swift; sourceTree = "<group>"; };
@@ -418,6 +422,8 @@
 				6393BAB9D1CD67AB5774B214 /* AppTransitionIntent.swift */,
 				2ED5FFFADBA9C712D53345C8 /* AudioRoutePicker.swift */,
 				F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */,
+				E3A4E32627DA271ED0E49A94 /* GmailConnectionController.swift */,
+				C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */,
 				AD2FB1EC4617F434D5F459B6 /* LearnAndSetupViews.swift */,
 				4F1A4DDE271AE7DE15330EEF /* MorningActivityDiagnostics.swift */,
 				0814A1DE4C0A82002840418D /* MorningActivitySettingsView.swift */,
@@ -771,6 +777,8 @@
 				A34B5E25A1C8EE150EAA55AC /* AppTransitionIntent.swift in Sources */,
 				E5A4D70F8E286C13671ABAF1 /* AudioRoutePicker.swift in Sources */,
 				9A8B244DD216406D67AD84A3 /* DesignSystem.swift in Sources */,
+				BC03B0A17545825849E082F4 /* GmailConnectionController.swift in Sources */,
+				8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */,
 				067D710ACA9C548538C31539 /* LearnAndSetupViews.swift in Sources */,
 				4DE3FED32FD66348C7B86B91 /* MorningActivityDiagnostics.swift in Sources */,
 				68BADEEAA81EAA79C508218C /* MorningActivitySettingsView.swift in Sources */,
@@ -1014,6 +1022,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MORE_GOOGLE_CALLBACK_SCHEME = "more-google-unconfigured";
+				MORE_GOOGLE_CLIENT_ID = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gibouu.morningoperator;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1137,6 +1147,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MORE_GOOGLE_CALLBACK_SCHEME = "more-google-unconfigured";
+				MORE_GOOGLE_CLIENT_ID = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gibouu.morningoperator;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
