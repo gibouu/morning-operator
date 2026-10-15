@@ -123,6 +123,8 @@
 		D8828881F8CA7B667856A7D0 /* APIConnectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E406DEBAC799B0015BC35C /* APIConnectionsView.swift */; };
 		58DC21485994337726327064 /* NativeConnectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348559DC533B336DEDC137DC /* NativeConnectionsView.swift */; };
 		05E8B0B6875F2E92B53A6C61 /* MorningStore+Connections.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A21BF38FA95E0091671AFA /* MorningStore+Connections.swift */; };
+		06CBE48B36694242611E56B3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BC938BC76C45377DD75C5DF7 /* PrivacyInfo.xcprivacy */; };
+		4E4AB8028DF76CE5990F7127 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FBE47DE39B2C3158051571E6 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -286,6 +288,8 @@
 		F8E406DEBAC799B0015BC35C /* APIConnectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIConnectionsView.swift"; sourceTree = "<group>"; };
 		348559DC533B336DEDC137DC /* NativeConnectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeConnectionsView.swift"; sourceTree = "<group>"; };
 		A2A21BF38FA95E0091671AFA /* MorningStore+Connections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+Connections.swift"; sourceTree = "<group>"; };
+		BC938BC76C45377DD75C5DF7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FBE47DE39B2C3158051571E6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -323,6 +327,7 @@
 			children = (
 				CE01CE6509D574082266C8EB /* Localizable.xcstrings */,
 				1C5DA36C0D75D5473FADCFD1 /* MorningActivityWidget.swift */,
+				BC938BC76C45377DD75C5DF7 /* PrivacyInfo.xcprivacy */,
 			);
 			path = MorningActivityWidget;
 			sourceTree = "<group>";
@@ -481,6 +486,7 @@
 				5245715AA5896422DD4A58FB /* ObservationScreenReviewView.swift */,
 				DE7EA194BD74767684257499 /* ObservedMorningOverviewView.swift */,
 				C1DA39ECB4DB4D344A67FD89 /* PlanBSettingsViews.swift */,
+				FBE47DE39B2C3158051571E6 /* PrivacyInfo.xcprivacy */,
 				E1435A178A34F6AADC746A82 /* QuickCaptureView.swift */,
 				93DDD575BBAE60C4911CB3B3 /* RecordMorningView.swift */,
 				B3765EFB295A6146697D4D03 /* RoutineEvidenceProposalView.swift */,
@@ -716,6 +722,7 @@
 				3B6835265E43791F20FC95EC /* DMSerifDisplay.ttf in Resources */,
 				73FC42D3193385D015C33BD1 /* InfoPlist.xcstrings in Resources */,
 				E301D05DD54EC61EF9783E02 /* Localizable.xcstrings in Resources */,
+				4E4AB8028DF76CE5990F7127 /* PrivacyInfo.xcprivacy in Resources */,
 				AE5ABC19590552127ED5D38F /* Raleway.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -725,6 +732,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5DA7D6BB986484E459EF28AC /* Localizable.xcstrings in Resources */,
+				06CBE48B36694242611E56B3 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
