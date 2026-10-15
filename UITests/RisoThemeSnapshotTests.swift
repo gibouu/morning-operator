@@ -13,6 +13,8 @@ final class RisoThemeSnapshotTests: XCTestCase {
             app.buttons["run.start"].tap()
             XCTAssertTrue(app.buttons["morning.confirmStart"].waitForExistence(timeout: 5))
             app.buttons["morning.confirmStart"].tap()
+            MorningUITestNavigation.chooseRoutineAtOpening(in: app)
+            XCTAssertTrue(app.staticTexts["run.step"].waitForExistence(timeout: 10))
             XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))
             attach("riso-\(phase)-running", app)
             app.terminate()
@@ -39,7 +41,9 @@ final class RisoThemeSnapshotTests: XCTestCase {
             XCTAssertTrue(app.buttons["setup.briefing"].waitForExistence(timeout: 5))
             attach("riso-\(name)-settings", app)
             app.buttons["setup.briefing"].tap()
-            XCTAssertTrue(app.textFields["briefing.citySearch"].waitForExistence(timeout: 5))
+            let city = app.textFields["briefing.citySearch"]
+            for _ in 0..<12 where !(city.exists && city.isHittable) { app.swipeUp() }
+            XCTAssertTrue(city.exists && city.isHittable)
             attach("riso-\(name)-brief", app)
             app.terminate()
             app.launch()

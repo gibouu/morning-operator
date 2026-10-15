@@ -91,10 +91,11 @@ extension MorningStore {
         return String(localized: "Next: \(next.target?.destination.displayName ?? "MORE")")
     }
 
-    func extendStepTimer() async {
+    func extendStepTimer(expectedTimer: StepTimer? = nil) async {
         guard !privacyBlocksWork, let timer = activeStepTimer else { return }
+        if let expectedTimer, !expectedTimer.belongs(to: timer.sessionID, stepID: timer.stepID) { return }
         _ = await StepTimerExtension.addTwoMinutes(sessionID: timer.sessionID, stepID: timer.stepID,
-            expectedEnd: timer.endsAt)
+            expectedEnd: expectedTimer?.endsAt ?? timer.endsAt)
         stepTimerRevision += 1
         armStepTimer()
     }

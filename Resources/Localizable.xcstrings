@@ -2600,6 +2600,16 @@
         }
       }
     },
+    "+2 min": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+2 min"
+          }
+        }
+      }
+    },
     "A draft for you to review": {
       "localizations": {
         "fr": {
@@ -3026,6 +3036,16 @@
         }
       }
     },
+    "Add": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter"
+          }
+        }
+      }
+    },
     "Add Morning Operator": {
       "localizations": {
         "fr": {
@@ -3156,6 +3176,26 @@
         }
       }
     },
+    "Add two minutes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter deux minutes"
+          }
+        }
+      }
+    },
+    "Add two minutes to the current morning step.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter deux minutes à l’étape en cours."
+          }
+        }
+      }
+    },
     "Added as a draft. Review and approve your morning when you're ready.": {
       "localizations": {
         "fr": {
@@ -3206,12 +3246,62 @@
         }
       }
     },
+    "Alarm": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réveil"
+          }
+        }
+      }
+    },
+    "Alerts allowed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alertes autorisées"
+          }
+        }
+      }
+    },
     "All": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Tout"
+          }
+        }
+      }
+    },
+    "Allow alarms for MORE in Settings, then save again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorisez les réveils pour MORE dans Réglages, puis enregistrez à nouveau."
+          }
+        }
+      }
+    },
+    "Allow notifications for MORE in iPhone Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorisez les notifications de MORE dans les réglages de l’iPhone."
+          }
+        }
+      }
+    },
+    "Allow time's up alerts": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser les alertes de fin"
           }
         }
       }
@@ -3282,6 +3372,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "L’analyse utilise le modèle d’Apple sur l’appareil lorsqu’il est disponible. Elle ne lance pas d’autres apps et n’approuve pas de routine à votre place."
+          }
+        }
+      }
+    },
+    "Another app": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre app"
           }
         }
       }
@@ -3802,6 +3902,16 @@
         }
       }
     },
+    "Brief me": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire mon résumé"
+          }
+        }
+      }
+    },
     "Bring a recording you've made": {
       "localizations": {
         "fr": {
@@ -4048,6 +4158,16 @@
         }
       }
     },
+    "Check your scheduled alarm": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez votre réveil"
+          }
+        }
+      }
+    },
     "Choose": {
       "comment": "Short Learn action label (compact Record / Choose buttons).",
       "extractionState": "manual",
@@ -4116,6 +4236,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choisir un extrait"
+          }
+        }
+      }
+    },
+    "Choose another website in your routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un autre site dans votre routine."
           }
         }
       }
@@ -4900,6 +5030,16 @@
         }
       }
     },
+    "Displayed end": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin affichée"
+          }
+        }
+      }
+    },
     "Done": {
       "localizations": {
         "fr": {
@@ -4966,6 +5106,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Durée en minutes"
+          }
+        }
+      }
+    },
+    "During this moment": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendant ce moment"
           }
         }
       }
@@ -5046,6 +5196,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Terminer la matinée"
+          }
+        }
+      }
+    },
+    "End my morning": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer ma matinée"
           }
         }
       }
@@ -5226,6 +5386,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recherche des étapes importantes…"
+          }
+        }
+      }
+    },
+    "Finish": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer"
           }
         }
       }
@@ -5570,6 +5740,16 @@
         }
       }
     },
+    "Good morning": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonjour"
+          }
+        }
+      }
+    },
     "Hands free": {
       "localizations": {
         "fr": {
@@ -5726,6 +5906,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Importée comme brouillon. Relisez-la et approuvez-la quand vous le souhaitez. Vos choix enregistrés s’appliquent toujours aux futures suggestions."
+          }
+        }
+      }
+    },
+    "In MORE": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans MORE"
           }
         }
       }
@@ -6184,6 +6374,16 @@
         }
       }
     },
+    "Mail Message-ID (optional)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message-ID du mail (facultatif)"
+          }
+        }
+      }
+    },
     "Make it yours": {
       "localizations": {
         "fr": {
@@ -6310,6 +6510,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actions de la matinée"
+          }
+        }
+      }
+    },
+    "Morning alarm": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réveil du matin"
           }
         }
       }
@@ -6470,6 +6680,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sept prochains jours"
+          }
+        }
+      }
+    },
+    "Next step": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape suivante"
+          }
+        }
+      }
+    },
+    "Next: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ensuite : %@"
           }
         }
       }
@@ -6844,6 +7074,16 @@
         }
       }
     },
+    "Note a dream": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noter un rêve"
+          }
+        }
+      }
+    },
     "Notes": {
       "localizations": {
         "fr": {
@@ -6920,6 +7160,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Repérez les boucles."
+          }
+        }
+      }
+    },
+    "Notification permission couldn't be checked.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’autorisation des notifications n’a pas pu être vérifiée."
           }
         }
       }
@@ -7020,6 +7270,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Matinées observées"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désactivé"
           }
         }
       }
@@ -7154,6 +7414,16 @@
         }
       }
     },
+    "One timer, in MORE or another app. Choose Next when you're ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un seul minuteur, dans MORE ou une autre app. Choisissez Suivant quand vous êtes prêt."
+          }
+        }
+      }
+    },
     "Only Shortcuts you configure can log app names and entry/exit times. This doesn't record taps or read messages. Removing local data turns this off until you enable it again.": {
       "localizations": {
         "fr": {
@@ -7170,6 +7440,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "N’écoute que lorsque vous touchez. Jusqu’à huit secondes, traitées sur cet appareil. Rien n’est enregistré de cet échange."
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir"
           }
         }
       }
@@ -7230,6 +7510,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ouvrir l’apprentissage"
+          }
+        }
+      }
+    },
+    "Open page": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir la page"
           }
         }
       }
@@ -7444,6 +7734,16 @@
         }
       }
     },
+    "Page unavailable": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page indisponible"
+          }
+        }
+      }
+    },
     "Partial observation window": {
       "localizations": {
         "fr": {
@@ -7474,12 +7774,42 @@
         }
       }
     },
+    "Pause or finish your morning before playing another recap.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mettez votre matinée en pause ou terminez-la avant un autre résumé."
+          }
+        }
+      }
+    },
     "Paused": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "En pause"
+          }
+        }
+      }
+    },
+    "Phone number (optional)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numéro de téléphone (facultatif)"
+          }
+        }
+      }
+    },
+    "Place (optional)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieu (facultatif)"
           }
         }
       }
@@ -8138,6 +8468,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Libérer l’analyse synthétique"
+          }
+        }
+      }
+    },
+    "Remember this": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garder cette idée"
           }
         }
       }
@@ -9228,6 +9568,16 @@
         }
       }
     },
+    "Saved page": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page enregistrée"
+          }
+        }
+      }
+    },
     "Saved privately in Morning Operator on this device.": {
       "localizations": {
         "fr": {
@@ -9294,6 +9644,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enregistré au début de l’enregistrement. Changer le jour observé conserve cette information. Cela ne mesure pas le temps passé dans les apps."
+          }
+        }
+      }
+    },
+    "Scheduled every day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programmé chaque jour"
           }
         }
       }
@@ -9718,6 +10078,16 @@
         }
       }
     },
+    "Session": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        }
+      }
+    },
     "Set a target length": {
       "localizations": {
         "fr": {
@@ -9818,6 +10188,36 @@
         }
       }
     },
+    "Shared shortcut templates will appear here when they're ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les modèles de raccourcis apparaîtront ici quand ils seront prêts."
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourcis"
+          }
+        }
+      }
+    },
+    "Shortcuts & timers": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourcis et minuteurs"
+          }
+        }
+      }
+    },
     "Show all languages": {
       "localizations": {
         "fr": {
@@ -9910,6 +10310,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Affiche le texte d’origine et les citations"
+          }
+        }
+      }
+    },
+    "Skip step": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer cette étape"
           }
         }
       }
@@ -10118,12 +10528,32 @@
         }
       }
     },
+    "Start MORE": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir MORE"
+          }
+        }
+      }
+    },
     "Start morning": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Commencer la matinée"
+          }
+        }
+      }
+    },
+    "Start morning from alarm": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commencer la matinée au réveil"
           }
         }
       }
@@ -10178,6 +10608,16 @@
         }
       }
     },
+    "Step": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape"
+          }
+        }
+      }
+    },
     "Step details": {
       "localizations": {
         "fr": {
@@ -10194,6 +10634,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nom de l’étape"
+          }
+        }
+      }
+    },
+    "Step timers": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minuteurs des étapes"
           }
         }
       }
@@ -10393,6 +10843,16 @@
     "Synthetic weather attribution": {
       "localizations": {},
       "shouldTranslate": false
+    },
+    "System alarms are unavailable in an isolated test workspace.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réveils système sont indisponibles dans cet espace de test isolé."
+          }
+        }
+      }
     },
     "Take this moment at your own pace, then tap Next when you're ready.": {
       "localizations": {
@@ -10630,6 +11090,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "L’enregistrement dans l’app Apple n’a pas pu être confirmé. Vérifiez-le avant de réessayer. %@"
+          }
+        }
+      }
+    },
+    "The alarm couldn't be saved. Check it and try again. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le réveil n’a pas pu être enregistré. Vérifiez-le et réessayez. %@"
+          }
+        }
+      }
+    },
+    "The alarm opens your approved morning after you stop it. Unlock your phone if asked.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêter le réveil ouvre votre matinée approuvée. Déverrouillez l’iPhone si nécessaire."
           }
         }
       }
@@ -10924,6 +11404,16 @@
         }
       }
     },
+    "The step timer couldn't be saved. Try again before leaving MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le minuteur n’a pas pu être enregistré. Réessayez avant de quitter MORE."
+          }
+        }
+      }
+    },
     "The video is deleted from this device. Nothing from it has been saved yet.": {
       "localizations": {
         "fr": {
@@ -10940,6 +11430,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La vidéo est supprimée de cet appareil. Le texte déjà enregistré à partir de cette vidéo reste disponible."
+          }
+        }
+      }
+    },
+    "There is no current step timer.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun minuteur d’étape en cours."
           }
         }
       }
@@ -11010,6 +11510,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cela inclut aussi le texte et les corrections des observations, les citations conservées, les suggestions, les copies de récupération d’enregistrement, l’activité des apps, les réglages d’invitation, les calendriers et la ville météo choisis, ainsi que les reçus locaux d’enregistrement dans les apps Apple."
+          }
+        }
+      }
+    },
+    "This app couldn't open. You can continue in MORE or choose Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app n’a pas pu s’ouvrir. Continuez dans MORE ou choisissez Suivant."
           }
         }
       }
@@ -11324,6 +11834,26 @@
         }
       }
     },
+    "This step has reached its extension limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape a atteint sa limite de prolongation."
+          }
+        }
+      }
+    },
+    "This step timer is unavailable.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce minuteur est indisponible."
+          }
+        }
+      }
+    },
     "This suggestion no longer matches the saved observations or routine. Choose mornings to prepare a fresh one.": {
       "localizations": {
         "fr": {
@@ -11344,6 +11874,16 @@
         }
       }
     },
+    "This timer already changed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce minuteur a déjà changé."
+          }
+        }
+      }
+    },
     "Thought": {
       "localizations": {
         "fr": {
@@ -11357,6 +11897,16 @@
     "TikTok": {
       "localizations": {},
       "shouldTranslate": false
+    },
+    "Time": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heure"
+          }
+        }
+      }
     },
     "Time in your routine, excluding pauses. Other app use isn't measured here.": {
       "localizations": {
@@ -11374,6 +11924,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fuseau horaire"
+          }
+        }
+      }
+    },
+    "Time's up. %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps écoulé. %@"
+          }
+        }
+      }
+    },
+    "Time's up. Choose +2 min or Next.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps écoulé. Choisissez +2 min ou Suivant."
           }
         }
       }
@@ -11574,6 +12144,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Essayer la voix"
+          }
+        }
+      }
+    },
+    "Two minutes added.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deux minutes ajoutées."
           }
         }
       }
@@ -11854,6 +12434,16 @@
         }
       }
     },
+    "Username (optional)": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom d’utilisateur (facultatif)"
+          }
+        }
+      }
+    },
     "Uses Apple Intelligence on this device. Editing the observation removes its attached frame evidence and screen interpretation.": {
       "localizations": {
         "fr": {
@@ -11934,12 +12524,32 @@
         }
       }
     },
+    "Web address": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse web"
+          }
+        }
+      }
+    },
     "What Morning Operator does": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Ce que fait Morning Operator"
+          }
+        }
+      }
+    },
+    "What did you dream?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De quoi avez-vous rêvé ?"
           }
         }
       }
@@ -11996,6 +12606,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Que voulez-vous faire ?"
+          }
+        }
+      }
+    },
+    "What would you like to remember?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que voulez-vous garder en mémoire ?"
           }
         }
       }
@@ -12782,6 +13402,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Votre observation enregistrée sélectionnée"
+          }
+        }
+      }
+    },
+    "Your step timer keeps time when MORE is in the background. A notification can tell you when time is up.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le minuteur continue quand MORE est en arrière-plan. Une notification peut annoncer la fin."
           }
         }
       }

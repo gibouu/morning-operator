@@ -8,12 +8,16 @@ struct StepTimerView: View {
             HStack {
                 Text(store.currentStep?.target?.destination.displayName ?? "MORE")
                     .font(.subheadline.weight(.semibold))
+                if case let .inAppWeb(url) = store.currentStep?.target {
+                    Button("Open page") { store.pendingWebTarget = url }
+                        .accessibilityIdentifier("stepTimer.openPage")
+                }
                 Spacer()
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(Duration.seconds(timer.remaining(at: context.date).rounded(.up)), format: .time(pattern: .minuteSecond))
                         .monospacedDigit().accessibilityIdentifier("stepTimer.remaining")
                 }
-                Button("+2 min") { Task { await store.extendStepTimer() } }
+                Button("+2 min") { Task { await store.extendStepTimer(expectedTimer: timer) } }
                     .accessibilityIdentifier("stepTimer.extend")
             }
             .font(.subheadline).padding(.vertical, 10)

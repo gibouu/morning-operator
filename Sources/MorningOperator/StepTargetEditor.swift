@@ -9,13 +9,31 @@ struct StepTargetEditor: View {
     private var detail: String {
         guard case let .externalApp(_, detail) = target else { return "" }; return detail ?? ""
     }
+    private var selectedChoice: String {
+        switch target {
+        case let .externalApp(app, _): "app.\(app.rawValue)"
+        case let .inAppWeb(url): WebMorningSite(url: url).map { "web.\($0.rawValue)" } ?? "web.saved"
+        case nil: "none"
+        }
+    }
+    private func select(_ choice: String) {
+        if choice.hasPrefix("app."), let app = StepApp(rawValue: String(choice.dropFirst(4))) {
+            target = .externalApp(app, detail: nil)
+        } else if choice.hasPrefix("web."), let site = WebMorningSite(rawValue: String(choice.dropFirst(4))) {
+            target = .inAppWeb(site: site.table.startURL)
+        } else if choice == "none" { target = nil }
+    }
     var body: some View {
         Section {
-            Picker("Open an app", selection: Binding(get: { selectedApp }, set: { app in
-                target = app.map { .externalApp($0, detail: nil) }
-            })) {
-                Text("None").tag(Optional<StepApp>.none)
-                ForEach(StepApp.allCases, id: \.self) { app in Text(app.displayName).tag(Optional(app)) }
+            Picker("Open", selection: Binding(get: { selectedChoice }, set: select)) {
+                Text("None").tag("none")
+                Section("In MORE") {
+                    ForEach(WebMorningSite.allCases) { site in Text(site.displayName).tag("web.\(site.rawValue)") }
+                    if selectedChoice == "web.saved" { Text("Saved page").tag("web.saved") }
+                }
+                Section("Another app") {
+                    ForEach(StepApp.allCases, id: \.self) { app in Text(app.displayName).tag("app.\(app.rawValue)") }
+                }
             }.accessibilityIdentifier("step.targetApp")
             if let app = selectedApp, app.detailKind != .none {
                 TextField(prompt(app.detailKind), text: Binding(get: { detail }, set: { target = .externalApp(app, detail: $0) }))
@@ -23,7 +41,7 @@ struct StepTargetEditor: View {
                     .accessibilityIdentifier("step.targetDetail")
             }
         } header: { Text("During this moment") } footer: {
-            Text("MORE opens this app and keeps your time budget. Choose Next when you're ready.")
+            Text("One timer, in MORE or another app. Choose Next when you're ready.")
         }
     }
     private func prompt(_ kind: StepAppDetailKind) -> String {

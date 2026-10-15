@@ -2838,6 +2838,16 @@
         }
       }
     },
+    "Time's up": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps écoulé"
+          }
+        }
+      }
+    },
     "Two observations use the same acquisition identifier.": {
       "localizations": {
         "fr": {

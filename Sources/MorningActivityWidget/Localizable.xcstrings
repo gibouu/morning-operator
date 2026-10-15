@@ -77,6 +77,46 @@
         }
       }
     },
+    "+2 min": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+2 min"
+          }
+        }
+      }
+    },
+    "Add two minutes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter deux minutes"
+          }
+        }
+      }
+    },
+    "Add two minutes to the current morning step.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter deux minutes à l’étape en cours."
+          }
+        }
+      }
+    },
+    "Displayed end": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin affichée"
+          }
+        }
+      }
+    },
     "Last update": {
       "localizations": {
         "fr": {
@@ -159,6 +199,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ouvre l’écran Matinée de MORE."
+          }
+        }
+      }
+    },
+    "Session": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        }
+      }
+    },
+    "Step": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape"
+          }
+        }
+      }
+    },
+    "There is no current step timer.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun minuteur d’étape en cours."
+          }
+        }
+      }
+    },
+    "This step has reached its extension limit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape a atteint sa limite de prolongation."
+          }
+        }
+      }
+    },
+    "This step timer is unavailable.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce minuteur est indisponible."
+          }
+        }
+      }
+    },
+    "This timer already changed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce minuteur a déjà changé."
+          }
+        }
+      }
+    },
+    "Two minutes added.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deux minutes ajoutées."
           }
         }
       }

@@ -41,6 +41,7 @@ struct WebMorningView: View {
         .background(Color(uiColor: .systemBackground))
         .sheet(isPresented: $showingAbout) { about }
         .onAppear {
+            controller.startIfNeeded()
             controller.actionsEnabled = isStepActive && scenePhase == .active
             if !explained { showingAbout = true }
         }

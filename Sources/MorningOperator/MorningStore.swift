@@ -2202,6 +2202,7 @@ final class MorningStore {
             try await invitation.forget()
             endStepTimer()
             try MorningAlarmService.shared.forget()
+            await WebMorningController.clearAllSignIns()
             try privacyControl.withForgetAccess(expectedGeneration: generation) {
                 try recordingRecovery.removeAllOwnedData()
                 // SEGMENTED SESSIONS (#27) ARE NOT FORGOTTEN HERE YET. Nothing in the app

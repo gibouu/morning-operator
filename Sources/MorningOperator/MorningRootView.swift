@@ -167,6 +167,7 @@ struct MorningRootView: View {
     var body: some View {
         workspaceContent
         .modifier(MorningHaptics(store: store))
+        .routineWebStep(store: store)
         .onChange(of: store.speech.state) { store.handleSpeechInterruption() }
         .onChange(of: store.automation.status) { store.synchronizeMorningActivity() }
         .onChange(of: scenePhase) { _, phase in

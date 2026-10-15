@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ in MORE": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dans MORE"
+          }
+        }
+      }
+    },
     "A little chess. A little joy. Keep this time for yourself.": {
       "localizations": {
         "fr": {
@@ -27,6 +37,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Un peu de temps pour jouer"
+          }
+        }
+      }
+    },
+    "A page in MORE": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une page dans MORE"
           }
         }
       }
@@ -311,12 +331,32 @@
         }
       }
     },
+    "Email someone": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer un mail"
+          }
+        }
+      }
+    },
     "Entertainment": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Divertissement"
+          }
+        }
+      }
+    },
+    "Finish": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer"
           }
         }
       }
@@ -381,6 +421,16 @@
         }
       }
     },
+    "Lights and coffee": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lumières et café"
+          }
+        }
+      }
+    },
     "Local privacy controls require a file location.": {
       "localizations": {
         "fr": {
@@ -411,12 +461,42 @@
         }
       }
     },
+    "Log water": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noter l’eau bue"
+          }
+        }
+      }
+    },
+    "Mail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail"
+          }
+        }
+      }
+    },
     "Make room for the day": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Faites de la place pour la journée"
+          }
+        }
+      }
+    },
+    "Maps": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plans"
           }
         }
       }
@@ -437,6 +517,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plusieurs moments suggérés pourraient correspondre à une préférence enregistrée. Vérifiez les activités concernées avant de réessayer."
+          }
+        }
+      }
+    },
+    "Morning playlist": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist du matin"
+          }
+        }
+      }
+    },
+    "Next: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ensuite : %@"
           }
         }
       }
@@ -617,6 +717,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enregistré"
+          }
+        }
+      }
+    },
+    "Text someone": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer un message"
           }
         }
       }
@@ -1027,6 +1137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dans l’objectif que vous avez choisi"
+          }
+        }
+      }
+    },
+    "Work Focus on": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer le mode Travail"
           }
         }
       }
