@@ -39,6 +39,9 @@ separate routine, timer, notification and website-store namespaces.
 - Twenty-four synthetic device screenshots were captured and visually checked.
   The first Privacy snapshot assertion expected an offscreen lazy row; it was
   corrected to verify the visible inventory, then the screen journey passed.
+- The owner signed in to Instagram inside MORE QA and confirmed MORE's unread
+  report matched an actual unread message. No exact count or private account
+  content was captured; this is owner-confirmed evidence.
 
 ## Device scope and remaining checks
 
@@ -52,12 +55,12 @@ The native checks do not establish external app handoff, lock-screen Next URL
 routing, AlarmKit, Siri, speech, live Calendar/Weather or the installed Screen
 Time build. Those need separate checks using the corresponding capabilities.
 
-Third-party login, pairing, current DOM selectors, video progression and
-backup/restore behavior remain unverified. Neither App Store approval nor the
-services' permission is established. See [browser scope](IN-APP-BROWSER.md).
+Other third-party logins, pairing, selector accuracy across layouts, video
+progression and backup/restore behavior remain unverified. Neither App Store
+approval nor the services' permission is established. See [browser scope](IN-APP-BROWSER.md).
 Le Monde loaded its own consent/subscription choice in WKWebView; no consent
-choice or headline extraction was performed. Instagram was opened for the
-owner to sign in manually; its account result is not yet verified.
+choice or headline extraction was performed. Instagram sign-in and one matching
+unread result are owner-confirmed; feed progression remains unverified.
 
 Local notifications handle timer expiry while MORE is suspended. Exact
 Dynamic Island expansion and background speech are not guaranteed. AlarmKit,
