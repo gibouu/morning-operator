@@ -429,11 +429,11 @@ struct MorningRootView: View {
                 ToolbarItem(placement: .principal) { Text(displayTitle ?? title).font(MorningTheme.Typography.title) }
                 ToolbarItem(placement: .topBarLeading) {
                 Button { showingSettings = false; showingLearn = false } label: {
-                    MorningDottedIcon(systemName: "xmark").frame(width: 24, height: 24).frame(width: 44, height: 44)
-                }.buttonStyle(.plain).foregroundStyle(MorningStyle.ink)
+                    Image(systemName: "xmark").font(.body.weight(.medium)).frame(width: 44, height: 44)
+                }.foregroundStyle(MorningStyle.ink)
                     .accessibilityLabel("Done").accessibilityIdentifier("destination.close")
                     .disabled(store.privacyBlocksWork)
-                }.sharedBackgroundVisibility(.hidden)
+                }
             }
         }
             .interactiveDismissDisabled(store.privacyBlocksWork)
@@ -647,7 +647,7 @@ struct TodayView: View {
                 HStack(spacing: 8) {
                     Text(Date.now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                         .font(.caption.weight(.medium))
-                    MorningDottedIcon(systemName: "chevron.down").frame(width: 16, height: 16).font(.caption2.weight(.regular))
+                    Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).accessibilityHidden(true)
                 }.foregroundStyle(MorningStyle.ink).frame(minHeight: 44).contentShape(Rectangle())
                     .background(MorningStyle.background)
             }.buttonStyle(.plain).accessibilityIdentifier("morning.date")
@@ -968,7 +968,7 @@ struct NoticeView: View {
     }
 }
 
-/// Four quiet destinations. Playback appears only when the morning sun is opened.
+/// Four native navigation symbols. Playback appears only when Morning is opened.
 private struct MorningActionDock: View {
     @Bindable var store: MorningStore
     @Binding var expanded: Bool
@@ -989,35 +989,38 @@ private struct MorningActionDock: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            if expanded {
-                actionBar
-                    .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(MorningDottedFrame(cornerRadius: 12).fill(MorningStyle.line))
-                    .accessibilityAction(.escape) { expanded = false }
-            }
-            HStack(spacing: 12) {
-                Button {
-                    if store.tab != .today { store.tab = .today; expanded = false }
-                    else { expanded.toggle() }
-                } label: {
-                    MorningDockGlyph(symbol: .morning).frame(width: 28, height: 28)
-                        .frame(width: 48, height: 48).contentShape(Rectangle())
+        MorningNavigationGlassGroup {
+            VStack(spacing: 12) {
+                if expanded {
+                    MorningNavigationSurface { actionBar }
+                        .accessibilityAction(.escape) { expanded = false }
                 }
-                .buttonStyle(SunriseTouchStyle())
-                .accessibilityLabel("Morning")
-                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
-                .accessibilityHint("Opens playback controls")
-                .accessibilityIdentifier("morning.actions")
-                .disabled(store.privacyBlocksWork || transitionPending)
-                action(String(localized: "Your routine"), symbol: .review, id: "morning.review", review)
-                action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
-                action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
+                MorningNavigationSurface {
+                    HStack(spacing: 8) {
+                        Button {
+                            if store.tab != .today { store.tab = .today; expanded = false }
+                            else { expanded.toggle() }
+                        } label: {
+                            MorningDockGlyph(symbol: .morning).frame(width: 28, height: 28)
+                                .frame(width: 48, height: 48)
+                                .background(store.tab == .today ? Color.primary.opacity(0.08) : .clear, in: Circle())
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Morning")
+                        .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+                        .accessibilityHint("Opens playback controls")
+                        .accessibilityAddTraits(store.tab == .today ? .isSelected : [])
+                        .accessibilityIdentifier("morning.actions")
+                        .disabled(store.privacyBlocksWork || transitionPending)
+                        action(String(localized: "Your routine"), symbol: .review, id: "morning.review", review)
+                        action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
+                        action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .foregroundStyle(.primary)
+                }
             }
-            .padding(.horizontal, 16).padding(.vertical, 6)
-            .foregroundStyle(MorningStyle.ink)
-            .background(MorningStyle.background, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(MorningDottedFrame(cornerRadius: 10, spacing: 7).fill(MorningStyle.line))
         }
         .frame(maxWidth: 320)
         .animation(reduceMotion ? nil : .smooth(duration: 0.22), value: expanded)
@@ -1041,7 +1044,7 @@ private struct MorningActionDock: View {
             } else {
                 HStack(spacing: 0) { actionItems }.padding(4)
             }
-        }.frame(width: readyRoutine != nil ? barWidth : 64,
+        }.frame(width: readyRoutine != nil ? barWidth : 68,
                 height: readyRoutine != nil ? nil : 58)
     }
 
@@ -1092,11 +1095,11 @@ private struct MorningActionDock: View {
             transitionPending = false
         } label: {
             MorningDockGlyph(symbol: symbol).frame(width: 27, height: 27)
-            .foregroundStyle(MorningStyle.ink)
+            .foregroundStyle(.primary)
             .frame(minWidth: 54, maxWidth: dynamicType.isAccessibilitySize ? nil : .infinity, minHeight: 48)
             .padding(.horizontal, 3)
             .contentShape(Capsule())
-        }.buttonStyle(DockActionTouchStyle())
+        }.buttonStyle(.borderless)
             .disabled(disabled || store.busy || store.privacyBlocksWork || transitionPending)
             .opacity(disabled ? 0.4 : 1).accessibilityLabel(title).accessibilityIdentifier(id)
     }
@@ -1144,22 +1147,6 @@ private struct MorningActionDock: View {
         clearReadyState()
         transitionPending = false
         expanded = false
-    }
-}
-
-private struct SunriseTouchStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
-    }
-}
-
-private struct DockActionTouchStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.55 : 1)
     }
 }
 
