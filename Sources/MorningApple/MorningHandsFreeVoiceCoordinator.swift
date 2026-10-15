@@ -172,7 +172,10 @@ public final class MorningHandsFreeVoiceCoordinator {
         var authorization = SFSpeechRecognizer.authorizationStatus()
         if authorization == .notDetermined {
             let raw = await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0.rawValue) }
+                let completion: @Sendable (SFSpeechRecognizerAuthorizationStatus) -> Void = { status in
+                    continuation.resume(returning: status.rawValue)
+                }
+                SFSpeechRecognizer.requestAuthorization(completion)
             }
             authorization = SFSpeechRecognizerAuthorizationStatus(rawValue: raw) ?? .denied
         }
@@ -181,7 +184,8 @@ public final class MorningHandsFreeVoiceCoordinator {
         var permitted = AVAudioApplication.shared.recordPermission == .granted
         if AVAudioApplication.shared.recordPermission == .undetermined {
             permitted = await withCheckedContinuation { continuation in
-                AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
+                let completion: @Sendable (Bool) -> Void = { value in continuation.resume(returning: value) }
+                AVAudioApplication.requestRecordPermission(completionHandler: completion)
             }
         }
         try checkCurrent(id)
