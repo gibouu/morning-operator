@@ -124,10 +124,11 @@ final class MorningDuplexSpeechOutput {
             let utterance = AVSpeechUtterance(string: text)
             utterance.voice = voice; utterance.rate = AVSpeechUtteranceDefaultSpeechRate
             let ingress = DuplexSpeechIngress()
-            synthesizer.write(utterance) { [weak self] buffer in
+            let receiveBuffer: @Sendable (AVAudioBuffer) -> Void = { [weak self] buffer in
                 let packet = ingress.copy(buffer)
                 Task { @MainActor [weak self] in self?.receive(packet, id: id) }
             }
+            synthesizer.write(utterance, toBufferCallback: receiveBuffer)
         }
     }
 
@@ -157,9 +158,10 @@ final class MorningDuplexSpeechOutput {
             guard ledger.scheduled(packet.sequence, id: id) else { failChunk(); return }
             scheduledBytes[packet.sequence] = packet.byteCount
             let sequence = packet.sequence
-            player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+            let playedBuffer: @Sendable (AVAudioPlayerNodeCompletionCallbackType) -> Void = { [weak self] _ in
                 Task { @MainActor [weak self] in self?.played(sequence, id: id) }
             }
+            player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack, completionHandler: playedBuffer)
             if !isPaused { player.play() }
             let started = onStarted; onStarted = nil; started?()
         }

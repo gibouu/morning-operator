@@ -281,7 +281,10 @@ public final class MorningVoiceCommandListener {
         var authorization = SFSpeechRecognizer.authorizationStatus()
         if authorization == .notDetermined {
             let raw = await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0.rawValue) }
+                let completion: @Sendable (SFSpeechRecognizerAuthorizationStatus) -> Void = { status in
+                    continuation.resume(returning: status.rawValue)
+                }
+                SFSpeechRecognizer.requestAuthorization(completion)
             }
             authorization = SFSpeechRecognizerAuthorizationStatus(rawValue: raw) ?? .denied
         }
@@ -298,7 +301,8 @@ public final class MorningVoiceCommandListener {
         var granted = AVAudioApplication.shared.recordPermission == .granted
         if AVAudioApplication.shared.recordPermission == .undetermined {
             granted = await withCheckedContinuation { continuation in
-                AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
+                let completion: @Sendable (Bool) -> Void = { value in continuation.resume(returning: value) }
+                AVAudioApplication.requestRecordPermission(completionHandler: completion)
             }
         }
         try checkCurrent(id)
@@ -329,19 +333,21 @@ public final class MorningVoiceCommandListener {
         }
         let sink = CommandAudioBufferSink(request: request)
         self.sink = sink
-        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+        let receiveResult: @Sendable (SFSpeechRecognitionResult?, (any Error)?) -> Void = { [weak self] result, error in
             // Only send value types across the framework callback's executor boundary.
             let hypothesis = result.map { CommandHypothesis(text: $0.bestTranscription.formattedString,
                 isFinal: $0.isFinal, alternatives: $0.transcriptions.map(\.formattedString)) }
             let failure = error?.localizedDescription
             Task { @MainActor [weak self] in self?.receive(hypothesis, error: failure, id: id) }
         }
+        recognitionTask = recognizer.recognitionTask(with: request, resultHandler: receiveResult)
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.channelCount > 0, format.sampleRate > 0 else {
             throw MorningVoiceListeningError.audio(String(localized: "No microphone input is available.", bundle: .module))
         }
-        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in sink.append(buffer) }
+        let audioTap: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = { [sink] buffer, _ in sink.append(buffer) }
+        input.installTap(onBus: 0, bufferSize: 1_024, format: format, block: audioTap)
         hasTap = true
         engine.prepare()
         try engine.start()

@@ -202,7 +202,10 @@ public final class MorningHandsFreeVoiceCoordinator {
         let format = input.outputFormat(forBus: 0)
         guard format.channelCount > 0, format.sampleRate > 0 else { throw MorningVoiceListeningError.unavailable }
         let sink = sink
-        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in sink.append(buffer) }
+        // The framework invokes this on its audio thread. An untyped closure
+        // here inherits MainActor and traps before its body under Swift 6.
+        let audioTap: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = { [sink] buffer, _ in sink.append(buffer) }
+        input.installTap(onBus: 0, bufferSize: 1_024, format: format, block: audioTap)
         hasTap = true
         speech?.setHandsFreeOutput(MorningDuplexSpeechOutput(engine: engine))
         engine.prepare()
@@ -225,7 +228,7 @@ public final class MorningHandsFreeVoiceCoordinator {
         sink.replace(with: request)
         state = .listening
         message = String(localized: "Listening · You can interrupt MORE.", bundle: .module)
-        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+        let receiveResult: @Sendable (SFSpeechRecognitionResult?, (any Error)?) -> Void = { [weak self] result, error in
             let text = result?.bestTranscription.formattedString
             let isFinal = result?.isFinal == true
             let failed = error != nil
@@ -233,6 +236,7 @@ public final class MorningHandsFreeVoiceCoordinator {
                 self?.receive(text: text, isFinal: isFinal, failed: failed, runID: id, recognitionID: recognitionID)
             }
         }
+        recognitionTask = recognizer.recognitionTask(with: request, resultHandler: receiveResult)
         turnDeadline?.cancel()
         turnDeadline = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(45)) } catch { return }
