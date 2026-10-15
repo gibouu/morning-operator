@@ -10,17 +10,18 @@ struct MorningRootView: View {
     @ViewState<Bool> private var showingLearn = false
     @ViewState<Bool> private var showingRoutineEditor = false
     @ViewState<Bool> private var learnAfterRoutineDismissal = false
-    @ViewState<UUID> private var reviewRootIdentity = UUID()
-    @ViewState<Bool> private var resetReviewAfterSettingsDismissal = false
+    @ViewState<Date> private var selectedDay = .now
+    @ViewState<Bool> private var showingDays = false
     @ViewState<Bool> private var presentingIntentCapture = false
     @ViewState<Bool> private var pendingObservationReview = false
     @ViewState<Bool> private var testObservedBackground = false
-    @ViewState<Bool> private var showingActions = false
+    @ViewState<MorningHomeStartConfirmation?> private var homeStartConfirmation = nil
     @ViewState<Bool> private var actionTransitionPending = false
     private enum EntryPresentation: Hashable { case settings, learn, routine, invitation }
     @ViewState<Set<EntryPresentation>> private var activeEntryPresentations = []
-    @ViewState<CGFloat> private var dockWidth = 430
     @Environment(\.scenePhase) private var scenePhase
+
+    private var confirmingHomeStart: Bool { homeStartConfirmation != nil }
 
     private var routineProgress: Double {
         guard let session = store.session, !session.routine.steps.isEmpty else { return 0 }
@@ -28,66 +29,24 @@ struct MorningRootView: View {
     }
 
     private var presentedContent: some View {
-        TabView(selection: $store.tab) {
-            NavigationStack {
-                TodayView(store: store, showLearn: { showingLearn = true },
-                          reviewObservation: requestObservationReview,
-                          showReview: { reviewRootIdentity = UUID(); store.tab = .review }, editRoutine: openRoutineReview,
-                          showInvitation: openMorningInvitation, canEditInvitation: !entryIsOccupied)
-                    .padding(.bottom, 84)
-                    .background(MorningPaper(progress: routineProgress))
-                    .toolbar(.hidden, for: .navigationBar)
-                    .accessibilityHidden(showingActions)
+        NavigationStack {
+            TodayView(store: store, reviewObservation: requestObservationReview,
+                      editRoutine: openRoutineReview, showInvitation: openMorningInvitation,
+                      canEditInvitation: !entryIsOccupied,
+                      startConfirmation: $homeStartConfirmation,
+                      transitionPending: $actionTransitionPending) {
+                homeDateBrowser
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Morning", systemImage: "sun.horizon") }.tag(MorningTab.today)
-            NavigationStack {
-                WeeklyReviewView(store: store, onLearn: { showingLearn = true },
-                                 onSettings: {
-                                     if store.voiceInputBlocksPlayback { store.voiceCommandPresented = true }
-                                     else { showingSettings = true }
-                                 }, showingRoutineEditor: $showingRoutineEditor)
-                    .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 84) }
-                    .background(MorningStyle.background)
-                    .toolbar { ToolbarItem(placement: .topBarLeading) {
-                        Button { store.tab = .today } label: { MorningDockGlyph(symbol: .morning).frame(width: 26, height: 26) }
-                            .accessibilityLabel("Back to morning").accessibilityIdentifier("morning.home")
-                    } }
-            }
-            .id(reviewRootIdentity)
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Review", systemImage: "circle.grid.2x2") }.tag(MorningTab.review)
+            .padding(.bottom, 84)
+            .background(MorningPaper(progress: routineProgress))
+            .toolbar(.hidden, for: .navigationBar)
         }
-        #if os(iOS)
-        .toolbar(.hidden, for: .tabBar)
-        #endif
         .background(MorningPaper(progress: routineProgress))
-        .overlay {
-            if showingActions {
-                Button {
-                    showingActions = false
-                } label: {
-                    Color.clear.contentShape(Rectangle())
-                }.buttonStyle(.plain).ignoresSafeArea()
-                    .accessibilityLabel("Close morning actions")
-                    .accessibilityIdentifier("morning.closeActions")
-            }
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { dockWidth = $0 }
         .overlay(alignment: .bottom) {
-            if store.tab == .today || store.tab == .review {
-                MorningActionDock(store: store, expanded: $showingActions,
-                    transitionPending: $actionTransitionPending, availableWidth: dockWidth,
-                    edit: openRoutineReview,
-                    learn: { showingLearn = true },
-                    review: openRoutineReview,
-                    settings: {
-                        if store.voiceInputBlocksPlayback { store.voiceCommandPresented = true }
-                        else { showingSettings = true }
-                    })
-                    .padding(.horizontal, 20).padding(.bottom, 8)
-                    .frame(maxWidth: .infinity)
-            }
+            MorningActionDock(store: store, transitionPending: $actionTransitionPending,
+                              home: returnHome, routine: openRoutineReview, settings: openSettings)
+                .padding(.horizontal, 20).padding(.bottom, 8)
+                .frame(maxWidth: .infinity)
         }
         .background {
             #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
@@ -100,13 +59,9 @@ struct MorningRootView: View {
         }
         .tint(MorningStyle.accent)
         .foregroundStyle(MorningStyle.ink)
-        .font(MorningTheme.Typography.body)
+        .font(.body)
         .fullScreenCover(isPresented: $showingSettings, onDismiss: {
             activeEntryPresentations.remove(.settings)
-            if resetReviewAfterSettingsDismissal {
-                resetReviewAfterSettingsDismissal = false
-                reviewRootIdentity = UUID()
-            }
             processPendingEntries()
         }) {
             destinationPage(String(localized: "Settings")) { SetupView(store: store) }
@@ -157,33 +112,37 @@ struct MorningRootView: View {
     private var workspaceContent: some View {
         presentedContent
         .onChange(of: store.dataGeneration) { _, _ in
-            showingActions = false
+            homeStartConfirmation = nil
             actionTransitionPending = false
             showingLearn = false; showingRoutineEditor = false; showingInvitation = false
             learnAfterRoutineDismissal = false
             presentingIntentCapture = false; pendingObservationReview = false
-            // Keep the presenting Review stack stable while Privacy is open.
-            // Replacing its tab identity during confirmation dismissal can strand
-            // the old presentation over a fast cleanup failure. Successful removal
-            // resets Review below; pending cleanup keeps Settings non-dismissible.
-            if !showingSettings { reviewRootIdentity = UUID() }
+            // Home keeps one stable identity while Privacy completes or retries.
+            selectedDay = .now
+            showingDays = false
         }
         .onChange(of: store.privacyCompletedID) { _, completed in
             guard completed != nil else { return }
-            if showingSettings { resetReviewAfterSettingsDismissal = true }
-            else { reviewRootIdentity = UUID() }
             showingSettings = false
             showingInvitation = false
             store.tab = .today
         }
         .onChange(of: store.completionInvitationSessionID) { _, _ in processPendingEntries() }
-        .onChange(of: store.session?.id) { _, _ in store.completionSessionChanged() }
-        .onChange(of: store.tab) { _, value in
-            showingActions = false
-            if value == .learn { store.tab = .review; showingLearn = true }
-            if value == .setup { store.tab = .review; showingSettings = true }
-            if value == .captures { store.tab = .review }
-            if value != .today { store.stopCompletionInvitation() }
+        .onChange(of: store.routine) { _, _ in homeStartConfirmation = nil }
+        .onChange(of: store.sessionActive) { _, _ in homeStartConfirmation = nil }
+        .onChange(of: store.session?.id) { _, _ in
+            homeStartConfirmation = nil
+            store.completionSessionChanged()
+        }
+        .onChange(of: store.tab, initial: true) { _, value in
+            // Legacy store routes are presentation requests, never a fourth page.
+            // Normalize before presenting so Done always reveals Home.
+            if value != .today {
+                store.tab = .today
+                store.stopCompletionInvitation()
+                if value == .learn { showingLearn = true }
+                if value == .setup { showingSettings = true }
+            }
             processPendingEntries()
         }
         .onChange(of: store.speech.voiceIdentifier) { store.saveVoicePreference() }
@@ -199,8 +158,8 @@ struct MorningRootView: View {
         .onChange(of: store.automation.status) { store.synchronizeMorningActivity() }
         .onChange(of: scenePhase) { _, phase in
             store.morningActivitySceneChanged(isForeground: phase == .active)
+            if phase != .active { homeStartConfirmation = nil }
             if phase == .background {
-                showingActions = false
                 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("--ui-testing") { testObservedBackground = true }
                 #endif
@@ -280,13 +239,64 @@ struct MorningRootView: View {
         showingInvitation = true
     }
 
+    private func returnHome() {
+        store.tab = .today
+        selectedDay = .now
+        showingDays = false
+    }
+
     private func openRoutineReview() {
-        showingRoutineEditor = true
+        guard canOpenShellDestination else { return }
+        homeStartConfirmation = nil
+        store.tab = .today
+        if store.routine == nil { showingLearn = true }
+        else { showingRoutineEditor = true }
+    }
+
+    private func openSettings() {
+        guard canOpenShellDestination else { return }
+        homeStartConfirmation = nil
+        if store.voiceInputBlocksPlayback { store.voiceCommandPresented = true }
+        else { showingSettings = true }
+    }
+
+    /// A pending recording blocks automatic Start, but must still be reviewable
+    /// through Learn. Keep that start-only blocker out of shell navigation.
+    private var canOpenShellDestination: Bool {
+        scenePhase == .active && !store.privacyBlocksWork && !store.busy &&
+        activeEntryPresentations.isEmpty && !showingSettings && !showingInvitation &&
+        !showingLearn && !showingRoutineEditor && !learnAfterRoutineDismissal &&
+        !presentingIntentCapture && !store.capturePresented &&
+        !store.captureVoicePresented && !store.hasPendingSpokenCapture &&
+        !store.voiceCommandPresented && !store.morningDetailPresented &&
+        !store.observationDetailPresented && !store.observationSelectionPresented &&
+        !store.routineProposalPresented && !store.captureBusy && !store.calendarBusy
+    }
+
+    /// Issue #138 replaces this builder with MorningInlineDayStrip using the
+    /// same selectedDay/showingDays bindings. The shell has no history destination.
+    private var homeDateBrowser: some View {
+        Button {
+            showingDays.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Text(selectedDay.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                    .font(.caption.weight(.medium))
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .rotationEffect(.degrees(showingDays ? 180 : 0))
+                    .accessibilityHidden(true)
+            }.frame(minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .accessibilityValue(showingDays ? "Expanded" : "Collapsed")
+            .accessibilityHint(showingDays ? "Hides the day strip here on Home" : "Shows the day strip here on Home")
+            .accessibilityIdentifier("morning.date")
+            .disabled(store.privacyBlocksWork)
     }
 
     private func presentPendingIntentCapture() {
         guard !store.privacyBlocksWork, activeEntryPresentations.isEmpty, scenePhase == .active, !presentingIntentCapture, !store.capturePresented, !store.captureVoicePresented, !store.hasPendingSpokenCapture,
-              !store.voiceInputBlocksPlayback, !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending,
+              !store.voiceInputBlocksPlayback, !showingSettings, !showingInvitation, !confirmingHomeStart, !actionTransitionPending,
               !store.morningDetailPresented,
               !showingLearn, !showingRoutineEditor, !learnAfterRoutineDismissal, !store.voiceCommandPresented,
               !store.observationDetailPresented, !store.observationSelectionPresented, !store.routineProposalPresented,
@@ -315,7 +325,7 @@ struct MorningRootView: View {
         // Learn may already be visible because the person opened the saved recording.
         // Consume the request once; don't reopen it after they dismiss it.
         pendingObservationReview = false
-        store.tab = .review
+        store.tab = .today
         showingLearn = true
     }
 
@@ -325,7 +335,7 @@ struct MorningRootView: View {
     private var observationReviewCanPresent: Bool {
         guard activeEntryPresentations.isEmpty || (showingLearn && activeEntryPresentations == [.learn]) else { return false }
         guard !store.privacyBlocksWork, scenePhase == .active, !store.busy, !store.sessionActive,
-              !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending, !showingRoutineEditor, !learnAfterRoutineDismissal, !presentingIntentCapture,
+              !showingSettings, !showingInvitation, !confirmingHomeStart, !actionTransitionPending, !showingRoutineEditor, !learnAfterRoutineDismissal, !presentingIntentCapture,
               !store.capturePresented, !store.voiceCommandPresented, !store.captureVoicePresented,
               !store.hasPendingSpokenCapture, !store.voiceInputBlocksPlayback,
               !store.morningDetailPresented, !store.observationDetailPresented,
@@ -342,7 +352,7 @@ struct MorningRootView: View {
         #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
         if #available(iOS 27.0, *) { recordingBusy = ScreenRecordingService.shared.isBusy }
         #endif
-        return store.privacyBlocksWork || !activeEntryPresentations.isEmpty || showingActions || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutineEditor || learnAfterRoutineDismissal || presentingIntentCapture ||
+        return store.privacyBlocksWork || !activeEntryPresentations.isEmpty || confirmingHomeStart || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutineEditor || learnAfterRoutineDismissal || presentingIntentCapture ||
             store.capturePresented || store.voiceCommandPresented || store.captureVoicePresented ||
             store.hasPendingSpokenCapture || store.morningDetailPresented || store.observationDetailPresented ||
             store.observationSelectionPresented || store.routineProposalPresented || store.voiceInputBlocksPlayback ||
@@ -351,7 +361,7 @@ struct MorningRootView: View {
     }
 
     private var recordingCanProcess: Bool {
-        !store.privacyBlocksWork && activeEntryPresentations.isEmpty && !showingActions && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutineEditor && !learnAfterRoutineDismissal && !presentingIntentCapture &&
+        !store.privacyBlocksWork && activeEntryPresentations.isEmpty && !confirmingHomeStart && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutineEditor && !learnAfterRoutineDismissal && !presentingIntentCapture &&
         !store.capturePresented && !store.voiceCommandPresented && !store.captureVoicePresented &&
         !store.hasPendingSpokenCapture && !store.voiceInputBlocksPlayback &&
         !store.morningDetailPresented && !store.observationDetailPresented &&
@@ -408,7 +418,7 @@ struct MorningRootView: View {
         }
         switch destination {
         case .reviewDraft: openRoutineReview()
-        case .learn: store.tab = .review; showingLearn = true
+        case .learn: store.tab = .today; showingLearn = true
         default: store.tab = .today
         }
     }
@@ -426,14 +436,14 @@ struct MorningRootView: View {
             .navigationBarTitleDisplayMode(.inline)
             .accessibilityLabel(title)
             .toolbar {
-                ToolbarItem(placement: .principal) { Text(displayTitle ?? title).font(MorningTheme.Typography.title) }
+                ToolbarItem(placement: .principal) { Text(displayTitle ?? title).font(.title2) }
                 ToolbarItem(placement: .topBarLeading) {
                 Button { showingSettings = false; showingLearn = false } label: {
-                    MorningDottedIcon(systemName: "xmark").frame(width: 24, height: 24).frame(width: 44, height: 44)
-                }.buttonStyle(.plain).foregroundStyle(MorningStyle.ink)
+                    Image(systemName: "xmark").font(.body.weight(.medium)).frame(width: 44, height: 44)
+                }.foregroundStyle(MorningStyle.ink)
                     .accessibilityLabel("Done").accessibilityIdentifier("destination.close")
                     .disabled(store.privacyBlocksWork)
-                }.sharedBackgroundVisibility(.hidden)
+                }
             }
         }
             .interactiveDismissDisabled(store.privacyBlocksWork)
@@ -443,14 +453,15 @@ struct MorningRootView: View {
 /// A quiet, movable morning with no scrolling at ordinary phone text sizes.
 /// Larger accessibility text and short landscape windows get a scroll fallback rather
 /// than clipped controls or shrunken type. Review retains the complete routine.
-struct TodayView: View {
+struct TodayView<DayBrowser: View>: View {
     @Bindable var store: MorningStore
-    var showLearn: () -> Void
     var reviewObservation: () -> Void
-    var showReview: () -> Void
     var editRoutine: () -> Void
     var showInvitation: () -> Void
     var canEditInvitation: Bool
+    @Binding var startConfirmation: MorningHomeStartConfirmation?
+    @Binding var transitionPending: Bool
+    @ViewBuilder var dayBrowser: () -> DayBrowser
     @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.locale) private var locale
     @ViewState<Bool> private var showingNotice = false
@@ -624,34 +635,21 @@ struct TodayView: View {
                 }
                 Spacer(minLength: 4)
                 if store.sessionActive { actionArea(routine) }
+                else if routine.isApproved {
+                    MorningHomePlayback(store: store, startConfirmation: $startConfirmation,
+                                        transitionPending: $transitionPending)
+                }
             } else {
                 Spacer(minLength: 12)
-                welcome
-                HStack(spacing: 12) {
-                    Button(action: showLearn) {
-                        Label { Text("Learn my morning") } icon: { MorningDottedIcon(systemName: "record.circle").frame(width: 24, height: 24) }
-                            .padding(.horizontal, 8).padding(.vertical, 8)
-                    }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("learn.begin")
-                    Button("Try a sample") { store.loadSample() }
-                        .font(.subheadline).frame(minHeight: 44)
-                        .accessibilityIdentifier("routine.sample")
-                }.padding(.top, 14)
+                // The center Learn destination is the single first-use action.
                 Spacer(minLength: 24)
             }
         }
     }
 
     private var dateHeader: some View {
-        HStack {
-            Button(action: showReview) {
-                HStack(spacing: 8) {
-                    Text(Date.now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-                        .font(.caption.weight(.medium))
-                    MorningDottedIcon(systemName: "chevron.down").frame(width: 16, height: 16).font(.caption2.weight(.regular))
-                }.foregroundStyle(MorningStyle.ink).frame(minHeight: 44).contentShape(Rectangle())
-                    .background(MorningStyle.background)
-            }.buttonStyle(.plain).accessibilityIdentifier("morning.date")
-                .accessibilityHint("Review this week and previous mornings")
+        HStack(alignment: .top) {
+            dayBrowser()
             Spacer()
             #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
             if #available(iOS 27.0, *), ScreenRecordingService.shared.captureMayBeActive {
@@ -669,11 +667,6 @@ struct TodayView: View {
                     .accessibilityIdentifier("morning.attention")
             }
         }
-    }
-
-    private var welcome: some View {
-        // The morning artwork carries this empty state; Learn and Sample are its actions.
-        Color.clear.frame(height: 24).accessibilityHidden(true)
     }
 
     private func routineHeading(_ routine: RoutineVersion, compact: Bool) -> some View {
@@ -921,18 +914,21 @@ struct TodayView: View {
     }
 
     @ViewBuilder private func actionArea(_ routine: RoutineVersion) -> some View {
+        let sessionID = store.session?.id
+        let generation = store.dataGeneration
+        let current = { store.session?.id == sessionID && store.dataGeneration == generation }
         StepTimerView(store: store)
         if store.sessionActive {
             HStack(spacing: 12) {
                 if store.session?.status == .paused {
-                    Button { store.resume() } label: { Label { Text("Continue") } icon: { MorningDottedIcon(systemName: "play.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
+                    Button { if current(), store.session?.status == .paused { store.resume() } } label: { Label { Text("Continue") } icon: { Image(systemName: "play.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("run.resume")
                         .disabled(store.voiceInputBlocksPlayback)
                 } else {
-                    Button { store.pause() } label: { Label { Text("Pause") } icon: { MorningDottedIcon(systemName: "pause.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
+                    Button { if current(), store.session?.status == .running { store.pause() } } label: { Label { Text("Pause") } icon: { Image(systemName: "pause.fill").frame(width: 22, height: 22) }.frame(maxWidth: .infinity).padding(.vertical, 9) }
                         .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("run.pause")
                     if !store.automatic || [.waitingForUser, .unavailable, .failed].contains(store.automation.status) {
-                        Button { store.advance() } label: { MorningDottedIcon(systemName: "arrow.right").frame(width: 25, height: 25).frame(width: 32, height: 32) }
+                        Button { store.advance() } label: { Image(systemName: "arrow.right").frame(width: 25, height: 25).frame(width: 32, height: 32) }
                             .buttonStyle(PrimaryButtonStyle()).accessibilityLabel("Next moment").accessibilityIdentifier("run.next")
                     }
                 }
@@ -947,7 +943,7 @@ struct TodayView: View {
                     Button("Skip this moment") { store.advance(skipping: true) }.disabled(store.session?.status != .running)
                     Button("Read aloud") { store.readCurrent() }.disabled(store.voiceInputBlocksPlayback)
                     Button("Save a thought") { store.openCapture() }
-                } label: { MorningDottedIcon(systemName: "ellipsis").frame(width: 25, height: 25).frame(width: 32, height: 32) }
+                } label: { Image(systemName: "ellipsis").frame(width: 25, height: 25).frame(width: 32, height: 32) }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityLabel("Morning controls").accessibilityIdentifier("run.controls")
             }.controlSize(.large)
         }
@@ -968,141 +964,99 @@ struct NoticeView: View {
     }
 }
 
-/// Four quiet destinations. Playback appears only when the morning sun is opened.
+/// Home, one Learn-or-Routine destination, and Settings. Home only returns Home.
 private struct MorningActionDock: View {
     @Bindable var store: MorningStore
-    @Binding var expanded: Bool
     @Binding var transitionPending: Bool
-    var availableWidth: CGFloat
-    var edit: () -> Void
-    var learn: () -> Void
-    var review: () -> Void
+    var home: () -> Void
+    var routine: () -> Void
     var settings: () -> Void
-    @ViewState<RoutineVersion?> private var readyRoutine = nil
-    @ViewState<UUID?> private var readyGeneration = nil
-    @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var barWidth: CGFloat {
-        min(max(0, availableWidth - 40), dynamicType.isAccessibilitySize ? 360 : 286)
-    }
 
     var body: some View {
-        VStack(spacing: 10) {
-            if expanded {
-                actionBar
-                    .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(MorningDottedFrame(cornerRadius: 12).fill(MorningStyle.line))
-                    .accessibilityAction(.escape) { expanded = false }
-            }
-            HStack(spacing: 12) {
-                Button {
-                    if store.tab != .today { store.tab = .today; expanded = false }
-                    else { expanded.toggle() }
-                } label: {
-                    MorningDockGlyph(symbol: .morning).frame(width: 28, height: 28)
-                        .frame(width: 48, height: 48).contentShape(Rectangle())
+        MorningNavigationGlassGroup {
+            MorningNavigationSurface {
+                HStack(spacing: 8) {
+                    action(String(localized: "Home"), symbol: .morning, id: "morning.home", selected: true, home)
+                    action(store.routine == nil ? String(localized: "Learn") : String(localized: "Routine"),
+                           symbol: store.routine == nil ? .learn : .review,
+                           id: store.routine == nil ? "morning.learn" : "morning.review", routine)
+                    action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
                 }
-                .buttonStyle(SunriseTouchStyle())
-                .accessibilityLabel("Morning")
-                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
-                .accessibilityHint("Opens playback controls")
-                .accessibilityIdentifier("morning.actions")
-                .disabled(store.privacyBlocksWork || transitionPending)
-                action(String(localized: "Your routine"), symbol: .review, id: "morning.review", review)
-                action(String(localized: "Learn"), symbol: .learn, id: "morning.learn", disabled: store.sessionActive, learn)
-                action(String(localized: "Settings"), symbol: .settings, id: "morning.settings", settings)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .foregroundStyle(.primary)
             }
-            .padding(.horizontal, 16).padding(.vertical, 6)
-            .foregroundStyle(MorningStyle.ink)
-            .background(MorningStyle.background, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(MorningDottedFrame(cornerRadius: 10, spacing: 7).fill(MorningStyle.line))
-        }
-        .frame(maxWidth: 320)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.22), value: expanded)
-        .onChange(of: expanded) { _, open in if !open { clearReadyState() } }
-        .onChange(of: store.routine) { _, _ in clearReadyState() }
-        .onChange(of: store.sessionActive) { _, active in if active { collapse() } }
-        .onChange(of: store.dataGeneration) { _, _ in collapse() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { collapse() } }
+        }.frame(maxWidth: 260)
     }
 
-    private var actionBar: some View {
-        Group {
-            if let routine = readyRoutine {
-                readyBar(routine)
-            } else if dynamicType.isAccessibilitySize || barWidth < 248 {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) { actionItems }.padding(dynamicType.isAccessibilitySize ? 8 : 4)
-                }.scrollIndicators(.hidden)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .accessibilityIdentifier("morning.actionsScroll")
-            } else {
-                HStack(spacing: 0) { actionItems }.padding(4)
-            }
-        }.frame(width: readyRoutine != nil ? barWidth : 64,
-                height: readyRoutine != nil ? nil : 58)
-    }
-
-    @ViewBuilder private var actionItems: some View {
-        if let session = store.session, store.sessionActive {
-            let intendsResume = session.status == .paused
-            action(intendsResume ? String(localized: "Continue") : String(localized: "Pause"), symbol: intendsResume ? .play : .pause,
-                   id: "morning.playback") {
-                // Honor the displayed command and original session, never toggle
-                // whatever state an interruption may have produced meanwhile.
-                guard store.session?.id == session.id else { return }
-                if intendsResume {
-                    guard store.session?.status == .paused else { return }
-                    store.resume()
-                } else {
-                    guard store.session?.status == .running else { return }
-                    store.pause()
-                }
-            }
-        } else if let routine = store.routine {
-            let generation = store.dataGeneration
-            action(routine.isApproved ? String(localized: "Play") : String(localized: "Review"),
-                   symbol: routine.isApproved ? .play : .review,
-                   id: routine.isApproved ? "run.start" : "morning.reviewDraft",
-                   keepsExpanded: routine.isApproved) {
-                guard store.routine == routine, !store.sessionActive else { return }
-                if routine.isApproved {
-                    readyRoutine = routine
-                    readyGeneration = generation
-                } else { edit() }
-            }
-        } else {
-            action(String(localized: "Sample"), symbol: .play, id: "morning.sample") { store.loadSample() }
-        }
-    }
-
-    private func action(_ title: String, symbol: MorningDockSymbol, id: String, disabled: Bool = false,
-                        keepsExpanded: Bool = false, _ perform: @escaping () -> Void) -> some View {
+    private func action(_ title: String, symbol: MorningDockSymbol, id: String, selected: Bool = false,
+                        _ perform: @escaping () -> Void) -> some View {
         let generation = store.dataGeneration
         return Button {
             guard generation == store.dataGeneration, scenePhase == .active,
                   !store.privacyBlocksWork, !store.busy, !transitionPending else { return }
-            // Establish the destination synchronously before releasing entry
-            // occupancy; no timer or delayed closure can reopen a forgotten session.
             transitionPending = true
             perform()
-            if !keepsExpanded { expanded = false }
             transitionPending = false
         } label: {
             MorningDockGlyph(symbol: symbol).frame(width: 27, height: 27)
-            .foregroundStyle(MorningStyle.ink)
-            .frame(minWidth: 54, maxWidth: dynamicType.isAccessibilitySize ? nil : .infinity, minHeight: 48)
-            .padding(.horizontal, 3)
-            .contentShape(Capsule())
-        }.buttonStyle(DockActionTouchStyle())
-            .disabled(disabled || store.busy || store.privacyBlocksWork || transitionPending)
-            .opacity(disabled ? 0.4 : 1).accessibilityLabel(title).accessibilityIdentifier(id)
+                .frame(minWidth: 54, maxWidth: .infinity, minHeight: 48)
+                .background(selected ? Color.primary.opacity(0.08) : .clear, in: Circle())
+                .contentShape(Capsule())
+        }.buttonStyle(.borderless)
+            .disabled(store.busy || store.privacyBlocksWork || transitionPending)
+            .accessibilityLabel(title).accessibilityIdentifier(id)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Root owns this snapshot so Home's adaptive layout cannot lose confirmation
+/// occupancy when ViewThatFits switches between its compact and scroll variants.
+struct MorningHomeStartConfirmation: Equatable {
+    let routine: RoutineVersion
+    let generation: UUID
+}
+
+/// An approved morning can be started here on Home, with an explicit confirmation.
+/// Its snapshot and occupancy binding protect against late entry and capture work.
+private struct MorningHomePlayback: View {
+    @Bindable var store: MorningStore
+    @Binding var startConfirmation: MorningHomeStartConfirmation?
+    @Binding var transitionPending: Bool
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var blocked: Bool {
+        store.busy || store.privacyBlocksWork || transitionPending ||
+        store.voiceInputBlocksPlayback || store.captureVoicePresented ||
+        store.hasPendingSpokenCapture || !store.storageIsAvailable
     }
 
-    private func readyBar(_ routine: RoutineVersion) -> some View {
-        // The question sits above its two answers so neither has to squeeze the other.
+    var body: some View {
+        MorningNavigationSurface {
+            Group {
+                if let confirmation = startConfirmation {
+                    readyBar(confirmation)
+                } else {
+                    Button {
+                        guard !blocked, scenePhase == .active,
+                              let routine = store.routine, routine.isApproved, !store.sessionActive else { return }
+                        startConfirmation = MorningHomeStartConfirmation(routine: routine, generation: store.dataGeneration)
+                    } label: {
+                        Label("Play morning", systemImage: "play.fill")
+                            .font(.body.weight(.medium)).frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.borderless)
+                        .accessibilityIdentifier("run.start")
+                        .disabled(blocked)
+                }
+            }
+        }
+        .frame(maxWidth: 360).frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .accessibilityAction(.escape) { clearReadyState() }
+    }
+
+    private func readyBar(_ confirmation: MorningHomeStartConfirmation) -> some View {
+        let routine = confirmation.routine
         return VStack(spacing: 2) {
             Text(routine.isSynthetic ? "Ready for this sample morning?" : "Ready for your morning?")
                 .font(.caption.weight(.medium)).multilineTextAlignment(.center)
@@ -1115,51 +1069,25 @@ private struct MorningActionDock: View {
                     .frame(minWidth: 44, minHeight: 44)
                     .accessibilityIdentifier("morning.cancelStart")
                 Button("Start") {
-                    guard readyGeneration == store.dataGeneration, store.routine == routine,
-                          routine.isApproved, !store.sessionActive, scenePhase == .active,
-                          !store.privacyBlocksWork, !store.busy, !store.voiceInputBlocksPlayback else {
+                    guard startConfirmation == confirmation, confirmation.generation == store.dataGeneration, store.routine == routine,
+                          routine.isApproved, !store.sessionActive, scenePhase == .active, !blocked else {
                         clearReadyState()
                         return
                     }
                     transitionPending = true
                     store.start()
                     clearReadyState()
-                    expanded = false
                     transitionPending = false
                 }.font(.subheadline.weight(.semibold)).foregroundStyle(MorningStyle.accent)
                     .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     .frame(minWidth: 48, minHeight: 44)
                     .accessibilityIdentifier("morning.confirmStart")
-            }.buttonStyle(.plain)
-                .disabled(store.busy || store.privacyBlocksWork || transitionPending || store.voiceInputBlocksPlayback)
+            }.buttonStyle(.plain).disabled(blocked)
         }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 2)
     }
 
     private func clearReadyState() {
-        readyRoutine = nil
-        readyGeneration = nil
-    }
-
-    private func collapse() {
-        clearReadyState()
-        transitionPending = false
-        expanded = false
-    }
-}
-
-private struct SunriseTouchStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
-    }
-}
-
-private struct DockActionTouchStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.55 : 1)
+        startConfirmation = nil
     }
 }
 

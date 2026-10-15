@@ -1,29 +1,65 @@
 import SwiftUI
 
-/// Existing callers keep their six cases; morning adds the dotted sunrise home mark.
+/// Semantic navigation symbols; the parent button supplies its accessible name.
 enum MorningDockSymbol: Sendable, CaseIterable {
-    case morning, play, pause, review, learn, history, settings
+    case morning, play, pause, review, learn, settings
 }
 
-/// An app-owned dotted family. The parent button supplies the name and selected state.
+/// SF Symbols provide Apple's familiar navigation shapes and optical sizing.
 struct MorningDockGlyph: View {
     let symbol: MorningDockSymbol
 
     var body: some View {
-        MorningDottedIcon(systemName: name)
-        .aspectRatio(1, contentMode: .fit)
-        .accessibilityHidden(true)
+        Image(systemName: name)
+            .font(.system(.title3, design: .default, weight: .medium))
+            .symbolRenderingMode(.monochrome)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityHidden(true)
     }
 
     private var name: String {
         switch symbol {
-        case .morning: "sunrise"
+        case .morning: "house"
         case .play: "play.fill"
         case .pause: "pause.fill"
         case .review: "list.bullet"
         case .learn: "eye"
-        case .history: "clock.arrow.circlepath"
-        case .settings: "slider.horizontal.3"
+        case .settings: "gearshape"
+        }
+    }
+}
+
+/// Native capsule surfaces for navigation and inline Home playback.
+/// Reduce Transparency receives an opaque system surface.
+struct MorningNavigationSurface<Content: View>: View {
+    /// Also lets native component previews exercise the opaque fallback without
+    /// changing the person's system accessibility preferences.
+    var prefersOpaque = false
+    @ViewBuilder var content: Content
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        if reduceTransparency || prefersOpaque {
+            content
+                .background(.background, in: Capsule())
+                .overlay(Capsule().stroke(Color.primary.opacity(0.16), lineWidth: 1))
+        } else if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.regularMaterial, in: Capsule())
+        }
+    }
+}
+
+/// Let the native system compose the floating dock as one glass group.
+struct MorningNavigationGlassGroup<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            GlassEffectContainer(spacing: 12) { content }
+        } else {
+            content
         }
     }
 }
