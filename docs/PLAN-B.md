@@ -2,7 +2,7 @@
 
 A step can open Messages, Mail, WhatsApp, Instagram, Calendar, Maps or an HTTP(S) address in Safari. The editor keeps the existing minutes field. MORE checks the destination with `canOpenURL`; missing apps leave a clear message and the step stays available for Next. Links can open a screen or composer; MORE never sends a message or types into another app. The tested table is `RoutineStepTarget.swift`.
 
-A started target step saves its session, step, start and end times in `step-timer.json`. The budget uses absolute dates, so time spent in another app does not depend on a running counter. MORE records the opening before dispatch and does not open that target again on resume or relaunch. Pause freezes the budget; Continue shifts the deadline by the paused duration. Starting another step removes the previous timer. The same model has an in-app website target for the browser feature; that screen is integrated separately.
+A started target step saves its session, step, start and end times in `step-timer.json`. The budget uses absolute dates, so time spent in another app does not depend on a running counter. MORE records the opening before dispatch and does not open that target again on resume or relaunch. Pause freezes the budget; Continue shifts the deadline by the paused duration. Starting another step removes the previous timer. The same model has an in-app website target for the browser feature; that screen uses the same saved timer and session-bound controls.
 
 Enable **Morning at a glance** for the Lock Screen countdown, **+2 min** and **Next**. The extension shows only names from MORE's fixed app list, never entered contacts, addresses or message IDs. +2 runs as a `LiveActivityIntent` in MORE's process. A button names its displayed end so two taps against the same end add time once. Next names its session and step; an old link cannot skip the next step. MORE remains responsible for opening the next destination after the URL arrives in the foreground.
 
@@ -18,7 +18,7 @@ Privacy removal cancels the step alert and system alarms and removes both saved 
 
 - 31 focused core tests pass: schemes, target encoding, deadline math, pause/resume/relaunch, double taps, bounded extensions, stale Next links, alarm decisions and hidden templates.
 - 1 adversarial Apple-layer test passes: an old suspended notification add finishes cleanup before the newer add installs its request.
-- Xcode 27 `build-for-testing` passes for the generic iOS Simulator, including the app, widget and UI-test targets. No simulator journeys or physical phone actions were run for this feature.
+- Xcode 27 `build-for-testing` passes for the generic iOS Simulator, including the app, widget and UI-test targets. A separate signed MORE QA app then passed the physical iPhone web-target journey: edit and reapprove, start, +2 min, close/reopen with the same deadline, and Next. This does not verify external app handoff, AlarmKit, Siri or lock-screen interaction.
 - Package compilation reports existing unrelated test warnings; those are not new feature failures.
 - The separate Claude review could not run because its OAuth session expired and could not refresh. Keep the PR draft pending independent review and phone checks.
 

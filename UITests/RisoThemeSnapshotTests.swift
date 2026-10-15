@@ -53,7 +53,10 @@ final class RisoThemeSnapshotTests: XCTestCase {
             for _ in 0..<6 where !privacy.isHittable { app.scrollViews.firstMatch.swipeUp() }
             XCTAssertTrue(privacy.isHittable)
             privacy.tap()
-            XCTAssertTrue(app.buttons["privacy.forget"].waitForExistence(timeout: 5))
+            // The destructive control is a lazily created row far below the fold.
+            // Verify the inventory that this screenshot actually shows.
+            let inventory = app.descendants(matching: .any).matching(identifier: "privacy.observations").firstMatch
+            XCTAssertTrue(inventory.waitForExistence(timeout: 5))
             attach("riso-\(name)-privacy", app)
             app.terminate()
             app.launch()
@@ -77,6 +80,9 @@ final class RisoThemeSnapshotTests: XCTestCase {
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {
+        let settled = expectation(description: "Theme presentation settled")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { settled.fulfill() }
+        wait(for: [settled], timeout: 3)
         let screenshot = app.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name

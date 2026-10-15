@@ -6,6 +6,9 @@ import MorningApple
 struct MorningOperatorApp: App {
     @UIApplicationDelegateAdaptor(MorningNotificationDelegate.self) private var notificationDelegate
     @ViewState<MorningStore> private var store = MorningStore()
+    #if DEBUG
+    @State private var showingWebPreview = true
+    #endif
 
     init() { MorningAppShortcuts.updateAppShortcutParameters() }
 
@@ -20,8 +23,8 @@ struct MorningOperatorApp: App {
     var body: some Scene {
         WindowGroup {
             #if DEBUG
-            if let site = Self.webMorningLaunchSite {
-                Self.webMorningLaunchView(site)
+            if let site = Self.webMorningLaunchSite, showingWebPreview {
+                WebMorningView(site: site, minutes: 10, onClose: { showingWebPreview = false })
             } else {
                 MorningRootView(store: store)
                     .preferredColorScheme(testAppearance)
@@ -43,8 +46,5 @@ struct MorningOperatorApp: App {
         return name.flatMap { WebMorningSite(rawValue: String($0)) } ?? .news
     }
 
-    private static func webMorningLaunchView(_ site: WebMorningSite) -> some View {
-        WebMorningView(site: site, minutes: 10, onClose: {})
-    }
     #endif
 }

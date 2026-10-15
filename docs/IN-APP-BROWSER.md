@@ -18,11 +18,11 @@ Routine callers must use Plan B's `RoutineStep.target`, saved `StepTimer.endsAt`
 |---|---|---|
 | Instagram | Visible DM badge; one feed scroll | Not tested. Owner login and current layout needed. A missing numeric badge reports unsupported, not zero. |
 | YouTube | One Shorts feed scroll | Not tested. A scroll request is not proof that another video plays. |
-| Le Monde | Up to five matching headline titles | Not tested. Consent, paywall and current selectors need a live check. |
+| Le Monde | Up to five matching headline titles | iPhone WKWebView loaded the site's consent/subscription choice. Timer extension, close/reopen and Next passed in a synthetic routine. No consent choice or headline extraction was performed. |
 | WhatsApp | Visible unread markers inside the chat list; desktop user agent | Not tested. No claim that iPhone WKWebView loads or links successfully. Zero markers report unsupported. |
 | Gmail | Inbox number from a matching title | Not tested. No observed Google error is claimed. Use an official API with a supported sign-in flow for the product. |
 
-Core policy/parser/script tests and an unsigned generic iOS app build run on the Mac. They do not establish any row above. Simulator runtime is unavailable here. The combined integration needs its own routine/timer and phone checks.
+Core policy/parser/script tests and an unsigned generic iOS app build run on the Mac. A signed, separate MORE QA bundle passed the shared routine/timer phone journey described above. These checks do not establish social login, live counts or video progression. Simulator runtime is unavailable here.
 
 ## Login and service rules
 

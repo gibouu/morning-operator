@@ -32,17 +32,32 @@ separate routine, timer, notification and website-store namespaces.
   reviewed again with no remaining concrete findings in those paths.
 - Two revisions of native macOS theme/component proofs were rendered and
   inspected. They are not screenshots of the iPhone app.
+- Physical iPhone checks now pass in the separate `MORE QA` bundle:
+  Home/running routine in all five phases; first use, Learn, Settings, briefing,
+  Privacy and Review in English light and French dark appearances; and editing,
+  approving, extending, closing/reopening and advancing a web moment.
+- Twenty-four synthetic device screenshots were captured and visually checked.
+  The first Privacy snapshot assertion expected an offscreen lazy row; it was
+  corrected to verify the visible inventory, then the screen journey passed.
 
-## Still needs device evidence
+## Device scope and remaining checks
 
-No iPhone installation or UI test was performed during this continuation. The
-connected phone was locked. There is no installed simulator runtime. Run
-`RisoThemeSnapshotTests` on an unlocked device or compatible simulator to inspect
-the real iPhone screens. Existing installed data was not touched.
+The owner unlocked the connected iPhone. A signed QA app uses bundle identifier
+`com.gibouu.morningoperator.qa`, its own widget/test identifiers and a separate
+`moreqa` URL scheme. Its temporary build omits WeatherKit entitlement and uses
+synthetic briefing data. The original MORE installation and saved data were
+not replaced. There is still no installed simulator runtime.
+
+The native checks do not establish external app handoff, lock-screen Next URL
+routing, AlarmKit, Siri, speech, live Calendar/Weather or the installed Screen
+Time build. Those need separate checks using the corresponding capabilities.
 
 Third-party login, pairing, current DOM selectors, video progression and
 backup/restore behavior remain unverified. Neither App Store approval nor the
 services' permission is established. See [browser scope](IN-APP-BROWSER.md).
+Le Monde loaded its own consent/subscription choice in WKWebView; no consent
+choice or headline extraction was performed. Instagram was opened for the
+owner to sign in manually; its account result is not yet verified.
 
 Local notifications handle timer expiry while MORE is suspended. Exact
 Dynamic Island expansion and background speech are not guaranteed. AlarmKit,
