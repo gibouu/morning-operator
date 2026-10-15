@@ -7,17 +7,12 @@ import UIKit
 import AppKit
 #endif
 
-// WORK IN PROGRESS. This file needs these MorningCore types, which were written on
-// the Mac but never pushed: MorningDayPhase, MorningPhaseBlend (.steady, .dominant),
-// MorningDayClock.blend(at:solar:), MorningSolarDay (.fixed), MorningPaletteValues
-// (.resolve(_:dark:), paper/surface/ink/inkSoft/accent/accentText/onInk/positive/dot),
-// MorningRGB (red/green/blue). See the redesign issue for the spec.
-
 /// The clock behind the palette. Refreshed once a minute by the root view; the
 /// resolved blend is what every colour reads. Debug builds and UI tests may pin a phase.
 @Observable @MainActor
 final class MorningThemeClock {
     static let shared = MorningThemeClock()
+
     private(set) var blend: MorningPhaseBlend
     /// Sunrise and sunset in minutes. Fixed hours until a solar source supplies them.
     var solar: MorningSolarDay = .fixed
@@ -112,9 +107,9 @@ struct MorningTheme {
 
     // MARK: Type
 
-    /// Fraunces and Source Serif are the design; until they are bundled the system
-    /// serif stands in, and the system mono carries labels and numbers.
-    enum Type {
+    /// Native system serif keeps the print character, scales with Dynamic Type,
+    /// and adds no font download or licence dependency. Mono carries labels.
+    enum Typography {
         /// A page title.
         static let display = Font.system(.largeTitle, design: .serif, weight: .medium)
         /// A card or section title.
@@ -152,7 +147,7 @@ struct MorningTheme {
 // MARK: - Paper
 
 /// The printed sheet: paper, a halftone dot screen and a faint grain. Static, drawn
-/// once per size. Nothing here is interactive or announced. Reduce Transparency keeps
+/// in one Canvas pass. Nothing here is interactive or announced. Reduce Transparency keeps
 /// the plain paper only.
 struct MorningPaper: View {
     var showsSun = true
@@ -181,7 +176,7 @@ struct MorningPaper: View {
 }
 
 /// A regular dot screen, the print's halftone. Cheap: one Canvas, one fill per dot,
-/// rasterised once and only redrawn when its size changes.
+/// rendered as one path. No animation or timer drives the texture.
 struct MorningHalftone: View {
     var color: Color
     var opacity: Double
@@ -253,7 +248,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(MorningTheme.Type.control)
+        configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 22).padding(.vertical, 14)
             .foregroundStyle(theme.onInk)
             .background(theme.ink.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
@@ -261,14 +256,13 @@ struct PrimaryButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
-
 /// The primary fill at the secondary size, for the one case where two actions must
 /// sit side by side (record / choose).
 struct CompactPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(MorningTheme.Type.control)
+        configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 18).padding(.vertical, 12)
             .foregroundStyle(theme.onInk)
             .background(theme.ink.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
@@ -276,13 +270,12 @@ struct CompactPrimaryButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
-
 /// Every other action: an outlined ink pill on the paper.
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(MorningTheme.Type.control)
+        configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 18).padding(.vertical, 12)
             .foregroundStyle(theme.ink)
             .background(theme.surface.opacity(configuration.isPressed ? 0.5 : 1), in: Capsule())
@@ -291,16 +284,28 @@ struct SecondaryButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.4)
     }
 }
-
 /// A quiet text action in the accent ink; for the third choice, never the first.
 struct QuietButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(MorningTheme.Type.control)
+        configuration.label.font(MorningTheme.Typography.control)
             .foregroundStyle(MorningTheme.current.accentText)
             .padding(.vertical, 8)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.6 : isEnabled ? 1 : 0.4)
+    }
+}
+
+/// Destructive intent stays explicit, with a stable contrast in both appearances.
+struct DestructiveButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(MorningTheme.Typography.control)
+            .padding(.horizontal, 22).padding(.vertical, 14)
+            .foregroundStyle(.white)
+            .background(Color(red: 0.59, green: 0.15, blue: 0.12), in: Capsule())
+            .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.4)
+            .contentShape(Capsule())
     }
 }
