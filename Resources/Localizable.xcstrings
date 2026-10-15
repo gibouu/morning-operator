@@ -14742,6 +14742,106 @@
           }
         }
       }
+    },
+    "Each observation is saved on this device, with its original text and your corrections kept separately. Review the current observation here before asking for a suggestion. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque observation est enregistrée sur cet appareil, son texte d’origine et vos corrections étant conservés séparément. Relisez ici l’observation actuelle avant de demander une suggestion. « Effacer cette observation » supprime l’original, les corrections, le texte échantillonné et l’interprétation de l’écran. Les éléments déjà liés à une routine enregistrée restent avec elle."
+          }
+        }
+      }
+    },
+    "This step keeps its saved excerpt. To use different words, switch to Read this text aloud and edit the note.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette étape garde son extrait enregistré. Pour utiliser d’autres mots, passez à « Lire ce texte à voix haute » et modifiez la note."
+          }
+        }
+      }
+    },
+    "Done saves this suggestion for later. After approval, edit your plan in Routine.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« Terminé » garde cette suggestion pour plus tard. Après approbation, modifiez votre plan dans Routine."
+          }
+        }
+      }
+    },
+    "Adding this excerpt needs room in your routine. Remove a moment in Routine first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il faut faire de la place dans votre routine pour ajouter cet extrait. Retirez d’abord un moment dans Routine."
+          }
+        }
+      }
+    },
+    "This period could not be displayed. Your saved observations have not been changed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette période ne peut pas être affichée. Vos observations enregistrées n’ont pas été modifiées."
+          }
+        }
+      }
+    },
+    "Try opening two connected apps and returning to the first, then return to the app activity card. Counts appear after those automations actually run. This setup does not start screen recording or read messages.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essayez d’ouvrir deux apps connectées et de revenir à la première, puis revenez à la fiche d’activité des apps. Les comptes apparaissent après l’exécution réelle de ces automatisations. Cette configuration ne lance pas d’enregistrement d’écran et ne lit pas les messages."
+          }
+        }
+      }
+    },
+    "Home": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accueil"
+          }
+        }
+      }
+    },
+    "Play morning": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer la matinée"
+          }
+        }
+      }
+    },
+    "Your saved choices couldn't be read. Your routine and observations are intact. Reset them in Settings → Saved choices before making new suggestions.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos choix enregistrés n’ont pas pu être lus. Votre routine et vos observations sont intactes. Réinitialisez-les dans Réglages → Choix enregistrés avant de demander de nouvelles suggestions."
+          }
+        }
+      }
+    },
+    "Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices in Settings → Saved choices.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Garder un moment conserve son texte, sa durée et son action. N’enregistrer que sa durée laisse varier les autres détails. Les minutes sont prévues, pas mesurées. Effacez ces choix dans Réglages → Choix enregistrés."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

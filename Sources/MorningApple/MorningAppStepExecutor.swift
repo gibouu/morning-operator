@@ -57,7 +57,7 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
             // Never turn deleted or changed evidence into an ordinary static note.
             guard step.observationReference != nil, let text = resolveObservation(step),
                   !text.isEmpty, text.utf8.elementsEqual(step.detail.utf8) else {
-                return .unavailable(String(localized: "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.", bundle: .module))
+                return .unavailable(String(localized: "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action.", bundle: .module))
             }
             try checkAttempt(token)
             try await speak(text)

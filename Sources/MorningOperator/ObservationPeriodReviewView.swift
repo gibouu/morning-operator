@@ -136,7 +136,7 @@ private struct ObservationPeriodReviewView: View {
                     } footer: { Text("Undated observations are outside this period until you assign their observed day.") }
                 }
             } else {
-                Section { Text("This period could not be displayed. Saved observations remain in Review.") }
+                Section { Text("This period could not be displayed. Your saved observations have not been changed.") }
             }
         }
         .scrollContentBackground(.hidden).background(MorningStyle.background)

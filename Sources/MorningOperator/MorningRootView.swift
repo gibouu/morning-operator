@@ -263,7 +263,10 @@ struct MorningRootView: View {
     }
 
     private var isViewingToday: Bool {
-        displayCalendar.isDate(selectedDay, inSameDayAs: currentDate)
+        // Observe the minute refresh, but compare against the same live clock as
+        // the day strip and action guards when either owner triggers a render.
+        _ = currentDate
+        return displayCalendar.isDate(selectedDay, inSameDayAs: .now)
     }
 
     /// Re-read the clock when an action is executed, including after midnight.

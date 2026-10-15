@@ -57,7 +57,7 @@ public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
         case .approvedQuotation:
             String(localized: "You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source.", bundle: .module)
         case .keptChoice:
-            String(localized: "You chose to keep this moment. Its quotation stays with that choice until you clear it in Review.", bundle: .module)
+            String(localized: "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.", bundle: .module)
         case .markedRequired:
             String(localized: "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it.", bundle: .module)
         case .savedRun:

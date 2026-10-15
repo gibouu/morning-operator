@@ -128,7 +128,7 @@ struct LearnView: View {
                 DisclosureGroup("About on-device learning") {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(store.modelSummary)
-                        Text("Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.")
+                        Text("Each observation is saved on this device, with its original text and your corrections kept separately. Review the current observation here before asking for a suggestion. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.")
                         Text("A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention.")
                         Text("Analysis uses Apple's on-device model when available. It doesn't run other apps or approve a routine for you.")
                         Button("Check availability again") { store.refreshCapabilities() }
@@ -377,6 +377,16 @@ struct SetupView: View {
                     .padding(MorningTheme.Space.card)
                     .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
             }.buttonStyle(.plain).accessibilityIdentifier("setup.routineFiles")
+            if !store.routinePreferences.entries.isEmpty || store.routinePreferencesIssue != nil {
+                NavigationLink {
+                    RoutinePreferencesView(store: store)
+                } label: {
+                    LinkRow(title: String(localized: "Saved choices"), detail: "", symbol: "heart.text.clipboard")
+                        .padding(MorningTheme.Space.card)
+                        .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
+                }.buttonStyle(.plain).disabled(store.privacyBlocksWork)
+                    .accessibilityIdentifier("setup.savedChoices")
+            }
             CardButton { choosingAlarm = true } content: {
                 LinkRow(title: String(localized: "Morning alarm"), detail: "", symbol: "alarm")
             }.accessibilityIdentifier("setup.alarm")
@@ -558,7 +568,7 @@ struct StepEditor: View {
                         .accessibilityLabel("Step name")
                     if step.automation == .savedObservation {
                         Text(step.detail).textSelection(.enabled)
-                        Text("Choose a different excerpt from its observation in Review. Switching to Read this text aloud makes it an ordinary note.")
+                        Text("This step keeps its saved excerpt. To use different words, switch to Read this text aloud and edit the note.")
                             .font(.caption).foregroundStyle(MorningStyle.muted)
                     } else {
                         TextField("What would you like to do?", text: $step.detail, axis: .vertical)
@@ -592,7 +602,7 @@ struct StepEditor: View {
                     Toggle("Keep this duration", isOn: $keepDuration)
                         .accessibilityIdentifier("step.keepDuration")
                 } header: { Text("Future mornings") } footer: {
-                    Text("Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review.")
+                    Text("Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices in Settings → Saved choices.")
                 }
                 Section {
                     Picker("Action", selection: $step.automation) {

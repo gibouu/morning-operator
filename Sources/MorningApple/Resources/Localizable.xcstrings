@@ -3207,6 +3207,36 @@
           }
         }
       }
+    },
+    "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet extrait enregistré a changé ou a été supprimé. Touchez Suivant ou utilisez Routine pour changer l’action du moment."
+          }
+        }
+      }
+    },
+    "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque observation sélectionnée doit contenir des éléments d’activité utilisables. Relisez les notes actuelles dans Apprendre ou ajoutez de nouveaux éléments."
+          }
+        }
+      }
+    },
+    "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez choisi de garder ce moment. Sa citation reste liée à ce choix jusqu’à ce que vous l’effaciez dans Réglages → Choix enregistrés."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

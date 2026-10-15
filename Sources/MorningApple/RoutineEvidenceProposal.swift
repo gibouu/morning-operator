@@ -15,7 +15,7 @@ public enum RoutineEvidenceProposalError: Error, LocalizedError, Sendable, Equat
         case .dateRequired: String(localized: "Assign an observed day to every selected observation first.", bundle: .module)
         case .incompatibleSources: String(localized: "Select observations in the same time zone and with the same human or synthetic origin.", bundle: .module)
         case .unsupportedSource: String(localized: "This source needs a reviewed written correction before it can support a proposal.", bundle: .module)
-        case .insufficientEvidence: String(localized: "Each selected observation needs usable activity evidence. Review its notes or choose another observation.", bundle: .module)
+        case .insufficientEvidence: String(localized: "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence.", bundle: .module)
         case .ownInterfaceLeftNoEvidence: String(localized: "A selected recording has no usable activity evidence. Some of its samples were left out because MORE itself was in front when they were taken. Use your other apps while a recording runs, or choose another observation.", bundle: .module)
         case .inputBudgetExceeded: String(localized: "These saved observations exceed the bounded local workload or contain a text unit too large to send safely. Your complete saved source is unchanged; nothing was silently shortened.", bundle: .module)
         case .outputBudgetExceeded: String(localized: "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened.", bundle: .module)

@@ -385,7 +385,7 @@ final class MorningStore {
                     if let value = stored.value { routinePreferences = value }
                     else {
                         unreadablePreferences = stored
-                        routinePreferencesIssue = String(localized: "Your saved choices couldn't be read. Your routine and observations are intact. Reset saved choices in Review before making new suggestions.")
+                        routinePreferencesIssue = String(localized: "Your saved choices couldn't be read. Your routine and observations are intact. Reset them in Settings → Saved choices before making new suggestions.")
                     }
                 } else {
                     // Only established personal required steps migrate. Durations,
@@ -940,7 +940,7 @@ final class MorningStore {
             return false
         }
         guard (routine?.steps.count ?? 0) < 10 else {
-            notice = String(localized: "Your morning has ten moments. Remove one in Review before adding another.")
+            notice = String(localized: "Adding this excerpt needs room in your routine. Remove a moment in Routine first.")
             return false
         }
         if routine?.steps.contains(where: { $0.automation == .savedObservation && $0.observationReference == prepared.reference }) == true {

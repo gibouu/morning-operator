@@ -72,7 +72,7 @@ private struct AppActivitySetupView: View {
                     instruction("1", String(localized: "Choose one app"), String(localized: "In Shortcuts, open Automation and create an App automation. Choose one supported app and Is Opened. Select Run Immediately if you want it to work automatically."))
                     instruction("2", String(localized: "Add Morning Operator"), String(localized: "Add the action Log an app transition. Choose that same app and Opened or switched to. Leave Event ID empty for ordinary use."))
                     instruction("3", String(localized: "Track when you leave"), String(localized: "Create a separate Is Closed automation for the same app. Choose Closed or switched from in our action. Repeat for any other supported apps you want to include."))
-                    Text("Try opening two connected apps and returning to the first, then open Review. Counts appear after those automations actually run. This setup does not start screen recording or read messages.")
+                    Text("Try opening two connected apps and returning to the first, then return to the app activity card. Counts appear after those automations actually run. This setup does not start screen recording or read messages.")
                         .font(.footnote).foregroundStyle(MorningStyle.muted)
                     #if os(iOS)
                     Link(destination: URL(string: "shortcuts://")!) {

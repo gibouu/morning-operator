@@ -109,7 +109,7 @@ struct RoutineEvidenceProposalView: View {
                         DisclosureGroup("About this suggestion") {
                             Text("Minutes are planned, not measured averages. Visible words don't prove an action or a repeated habit.")
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
-                            Text("Done saves this suggestion for later. You can edit your current routine under Review → Your routine.")
+                            Text("Done saves this suggestion for later. After approval, edit your plan in Routine.")
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
                             if proposal.sourceSnapshots.first?.origin == .synthetic {
                                 Text("Sample observations stay separate from your personal habit history.")
