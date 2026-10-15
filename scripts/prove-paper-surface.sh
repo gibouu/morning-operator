@@ -34,6 +34,7 @@ xcrun swiftc -sdk "$sdk_path" -swift-version 6 -parse-as-library \
     -Xlinker -rpath -Xlinker "$build_dir" \
     "$repo_dir/Sources/MorningOperator/MorningTheme.swift" \
     "$repo_dir/Sources/MorningOperator/MorningDottedArtwork.swift" \
+    "$repo_dir/Sources/MorningOperator/MorningSolarArtwork.swift" \
     "$repo_dir/Sources/MorningOperator/MorningPaperSurface.swift" \
     "$repo_dir/scripts/proofs/MorningPaperSurfaceProof.swift" \
     -o "$build_dir/paper-proof"

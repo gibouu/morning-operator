@@ -74,25 +74,22 @@ struct MorningDottedDisc: Shape {
 /// It is decorative: cards and controls remain opaque reading surfaces above it.
 struct MorningCelestialArtwork: View {
     let scene: MorningCelestialScene
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
             let diameter = min(geometry.size.width * 0.72, 300)
             ZStack {
-                MorningDottedDisc()
-                    .fill(MorningTheme.current.accent)
+                MorningSolarArtwork(opacity: scene.sun.opacity)
                     .frame(width: diameter, height: diameter)
                     .position(x: geometry.size.width * scene.sun.centerX,
                               y: geometry.size.height * scene.sun.centerY)
-                    .opacity(scene.sun.opacity * (scheme == .dark ? 0.36 : 0.30))
                 MorningDottedDisc(kind: .moon)
                     .fill(MorningTheme.current.ink)
                     .frame(width: diameter * 0.78, height: diameter * 0.78)
                     .position(x: geometry.size.width * scene.moon.centerX,
                               y: geometry.size.height * scene.moon.centerY)
-                    .opacity(scene.moon.opacity * (scheme == .dark ? 0.42 : 0.34))
+                    .opacity(scene.moon.opacity * 0.34)
             }
             .animation(reduceMotion ? nil : .linear(duration: 60), value: scene)
         }

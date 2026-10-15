@@ -143,22 +143,19 @@ struct MorningTheme {
 
 // MARK: - Paper
 
-/// Opaque paper with decorative dots. Reduce Transparency keeps the plain sheet.
+/// Quiet opaque paper with separate celestial art. Reduce Transparency keeps the plain sheet.
 /// The solar journey follows local time; the retained progress argument is source
 /// compatible with older callers and does not move the sky with routine completion.
 struct MorningPaper: View {
     var showsSun = true
     var progress: Double = 0
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        let theme = MorningTheme.current
         ZStack {
-            theme.paper
-            if !reduceTransparency {
-                MorningHalftone(color: theme.dot, opacity: scheme == .dark ? 0.065 : 0.04)
-                if showsSun { MorningCelestialArtwork(scene: MorningThemeClock.shared.celestial) }
+            MorningPaperSurface()
+            if showsSun && !reduceTransparency {
+                MorningCelestialArtwork(scene: MorningThemeClock.shared.celestial)
             }
         }
         .ignoresSafeArea()
@@ -205,7 +202,7 @@ struct MorningHalftoneSun: View {
     var progress: Double
     var diameter: CGFloat = 160
     var body: some View {
-        MorningDottedDisc().fill(MorningTheme.current.accent)
+        MorningSolarArtwork()
             .frame(width: diameter, height: diameter)
     }
 }

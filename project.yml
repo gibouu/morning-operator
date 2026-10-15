@@ -31,7 +31,6 @@ targets:
       - path: Resources/Localizable.xcstrings
       - path: Resources/InfoPlist.xcstrings
       - path: Resources/AppShortcuts.xcstrings
-      - path: Resources/Fonts
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator
