@@ -168,7 +168,7 @@ struct MorningBriefingView: View {
                 }
             }
             if let outcome = controller.citySearchOutcome, !controller.isSearchingCities, controller.cityResults.isEmpty,
-               controller.citySuggestions.isEmpty, controller.errorMessage == nil {
+               controller.citySuggestions.isEmpty {
                 Text(outcome == .noMatch ? String(localized: "No matching cities. Try a nearby city or include the country.")
                      : WeatherObservationError.searchUnavailable.localizedDescription)
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
