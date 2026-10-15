@@ -1,0 +1,181 @@
+<div id="more-demo-story">
+  <style>
+    #more-demo-story .journey-phases { display:flex; flex-wrap:wrap; gap:8px 20px; list-style:none; padding:0; margin:18px 0; }
+    #more-demo-story .journey-phases li { color:var(--muted-foreground); }
+    #more-demo-story .journey-phases li[aria-current="step"] { color:var(--foreground); font-weight:500; }
+    #more-demo-story .scene { margin-block:18px; }
+    #more-demo-story .scene h3 { margin-bottom:8px; }
+    #more-demo-story .scene p { margin-block:8px; }
+    #more-demo-story .progress { margin-block:12px; }
+    #more-demo-story .live-actions { margin-block:12px; }
+    #more-demo-story .scene-cue { overflow-wrap:anywhere; }
+  </style>
+  <h3>One complete morning</h3>
+  <div class="text-small text-muted">Planning simulation · sample cues · no live accounts or phone control</div>
+  <div class="viz-controls" style="margin-top:16px">
+    <label class="form-label">Journey
+      <select class="form-select" id="more-demo-route">
+        <option value="core">Focused demo</option>
+        <option value="catalog">Full app catalog</option>
+      </select>
+    </label>
+    <label class="form-label">Condition
+      <select class="form-select" id="more-demo-condition">
+        <option value="normal">Normal planning path</option>
+        <option value="offline">Network unavailable</option>
+        <option value="gmail-skipped">Gmail not connected</option>
+        <option value="external-missing">Lesson or game app missing</option>
+      </select>
+    </label>
+  </div>
+  <ol class="journey-phases" aria-label="Demo phases">
+    <li data-phase="learn">Learn and connect</li>
+    <li data-phase="wake">Wake</li>
+    <li data-phase="run">Run the morning</li>
+    <li data-phase="finish">Finish</li>
+  </ol>
+  <div class="viz-row">
+    <span class="viz-badge" id="more-demo-place">MORE</span>
+    <span class="text-small tabular-nums" id="more-demo-position"></span>
+  </div>
+  <div class="progress" role="progressbar" aria-label="Story position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="progress-bar" style="width:0%"></div>
+  </div>
+  <section class="scene" aria-live="polite" aria-atomic="true">
+    <h3 id="more-demo-title"></h3>
+    <p id="more-demo-cue" class="scene-cue"></p>
+    <div class="text-small text-muted" id="more-demo-gate"></div>
+    <div class="live-actions" id="more-demo-live" hidden>
+      <span id="more-demo-expand-wrap"><button class="btn" id="more-demo-expand" type="button" aria-expanded="false">Expand island controls</button></span>
+      <div id="more-demo-expanded" hidden><div class="viz-row">
+        <span class="tabular-nums" id="more-demo-budget"></span>
+        <button class="btn" id="more-demo-add" type="button">+2 minutes</button>
+        <button class="btn btn-primary" id="more-demo-moment-next" type="button">Next moment</button>
+      </div></div>
+    </div>
+  </section>
+  <div class="viz-row">
+    <button class="btn" id="more-demo-back" type="button">Previous</button>
+    <span id="more-demo-next-wrap"><button class="btn btn-primary" id="more-demo-next" type="button">Next scene</button></span>
+  </div>
+  <script>
+  (() => {
+    const root = document.getElementById('more-demo-story');
+    const find = id => root.querySelector('#more-demo-' + id);
+    const scenes = {
+      learn: { phase:'learn', place:'MORE', title:'Learn the shape of your morning', cue:'Review actual Screen Time, adjust the order and minutes, then approve one daily routine.', gate:'Owner approved a real Screen Time suggestion. Current learning caps are 8 or 10 moments; a larger catalog is not one proven 15-step plan.' },
+      connect: { phase:'learn', place:'MORE and provider consent', title:'One guided setup', cue:'Choose the sources for this routine. Finish their sign-ins and permissions in one guided checklist; skip the ones you do not use.', gate:'Gmail authorization is saved. Durable chosen-app setup still needs work; each provider and iOS permission keeps its own consent.' },
+      wake: { phase:'wake', place:'iOS alarm → MORE', title:'Wake up and enter MORE', cue:'The alarm rings. Use the MORE entry action, unlock when required, and start the approved morning.', gate:'Real ordinary-app ring and button behavior need phone proof. The current Stop and Start MORE intents need separate semantics.' },
+      brief: { phase:'run', place:'MORE · native readers', title:'Your day in a few words', cue:'Hear current weather and the first selected calendar event. Include a sleep fact only when Health integration and data are ready.', gate:'Weather and EventKit readers exist; daily forecast, connected Health and actual spoken results need their respective gates.' },
+      gmail: { phase:'run', place:'MORE · Gmail API', title:'Read mail and prepare a response', cue:'Open one real unread Inbox message. Prepare a local reply, edit it and leave it unsent.', gate:'Owner confirmed Gmail reading. An actual generated, edited and copied reply still needs separate confirmation.' },
+      mail: { phase:'run', place:'Other app · Apple Mail', title:'Apple Mail', cue:'Open Mail for an owner-led moment. MORE keeps the time budget; opening the app does not read its Inbox.', gate:'Native handoff exists. No native Mail Inbox reader is implemented; do not count the same Gmail mailbox twice.' },
+      imessage: { phase:'run', place:'Other app · Messages', title:'iMessage', cue:'The owner checks Messages directly. MORE cannot claim a count or summary from this handoff.', gate:'No personal message-history adapter. Message composition and tethered tests do not provide Inbox access.' },
+      whatsapp: { phase:'run', place:'Owner-led app or website', title:'WhatsApp', cue:'Check WhatsApp through a tested visible route. Personal messages and missed calls stay unavailable to MORE unless a specific source is validated.', gate:'Business Platform access is a separate business-number integration, not a consumer Inbox grant.' },
+      telegram: { phase:'run', place:'Owner-led app or website', title:'Telegram', cue:'Use a reviewed handoff. A future TDLib client could provide authorized personal data after its own sign-in and security work.', gate:'Bot access does not read all personal chats. No TDLib connector is implemented.' },
+      messenger: { phase:'run', place:'Owner-led app or website', title:'Messenger', cue:'Check the official app or tested website yourself. Keep personal Inbox and missed-call availability explicit.', gate:'Page messaging APIs do not establish personal Messenger Inbox access.' },
+      snapchat: { phase:'run', place:'Other app · planned handoff', title:'Snapchat', cue:'Use the official app for the moment. MORE keeps no invented message or missed-call count.', gate:'No target proven in MORE. Snap Kit identity does not expose private messages.' },
+      instagram: { phase:'run', place:'MORE · visible website', title:'Enjoy a little Instagram', cue:'Open the signed-in feed and request one visible advance. Optional bounded auto-advance must have a clear stop.', gate:'Sign-in and an unread result were confirmed in earlier QA. Feed advance and measured-speed replay are separate phone gates.' },
+      youtube: { phase:'run', place:'MORE website or owner-led app', title:'YouTube Shorts', cue:'Use a tested visible page or approved playback route. Keep the owner in control of advancing.', gate:'A data API or short-video search does not provide the personal Shorts feed. Page behavior needs proof.' },
+      linkedin: { phase:'run', place:'Owner-led website', title:'LinkedIn', cue:'Open the signed-in website if it works in MORE. Do not equate sign-in with access to the personal feed or Messages.', gate:'Identity APIs do not grant general feed or personal Inbox access; this browser route is unverified.' },
+      news: { phase:'run', place:'MORE · selected website', title:'Read a regular news source', cue:'Open one approved article. Read the page or request a supported extract from the accessible content.', gate:'Prove a real article, paywall recovery and source attribution. A consent screen loading is not an article-reading pass.' },
+      duolingo: { phase:'run', place:'External app · planned target', title:'A Duolingo moment', cue:'Open the installed app through a verified link. Keep the same time budget outside MORE, then expand the island for +2 or Next.', gate:'Target and ordinary locked controls need implementation/proof. This budget is a rehearsal choice, not a learned lesson average.', external:true },
+      chess: { phase:'run', place:'External app · planned target', title:'A Chess.com moment', cue:'Open the chosen game. The owner plays; MORE manages the moment’s budget and an explicit Next handoff.', gate:'Target and return path need proof. Elapsed app time does not mean a game has finished.', external:true },
+      finish: { phase:'finish', place:'MORE', title:'Finish once and keep the result', cue:'Save today’s actual completion, the moments skipped and the elapsed routine time. Reopening keeps one completed run.', gate:'Full ordinary-app completion is unconfirmed. Three complete rehearsals and a distribution-build check are planned.' }
+    };
+    const routes = {
+      core:['learn','connect','wake','brief','gmail','instagram','news','duolingo','finish'],
+      catalog:['learn','connect','wake','brief','gmail','mail','imessage','whatsapp','telegram','messenger','snapchat','instagram','youtube','linkedin','news','duolingo','chess','finish']
+    };
+    let state = { route:'core', condition:'normal', scene:'learn', expanded:false, extra:{} };
+    function restore(snapshot) {
+      const m = snapshot?.modelContent;
+      const p = snapshot?.privateContent;
+      if (!m || !['core','catalog'].includes(m.route)) return;
+      state.route = m.route;
+      state.condition = ['normal','offline','gmail-skipped','external-missing'].includes(m.condition) ? m.condition : 'normal';
+      state.scene = routes[state.route].includes(m.scene) ? m.scene : routes[state.route][0];
+      state.expanded = p?.expanded === true && scenes[state.scene].external === true;
+      state.extra = {};
+      for (const id of ['duolingo','chess']) {
+        const value = p?.extra?.[id];
+        if (Number.isInteger(value) && value >= 0 && value <= 60 && value % 2 === 0) state.extra[id] = value;
+      }
+    }
+    function save() {
+      if (window.openai?.setWidgetState) {
+        window.openai.setWidgetState({ modelContent:{ route:state.route, condition:state.condition, scene:state.scene }, privateContent:{ expanded:state.expanded, extra:state.extra } }).catch(() => {});
+      }
+    }
+    function render() {
+      const ids = routes[state.route];
+      const index = ids.indexOf(state.scene);
+      const scene = scenes[state.scene];
+      let cue = scene.cue;
+      let gate = scene.gate;
+      const missing = state.condition === 'external-missing' && scene.external;
+      if (state.condition === 'offline') {
+        if (state.scene === 'brief') {
+          cue = 'Weather is unavailable without a fresh network response. Keep authorized on-device calendar data when available, and continue with only verified facts.';
+          gate = 'Independent sources degrade separately; missing weather must not erase the local calendar.';
+        } else if (state.scene === 'gmail') {
+          cue = 'Gmail cannot refresh while offline. Offer Retry or Skip; do not invent a current Inbox count.';
+          gate = 'The saved Google connection survives a transient network error; Retry does not start another consent flow.';
+        } else if (['instagram','news','youtube','linkedin'].includes(state.scene)) {
+          cue = 'Fresh web content cannot be verified offline. Read already loaded content where usable, Retry or Skip; do not report it as a fresh live result.';
+          gate = 'Website recovery is separate from Google authorization.';
+        } else if (['whatsapp','telegram','messenger'].includes(state.scene)) {
+          cue = 'The owner may check available content in the official app. MORE still has no validated personal Inbox or missed-call source for this route.';
+          gate = 'An app handoff and cached app content do not create a connected MORE data source.';
+        }
+      }
+      if (state.condition === 'gmail-skipped' && state.scene === 'gmail') {
+        cue = 'Gmail was not connected. Skip this moment with a reason; do not announce zero unread messages or force a sign-in during the morning.';
+        gate = 'Required skip behavior · Setup can connect it for a later approved routine.';
+      }
+      if (missing) {
+        cue = 'The selected app cannot be opened. Offer a clear Skip or an owner-approved website fallback; do not pretend the app opened.';
+        gate = 'Required handoff recovery · Unknown launch state is not proof the app is uninstalled.';
+      }
+      find('route').value = state.route;
+      find('condition').value = state.condition;
+      find('place').textContent = scene.place;
+      find('position').textContent = 'Scene ' + (index + 1) + ' of ' + ids.length;
+      find('title').textContent = scene.title;
+      find('cue').textContent = cue;
+      find('gate').textContent = gate;
+      root.querySelectorAll('[data-phase]').forEach(el => {
+        if (el.dataset.phase === scene.phase) el.setAttribute('aria-current','step');
+        else el.removeAttribute('aria-current');
+      });
+      const progress = Math.round(index / (ids.length - 1) * 100);
+      root.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',String(progress));
+      root.querySelector('.progress-bar').style.width = progress + '%';
+      const usableExternal = scene.external === true && !missing;
+      find('live').hidden = !usableExternal;
+      find('expand-wrap').hidden = state.expanded;
+      find('expand').setAttribute('aria-expanded',String(state.expanded));
+      find('expanded').hidden = !state.expanded;
+      find('budget').textContent = 'Rehearsal budget ' + (3 + (state.extra[state.scene] || 0)) + ':00';
+      find('back').disabled = index === 0;
+      find('next').disabled = index === ids.length - 1;
+      find('next-wrap').hidden = usableExternal && state.expanded;
+      find('add').disabled = !usableExternal || !state.expanded || (state.extra[state.scene] || 0) >= 60;
+      find('moment-next').disabled = !usableExternal || !state.expanded;
+    }
+    function move(delta) {
+      const ids = routes[state.route];
+      const next = Math.max(0,Math.min(ids.length - 1,ids.indexOf(state.scene) + delta));
+      state.scene = ids[next]; state.expanded = false; render(); save();
+    }
+    find('route').addEventListener('change', e => { state.route=e.target.value; state.scene=routes[state.route][0]; state.expanded=false; render(); save(); });
+    find('condition').addEventListener('change', e => { state.condition=e.target.value; state.expanded=false; render(); save(); });
+    find('back').addEventListener('click', () => move(-1));
+    find('next').addEventListener('click', () => move(1));
+    find('moment-next').addEventListener('click', () => { if (!state.expanded || !scenes[state.scene].external || state.condition === 'external-missing') return; state.expanded=false; move(1); });
+    find('expand').addEventListener('click', () => { if (!scenes[state.scene].external || state.condition === 'external-missing') return; state.expanded=true; render(); save(); });
+    find('add').addEventListener('click', () => { if (!state.expanded || !scenes[state.scene].external || state.condition === 'external-missing' || (state.extra[state.scene] || 0) >= 60) return; state.extra[state.scene]=(state.extra[state.scene] || 0) + 2; render(); save(); });
+    restore(window.openai?.widgetState); render();
+    window.addEventListener('openai:set_globals', e => { if (e.detail?.globals?.widgetState) { restore(e.detail.globals.widgetState); render(); } });
+  })();
+  </script>
+</div>

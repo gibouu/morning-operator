@@ -1,6 +1,6 @@
 # MORE
 
-> **Build MORE from `main`.** [Current direction, demo story and remaining checks](docs/CURRENT-DIRECTION.md) · [Report feedback](https://github.com/gibouu/morning-operator/issues/new/choose). PR #131 combines the current browser, timers, learning and dotted design.
+> **Build MORE from `main`.** [Demo requirements and integration gates](docs/DEMO-REQUIREMENTS.md) · [Real iPhone acceptance plan](docs/DEMO-TEST-PLAN.md) · [Current direction](docs/CURRENT-DIRECTION.md) · [Report feedback](https://github.com/gibouu/morning-operator/issues/new/choose). The demo contract tracks the 15 October scope and supersedes older capability assumptions below.
 
 **Less phone handling. More of the morning you enjoy.**
 
