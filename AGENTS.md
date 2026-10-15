@@ -12,3 +12,10 @@ Personal Apple development prototype. Shared setup, priorities and verified resu
 - Use Swift Package Manager tests for shared logic. Xcode/device checks are separate; do not claim they passed when only package tests ran.
 - Preserve user edits and distinguish retained semantic learning from expiring raw media.
 - Do not modify the parent project's read-only `sources/` directory.
+
+# Project Context
+
+- Google configuration: `~/.config/google-cli/accounts.ini`, section `[morning-operator]`.
+- Public configuration keys: `account`, `project_id`, `ios_client_id`, `callback_scheme`, `bundle_id`.
+- Local Xcode overrides: `MORE_GOOGLE_CLIENT_ID` and `MORE_GOOGLE_CALLBACK_SCHEME`.
+- Native iOS OAuth needs no client secret. Keep actual configuration values outside this repository.
