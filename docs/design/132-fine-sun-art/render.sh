@@ -12,4 +12,5 @@ xcrun swiftc -parse-as-library -swift-version 6 -target arm64-apple-macosx26.0 \
   "$MORE_SUN_SOURCE/NativeSunProof.swift" -o "$MORE_SUN_BINARY"
 "$MORE_SUN_BINARY" \
   "$MORE_SUN_REPO/Resources/Assets.xcassets/SolarSunFineV1.imageset/solar-sun-fine-v1.png" \
-  "$MORE_SUN_OUT/sun-paper-compositing.png"
+  "$MORE_SUN_OUT/sun-paper-compositing.png" \
+  "$MORE_SUN_OUT/sun-size-opacity-acceptance.png"

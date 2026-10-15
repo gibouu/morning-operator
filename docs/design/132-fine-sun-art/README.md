@@ -32,3 +32,11 @@ The transparent canvas contains a sun with a visible diameter of about 78% of it
 Run `zsh docs/design/132-fine-sun-art/render.sh` on macOS with Xcode. It compiles the actual `MorningSolarArtwork` view and renders that view on three paper backgrounds with native SwiftUI `ImageRenderer`, using the unchanged PNG. Default output is `.build/fine-sun-proof/sun-paper-compositing.png`.
 
 The native plate was inspected at 342 pt canvas size on early-light ivory, day cream and warm-evening paper. The grain reads as fine photographic texture; no large repeated circle rows, purple, text, hard matte rectangle or visible clipping appears in the asset. The plate is a component proof, not an executed iPhone screen. No phone automation, routine seeding, device install or account capture was performed. No screenshots or proof PNGs are committed.
+
+### Independent acceptance review · 15 October 2026
+
+The same command also produces `sun-size-opacity-acceptance.png`: the actual view at 120, 240 and 300 pt canvas sizes, plus a 300 pt opacity comparison at 0%, 30% and 100%, rendered at 3×. The 300 pt frame matches the existing solar layer's upper size limit; placement and final opacity remain integration choices. Fine grain and the soft edge remain clear at these sizes. The 30% example is deliberately faint. Pixel inspection confirms that the 0% artwork region contains only the single paper color.
+
+The component and PNG are unchanged from `e03c235`; no artwork fix was needed. A fresh SHA-256 check matches the provenance above. Alpha has 256 distinct levels, one opaque pixel, and no matte rectangle. Sparse generated pixels reach the outermost canvas with alpha at most 1/255; all four corners are fully transparent. Keep this original alpha rather than cropping or masking the feathered edge.
+
+Local verification also compiles the asset catalog with iPhone `actool` and type-checks `MorningSolarArtwork.swift` for `arm64-apple-ios26.0` with Swift 6 mode. Both pass. These checks establish asset/source validity; the proof still uses the `image:` override. Default image lookup in the combined app, clock-driven placement, animation and real iPhone appearance remain for the integration owner to verify after regenerating the Xcode project.

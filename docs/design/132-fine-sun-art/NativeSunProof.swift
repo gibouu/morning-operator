@@ -14,6 +14,56 @@ import AppKit
               let png = bitmap.representation(using: .png, properties: [:]) else { fatalError("Native render failed") }
         try png.write(to: URL(fileURLWithPath: CommandLine.arguments[2]))
         print("Rendered real MorningSolarArtwork on three paper backgrounds at phone scale.")
+
+        if CommandLine.arguments.count > 3 {
+            let acceptance = SunAcceptancePlate(sun: Image(nsImage: artwork))
+                .environment(\.colorScheme, .light)
+            let acceptanceRenderer = ImageRenderer(content: acceptance)
+            acceptanceRenderer.scale = 3
+            guard let image = acceptanceRenderer.cgImage,
+                  let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+            else { fatalError("Native size/opacity render failed") }
+            try png.write(to: URL(fileURLWithPath: CommandLine.arguments[3]))
+            print("Rendered 120/240/300 pt sizes and 0/30/100% opacity at 3× scale.")
+        }
+    }
+}
+
+private struct SunAcceptancePlate: View {
+    let sun: Image
+    private let paper = Color(red: 0.965, green: 0.935, blue: 0.875)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("MORE · sun size and opacity review")
+                .font(.system(size: 22, weight: .medium)).padding(24)
+            HStack(spacing: 0) {
+                ForEach([120, 240, 300], id: \.self) { size in
+                    cell(size: CGFloat(size), opacity: 1, label: "\(size) pt canvas · 100% opacity")
+                }
+            }
+            HStack(spacing: 0) {
+                ForEach([0, 30, 100], id: \.self) { percent in
+                    cell(size: 300, opacity: Double(percent) / 100,
+                         label: "300 pt canvas · \(percent)% opacity")
+                }
+            }
+            Text("Native SwiftUI · 3× render · unchanged PNG · component proof only")
+                .font(.caption).padding(24)
+        }
+        .foregroundStyle(Color(red: 0.10, green: 0.18, blue: 0.43))
+        .background(paper)
+    }
+
+    private func cell(size: CGFloat, opacity: Double, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MorningSolarArtwork(opacity: opacity, image: sun)
+                .frame(width: size, height: size)
+                .frame(width: 300, height: 300)
+            Text(label).font(.caption)
+        }
+        .padding(20)
+        .frame(width: 340, height: 360)
     }
 }
 
