@@ -24,22 +24,10 @@ struct MorningSunriseMark: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
 
-    private var gold: Color {
-        scheme == .dark ? Color(red: 1, green: 0.75, blue: 0.36)
-            : Color(red: 0.66, green: 0.35, blue: 0.07)
-    }
-    private var warm: Color { Color(red: 0.96, green: 0.49, blue: 0.16) }
+    private var gold: Color { MorningStyle.ink }
 
     var body: some View {
         ZStack {
-            if !reduceTransparency {
-                Ellipse()
-                    .fill(RadialGradient(colors: [warm.opacity(scheme == .dark ? 0.38 : 0.24), .clear],
-                                         center: .center, startRadius: 2, endRadius: 52))
-                    .frame(width: 124, height: 66)
-                    .blur(radius: 8)
-                    .offset(y: 8)
-            }
             Canvas { context, size in
                 let scale = min(size.width / 112, size.height / 64)
                 context.translateBy(x: (size.width - 112 * scale) / 2,
@@ -48,11 +36,7 @@ struct MorningSunriseMark: View {
                 let stroke = StrokeStyle(lineWidth: contrast == .increased ? 2.4 : 1.8,
                                          lineCap: .round, lineJoin: .round)
                 let color = GraphicsContext.Shading.color(gold)
-                let sun = GraphicsContext.Shading.linearGradient(
-                    Gradient(colors: scheme == .dark
-                        ? [Color(red: 1, green: 0.89, blue: 0.60), gold, warm]
-                        : [Color(red: 0.93, green: 0.66, blue: 0.22), Color(red: 0.81, green: 0.40, blue: 0.10)]),
-                    startPoint: CGPoint(x: 56, y: 17), endPoint: CGPoint(x: 56, y: 42))
+                let sun = GraphicsContext.Shading.color(MorningStyle.mark)
 
                 switch design {
                 case .horizon:

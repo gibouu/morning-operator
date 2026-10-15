@@ -14,7 +14,7 @@ struct MorningRecapView: View {
         let recap = store.recap(for: session)
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Recap").font(.headline).accessibilityAddTraits(.isHeader)
+                Text("Recap").font(MorningTheme.Typography.heading).accessibilityAddTraits(.isHeader)
                 Text(endingText(recap.ending)).font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("recap.ending")

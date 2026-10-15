@@ -150,13 +150,12 @@ private struct ShippedCatalogs {
 private enum OwnScreenFixtures {
     static let learn = [
         "Your rhythm", "Make your morning yours.",
-        "Start with what you already do. You'll review every suggestion before it becomes your routine.",
+        "You'll review every suggestion.",
         "Show us your morning",
-        "Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.",
+        "Record a short part of your morning, or choose a saved file.",
         "Record", "Choose",
-        "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.",
-        "Add context, if you like", "Build it myself", "Your routine stays in your hands",
-        "Your current routine stays ready while you review a suggestion. Approve it when it fits, or keep the morning you already have.",
+        "A screenshot or text file works too. You choose what to share.",
+        "Add context, if you like", "Build it myself",
         "Suggest a routine", "About on-device learning",
         "Each observation is saved on this device, with its original text and your corrections kept separately. Find earlier observations in Review. Clear this observation removes its original, corrections, sampled text and screen interpretation. Evidence already attached to a saved routine remains with it.",
         "A recording is sampled at up to 24 moments, so short clips work best and quick actions may be missed. Visible text helps suggest a routine; it doesn't reveal every tap or intention.",
@@ -173,15 +172,13 @@ private enum OwnScreenFixtures {
         "Settings & connections", "Voice, calendar and preferences"
     ]
     static let settings = [
-        "Make yourself at home", "A few things, your way.",
-        "Choose what to connect and how you'd like your morning to sound.",
-        "Your next morning", "Your day", "A little context before your morning begins.",
+        "Your next morning", "Your day", "Calendar & weather",
         "Morning at a glance", "Keep your place on the Lock Screen.",
         "A voice to guide you", "Companion voice", "Read each step aloud",
-        "Hear the next step as you move through your routine.", "Try the voice", "Listen where you like",
+        "Try the voice", "Listen where you like",
         "Use the audio output picker to choose an available speaker, including a HomePod on your network.",
         "Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet.",
-        "Privacy & data", "What stays here, and what you can remove.", "Apple Intelligence", "Check again",
+        "Privacy & data", "Saved on this device", "Apple Intelligence", "Check again",
         "You can capture thoughts and dreams, edit a routine, and use spoken guidance even while the on-device model is unavailable.",
         "Connecting a phone to a Mac doesn't automatically give this app control of the phone. The separate development test runner is needed for the phone-control experiment.",
         "Messages and email aren't connected here yet. Automatic room detection and continuous voice commands also need further work."
@@ -343,7 +340,7 @@ private enum OwnScreenFixtures {
     /// Learn after a recording: the text just read from it, to correct, and its sampled screens.
     static let learnReview = ContentScreen(name: "Learn, what we could see", top: [.shown("Learn my morning"), .shown("Done")], body: [
         .shown("What we could see"),
-        .shown("Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."),
+        .shown("Correct the text below. The original stays in Saved observations."),
         meeting, reply, .shown("A glimpse of this recording"),
         .other("42 seconds · 9 samples · 7 with complete text", "42 secondes · 9 échantillons · 7 avec texte complet"),
         .shown("See sampled screens"),
@@ -604,7 +601,7 @@ struct OwnInterfaceWordingTests {
         }
         #expect(german.drift(of: phrases).count >= phrases.filter { $0.catalogKey != nil }.count)
         // A sentence the policy matches by one clause is rewritten.
-        let sentence = "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically."
+        let sentence = "A screenshot or text file works too. You choose what to share."
         #expect(try catalogs.changing(sentence, french("Une image ou un fichier texte convient aussi."))
             .drift(of: phrases).count == 2)
         // One plural form of a counted line loses the recognized words.

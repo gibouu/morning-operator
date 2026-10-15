@@ -20,7 +20,7 @@ struct LearnView: View {
     private var learningContent: some View {
         VStack(alignment: .leading, spacing: 24) {
             PageHeading(eyebrow: String(localized: "Your rhythm"), title: String(localized: "Make your morning yours."),
-                subtitle: String(localized: "Start with what you already do. You'll review every suggestion before it becomes your routine."))
+                subtitle: String(localized: "You'll review every suggestion."))
 
             if let issue = store.observationIssue {
                 Card {
@@ -56,7 +56,7 @@ struct LearnView: View {
             Card {
                 VStack(alignment: .leading, spacing: 18) {
                     sectionTitle(String(localized: "Show us your morning"), symbol: "rectangle.on.rectangle")
-                    Text("Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.")
+                    Text("Record a short part of your morning, or choose a saved file.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
                     // Two compact actions side by side; VoiceOver keeps the full labels.
@@ -64,7 +64,7 @@ struct LearnView: View {
                         HStack(spacing: 12) { learnActions }
                         VStack(alignment: .leading, spacing: 12) { learnActions }
                     }
-                    Text("A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.")
+                    Text("A screenshot or text file works too. You choose what to share.")
                         .font(.footnote).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -74,8 +74,8 @@ struct LearnView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     sectionTitle(store.hasImportedObservation ? String(localized: "What we could see") : String(localized: "Add context, if you like"), symbol: "pencil.and.outline")
                     Text(store.hasImportedObservation
-                         ? "Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity."
-                         : "What do you check first? What helps you feel ready? Include the small things you want to make time for.")
+                         ? "Correct the text below. The original stays in Saved observations."
+                         : "What do you check first? What would you like to make time for?")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
                     if let observation = store.selectedObservation {
@@ -109,11 +109,6 @@ struct LearnView: View {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Label("Your routine stays in your hands", systemImage: "hand.raised")
-                    .font(.subheadline.weight(.medium)).foregroundStyle(MorningStyle.green)
-                Text("Your current routine stays ready while you review a suggestion. Approve it when it fits, or keep the morning you already have.")
-                    .font(.footnote).foregroundStyle(MorningStyle.muted)
-                    .fixedSize(horizontal: false, vertical: true)
                 DisclosureGroup("About on-device learning") {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(store.modelSummary)
@@ -306,7 +301,7 @@ struct LearnView: View {
 
     private func sectionTitle(_ title: String, symbol: String) -> some View {
         Label(title, systemImage: symbol)
-            .font(.title3.weight(.semibold)).foregroundStyle(MorningStyle.ink)
+            .font(MorningTheme.Typography.heading).foregroundStyle(MorningStyle.ink)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -321,14 +316,11 @@ struct SetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            PageHeading(eyebrow: String(localized: "Make yourself at home"), title: String(localized: "A few things, your way."),
-                subtitle: String(localized: "Choose what to connect and how you'd like your morning to sound."))
-
             CardButton { choosingInvitation = true } content: {
                 HStack(spacing: 14) {
                     Image(systemName: "sun.horizon").font(.title2)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Your next morning").font(.headline)
+                        Text("Your next morning").font(MorningTheme.Typography.heading)
                         Text(store.invitation.statusText).font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
@@ -340,8 +332,8 @@ struct SetupView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "sun.max").font(.title2)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Your day").font(.headline)
-                        Text("A little context before your morning begins.")
+                        Text("Your day").font(MorningTheme.Typography.heading)
+                        Text("Calendar & weather")
                             .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()
@@ -353,7 +345,7 @@ struct SetupView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "platter.filled.top.iphone").font(.title2)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Morning at a glance").font(.headline)
+                        Text("Morning at a glance").font(MorningTheme.Typography.heading)
                         Text("Keep your place on the Lock Screen.")
                             .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
@@ -365,7 +357,7 @@ struct SetupView: View {
             Card {
                 VStack(alignment: .leading, spacing: 18) {
                     Label("A voice to guide you", systemImage: "speaker.wave.2")
-                        .font(.title3.weight(.semibold))
+                        .font(MorningTheme.Typography.heading)
                     Button { choosingVoice = true } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 5) {
@@ -381,8 +373,6 @@ struct SetupView: View {
                     Toggle(isOn: $store.readAloud) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Read each step aloud").font(.subheadline.weight(.medium))
-                            Text("Hear the next step as you move through your routine.")
-                                .font(.footnote).foregroundStyle(MorningStyle.muted)
                         }
                     }
                     .tint(MorningStyle.accent).accessibilityIdentifier("setup.readAloud")
@@ -421,8 +411,8 @@ struct SetupView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "lock.shield").font(.title2)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Privacy & data").font(.headline)
-                        Text("What stays here, and what you can remove.")
+                        Text("Privacy & data").font(MorningTheme.Typography.heading)
+                        Text("Saved on this device")
                             .font(.caption).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer()

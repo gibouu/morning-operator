@@ -36,17 +36,17 @@ struct MorningCaptureVoiceView: View {
                     }
                     if store.voiceCommands.state == .listening {
                         Button("I'm done speaking", systemImage: "checkmark") { store.voiceCommands.finishListening() }
-                            .buttonStyle(.glassProminent).tint(MorningStyle.controlTint)
+                            .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("captureVoice.finish")
                     } else if store.voiceInputBlocksPlayback {
                         if store.voiceCommands.needsAudioRelease, !store.voiceCommands.isBusy,
                            !store.completionCapturePreparing, !store.voiceInputReleasing {
                             Button("Release microphone", systemImage: "mic.slash") { store.retryCompletionAudioRelease() }
-                                .buttonStyle(.glass).accessibilityIdentifier("captureVoice.release")
+                                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("captureVoice.release")
                         } else { ProgressView().accessibilityIdentifier("captureVoice.progress") }
                     } else {
                         Button("Try speaking again", systemImage: "mic") { store.listenForCompletionCapture(language: language) }
-                            .buttonStyle(.glassProminent).tint(MorningStyle.controlTint)
+                            .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("captureVoice.retry")
                     }
                     Text("Up to 30 seconds, understood on this device. Review the words before saving anything. No audio recording is kept.")

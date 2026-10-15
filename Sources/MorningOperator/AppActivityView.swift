@@ -125,7 +125,7 @@ private struct AppActivitySetupView: View {
     private func instruction(_ number: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Text(number).font(.headline).frame(width: 34, height: 34)
-                .background(MorningStyle.lavender, in: Circle())
+                .background(MorningStyle.selected, in: Circle())
             VStack(alignment: .leading, spacing: 7) {
                 Text(title).font(.headline)
                 Text(detail).font(.subheadline).foregroundStyle(MorningStyle.muted)

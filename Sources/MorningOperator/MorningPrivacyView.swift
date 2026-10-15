@@ -17,7 +17,7 @@ struct MorningPrivacyView: View {
             // list's height and scroll position.
             if store.privacyBlocksWork { removalSection }
             Section {
-                Text("Your mornings stay close.").font(.title2.weight(.semibold))
+                Text("Your mornings stay close.").font(MorningTheme.Typography.title)
                 Text("MORE keeps its learning on this device. You choose when to connect Apple apps and what to keep.")
                     .font(.subheadline).foregroundStyle(MorningStyle.muted)
             }
@@ -85,7 +85,7 @@ struct MorningPrivacyView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("A fresh start.").font(.title2.weight(.semibold))
+                        Text("A fresh start.").font(MorningTheme.Typography.title)
                         Text("Remove routines, observations, thoughts, history, saved choices, app activity and recording copies from MORE on this device.")
                         Text("Original files, exported copies and items in Apple apps stay where they are. This can't be undone.")
                             .foregroundStyle(MorningStyle.muted)
@@ -104,7 +104,7 @@ struct MorningPrivacyView: View {
                         removalApproved = true
                         confirmingRemoval = false
                     }
-                    .buttonStyle(.glassProminent).tint(.red).controlSize(.large)
+                    .buttonStyle(DestructiveButtonStyle()).controlSize(.large)
                     .accessibilityIdentifier("privacy.confirmForget")
                     .padding(20).frame(maxWidth: .infinity).background(.regularMaterial)
                 }

@@ -2660,26 +2660,6 @@
         }
       }
     },
-    "A little context before your morning begins.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un peu de contexte avant que votre matinée commence."
-          }
-        }
-      }
-    },
-    "A little context.\nA calmer start.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un peu de contexte.\nUn début plus serein."
-          }
-        }
-      }
-    },
     "A little more context": {
       "localizations": {
         "fr": {
@@ -2850,12 +2830,18 @@
         }
       }
     },
-    "A screenshot or text file works too. Only the file you choose is read; recording never starts automatically.": {
+    "A screenshot or text file works too. You choose what to share.": {
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A screenshot or text file works too. You choose what to share."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Une capture d’écran ou un fichier texte fonctionne aussi. Seul le fichier choisi est lu ; l’enregistrement ne démarre jamais automatiquement."
+            "value": "Une capture ou un fichier texte conviennent aussi. Vous choisissez quoi partager."
           }
         }
       }
@@ -3810,6 +3796,22 @@
         }
       }
     },
+    "Before you begin.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before you begin."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avant de commencer."
+          }
+        }
+      }
+    },
     "Bring a recording you've made": {
       "localizations": {
         "fr": {
@@ -3856,6 +3858,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Calendrier"
+          }
+        }
+      }
+    },
+    "Calendar & weather": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar & weather"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendrier et météo"
           }
         }
       }
@@ -4628,6 +4646,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Corriger le libellé"
+          }
+        }
+      }
+    },
+    "Correct the text below. The original stays in Saved observations.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correct the text below. The original stays in Saved observations."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigez le texte ci-dessous. L’original reste dans les observations enregistrées."
           }
         }
       }
@@ -7942,6 +7976,22 @@
         }
       }
     },
+    "Record a short part of your morning, or choose a saved file.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record a short part of your morning, or choose a saved file."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrez un court moment de votre matinée ou choisissez un fichier."
+          }
+        }
+      }
+    },
     "Record a transition supplied by your configured App automation. Counts observed app entries, not pickups. This action does not start screen recording.": {
       "localizations": {
         "fr": {
@@ -8602,16 +8652,6 @@
         }
       }
     },
-    "Review the text we found and correct anything we missed. The original stays in Review → Saved observations. Visible words don't always mean you performed an activity.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Relisez le texte trouvé et corrigez ce qui nous a échappé. L’original reste dans Historique → Observations enregistrées. Des mots visibles ne signifient pas toujours que vous avez fait une activité."
-          }
-        }
-      }
-    },
     "Review this plan before using it": {
       "localizations": {
         "fr": {
@@ -9198,6 +9238,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Observations enregistrées"
+          }
+        }
+      }
+    },
+    "Saved on this device": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved on this device"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré sur cet appareil"
           }
         }
       }
@@ -9832,22 +9888,28 @@
         }
       }
     },
-    "Show us a little of your morning.\nWe’ll find the rhythm together.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Montrez-nous un peu de votre matinée.\nNous trouverons le rythme ensemble."
-          }
-        }
-      }
-    },
     "Show us your morning": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Montrez-nous votre matinée"
+          }
+        }
+      }
+    },
+    "Show us your morning.\nKeep what works for you.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show us your morning.\nKeep what works for you."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montrez-nous votre matinée.\nGardez ce qui vous convient."
           }
         }
       }
@@ -10096,16 +10158,6 @@
         }
       }
     },
-    "Start an explicitly shared recording or bring one you already made. Go through a short part of your morning, then review what we can see.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lancez un enregistrement que vous partagez explicitement, ou apportez-en un existant. Vivez une courte partie de votre matinée, puis relisez ce que nous voyons."
-          }
-        }
-      }
-    },
     "Start morning": {
       "localizations": {
         "fr": {
@@ -10142,16 +10194,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commencez par une petite partie de votre matinée. Vous pourrez modifier chaque étape avant de l’approuver."
-          }
-        }
-      }
-    },
-    "Start with what you already do. You'll review every suggestion before it becomes your routine.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Partez de ce que vous faites déjà. Vous relirez chaque suggestion avant qu’elle ne devienne votre routine."
           }
         }
       }
@@ -11942,22 +11984,18 @@
         }
       }
     },
-    "What do you check first? What helps you feel ready? Include the small things you want to make time for.": {
+    "What do you check first? What would you like to make time for?": {
       "localizations": {
-        "fr": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Que regardez-vous en premier ? Qu’est-ce qui vous aide à vous sentir prêt ? Incluez les petites choses pour lesquelles vous voulez prendre le temps."
+            "value": "What do you check first? What would you like to make time for?"
           }
-        }
-      }
-    },
-    "What stays here, and what you can remove.": {
-      "localizations": {
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce qui reste ici, et ce que vous pouvez supprimer."
+            "value": "Que consultez-vous d’abord ? À quoi aimeriez-vous consacrer du temps ?"
           }
         }
       }
@@ -12228,6 +12266,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vous avez fourni ce libellé. Il reste séparé des libellés du modèle et n’établit pas une action de votre part."
+          }
+        }
+      }
+    },
+    "You'll review every suggestion.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You'll review every suggestion."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous validerez chaque suggestion."
           }
         }
       }

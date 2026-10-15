@@ -49,16 +49,25 @@ public enum MorningDayClock {
     struct Keyframe { let minute: Double; let phase: MorningDayPhase }
 
     static func keyframes(for solar: MorningSolarDay) -> [Keyframe] {
-        let rise = solar.sunriseMinute, set = solar.sunsetMinute
+        // A solar provider may be unavailable or report polar-day values. Keep a
+        // valid, ordered daily cycle; these bounds leave room for the night ramps.
+        let valid = solar.sunriseMinute.isFinite && solar.sunsetMinute.isFinite
+            && solar.sunriseMinute >= 75 && solar.sunsetMinute <= 1320
+            && solar.sunsetMinute - solar.sunriseMinute >= 120
+        let day = valid ? solar : .fixed
+        let rise = day.sunriseMinute, set = day.sunsetMinute
+        let daylight = set - rise
+        // Short winter days compress the daytime holds rather than putting noon
+        // after sunset. At the fixed 07:00 / 19:00 hours these retain the same anchors.
         return [
             Keyframe(minute: rise - 75, phase: .night),
             Keyframe(minute: rise - 15, phase: .dawn),
-            Keyframe(minute: rise + 30, phase: .dawn),
-            Keyframe(minute: rise + 75, phase: .morning),
-            Keyframe(minute: rise + 180, phase: .morning),
-            Keyframe(minute: rise + 300, phase: .day),
-            Keyframe(minute: set - 120, phase: .day),
-            Keyframe(minute: set - 45, phase: .evening),
+            Keyframe(minute: rise + min(30, daylight * 0.06), phase: .dawn),
+            Keyframe(minute: rise + min(75, daylight * 0.15), phase: .morning),
+            Keyframe(minute: rise + min(180, daylight * 0.30), phase: .morning),
+            Keyframe(minute: rise + min(300, daylight * 0.50), phase: .day),
+            Keyframe(minute: set - min(120, daylight * 0.20), phase: .day),
+            Keyframe(minute: set - min(45, daylight * 0.08), phase: .evening),
             Keyframe(minute: set + 30, phase: .evening),
             Keyframe(minute: set + 120, phase: .night)
         ]
@@ -171,6 +180,9 @@ public struct MorningPaletteValues: Sendable, Equatable {
         let a = phase(blend.from, dark: dark), b = phase(blend.to, dark: dark)
         return blend.from == blend.to ? a : mix(a, b, blend.progress)
     }
+
+    /// A fully opaque selected row, so paper texture cannot affect text contrast.
+    public var selectedSurface: MorningRGB { .mix(paper, ink, 0.08) }
 
     // MARK: The five lights
 

@@ -41,7 +41,7 @@ struct MorningOpeningView: View {
         }
         // No colour on the whole block: it would override the prominent button's own label.
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
     }
 
     @ViewBuilder private func choices(_ opening: MorningOpening) -> some View {
@@ -73,10 +73,10 @@ struct MorningOpeningView: View {
             .accessibilityIdentifier(identifier(choice))
             // The first choice the opening names is the prominent one.
             if choice == offered.first {
-                // White on the fixed brown tint in both appearances, as PrimaryButtonStyle does.
-                button.buttonStyle(.glassProminent).tint(MorningStyle.controlTint).foregroundStyle(.white)
+                // The ink control carries the matching on-ink text in each appearance.
+                button.buttonStyle(PrimaryButtonStyle())
             } else {
-                button.buttonStyle(.glass).foregroundStyle(MorningStyle.ink)
+                button.buttonStyle(SecondaryButtonStyle())
             }
         }
     }

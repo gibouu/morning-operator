@@ -144,7 +144,7 @@ struct RoutineEvidenceProposalView: View {
                             Button(store.routine == nil ? "Discard" : "Keep current") {
                                 if store.discardPendingRoutineProposal() { dismiss() }
                             }
-                            .buttonStyle(.glass).controlSize(.large)
+                            .buttonStyle(SecondaryButtonStyle())
                             .disabled(store.busy || !store.storageIsAvailable)
                             .accessibilityIdentifier("proposal.keepCurrent")
                             Button {
@@ -155,7 +155,7 @@ struct RoutineEvidenceProposalView: View {
                             } label: {
                                 Label("Approve update", systemImage: "checkmark").frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                            .buttonStyle(PrimaryButtonStyle())
                             .disabled(store.busy || store.sessionActive || !store.storageIsAvailable || store.routinePreferencesIssue != nil || proposal.routine.steps.isEmpty)
                             .accessibilityIdentifier("proposal.approve")
                         }

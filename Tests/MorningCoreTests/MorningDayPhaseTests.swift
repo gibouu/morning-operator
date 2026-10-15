@@ -70,6 +70,26 @@ struct MorningDayPhaseTests {
         #expect(MorningDayClock.blend(atMinute: 17 * 60, solar: winter).dominant == .evening)
     }
 
+    @Test func shortAndLongSolarDaysStayOrderedAndInvalidDaysUseTheFixedClock() {
+        for solar in [MorningSolarDay(sunriseMinute: 600, sunsetMinute: 840),
+                      MorningSolarDay(sunriseMinute: 240, sunsetMinute: 1320)] {
+            let frames = MorningDayClock.keyframes(for: solar)
+            #expect(zip(frames, frames.dropFirst()).allSatisfy { $0.minute < $1.minute })
+            for minute in stride(from: 0.0, through: 1440, by: 1) {
+                let blend = MorningDayClock.blend(atMinute: minute, solar: solar)
+                #expect(blend.progress.isFinite && (0...1).contains(blend.progress))
+            }
+        }
+        for invalid in [MorningSolarDay(sunriseMinute: .nan, sunsetMinute: .infinity),
+                        MorningSolarDay(sunriseMinute: 800, sunsetMinute: 500),
+                        MorningSolarDay(sunriseMinute: 0, sunsetMinute: 1440)] {
+            for minute in stride(from: 0.0, through: 1440, by: 30) {
+                #expect(MorningDayClock.blend(atMinute: minute, solar: invalid)
+                        == MorningDayClock.blend(atMinute: minute))
+            }
+        }
+    }
+
     // MARK: Reading
 
     @Test func textReadsAtEveryPhaseInBothAppearances() {
@@ -97,7 +117,13 @@ struct MorningDayPhaseTests {
             for dark in [false, true] {
                 let p = MorningPaletteValues.resolve(blend, dark: dark)
                 #expect(MorningRGB.contrast(p.ink, p.paper) >= 7, "minute \(Int(minute))")
-                #expect(MorningRGB.contrast(p.inkSoft, p.surface) >= 4.5, "minute \(Int(minute))")
+                for ground in [p.paper, p.surface] {
+                    #expect(MorningRGB.contrast(p.inkSoft, ground) >= 4.5, "minute \(Int(minute)): soft")
+                    #expect(MorningRGB.contrast(p.accentText, ground) >= 4.5, "minute \(Int(minute)): accent")
+                    #expect(MorningRGB.contrast(p.positive, ground) >= 4.5, "minute \(Int(minute)): positive")
+                }
+                #expect(MorningRGB.contrast(p.onInk, p.ink) >= 4.5, "minute \(Int(minute)): button")
+                #expect(MorningRGB.contrast(p.ink, p.selectedSurface) >= 4.5, "minute \(Int(minute)): selected row")
             }
         }
     }

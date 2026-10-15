@@ -29,7 +29,7 @@ struct CapturesView: View {
                         Spacer()
                         Image(systemName: "square.and.pencil")
                     }.padding(24).foregroundStyle(.primary)
-                        .background(MorningStyle.paleOrange.opacity(0.7), in: RoundedRectangle(cornerRadius: 26))
+                        .background(MorningStyle.selected, in: RoundedRectangle(cornerRadius: 26))
                 }.buttonStyle(.plain).accessibilityIdentifier("capture.open")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -81,7 +81,7 @@ struct CapturesView: View {
         Button { filter = kind } label: {
             Text(kind?.shortTitle ?? String(localized: "All")).font(.subheadline.weight(.medium))
                 .padding(.horizontal, 16).padding(.vertical, 11)
-                .background(filter == kind ? MorningStyle.lavender : MorningStyle.surface, in: Capsule())
+                .background(filter == kind ? MorningStyle.selected : MorningStyle.surface, in: Capsule())
         }.buttonStyle(.plain).accessibilityIdentifier("capture.filter.\(kind?.rawValue ?? "all")").accessibilityAddTraits(filter == kind ? .isSelected : [])
     }
 }
@@ -118,7 +118,7 @@ struct QuickCaptureView: View {
                                     Image(systemName: option.symbol).font(.title3)
                                     Text(option.shortTitle).font(.caption)
                                 }.frame(maxWidth: .infinity).padding(.vertical, 15)
-                                    .background(kind == option ? MorningStyle.lavender : MorningStyle.surface, in: RoundedRectangle(cornerRadius: 20))
+                                    .background(kind == option ? MorningStyle.selected : MorningStyle.surface, in: RoundedRectangle(cornerRadius: 20))
                             }.buttonStyle(.plain).accessibilityIdentifier("capture.kind.\(option.rawValue)").accessibilityAddTraits(kind == option ? .isSelected : [])
                         }
                     }
@@ -161,7 +161,7 @@ struct QuickCaptureView: View {
                     } label: {
                         HStack { if store.captureBusy { ProgressView() }; Text(buttonTitle).frame(maxWidth: .infinity) }
                             .padding(.vertical, 8)
-                    }.buttonStyle(.glassProminent).tint(MorningStyle.controlTint).controlSize(.large)
+                    }.buttonStyle(PrimaryButtonStyle())
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.captureBusy)
                         .accessibilityIdentifier("capture.save")
                         .padding(24).background(MorningStyle.background)

@@ -19,7 +19,7 @@ struct SavedRecordingRecoveryView: View {
             }
             HStack {
                 Button("Retry") { store.retryPendingRecording() }
-                    .buttonStyle(.glass).disabled(store.busy || store.sessionActive)
+                    .buttonStyle(SecondaryButtonStyle()).disabled(store.busy || store.sessionActive)
                     .accessibilityIdentifier("record.retryImport")
                 Button("Discard recording", role: .destructive) { confirmingDiscard = true }
                     .buttonStyle(.borderless).accessibilityIdentifier("record.discardPending")
@@ -33,7 +33,7 @@ struct SavedRecordingRecoveryView: View {
                 Button("Review text", action: onReview).buttonStyle(.borderless).font(.caption)
             }
         }
-        .padding(14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+        .padding(14).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius)).overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
         .padding(.horizontal, 16).padding(.vertical, 6)
     }
 }
@@ -61,10 +61,10 @@ struct MorningRecordingStatus: View {
                     Spacer(minLength: 4)
                     if recording.state == .recording || recording.needsStopRetry {
                         Button("Stop") { recording.stopRecording() }
-                            .buttonStyle(.glass).accessibilityIdentifier("record.stop")
+                            .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("record.stop")
                     } else { ProgressView() }
                 }
-                .padding(14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                .padding(14).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius)).overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
                 .padding(.horizontal, 16).padding(.vertical, 6)
             } else if store.busy {
                 HStack(spacing: 12) {
@@ -76,7 +76,7 @@ struct MorningRecordingStatus: View {
                     Spacer(minLength: 4)
                     Button("Stop") { store.cancelAnalysis() }.buttonStyle(.borderless)
                 }
-                .padding(14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                .padding(14).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius)).overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
                 .padding(.horizontal, 16).padding(.vertical, 6)
             } else if store.hasPendingRecording {
                 SavedRecordingRecoveryView(store: store, onReview: onReview)
@@ -86,7 +86,7 @@ struct MorningRecordingStatus: View {
                     Button("Your recording is ready · Review") {
                         transferAndProcessRecordingIfReady(store: store, sceneIsActive: scenePhase == .active, onReview: onReview)
                     }
-                        .buttonStyle(.glass).accessibilityIdentifier("record.review")
+                        .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("record.review")
                 }.padding(10)
             } else if recording.state == .failed {
                 HStack(alignment: .top) {
@@ -94,7 +94,7 @@ struct MorningRecordingStatus: View {
                     Text(recording.message).font(.caption)
                     Spacer()
                     Button("Dismiss") { recording.discard() }.font(.caption)
-                }.padding(14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                }.padding(14).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius)).overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
                     .padding(.horizontal, 16).padding(.vertical, 6)
             } else if let issue = store.observationIssue {
                 VStack(alignment: .leading, spacing: 8) {
@@ -103,17 +103,17 @@ struct MorningRecordingStatus: View {
                     Text(issue).font(.caption).foregroundStyle(MorningStyle.muted)
                     HStack {
                         Button(store.hasImportedObservation ? "Review saved text" : "Open learning", action: onReview)
-                            .buttonStyle(.glass)
+                            .buttonStyle(SecondaryButtonStyle())
                         Button("Dismiss") { store.dismissObservationIssue() }.buttonStyle(.borderless)
                     }
                 }
-                .padding(14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                .padding(14).background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius)).overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
                 .padding(.horizontal, 16).padding(.vertical, 6)
             } else if store.hasImportedObservation {
                 Button(action: onReview) {
                     Label("Review your saved observation", systemImage: "text.viewfinder")
                         .font(.caption.weight(.medium))
-                }.buttonStyle(.glass).padding(8).accessibilityIdentifier("observation.review")
+                }.buttonStyle(SecondaryButtonStyle()).padding(8).accessibilityIdentifier("observation.review")
             }
         }
     }

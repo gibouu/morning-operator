@@ -19,6 +19,11 @@ struct MorningRootView: View {
     @ViewState<CGFloat> private var dockWidth = 430
     @Environment(\.scenePhase) private var scenePhase
 
+    private var routineProgress: Double {
+        guard let session = store.session, !session.routine.steps.isEmpty else { return 0 }
+        return Double(session.completedStepIDs.count) / Double(session.routine.steps.count)
+    }
+
     private var presentedContent: some View {
         TabView(selection: $store.tab) {
             NavigationStack {
@@ -27,7 +32,7 @@ struct MorningRootView: View {
                           showReview: { reviewRootIdentity = UUID(); store.tab = .review }, editRoutine: openRoutineReview,
                           showInvitation: openMorningInvitation, canEditInvitation: !entryIsOccupied)
                     .padding(.bottom, 84)
-                    .background(MorningLightBackdrop())
+                    .background(MorningPaper(progress: routineProgress))
                     .toolbar(.hidden, for: .navigationBar)
                     .accessibilityHidden(showingActions)
             }
@@ -52,7 +57,7 @@ struct MorningRootView: View {
         #if os(iOS)
         .toolbar(.hidden, for: .tabBar)
         #endif
-        .background(MorningLightBackdrop())
+        .background(MorningPaper(progress: routineProgress))
         .overlay {
             if showingActions {
                 Button {
@@ -90,6 +95,8 @@ struct MorningRootView: View {
             #endif
         }
         .tint(MorningStyle.accent)
+        .foregroundStyle(MorningStyle.ink)
+        .font(MorningTheme.Typography.body)
         .sheet(isPresented: $showingSettings, onDismiss: {
             if resetReviewAfterSettingsDismissal {
                 resetReviewAfterSettingsDismissal = false
@@ -173,6 +180,7 @@ struct MorningRootView: View {
                 store.cancelVoiceCommandTurn()
                 if store.session?.status == .running { store.pause() }
             } else if phase == .active {
+                MorningThemeClock.shared.refresh()
                 #if DEBUG
                 let args = ProcessInfo.processInfo.arguments
                 if testObservedBackground, args.contains("--ui-testing"), args.contains("--ui-testing-start-entry-on-return") {
@@ -202,6 +210,12 @@ struct MorningRootView: View {
             store.tab = .today
         }
         .task { await initializeMorning() }
+        .task {
+            while !Task.isCancelled {
+                MorningThemeClock.shared.refresh()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
     }
 
     private func initializeMorning() async {
@@ -367,7 +381,7 @@ struct MorningRootView: View {
                     if let notice = store.notice { NoticeView(text: notice, dismiss: { store.notice = nil }) }
                 }.padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity)
             }
-            .background(MorningStyle.background).navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .background(MorningPaper(showsSun: false)).navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { showingSettings = false; showingLearn = false }
                     .disabled(store.privacyBlocksWork)
@@ -427,7 +441,7 @@ struct TodayView: View {
                             Image(systemName: MorningStyle.symbol(for: step.kind))
                                 .font(.title3).foregroundStyle(MorningStyle.accent)
                                 .frame(width: 48, height: 48)
-                                .glassEffect(.regular, in: Circle())
+                                .background(MorningStyle.selected, in: Circle())
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(step.title).font(.title3.weight(.semibold))
                                 Text("\(step.durationMinutes) min").font(.caption.monospacedDigit())
@@ -458,7 +472,7 @@ struct TodayView: View {
                            store.currentStep?.id == step.id,
                            step.automation == .morningBriefing || step.automation == .todayCalendar {
                             Button("Update this recap") { store.updateCurrentBriefing() }
-                                .buttonStyle(.glass).accessibilityIdentifier("briefing.updateCurrent")
+                                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("briefing.updateCurrent")
                         }
                         if store.session?.status == .paused {
                             Text("Your morning is paused.").font(.caption).foregroundStyle(MorningStyle.muted)
@@ -487,7 +501,7 @@ struct TodayView: View {
                                     }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
                                         .accessibilityIdentifier("morning.moveLater")
                                 }
-                            }.buttonStyle(.glass).controlSize(.regular)
+                            }.buttonStyle(SecondaryButtonStyle())
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(24)
                 }.navigationTitle("This moment").navigationBarTitleDisplayMode(.inline)
@@ -535,7 +549,7 @@ struct TodayView: View {
             Button(action: reviewAfterNotice) {
                 Label("Review your saved observation", systemImage: "text.viewfinder")
                     .font(.caption.weight(.medium))
-            }.buttonStyle(.glass).padding(8).accessibilityIdentifier("observation.review")
+            }.buttonStyle(QuietButtonStyle()).accessibilityIdentifier("observation.review")
         }
     }
 
@@ -564,7 +578,7 @@ struct TodayView: View {
                     Button(action: showLearn) {
                         Label("Learn my morning", systemImage: "record.circle")
                             .padding(.horizontal, 8).padding(.vertical, 8)
-                    }.buttonStyle(.glass).accessibilityIdentifier("learn.begin")
+                    }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("learn.begin")
                     Button("Try a sample") { store.loadSample() }
                         .font(.subheadline).frame(minHeight: 44)
                         .accessibilityIdentifier("routine.sample")
@@ -581,7 +595,7 @@ struct TodayView: View {
                     Text(Date.now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                         .font(.caption.weight(.medium))
                     Image(systemName: "chevron.down").font(.caption2.weight(.regular))
-                }.foregroundStyle(.primary).frame(minHeight: 44).contentShape(Rectangle())
+                }.foregroundStyle(MorningStyle.ink).frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("morning.date")
                 .accessibilityHint("Review this week and previous mornings")
             Spacer()
@@ -589,7 +603,7 @@ struct TodayView: View {
             if #available(iOS 27.0, *), ScreenRecordingService.shared.captureMayBeActive {
                 Button { showingNotice = true } label: {
                     Label("MORE · Recording", systemImage: "record.circle.fill").font(.caption.weight(.medium)).foregroundStyle(.red)
-                }.buttonStyle(.glass).accessibilityIdentifier("morning.recording")
+                }.buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("morning.recording")
             }
             #endif
             if store.busy {
@@ -609,16 +623,16 @@ struct TodayView: View {
                 .scaledFont(28, relativeTo: .title, weight: .regular)
                 .foregroundStyle(.primary.opacity(0.75)).accessibilityHidden(true)
             Text("Your morning")
-                .font(.title2.weight(.semibold))
+                .font(MorningTheme.Typography.display)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Show us a little of your morning.\nWe’ll find the rhythm together.")
+            Text("Show us your morning.\nKeep what works for you.")
                 .font(.subheadline).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func routineHeading(_ routine: RoutineVersion, compact: Bool) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(isFrench ? "bonjour" : "good morning").font(.title3.weight(.semibold))
+            Text(isFrench ? "bonjour" : "good morning").font(MorningTheme.Typography.title)
                 .accessibilityIdentifier("morning.heading")
                 .accessibilityValue(store.session?.status == .stopped ? "stopped" : "")
             morningInvitationButton
@@ -705,7 +719,7 @@ struct TodayView: View {
             }
             Button("Again", systemImage: "arrow.counterclockwise") { if current() { store.readCurrent() } }
                 .accessibilityIdentifier("run.detailAgain")
-        }.buttonStyle(.glass).controlSize(.small)
+        }.buttonStyle(SecondaryButtonStyle())
             .disabled(store.privacyBlocksWork || store.voiceInputBlocksPlayback)
     }
 
@@ -717,7 +731,7 @@ struct TodayView: View {
         let generation = store.dataGeneration
         let dense = compact || routine.steps.count > 6 || store.sessionActive || terminal
         let spacing: CGFloat = store.sessionActive && compact ? 4 : 7
-        return GlassEffectContainer(spacing: 4) {
+        return Group {
             VStack(spacing: spacing) {
                 if #available(iOS 27.0, macOS 27.0, *) {
                     VStack(spacing: spacing) {
@@ -768,21 +782,21 @@ struct TodayView: View {
             HStack(spacing: 13) {
                 Image(systemName: complete ? "checkmark" : skipped ? "forward.end" : MorningStyle.symbol(for: step.kind))
                     .scaledFont(16, relativeTo: .body, weight: .regular)
-                    .foregroundStyle(.primary.opacity(complete || skipped ? 0.4 : 0.72)).frame(width: 25)
+                    .foregroundStyle(complete || skipped ? MorningStyle.muted : MorningStyle.ink).frame(width: 25)
                 Text(step.title).font(.subheadline.weight(.medium))
                     .lineLimit(dynamicType.isAccessibilitySize ? nil : 1)
                 Spacer(minLength: 4)
                 Text("\(step.durationMinutes) min")
-                    .font(.caption.monospacedDigit()).foregroundStyle(MorningStyle.muted)
+                    .font(.caption.monospacedDigit()).foregroundStyle(current ? MorningStyle.ink : MorningStyle.muted)
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(MorningStyle.ink)
             .padding(.horizontal, 16).padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .contentShape(RoundedRectangle(cornerRadius: dense ? 20 : 24))
+            .contentShape(RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: dense ? 20 : 24))
-        .overlay(RoundedRectangle(cornerRadius: dense ? 20 : 24).strokeBorder(current ? Color.primary.opacity(0.35) : .clear))
+        .background(current ? MorningStyle.selected : MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
+        .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(current ? MorningStyle.ink : MorningStyle.line, lineWidth: current ? 1.5 : 1))
         .accessibilityLabel(complete ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, completed" : skipped ? "\(index + 1). \(step.title), \(step.durationMinutes) minutes, skipped" : "\(index + 1). \(step.title), \(step.durationMinutes) minutes")
         .accessibilityHint(canArrange ? "Opens details. Hold to move this moment." : "Opens details")
         .accessibilityIdentifier("morning.step.\(index)")
@@ -823,7 +837,8 @@ struct TodayView: View {
                     .lineLimit(dynamicType.isAccessibilitySize ? nil : compact ? 2 : 3)
             }
         }.padding(compact ? 11 : 14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 20))
+            .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
+            .overlay(RoundedRectangle(cornerRadius: MorningTheme.Space.radius).strokeBorder(MorningStyle.line))
     }
 
     private var closingMoment: some View {
@@ -842,7 +857,7 @@ struct TodayView: View {
 
     @ViewBuilder private var reflectionButtons: some View {
         Button("Speak", systemImage: "mic") { store.openCompletionCapture() }
-            .buttonStyle(.glassProminent).tint(MorningStyle.controlTint)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(store.voiceInputBlocksPlayback).accessibilityIdentifier("morning.speakReflection")
         Button("Write", systemImage: "square.and.pencil") { store.openCapture() }
             .buttonStyle(.borderless).accessibilityIdentifier("morning.reflect")
@@ -855,14 +870,14 @@ struct TodayView: View {
             HStack(spacing: 12) {
                 if store.session?.status == .paused {
                     Button { store.resume() } label: { Label("Continue", systemImage: "play.fill").frame(maxWidth: .infinity).padding(.vertical, 9) }
-                        .buttonStyle(.glass).accessibilityIdentifier("run.resume")
+                        .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("run.resume")
                         .disabled(store.voiceInputBlocksPlayback)
                 } else {
                     Button { store.pause() } label: { Label("Pause", systemImage: "pause.fill").frame(maxWidth: .infinity).padding(.vertical, 9) }
-                        .buttonStyle(.glass).accessibilityIdentifier("run.pause")
+                        .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("run.pause")
                     if !store.automatic || [.waitingForUser, .unavailable, .failed].contains(store.automation.status) {
                         Button { store.advance() } label: { Image(systemName: "arrow.right").frame(width: 32, height: 32) }
-                            .buttonStyle(.glass).accessibilityLabel("Next moment").accessibilityIdentifier("run.next")
+                            .buttonStyle(PrimaryButtonStyle()).accessibilityLabel("Next moment").accessibilityIdentifier("run.next")
                     }
                 }
                 Menu {
@@ -877,7 +892,7 @@ struct TodayView: View {
                     Button("Read aloud") { store.readCurrent() }.disabled(store.voiceInputBlocksPlayback)
                     Button("Save a thought") { store.openCapture() }
                 } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }
-                    .buttonStyle(.glass).accessibilityLabel("Morning controls").accessibilityIdentifier("run.controls")
+                    .buttonStyle(SecondaryButtonStyle()).accessibilityLabel("Morning controls").accessibilityIdentifier("run.controls")
             }.controlSize(.large)
         }
     }
@@ -1019,7 +1034,7 @@ private struct MorningActionDock: View {
                 MorningDockGlyph(symbol: symbol).frame(width: 23, height: 23)
                 Text(title).font(.caption2.weight(.medium)).fixedSize(horizontal: true, vertical: false)
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(MorningStyle.ink)
             .frame(minWidth: 54, maxWidth: dynamicType.isAccessibilitySize ? nil : .infinity, minHeight: 48)
             .padding(.horizontal, 3)
             .contentShape(Capsule())
@@ -1087,29 +1102,6 @@ private struct SunriseTouchStyle: ButtonStyle {
 private struct DockActionTouchStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.opacity(configuration.isPressed ? 0.55 : 1)
-    }
-}
-
-/// Light behind the glass, not another card. The system supplies the actual material.
-private struct MorningLightBackdrop: View {
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                MorningStyle.background
-                if !reduceTransparency {
-                    LinearGradient(colors: scheme == .dark
-                        ? [Color(red: 0.13, green: 0.10, blue: 0.13), Color(red: 0.24, green: 0.16, blue: 0.13), Color(red: 0.14, green: 0.11, blue: 0.13)]
-                        : [Color(red: 0.97, green: 0.94, blue: 0.87), Color(red: 0.96, green: 0.88, blue: 0.73), Color(red: 0.98, green: 0.94, blue: 0.86)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing)
-                    Ellipse()
-                        .fill(Color(red: 1.0, green: 0.66, blue: 0.28).opacity(scheme == .dark ? 0.16 : 0.20))
-                        .frame(width: geometry.size.width * 1.6, height: geometry.size.height * 0.40)
-                        .blur(radius: 65).offset(y: geometry.size.height * 0.48)
-                }
-            }
-        }.ignoresSafeArea().accessibilityHidden(true).allowsHitTesting(false)
     }
 }
 

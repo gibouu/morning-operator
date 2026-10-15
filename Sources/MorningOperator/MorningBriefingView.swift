@@ -21,7 +21,7 @@ struct MorningBriefingView: View {
           ScrollViewReader { proxy in
             MorningForm {
                 Section {
-                    Text("A little context.\nA calmer start.").font(.title2.weight(.semibold))
+                    Text("Before you begin.").font(MorningTheme.Typography.title)
                     Text("Choose what you'd like to hear before the rest of your morning.")
                         .foregroundStyle(MorningStyle.muted)
                 }
