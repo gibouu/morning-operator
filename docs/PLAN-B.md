@@ -1,0 +1,25 @@
+# App steps and timers (#126)
+
+A step can open Messages, Mail, WhatsApp, Instagram, Calendar, Maps or an HTTP(S) address in Safari. The editor keeps the existing minutes field. MORE checks the destination with `canOpenURL`; missing apps leave a clear message and the step stays available for Next. Links can open a screen or composer; MORE never sends a message or types into another app. The tested table is `RoutineStepTarget.swift`.
+
+A started target step saves its session, step, start and end times in `step-timer.json`. The budget uses absolute dates, so time spent in another app does not depend on a running counter. MORE records the opening before dispatch and does not open that target again on resume or relaunch. Pause freezes the budget; Continue shifts the deadline by the paused duration. Starting another step removes the previous timer. The same model has an in-app website target for the browser feature; that screen is integrated separately.
+
+Enable **Morning at a glance** for the Lock Screen countdown, **+2 min** and **Next**. The extension shows only names from MORE's fixed app list, never entered contacts, addresses or message IDs. +2 runs as a `LiveActivityIntent` in MORE's process. A button names its displayed end so two taps against the same end add time once. Next names its session and step; an old link cannot skip the next step. MORE remains responsible for opening the next destination after the URL arrives in the foreground.
+
+The countdown can render while MORE is suspended. It does **not** grant execution at its deadline. In **Settings → Shortcuts & timers**, the person can allow local time's-up notifications. MORE then schedules one notification per current deadline. Permission is requested only from that explicit control. The notification queue serializes the whole add and cleanup, so a delayed old request cannot delete a newer alert. The app can request an ActivityKit alert and a spoken prompt when its timer task runs; island expansion, background speech, notification delivery and audibility are not guaranteed or physically verified. A deadline never advances or opens another app without a person's Next action.
+
+**Settings → Morning alarm** uses AlarmKit on iOS 26 and later. Save requests alarm permission and creates one repeating daily alarm. The system owns its alarm presentation. Stop or Start MORE routes through an authenticated foreground intent into the ordinary approved-morning opening. Both buttons share an alarm/day entry identity, so they cannot start two mornings. Drafts still require approval, and an existing morning follows the existing entry policy. The scheduling plan reconciles system IDs before making a replacement. An interrupted save records the intended alarm ID before asking the system to schedule. Silent-mode ringing and the full lock-screen stop/unlock/start journey require a physical phone check; a successful compile is not that check.
+
+App Shortcuts include Start my morning, Brief me, Next step, Add two minutes, Skip, End my morning, Note a dream and Remember this. English and French phrases use the app-name token. Captures open the existing editable review and require explicit Save. Brief me reads a current, permitted Calendar/Weather recap; during an active routine it refuses to replace step playback. Actual Siri phrase discovery and microphone recognition remain unverified. Template cards stay hidden until the owner supplies real iCloud shortcut links in `ShortcutTemplate.all`; none are fabricated.
+
+Privacy removal cancels the step alert and system alarms and removes both saved files. The existing `LocalDataControl.defaultDirectory` isolates validated UI-test workspaces. Notification identifiers also include that workspace's identity, preventing tests from clearing the ordinary notification. Isolated UI-test launches never schedule or cancel real AlarmKit alarms. Live Activity updates verify their saved session/step/deadline before dispatch.
+
+## Local verification on 15 October 2026
+
+- 31 focused core tests pass: schemes, target encoding, deadline math, pause/resume/relaunch, double taps, bounded extensions, stale Next links, alarm decisions and hidden templates.
+- 1 adversarial Apple-layer test passes: an old suspended notification add finishes cleanup before the newer add installs its request.
+- Xcode 27 `build-for-testing` passes for the generic iOS Simulator, including the app, widget and UI-test targets. No simulator journeys or physical phone actions were run for this feature.
+- Package compilation reports existing unrelated test warnings; those are not new feature failures.
+- The separate Claude review could not run because its OAuth session expired and could not refresh. Keep the PR draft pending independent review and phone checks.
+
+Apple's API references: [widget and Live Activity intent execution](https://developer.apple.com/documentation/widgetkit/adding-interactivity-to-widgets-and-live-activities), [AlarmKit scheduling](https://developer.apple.com/documentation/alarmkit/scheduling-an-alarm-with-alarmkit). The installed Xcode 27 SDK interfaces were checked alongside those references.

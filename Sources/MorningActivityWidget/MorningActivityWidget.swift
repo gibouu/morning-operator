@@ -14,7 +14,7 @@ struct MorningActivityWidgetBundle: WidgetBundle {
 struct MorningActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: MorningActivityAttributes.self) { context in
-            MorningActivityLockScreen(state: context.state, isStale: context.isStale)
+            MorningActivityLockScreen(state: context.state, isStale: context.isStale, sessionID: context.attributes.sessionID)
                 .widgetURL(MorningActivityPresentation.destination)
         } dynamicIsland: { context in
             let presentation = MorningActivityPresentation(state: context.state, isStale: context.isStale)
@@ -29,7 +29,7 @@ struct MorningActivityWidget: Widget {
                         .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    MorningActivityIslandDetail(presentation: presentation)
+                    MorningActivityIslandDetail(presentation: presentation, sessionID: context.attributes.sessionID)
                 }
             } compactLeading: {
                 Image(systemName: presentation.leadingSymbol)
@@ -40,8 +40,12 @@ struct MorningActivityWidget: Widget {
                     Image(systemName: "exclamationmark.circle")
                         .foregroundStyle(.white).accessibilityLabel("Update needed. Open MORE.")
                 } else {
+                    if let timer = context.state.stepTimer {
+                        StepCountdown(timer: timer, state: context.state).font(.caption2.monospacedDigit()).frame(maxWidth: 50)
+                    } else {
                     Text(presentation.shortProgress).font(.caption2.monospacedDigit())
                         .foregroundStyle(.white).accessibilityLabel(presentation.progress)
+                    }
                 }
             } minimal: {
                 Image(systemName: presentation.leadingSymbol)
@@ -58,6 +62,7 @@ struct MorningActivityWidget: Widget {
 private struct MorningActivityLockScreen: View {
     let state: MorningActivityContentState
     let isStale: Bool
+    let sessionID: UUID
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -67,7 +72,13 @@ private struct MorningActivityLockScreen: View {
 
     var body: some View {
         Group {
-            if dynamicTypeSize.isAccessibilitySize {
+            if let timer = state.stepTimer {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(timer.destination.displayName).font(.headline)
+                    StepCountdown(timer: timer, state: state).font(.title2.monospacedDigit())
+                    StepActivityControls(sessionID: sessionID, timer: timer)
+                }
+            } else if dynamicTypeSize.isAccessibilitySize {
                 // Two essential facts remain visible without a narrow icon column,
                 // time row or progress decoration competing with enlarged text.
                 VStack(alignment: .leading, spacing: 5) {
@@ -109,7 +120,7 @@ private struct MorningActivityLockScreen: View {
         .foregroundStyle(.primary)
         .activityBackgroundTint(background)
         .activitySystemActionForegroundColor(accent)
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(presentation.accessibilitySummary)
         .accessibilityHint("Opens MORE's Morning screen.")
         // No timer, implied countdown or explicit animation. Counts change only
@@ -119,10 +130,16 @@ private struct MorningActivityLockScreen: View {
 
 private struct MorningActivityIslandDetail: View {
     let presentation: MorningActivityPresentation
+    let sessionID: UUID
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
+            if let timer = presentation.state.stepTimer {
+                Text(timer.destination.displayName).font(.headline)
+                StepCountdown(timer: timer, state: presentation.state).font(.title3.monospacedDigit())
+                StepActivityControls(sessionID: sessionID, timer: timer)
+            } else {
             Text(presentation.heading)
                 .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
                 .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
@@ -132,9 +149,10 @@ private struct MorningActivityIslandDetail: View {
             Text(presentation.lastUpdate)
                 .font(.caption2).foregroundStyle(.white.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(presentation.accessibilitySummary)
         .accessibilityHint("Opens MORE's Morning screen.")
     }
@@ -183,4 +201,31 @@ private enum MorningActivityPalette {
     static let islandAccent = Color(red: 0.73, green: 0.65, blue: 0.94)
     static let cream = Color(red: 0.98, green: 0.973, blue: 0.952)
     static let dark = Color(red: 0.10, green: 0.11, blue: 0.13)
+}
+
+private struct StepCountdown: View {
+    let timer: MorningActivityStepTimer
+    let state: MorningActivityContentState
+    var body: some View {
+        if state.status == .paused {
+            Text(Duration.seconds(timer.pausedRemaining ?? max(0, timer.endsAt.timeIntervalSince(state.updatedAt))), format: .time(pattern: .minuteSecond))
+        } else {
+            Text(timerInterval: min(state.updatedAt, timer.endsAt)...timer.endsAt, countsDown: true)
+        }
+    }
+}
+
+private struct StepActivityControls: View {
+    let sessionID: UUID
+    let timer: MorningActivityStepTimer
+    var body: some View {
+        HStack(spacing: 16) {
+            Button(intent: AddStepTimeIntent(sessionID: sessionID, stepID: timer.stepID, expectedEnd: timer.endsAt)) {
+                Text("+2 min")
+            }
+            Link(destination: StepNavigation.nextURL(sessionID: sessionID, stepID: timer.stepID)) {
+                Text(timer.nextLabel)
+            }
+        }.buttonStyle(.bordered)
+    }
 }

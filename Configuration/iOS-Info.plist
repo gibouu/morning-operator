@@ -53,6 +53,17 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>sms</string>
+		<string>message</string>
+		<string>whatsapp</string>
+		<string>instagram</string>
+		<string>calshow</string>
+		<string>maps</string>
+	</array>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>MORE schedules your morning alarm and opens your approved morning when you stop it.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MORE listens during the voice turns you start on this device.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

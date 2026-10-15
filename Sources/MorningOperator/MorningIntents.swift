@@ -10,6 +10,7 @@ import MorningApple
 @Observable
 final class MorningIntentRouter {
     static let shared = MorningIntentRouter()
+    private(set) var pendingCommand: PendingMorningCommand?
     private(set) var pendingCaptureText: String?
     private(set) var pendingStart: MorningEntryRequest?
     private(set) var invitationPayload: MorningInvitationPayload?
@@ -18,18 +19,29 @@ final class MorningIntentRouter {
 
     func resetPendingRequests() {
         pendingStart = nil
+        pendingCommand = nil
         invitationPayload = nil
         pendingCaptureText = nil
     }
 
-    func requestStart(invitation: MorningInvitationPayload? = nil) {
+    func requestCommand(_ action: PendingMorningCommand.Action) {
+        guard pendingCommand == nil, let state = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(), !state.forgetPending else { return }
+        let timer = StepTimerFile.load()
+        pendingCommand = PendingMorningCommand(action: action, sessionID: timer?.sessionID, stepID: timer?.stepID)
+    }
+
+    func takeCommand() -> PendingMorningCommand? {
+        defer { pendingCommand = nil }; return pendingCommand
+    }
+
+    func requestStart(invitation: MorningInvitationPayload? = nil, entryID: UUID? = nil) {
         guard let state = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
               !state.forgetPending else { return }
         // Repeated Siri phrases or duplicate notification callbacks cannot extend a
         // waiting request's lifetime or queue a second run behind the first.
         guard pendingStart == nil else { return }
         invitationPayload = invitation
-        pendingStart = MorningEntryRequest(id: invitation?.occurrenceID ?? UUID())
+        pendingStart = MorningEntryRequest(id: entryID ?? invitation?.occurrenceID ?? UUID())
     }
 
     func finishStart(_ id: UUID) {
@@ -129,6 +141,13 @@ struct MorningAppShortcuts: AppShortcutsProvider {
             phrases: ["Start my morning with \(.applicationName)", "Start \(.applicationName)"],
             shortTitle: "Start morning", systemImageName: "sun.max"
         )
+        AppShortcut(intent: BriefMorningIntent(), phrases: ["Brief me with \(.applicationName)"], shortTitle: "Brief me", systemImageName: "sun.max")
+        AppShortcut(intent: NextMorningStepIntent(), phrases: ["Next step in \(.applicationName)"], shortTitle: "Next step", systemImageName: "arrow.right")
+        AppShortcut(intent: AddStepTimeIntent(), phrases: ["Add two minutes in \(.applicationName)"], shortTitle: "Add two minutes", systemImageName: "timer")
+        AppShortcut(intent: SkipMorningStepIntent(), phrases: ["Skip step in \(.applicationName)"], shortTitle: "Skip step", systemImageName: "forward.end")
+        AppShortcut(intent: EndMorningIntent(), phrases: ["End my morning in \(.applicationName)"], shortTitle: "End morning", systemImageName: "stop")
+        AppShortcut(intent: NoteDreamIntent(), phrases: ["Note a dream with \(.applicationName)"], shortTitle: "Note a dream", systemImageName: "moon")
+        AppShortcut(intent: RememberMorningIntent(), phrases: ["Remember this with \(.applicationName)"], shortTitle: "Remember this", systemImageName: "square.and.pencil")
         AppShortcut(
             intent: CaptureMorningIntent(),
             phrases: ["Capture a \(\.$kind) with \(.applicationName)", "Quick capture with \(.applicationName)"],

@@ -171,8 +171,9 @@ struct MorningRootView: View {
                 #endif
                 store.discardCompletionReflection()
                 store.cancelVoiceCommandTurn()
-                if store.session?.status == .running { store.pause() }
+                if store.session?.status == .running, !store.keepsTimerInBackground { store.pause() }
             } else if phase == .active {
+                store.armStepTimer()
                 #if DEBUG
                 let args = ProcessInfo.processInfo.arguments
                 if testObservedBackground, args.contains("--ui-testing"), args.contains("--ui-testing-start-entry-on-return") {
@@ -187,6 +188,7 @@ struct MorningRootView: View {
         .onChange(of: MorningIntentRouter.shared.pendingCaptureText, initial: true) { _, _ in
             presentPendingIntentCapture()
         }
+        .onChange(of: MorningIntentRouter.shared.pendingCommand, initial: true) { _, _ in processPendingEntries() }
         .onChange(of: MorningIntentRouter.shared.pendingStart, initial: true) { _, _ in processPendingEntries() }
         .onChange(of: entryIsOccupied) { _, occupied in
             if occupied { store.stopCompletionInvitation() }
@@ -195,6 +197,11 @@ struct MorningRootView: View {
         .onChange(of: observationReviewCanPresent) { _, ready in if ready { processPendingEntries() } }
         .onChange(of: store.busy) { _, busy in if !busy { processPendingEntries() } }
         .onOpenURL { url in
+            if let next = StepNavigation.parseNext(url) {
+                store.tab = .today
+                store.nextTargetStep(sessionID: next.sessionID, stepID: next.stepID)
+                return
+            }
             guard url.scheme == "more", url.host == "morning", url.path.isEmpty,
                   url.query == nil, url.fragment == nil, !store.privacyBlocksWork else { return }
             // Revealing progress is not a request to start or resume. Keep any
@@ -206,6 +213,7 @@ struct MorningRootView: View {
 
     private func initializeMorning() async {
         store.morningActivitySceneChanged(isForeground: scenePhase == .active)
+        store.armStepTimer()
         if store.privacyNeedsCleanup {
             showingSettings = true
             if store.privacyHasInterruptedRemoval { await store.forgetLocalData() }
@@ -314,6 +322,9 @@ struct MorningRootView: View {
         presentPendingIntentCapture()
         presentPendingObservationReview()
         let router = MorningIntentRouter.shared
+        if scenePhase == .active, !entryIsOccupied, let command = router.takeCommand() {
+            store.performMorningCommand(command)
+        }
         guard let request = router.pendingStart else {
             if scenePhase == .active, !entryIsOccupied, store.tab == .today {
                 store.speakQueuedCompletionInvitation()
@@ -851,6 +862,7 @@ struct TodayView: View {
     }
 
     @ViewBuilder private func actionArea(_ routine: RoutineVersion) -> some View {
+        StepTimerView(store: store)
         if store.sessionActive {
             HStack(spacing: 12) {
                 if store.session?.status == .paused {

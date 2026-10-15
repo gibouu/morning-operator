@@ -42,12 +42,16 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     public var isRequired: Bool
     public var automation: RoutineStepAutomation?
     public var observationReference: RoutineObservationReference?
+    /// Where this step takes the person while its timer runs (an app, or a page in MORE).
+    /// Nil keeps the step inside MORE, as every step was before targets existed.
+    public var target: RoutineStepTarget?
     public init(id: UUID = UUID(), title: String, detail: String = "", kind: StepKind = .custom,
                 durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
-                observationReference: RoutineObservationReference? = nil) {
+                observationReference: RoutineObservationReference? = nil, target: RoutineStepTarget? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
         self.durationMinutes = Self.bounded(durationMinutes); self.isRequired = isRequired
         self.automation = automation; self.observationReference = observationReference
+        self.target = target
     }
 
     private static func bounded(_ minutes: Int) -> Int {
@@ -72,6 +76,7 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
         isRequired = try values.decode(Bool.self, forKey: .isRequired)
         automation = try values.decodeIfPresent(RoutineStepAutomation.self, forKey: .automation)
         observationReference = try values.decodeIfPresent(RoutineObservationReference.self, forKey: .observationReference)
+        target = try values.decodeIfPresent(RoutineStepTarget.self, forKey: .target)
     }
 }
 
@@ -134,6 +139,7 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
             manual.isRequired = false
             manual.automation = nil
             manual.observationReference = nil
+            manual.target = nil
             return manual
         }
         // The sample's required ritual demonstrates the control; it is not a personal
