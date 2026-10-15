@@ -42,15 +42,12 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     public var isRequired: Bool
     public var automation: RoutineStepAutomation?
     public var observationReference: RoutineObservationReference?
-    /// A website this moment opens inside MORE. Nil for every other moment and older files.
-    public var webSite: WebMorningSite?
     public init(id: UUID = UUID(), title: String, detail: String = "", kind: StepKind = .custom,
                 durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
-                observationReference: RoutineObservationReference? = nil, webSite: WebMorningSite? = nil) {
+                observationReference: RoutineObservationReference? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
         self.durationMinutes = Self.bounded(durationMinutes); self.isRequired = isRequired
         self.automation = automation; self.observationReference = observationReference
-        self.webSite = webSite
     }
 
     private static func bounded(_ minutes: Int) -> Int {
@@ -75,7 +72,6 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
         isRequired = try values.decode(Bool.self, forKey: .isRequired)
         automation = try values.decodeIfPresent(RoutineStepAutomation.self, forKey: .automation)
         observationReference = try values.decodeIfPresent(RoutineObservationReference.self, forKey: .observationReference)
-        webSite = try values.decodeIfPresent(WebMorningSite.self, forKey: .webSite)
     }
 }
 
@@ -138,7 +134,6 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
             manual.isRequired = false
             manual.automation = nil
             manual.observationReference = nil
-            manual.webSite = nil
             return manual
         }
         // The sample's required ritual demonstrates the control; it is not a personal
