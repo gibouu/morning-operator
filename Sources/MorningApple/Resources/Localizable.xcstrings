@@ -3237,6 +3237,96 @@
           }
         }
       }
+    },
+    "Choose Read messages and grant Gmail read-only access first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez Lire les messages et autorisez d’abord l’accès à Gmail en lecture seule."
+          }
+        }
+      }
+    },
+    "This Gmail message is no longer available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message Gmail n’est plus disponible."
+          }
+        }
+      }
+    },
+    "This Gmail message exceeds the supported reading limits.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message Gmail dépasse les limites de lecture prises en charge."
+          }
+        }
+      }
+    },
+    "This message has no readable text to reply to.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message ne contient aucun texte lisible auquel répondre."
+          }
+        }
+      }
+    },
+    "This message is too long for a local reply. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message est trop long pour préparer une réponse locale. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        }
+      }
+    },
+    "A reply could not be prepared. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de préparer une réponse. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        }
+      }
+    },
+    "Apple's local model is unavailable. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple est indisponible. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        }
+      }
+    },
+    "A reply is already being prepared.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une réponse est déjà en préparation."
+          }
+        }
+      }
+    },
+    "Enable Apple Intelligence in system settings to prepare a local reply.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activez Apple Intelligence dans les réglages système pour préparer une réponse locale."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

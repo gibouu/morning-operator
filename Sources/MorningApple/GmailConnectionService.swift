@@ -29,6 +29,16 @@ public struct GmailOAuthConfiguration: Sendable, Equatable {
     private static let clientCharacters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-".utf8)
 }
 
+/// Explicit capabilities requested by this visible connection attempt. Reading is
+/// a separate user action; a count-only connection never silently upgrades itself.
+public enum GmailAuthorizationAccess: Sendable, Equatable {
+    case metadata, readMessages
+
+    fileprivate var scope: String {
+        self == .metadata ? GmailConnectionService.metadataScope : GmailConnectionService.readonlyScope
+    }
+}
+
 /// One browser attempt, with a fresh state and S256 verifier. Do not log the authorization URL
 /// or callback, and release this attempt when the browser closes. A callback is consumed once.
 @MainActor
@@ -37,17 +47,18 @@ public final class GmailAuthorizationRequest: CustomStringConvertible, CustomDeb
     public let callbackScheme: String
     fileprivate let configuration: GmailOAuthConfiguration
     fileprivate let verifier: String
+    fileprivate let access: GmailAuthorizationAccess
     private let state: String
     private var consumed = false
     public nonisolated var description: String { "GmailAuthorizationRequest(redacted)" }
     public nonisolated var debugDescription: String { description }
 
-    public convenience init(configuration: GmailOAuthConfiguration) throws {
-        try self.init(configuration: configuration, verifier: Self.randomValue(), state: Self.randomValue())
+    public convenience init(configuration: GmailOAuthConfiguration, access: GmailAuthorizationAccess = .metadata) throws {
+        try self.init(configuration: configuration, verifier: Self.randomValue(), state: Self.randomValue(), access: access)
     }
 
     // Internal deterministic entry point for component tests; production always uses secure random bytes.
-    init(configuration: GmailOAuthConfiguration, verifier: String, state: String) throws {
+    init(configuration: GmailOAuthConfiguration, verifier: String, state: String, access: GmailAuthorizationAccess = .metadata) throws {
         let unreserved = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~".utf8)
         guard (43...128).contains(verifier.utf8.count), verifier.utf8.allSatisfy(unreserved.contains),
               (32...128).contains(state.utf8.count), state.utf8.allSatisfy(unreserved.contains) else {
@@ -56,13 +67,14 @@ public final class GmailAuthorizationRequest: CustomStringConvertible, CustomDeb
         self.configuration = configuration
         self.callbackScheme = configuration.callbackScheme
         self.verifier = verifier
+        self.access = access
         self.state = state
         var url = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         url.queryItems = [
             URLQueryItem(name: "client_id", value: configuration.clientID),
             URLQueryItem(name: "redirect_uri", value: configuration.redirectURI.absoluteString),
             URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: GmailConnectionService.metadataScope),
+            URLQueryItem(name: "scope", value: access.scope),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "code_challenge", value: Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))),
             URLQueryItem(name: "code_challenge_method", value: "S256")
@@ -114,6 +126,7 @@ public final class GmailAuthorizationRequest: CustomStringConvertible, CustomDeb
 public struct GmailAccessSession: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     fileprivate let accessToken: String
     public let expiresAt: Date
+    public let canReadMessages: Bool
     public var description: String { "GmailAccessSession(redacted)" }
     public var debugDescription: String { description }
 }
@@ -131,7 +144,7 @@ public struct GmailInboxSnapshot: Sendable, Equatable {
 public enum GmailConnectionError: LocalizedError, Sendable, Equatable {
     case configurationMissing, configurationInvalid, authorizationFailed, invalidCallback
     case permissionDenied, sessionExpired, networkUnavailable, rateLimited, serviceUnavailable
-    case invalidResponse, redirectRejected
+    case invalidResponse, redirectRejected, readAccessRequired, messageUnavailable, messageTooLarge
 
     public var errorDescription: String? {
         switch self {
@@ -157,15 +170,22 @@ public enum GmailConnectionError: LocalizedError, Sendable, Equatable {
             String(localized: "Gmail returned an incomplete response. No inbox count is available.", bundle: .module)
         case .redirectRejected:
             String(localized: "Gmail returned an unexpected redirect. No inbox count is available.", bundle: .module)
+        case .readAccessRequired:
+            String(localized: "Choose Read messages and grant Gmail read-only access first.", bundle: .module)
+        case .messageUnavailable:
+            String(localized: "This Gmail message is no longer available.", bundle: .module)
+        case .messageTooLarge:
+            String(localized: "This Gmail message exceeds the supported reading limits.", bundle: .module)
         }
     }
 }
 
-/// Only token exchange and GET of the INBOX label. No messages, send, label writes,
+/// Token exchange and explicit read-only INBOX/message GET requests. No send, label writes,
 /// background refresh, credentials store, telemetry, automatic retries or remote revocation.
 @MainActor
 public final class GmailConnectionService {
     public nonisolated static let metadataScope = "https://www.googleapis.com/auth/gmail.metadata"
+    public nonisolated static let readonlyScope = "https://www.googleapis.com/auth/gmail.readonly"
     public typealias Transport = @MainActor (URLRequest) async throws -> (Data, URLResponse)
     private let transport: Transport
     private let now: @MainActor () -> Date
@@ -204,10 +224,13 @@ public final class GmailConnectionService {
               token.access_token.utf8.allSatisfy(Self.bearerCharacters.contains) else {
             throw GmailConnectionError.invalidResponse
         }
-        guard token.scope.split(separator: " ").contains(Substring(Self.metadataScope)) else {
-            throw GmailConnectionError.permissionDenied
-        }
-        return GmailAccessSession(accessToken: token.access_token, expiresAt: now().addingTimeInterval(TimeInterval(token.expires_in)))
+        let scopes = Set(token.scope.split(separator: " ").map(String.init))
+        let hasRequiredScope = attempt.access == .readMessages
+            ? scopes.contains(Self.readonlyScope)
+            : scopes.contains(Self.metadataScope) || scopes.contains(Self.readonlyScope)
+        guard hasRequiredScope else { throw GmailConnectionError.permissionDenied }
+        return GmailAccessSession(accessToken: token.access_token, expiresAt: now().addingTimeInterval(TimeInterval(token.expires_in)),
+                                  canReadMessages: attempt.access == .readMessages)
     }
 
     public func inboxUnreadCount(session: GmailAccessSession) async throws -> GmailInboxSnapshot {
@@ -226,7 +249,73 @@ public final class GmailConnectionService {
         return GmailInboxSnapshot(unreadMessageCount: label.messagesUnread, retrievedAt: now())
     }
 
-    private func perform(_ request: URLRequest, exchangingCode: Bool = false) async throws -> Data {
+    /// Reads at most five unread Inbox message headers. A missing/failed header
+    /// read is counted, never transformed into an empty Inbox. No body is requested.
+    public func unreadInboxMessages(session: GmailAccessSession) async throws -> GmailUnreadMessagesSnapshot {
+        try requireReading(session)
+        let request = try messageRequest(path: "messages", query: [
+            .init(name: "labelIds", value: "INBOX"), .init(name: "labelIds", value: "UNREAD"),
+            .init(name: "maxResults", value: "5"), .init(name: "includeSpamTrash", value: "false"),
+            .init(name: "fields", value: "messages(id),nextPageToken,resultSizeEstimate")
+        ], session: session)
+        let listing = try GmailMessageDecoder.list(from: await perform(request))
+        var messages: [GmailMessageSummary] = []
+        var failed = 0
+        for id in listing.ids {
+            try requireReading(session)
+            do {
+                let metadata = try messageRequest(path: "messages/\(id)", query: [
+                    .init(name: "format", value: "metadata"),
+                    .init(name: "metadataHeaders", value: "From"), .init(name: "metadataHeaders", value: "Subject"),
+                    .init(name: "fields", value: "id,internalDate,payload(headers)")
+                ], session: session)
+                let data = try await perform(metadata)
+                try requireReading(session)
+                messages.append(try GmailMessageDecoder.summary(from: data, expectedID: id))
+            } catch {
+                try Task.checkCancellation()
+                if error is CancellationError { throw CancellationError() }
+                if let error = error as? GmailConnectionError,
+                   [.permissionDenied, .sessionExpired, .readAccessRequired].contains(error) { throw error }
+                failed += 1
+            }
+        }
+        try requireReading(session)
+        return GmailUnreadMessagesSnapshot(messages: messages, failedMessageCount: failed,
+                                          hasMore: listing.hasMore, retrievedAt: now())
+    }
+
+    /// Fetches just the selected message. MIME extraction produces bounded text;
+    /// HTML is never rendered, and attachment IDs are never followed.
+    public func message(id: String, session: GmailAccessSession) async throws -> GmailMessage {
+        try requireReading(session)
+        guard GmailMessageDecoder.validID(id) else { throw GmailConnectionError.invalidResponse }
+        let request = try messageRequest(path: "messages/\(id)", query: [
+            .init(name: "format", value: "full"), .init(name: "fields", value: "id,internalDate,payload")
+        ], session: session)
+        let data = try await perform(request, maximumBytes: GmailMessageLimits.maximumWireBytes)
+        try requireReading(session)
+        return try GmailMessageDecoder.message(from: data, expectedID: id, retrievedAt: now())
+    }
+
+    private func requireReading(_ session: GmailAccessSession) throws {
+        try Task.checkCancellation()
+        guard session.canReadMessages else { throw GmailConnectionError.readAccessRequired }
+        guard session.expiresAt.timeIntervalSince(now()) > 30 else { throw GmailConnectionError.sessionExpired }
+    }
+
+    private func messageRequest(path: String, query: [URLQueryItem], session: GmailAccessSession) throws -> URLRequest {
+        var components = URLComponents(string: "https://gmail.googleapis.com/gmail/v1/users/me/\(path)")!
+        components.queryItems = query
+        guard let url = components.url else { throw GmailConnectionError.invalidResponse }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return request
+    }
+
+    private func perform(_ request: URLRequest, exchangingCode: Bool = false, maximumBytes: Int = 65_536) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -235,6 +324,7 @@ public final class GmailConnectionService {
         } catch {
             try Task.checkCancellation()
             if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+            if let error = error as? GmailConnectionError { throw error }
             if error is URLError { throw GmailConnectionError.networkUnavailable }
             throw GmailConnectionError.serviceUnavailable
         }
@@ -246,11 +336,13 @@ public final class GmailConnectionService {
         case 300...399: throw GmailConnectionError.redirectRejected
         case 401: throw GmailConnectionError.sessionExpired
         case 403: throw GmailConnectionError.permissionDenied
+        case 404: throw GmailConnectionError.messageUnavailable
         case 429: throw GmailConnectionError.rateLimited
         case 400 where exchangingCode: throw GmailConnectionError.authorizationFailed
         default: throw GmailConnectionError.serviceUnavailable
         }
-        guard data.count <= 65_536, http.mimeType == "application/json" else { throw GmailConnectionError.invalidResponse }
+        guard data.count <= maximumBytes else { throw GmailConnectionError.messageTooLarge }
+        guard http.mimeType == "application/json" else { throw GmailConnectionError.invalidResponse }
         return data
     }
 
@@ -296,7 +388,19 @@ private final class GmailEphemeralTransport {
     }
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let (bytes, response) = try await session.bytes(for: request)
+        defer { bytes.task.cancel() }
+        guard response.expectedContentLength <= GmailMessageLimits.maximumWireBytes else {
+            throw GmailConnectionError.messageTooLarge
+        }
+        var data = Data()
+        for try await byte in bytes {
+            if data.count.isMultiple(of: 4_096) { try Task.checkCancellation() }
+            guard data.count < GmailMessageLimits.maximumWireBytes else { throw GmailConnectionError.messageTooLarge }
+            data.append(byte)
+        }
+        try Task.checkCancellation()
+        return (data, response)
     }
 
     deinit { session.invalidateAndCancel() }

@@ -12,6 +12,7 @@
 		04263CEFB37B163127F2D0C2 /* MorningOpeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 932EF991B0E0976538F9B5B5 /* MorningOpeningView.swift */; };
 		067D710ACA9C548538C31539 /* LearnAndSetupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2FB1EC4617F434D5F459B6 /* LearnAndSetupViews.swift */; };
 		06E46596DA50049E51AAAE76 /* MorningPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25987AA3F93570E4CED0B631 /* MorningPrivacyView.swift */; };
+		08F2920020CE53509B8178D1 /* GmailMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A810C8149FA0ADB203403E /* GmailMessageView.swift */; };
 		0CE520513564C2856C889BC2 /* RecordingProvenanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B07E2228630BD1678C3BD3 /* RecordingProvenanceTests.swift */; };
 		12E45878E7091717E2E2BECF /* RoutineEvidenceProposalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479AB234D28356AD1BD23AF8 /* RoutineEvidenceProposalTests.swift */; };
 		15BB804A00F28C32E321141B /* OnDeviceLearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E912DF2E476E75231A5383 /* OnDeviceLearningTests.swift */; };
@@ -167,7 +168,6 @@
 
 /* Begin PBXFileReference section */
 		02C6CF87FDCFB10E818EADD0 /* RecordedObservationModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordedObservationModelTests.swift; sourceTree = "<group>"; };
-		054E5F5EA13EBC584169AFDD /* latest-more */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "latest-more"; path = .; sourceTree = SOURCE_ROOT; };
 		05E307E09E81E9A3AFEE9AFE /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		0814A1DE4C0A82002840418D /* MorningActivitySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningActivitySettingsView.swift; sourceTree = "<group>"; };
 		0B13EE8866E05CC2C7EF64E1 /* BlankObservationImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlankObservationImportTests.swift; sourceTree = "<group>"; };
@@ -180,6 +180,7 @@
 		1EBCD13C76AC1673A5ABB265 /* ObservationReviewJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationReviewJourneyTests.swift; sourceTree = "<group>"; };
 		1EFA89F213C07A94F3F3D2CE /* RoutineTransferViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineTransferViews.swift; sourceTree = "<group>"; };
 		1F84B24064F307F7E5025342 /* RecordingLearningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingLearningTests.swift; sourceTree = "<group>"; };
+		20265300E9A9228954827BDB /* gmail-reading-replies */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "gmail-reading-replies"; path = .; sourceTree = SOURCE_ROOT; };
 		236ACA44D0A812AC0CFA3A5C /* MorningRecordingStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningRecordingStatus.swift; sourceTree = "<group>"; };
 		2463896AFD47FCF94B53C233 /* MorningStore+StepTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+StepTimer.swift"; sourceTree = "<group>"; };
 		24F5E80A4E3FEC576BDAA690 /* ObservationReviewUITestFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationReviewUITestFixture.swift; sourceTree = "<group>"; };
@@ -252,6 +253,7 @@
 		BA6BF52226B552A07B4ACD44 /* MorningPaperSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningPaperSurface.swift; sourceTree = "<group>"; };
 		BDCC683CD3C90B5FFD65B77C /* WebRoutineJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebRoutineJourneyTests.swift; sourceTree = "<group>"; };
 		BFB9060C58B99BC4484E2765 /* SunriseDockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunriseDockTests.swift; sourceTree = "<group>"; };
+		C0A810C8149FA0ADB203403E /* GmailMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailMessageView.swift; sourceTree = "<group>"; };
 		C1DA39ECB4DB4D344A67FD89 /* PlanBSettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanBSettingsViews.swift; sourceTree = "<group>"; };
 		C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailConnectionView.swift; sourceTree = "<group>"; };
 		C5E00F7E37441A95A894E9C5 /* AddStepTimeIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStepTimeIntent.swift; sourceTree = "<group>"; };
@@ -320,7 +322,7 @@
 		159866F1FDFE6438D4F08CA7 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				054E5F5EA13EBC584169AFDD /* latest-more */,
+				20265300E9A9228954827BDB /* gmail-reading-replies */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -424,6 +426,7 @@
 				F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */,
 				E3A4E32627DA271ED0E49A94 /* GmailConnectionController.swift */,
 				C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */,
+				C0A810C8149FA0ADB203403E /* GmailMessageView.swift */,
 				AD2FB1EC4617F434D5F459B6 /* LearnAndSetupViews.swift */,
 				4F1A4DDE271AE7DE15330EEF /* MorningActivityDiagnostics.swift */,
 				0814A1DE4C0A82002840418D /* MorningActivitySettingsView.swift */,
@@ -779,6 +782,7 @@
 				9A8B244DD216406D67AD84A3 /* DesignSystem.swift in Sources */,
 				BC03B0A17545825849E082F4 /* GmailConnectionController.swift in Sources */,
 				8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */,
+				08F2920020CE53509B8178D1 /* GmailMessageView.swift in Sources */,
 				067D710ACA9C548538C31539 /* LearnAndSetupViews.swift in Sources */,
 				4DE3FED32FD66348C7B86B91 /* MorningActivityDiagnostics.swift in Sources */,
 				68BADEEAA81EAA79C508218C /* MorningActivitySettingsView.swift in Sources */,

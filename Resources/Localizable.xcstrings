@@ -14842,6 +14842,296 @@
           }
         }
       }
+    },
+    "This Gmail session, messages and local replies clear when you leave this screen or background MORE. Manage Google access in your Google Account.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session Gmail, les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan. Gérez l’accès Google dans votre compte Google."
+          }
+        }
+      }
+    },
+    "Choose message reading or an unread count only.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez de lire vos messages ou de consulter seulement leur nombre."
+          }
+        }
+      }
+    },
+    "To read messages, Google will ask for read-only access to message text.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour lire les messages, Google vous demandera un accès en lecture seule à leur contenu."
+          }
+        }
+      }
+    },
+    "Refresh unread messages": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser les messages non lus"
+          }
+        }
+      }
+    },
+    "Read messages": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire les messages"
+          }
+        }
+      }
+    },
+    "Refresh unread count": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser le nombre de messages non lus"
+          }
+        }
+      }
+    },
+    "Connect Gmail · count only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecter Gmail · nombre uniquement"
+          }
+        }
+      }
+    },
+    "Reading Gmail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture de Gmail"
+          }
+        }
+      }
+    },
+    "Unread Inbox": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages non lus"
+          }
+        }
+      }
+    },
+    "No unread messages in Inbox.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun message non lu dans la boîte de réception."
+          }
+        }
+      }
+    },
+    "No subject": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans objet"
+          }
+        }
+      }
+    },
+    "%lld messages could not be loaded. Try refreshing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld messages n’ont pas pu être chargés. Essayez d’actualiser."
+          }
+        }
+      }
+    },
+    "Showing up to five unread messages.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affichage de cinq messages non lus au maximum."
+          }
+        }
+      }
+    },
+    "This list needs a refresh.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette liste doit être actualisée."
+          }
+        }
+      }
+    },
+    "Back to Inbox": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour à la boîte de réception"
+          }
+        }
+      }
+    },
+    "This message has no readable plain-text body here. You can write a reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le contenu de ce message ne peut pas être lu ici. Vous pouvez écrire une réponse ci-dessous."
+          }
+        }
+      }
+    },
+    "Reading message…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture du message…"
+          }
+        }
+      }
+    },
+    "Your reply": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre réponse"
+          }
+        }
+      }
+    },
+    "Your reply, in a few words": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre réponse en quelques mots"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facultatif"
+          }
+        }
+      }
+    },
+    "Prepare reply": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparer une réponse"
+          }
+        }
+      }
+    },
+    "Editable reply": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse modifiable"
+          }
+        }
+      }
+    },
+    "Copy reply": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier la réponse"
+          }
+        }
+      }
+    },
+    "Review and edit before copying. Nothing is sent or saved to Gmail.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relisez et modifiez avant de copier. Rien n’est envoyé ni enregistré dans Gmail."
+          }
+        }
+      }
+    },
+    "Prepared on this iPhone. Review before copying.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparé sur cet iPhone. Relisez avant de copier."
+          }
+        }
+      }
+    },
+    "A reply could not be prepared. You can write one below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de préparer une réponse. Vous pouvez en écrire une ci-dessous."
+          }
+        }
+      }
+    },
+    "Copied.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copié."
+          }
+        }
+      }
+    },
+    "Only part of this message is available. You can write a reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seule une partie de ce message est disponible. Vous pouvez écrire une réponse ci-dessous."
+          }
+        }
+      }
+    },
+    "This message could not be read. Choose another message or refresh the Inbox.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire ce message. Choisissez-en un autre ou actualisez la boîte de réception."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

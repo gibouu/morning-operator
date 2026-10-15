@@ -310,11 +310,21 @@ enum OwnInterfaceWording {
             shown("Connect my websites", fr: "Connecter mes sites")
         ]),
         Screen(name: "Gmail connection", copy: [
-            shown("Read the number of unread messages in your Gmail inbox. Google asks for read-only metadata access; MORE does not read message bodies.", fr: "Consultez le nombre de messages non lus dans votre boîte Gmail. Google demande l’accès aux métadonnées en lecture seule ; MORE ne lit pas le contenu des messages."),
-            shown("This session and its count clear when you leave this screen or background MORE. Manage the Google account grant in your Google Account.", fr: "La session et son résultat sont effacés en quittant cet écran ou en passant MORE en arrière-plan. Gérez l’autorisation Google dans votre compte Google.")
+            shown("Choose message reading or an unread count only.", fr: "Choisissez de lire vos messages ou de consulter seulement leur nombre."),
+            shown("This Gmail session, messages and local replies clear when you leave this screen or background MORE. Manage Google access in your Google Account.", fr: "La session Gmail, les messages et les réponses locales sont effacés lorsque vous quittez cet écran ou passez MORE en arrière-plan. Gérez l’accès Google dans votre compte Google."),
+            earlier("Read the number of unread messages in your Gmail inbox. Google asks for read-only metadata access; MORE does not read message bodies.", "Consultez le nombre de messages non lus dans votre boîte Gmail. Google demande l’accès aux métadonnées en lecture seule ; MORE ne lit pas le contenu des messages."),
+            earlier("This session and its count clear when you leave this screen or background MORE. Manage the Google account grant in your Google Account.", "La session et son résultat sont effacés en quittant cet écran ou en passant MORE en arrière-plan. Gérez l’autorisation Google dans votre compte Google.")
         ], controls: [
-            shown("Connect Gmail", fr: "Connecter Gmail"),
-            shown("Refresh Gmail", fr: "Actualiser Gmail")
+            shown("Read messages", fr: "Lire les messages"),
+            shown("Connect Gmail · count only", fr: "Connecter Gmail · nombre uniquement"),
+            earlier("Connect Gmail", "Connecter Gmail", "Refresh Gmail", "Actualiser Gmail")
+        ]),
+        Screen(name: "Gmail local reply", copy: [
+            shown("Your reply, in a few words", fr: "Votre réponse en quelques mots"),
+            shown("Review and edit before copying. Nothing is sent or saved to Gmail.", fr: "Relisez et modifiez avant de copier. Rien n’est envoyé ni enregistré dans Gmail.")
+        ], controls: [
+            shown("Prepare reply", fr: "Préparer une réponse"),
+            shown("Copy reply", fr: "Copier la réponse")
         ]),
         Screen(name: "Browser learning", copy: [
             shown("Learning your scroll and tap rhythm", fr: "Apprentissage du rythme de vos gestes"),
