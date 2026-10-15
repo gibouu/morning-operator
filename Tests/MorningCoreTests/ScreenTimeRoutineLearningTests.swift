@@ -429,6 +429,43 @@ struct ScreenTimeRoutineLearningTests {
 
     // MARK: The draft and the saved suggestion
 
+    @Test("A learned Gmail moment retains its native reader through review and saved proposal construction")
+    func gmailReaderSurvivesLearningReviewAndDraftWithoutChangingApprovedRoutine() throws {
+        let unknownID = "com.example.UnlistedMail"
+        let learning = learn(ordinaryDay(14, extra: [app("com.google.Gmail", 5), app(unknownID, 3)]),
+                             queryStart: at(18, day: 13))
+        let approved = RoutineVersion(number: 4, sourceLabel: "From Screen Time", steps: [
+            RoutineStep(title: "Gmail", kind: .messages, durationMinutes: 5)
+        ]).approved()
+        let savedApproved = try JSONEncoder().encode(approved)
+        var proposal = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15),
+            baseRoutineID: approved.id, calendar: calendar()))
+        let gmailIndex = try #require(proposal.steps.firstIndex { $0.bundleIdentifier == "com.google.Gmail" })
+        let unknownIndex = try #require(proposal.steps.firstIndex { $0.bundleIdentifier == unknownID })
+        let whatsappIndex = try #require(proposal.steps.firstIndex { $0.bundleIdentifier == "net.whatsapp.WhatsApp" })
+        proposal.setMinutes(7, stepID: proposal.steps[gmailIndex].id)
+        let restoredProposal = try JSONDecoder().decode(ScreenTimeRoutineProposal.self,
+            from: JSONEncoder().encode(proposal))
+        let draft = try restoredProposal.draft(preserving: approved)
+        let gmail = draft.steps[gmailIndex]
+        guard case let .inAppWeb(url) = gmail.target else {
+            Issue.record("A reviewed Gmail suggestion must open the existing in-MORE Gmail reader")
+            return
+        }
+        #expect(WebMorningSite(url: url) == .gmail)
+        #expect(gmail.target?.externalURL == nil)
+        #expect(gmail.durationMinutes == 7)
+        #expect(gmail.automation == nil)
+        #expect(draft.steps[unknownIndex].target == nil)
+        #expect(draft.steps[whatsappIndex].target == .externalApp(.whatsapp, detail: nil))
+        #expect(!draft.isApproved)
+        #expect(draft.number == approved.number + 1)
+        let restoredApproved = try JSONDecoder().decode(RoutineVersion.self, from: savedApproved)
+        #expect(restoredApproved == approved)
+        #expect(restoredApproved.isApproved)
+        #expect(restoredApproved.steps[0].target == nil)
+    }
+
     @Test func theDraftHasOnlyIncludedStepsWithEditedMinutesAndIsNotApproved() throws {
         let learning = learn(ordinaryDay(14), queryStart: at(18, day: 13))
         var proposal = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15), baseRoutineID: nil, calendar: calendar()))
