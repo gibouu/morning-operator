@@ -2620,16 +2620,6 @@
         }
       }
     },
-    "A few things, your way.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quelques réglages, à votre façon."
-          }
-        }
-      }
-    },
     "A fresh start.": {
       "localizations": {
         "fr": {
@@ -4280,16 +4270,6 @@
         }
       }
     },
-    "Choose what to connect and how you'd like your morning to sound.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisissez ce que vous connectez et comment votre matinée doit sonner."
-          }
-        }
-      }
-    },
     "Choose what you'd like to hear before the rest of your morning.": {
       "localizations": {
         "fr": {
@@ -5620,16 +5600,6 @@
         }
       }
     },
-    "Hear the next step as you move through your routine.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entendez l’étape suivante au fil de votre routine."
-          }
-        }
-      }
-    },
     "Hear this recap": {
       "localizations": {
         "fr": {
@@ -6230,16 +6200,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Faites de votre matinée la vôtre."
-          }
-        }
-      }
-    },
-    "Make yourself at home": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Faites comme chez vous"
           }
         }
       }
@@ -12376,16 +12336,6 @@
         }
       }
     },
-    "Your current routine stays ready while you review a suggestion. Approve it when it fits, or keep the morning you already have.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre routine actuelle reste prête pendant que vous relisez une suggestion. Approuvez-la si elle vous convient, ou gardez la matinée que vous avez déjà."
-          }
-        }
-      }
-    },
     "Your day": {
       "localizations": {
         "fr": {
@@ -12752,16 +12702,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Votre routine a changé pendant que ce fichier était ouvert. Annulez et rouvrez le fichier pour le relire."
-          }
-        }
-      }
-    },
-    "Your routine stays in your hands": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre routine reste entre vos mains"
           }
         }
       }
