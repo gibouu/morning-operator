@@ -43,11 +43,16 @@ struct WebMorningView: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
-            WebMorningWebView(webView: controller.webView)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .padding(.horizontal, 10)
-                .accessibilityIdentifier("web.page")
-            if let onSignInReady {
+            if site == .gmail {
+                ScrollView { GmailConnectionView(allowsReading: isStepActive).padding(24) }
+            } else {
+                WebMorningWebView(webView: controller.webView)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .padding(.horizontal, 10)
+                    .accessibilityIdentifier("web.page")
+            }
+            if site == .gmail { bottomBar }
+            else if let onSignInReady {
                 HStack(spacing: 12) {
                     Button { controller.reload() } label: {
                         MorningDottedIcon(systemName: "arrow.clockwise").frame(width: 24, height: 24).frame(width: 44, height: 44)
@@ -66,10 +71,10 @@ struct WebMorningView: View {
         .tint(MorningStyle.accent)
         .sheet(isPresented: $showingAbout) { about }
         .onAppear {
-            controller.startIfNeeded()
+            if site != .gmail { controller.startIfNeeded() }
             controller.actionsEnabled = isStepActive && scenePhase == .active
             controller.learningAllowed = learningOnly && scenePhase == .active
-            if !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
+            if site != .gmail && !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
         }
         .onChange(of: scenePhase) { _, phase in
             controller.actionsEnabled = isStepActive && phase == .active && !showingAbout
@@ -88,7 +93,7 @@ struct WebMorningView: View {
             Button(action: onClose) {
                 MorningDottedIcon(systemName: "xmark").frame(width: 23, height: 23).frame(width: 44, height: 44)
             }.accessibilityLabel(text("Close", "Fermer")).accessibilityIdentifier("web.close")
-            Text(controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
+            Text(site == .gmail || controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
                 .font(.caption).foregroundStyle(MorningStyle.muted).lineLimit(1)
                 .accessibilityIdentifier("web.host")
             Spacer(minLength: 4)
@@ -179,12 +184,14 @@ struct WebMorningView: View {
                     .disabled(controller.isRunning || controller.isLearning || controller.isClearing || controller.isSignInPage || !controller.actionsEnabled)
                     .accessibilityIdentifier("web.\(task.rawValue)")
                 }
-                Button { controller.reload() } label: {
-                    MorningDottedIcon(systemName: "arrow.clockwise").frame(width: 23, height: 23).frame(width: 44, height: 44)
-                }.accessibilityLabel(text("Reload page", "Recharger la page")).accessibilityIdentifier("web.reload")
-                Button { showingAbout = true } label: {
-                    MorningDottedIcon(systemName: "info.circle").frame(width: 23, height: 23).frame(width: 44, height: 44)
-                }.accessibilityLabel(text("About this screen", "À propos de cet écran"))
+                if site != .gmail {
+                    Button { controller.reload() } label: {
+                        MorningDottedIcon(systemName: "arrow.clockwise").frame(width: 23, height: 23).frame(width: 44, height: 44)
+                    }.accessibilityLabel(text("Reload page", "Recharger la page")).accessibilityIdentifier("web.reload")
+                    Button { showingAbout = true } label: {
+                        MorningDottedIcon(systemName: "info.circle").frame(width: 23, height: 23).frame(width: 44, height: 44)
+                    }.accessibilityLabel(text("About this screen", "À propos de cet écran"))
+                }
                 Spacer(minLength: 0)
                 Button {
                     if let onExtend { onExtend() } else { clock.extend(at: Date()) }
@@ -203,6 +210,7 @@ struct WebMorningView: View {
     }
 
     private var resultLine: String? {
+        if site == .gmail { return nil }
         if controller.loadFailed { return text("Page unavailable. Try reload.", "Page indisponible. Réessayez.") }
         if controller.isSignInPage { return text("Sign in on the page.", "Connectez-vous sur la page.") }
         switch controller.outcome {

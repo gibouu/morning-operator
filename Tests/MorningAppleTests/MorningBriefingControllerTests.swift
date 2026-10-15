@@ -136,6 +136,59 @@ struct MorningBriefingControllerTests {
         #expect(result.weatherAttribution == nil)
     }
 
+    @Test func knownCalendarChangeInvalidatesPinnedTextAndBypassesTheFreshCache() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let calendar = BriefingCalendarFixture()
+        let controller = makeController(directory: directory, calendar: calendar, weather: { _ in
+            throw WeatherObservationError.serviceUnavailable
+        })
+        try controller.updateSettings(.init(calendarIDs: [calendar.choice.id]))
+        let original = try #require(await controller.refresh())
+        let sameRevision = try #require(await controller.refresh())
+        #expect(calendar.reads == 1)
+        #expect(controller.permitsPlayback(of: original), "An ordinary preview refresh preserves still-current pinned text.")
+        #expect(controller.permitsPlayback(of: sameRevision))
+        calendar.eventTitle = "SYNTHETIC_UPDATED_EVENT"
+        calendar.changeRevision += 1
+        #expect(original.isCurrent(at: referenceDate, timeZoneIdentifier: "UTC"), "The TTL has not expired.")
+        #expect(!controller.permitsPlayback(of: original))
+        #expect(!controller.permitsPlayback(of: sameRevision))
+        #expect(calendar.reads == 1, "Admission must never fetch or replace pinned text.")
+
+        let updated = try #require(await controller.refresh())
+        #expect(calendar.reads == 2, "A known change bypasses the fresh timestamp cache.")
+        #expect(updated.spokenText.contains("SYNTHETIC_UPDATED_EVENT"))
+        #expect(!updated.spokenText.contains("SYNTHETIC_PRIVATE_EVENT_TITLE"))
+        #expect(controller.permitsPlayback(of: updated))
+        #expect(!controller.permitsPlayback(of: original), "Refreshing the same local instant cannot reauthorize old prose.")
+        #expect(calendar.permissionRequests == 0)
+    }
+
+    @Test func calendarChangeWhileWeatherIsSuspendedIsRereadBeforePublication() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let calendar = BriefingCalendarFixture()
+        let gate = BriefingWeatherGate()
+        let location = try syntheticLocation()
+        let weather = try syntheticWeather(location: location)
+        let controller = makeController(directory: directory, calendar: calendar, weather: { _ in try await gate.value() })
+        try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: location))
+        let refresh = Task { await controller.refresh() }
+        await gate.waitUntilCalled()
+        #expect(calendar.reads == 1)
+        calendar.eventTitle = "SYNTHETIC_CHANGED_DURING_WEATHER"
+        calendar.changeRevision += 1
+        gate.release(weather)
+        let result = try #require(await refresh.value)
+        #expect(calendar.reads == 2)
+        #expect(result.calendar.status == .fresh && result.weather.status == .fresh)
+        #expect(result.spokenText.contains("SYNTHETIC_CHANGED_DURING_WEATHER"))
+        #expect(!result.spokenText.contains("SYNTHETIC_PRIVATE_EVENT_TITLE"))
+        #expect(controller.permitsPlayback(of: result))
+        #expect(calendar.permissionRequests == 0)
+    }
+
     @Test func concurrentRefreshesShareOneSourceReadAndFreshPreparation() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -345,6 +398,8 @@ private final class BriefingCalendarFixture: CalendarObservationProviding {
     var authorized = true
     var isAvailable = true
     var reads = 0
+    var changeRevision: UInt64 = 0
+    var eventTitle = "SYNTHETIC_PRIVATE_EVENT_TITLE"
     var permissionRequests = 0
     var isAuthorized: Bool { authorized }
     func requestAccess() async throws -> Bool { permissionRequests += 1; return authorized }
@@ -352,7 +407,7 @@ private final class BriefingCalendarFixture: CalendarObservationProviding {
     func events(in interval: DateInterval, calendarIDs: Set<String>) throws -> [CalendarObservationEvent] {
         reads += 1
         return [CalendarObservationEvent(id: "synthetic-all-day", calendarID: choice.id,
-            title: "SYNTHETIC_PRIVATE_EVENT_TITLE", start: interval.start, end: interval.end, isAllDay: true)]
+            title: eventTitle, start: interval.start, end: interval.end, isAllDay: true)]
     }
 }
 

@@ -45,6 +45,9 @@ struct WebMorningTests {
     }
 
     @Test func tasksRunOnlyWhereTheTableOffersThem() {
+        #expect(WebMorningSite.gmail.table.tasks.isEmpty)
+        #expect(WebMorningPolicy.refusal(for: .unreadCount, on: .gmail, at: url("https://mail.google.com/mail/u/0/")) == .notOffered)
+        #expect(WebMorningPolicy.script(for: .unreadCount, on: .gmail) == nil)
         #expect(WebMorningPolicy.refusal(for: .headlines, on: .news, at: url("https://www.lemonde.fr/")) == nil)
         #expect(WebMorningPolicy.refusal(for: .nextVideo, on: .news, at: url("https://www.lemonde.fr/")) == .notOffered)
         #expect(WebMorningPolicy.refusal(for: .unreadCount, on: .instagram, at: url("https://www.instagram.com/")) == nil)

@@ -26,7 +26,7 @@ MORE prepares configured sources when the app enters the foreground, then checks
 
 | Source | Freshness rule |
 |---|---|
-| Calendar | Local EventKit read less than five minutes old, correct day/zone and valid selected calendars. The next event boundary can expire the recap sooner. The read time is not a remote-account synchronization timestamp. |
+| Calendar | Local EventKit read less than five minutes old, correct day/zone and valid selected calendars. A known EventKit store change invalidates playback admission and the next refresh re-reads the range. The next event boundary can expire the recap sooner. The read time is not a remote-account synchronization timestamp. |
 | Weather | Retrieval and conditions times less than 30 minutes old; Apple's expiry can shorten this. Future or inconsistent timestamps are rejected. |
 | Both | Midnight, a time-zone change, changed source settings or revoked access require revalidation. Each source can fail independently. Weather requests have a bounded deadline. |
 
@@ -68,7 +68,7 @@ City search sends the query to Apple Maps. Weather retrieval sends the selected 
 
 ## Developer setup and remaining checks
 
-The app target declares `com.apple.developer.weatherkit`. Its App ID and provisioning profile must also have WeatherKit enabled. Merely adding the entitlement to the source does not establish service authorization. In the current setup, signing reports no connected Xcode account and a cached wildcard profile without WeatherKit. Reconnect the developer account in Xcode → Settings → Accounts, then regenerate signing with the WeatherKit capability. Unsigned compilation does not make an installable build.
+The app target declares `com.apple.developer.weatherkit`. Its App ID and provisioning profile must also have WeatherKit enabled, including the App ID's WeatherKit app service. Merely adding the entitlement to source does not establish service authorization. Earlier missing-account/wildcard-profile reports are historical; newer [current direction](CURRENT-DIRECTION.md) records a signed build with WeatherKit. This audit does not recheck that account/profile or establish a live WeatherKit response. Unsigned compilation does not make an installable build. See the [connection evidence](CONNECTION-EVIDENCE.md) for per-service requirements and remaining owner checks.
 
 The local test providers contain labeled synthetic calendars, cities and conditions. They test selection, source failures, freshness, cancellation, storage and playback identity without reading a person's calendar or contacting Apple Weather. They do not prove real service access, image attribution rendering, microphone operation or listener audibility.
 

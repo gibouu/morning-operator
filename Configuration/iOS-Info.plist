@@ -4,6 +4,8 @@
 <dict>
 	<key>MorningURLScheme</key>
 	<string>more</string>
+	<key>MOREGoogleClientID</key>
+	<string>$(MORE_GOOGLE_CLIENT_ID)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>PatrickHand-Regular.ttf</string>
@@ -43,6 +45,14 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>more</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.gibouu.morningoperator.google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(MORE_GOOGLE_CALLBACK_SCHEME)</string>
 			</array>
 		</dict>
 	</array>

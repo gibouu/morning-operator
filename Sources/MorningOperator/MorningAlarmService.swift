@@ -18,6 +18,7 @@ final class MorningAlarmService {
     private(set) var status = String(localized: "Off")
     private(set) var busy = false
     private var recorded: ScheduledMorningAlarm?
+    @ObservationIgnored private var systemObservers: [Task<Void, Never>] = []
     #if DEBUG
     /// Scalar diagnostics only: no alarm identities or account data enter test evidence.
     var nativeDiagnostic: String {
@@ -43,9 +44,47 @@ final class MorningAlarmService {
     }
     private let file = AtomicJSONFile<MorningAlarmFile>(url: LocalDataControl.defaultDirectory.appendingPathComponent("morning-alarm.json"))
     private init() {
-        guard let saved = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess({ _ in try file.load() }) else { return }
-        setting = saved.setting; recorded = saved.recorded
-        status = setting.isEnabled ? String(localized: "Check your scheduled alarm") : String(localized: "Off")
+        if let saved = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess({ _ in try file.load() }) {
+            setting = saved.setting; recorded = saved.recorded
+            status = setting.isEnabled ? String(localized: "Check your scheduled alarm") : String(localized: "Off")
+        }
+        guard !isIsolatedTest else { return }
+        refreshSystemStatus()
+        // AlarmKit owns the schedule and permission outside this process. These
+        // observations only reconcile the displayed status; they never reschedule
+        // an alarm or request permission without the person's Save action.
+        systemObservers = [
+            Task { [weak self] in
+                for await _ in AlarmManager.shared.alarmUpdates {
+                    guard !Task.isCancelled, let self else { return }
+                    if !self.busy { self.refreshSystemStatus() }
+                }
+            },
+            Task { [weak self] in
+                for await _ in AlarmManager.shared.authorizationUpdates {
+                    guard !Task.isCancelled, let self else { return }
+                    if !self.busy { self.refreshSystemStatus() }
+                }
+            }
+        ]
+    }
+
+    private func refreshSystemStatus() {
+        guard !isIsolatedTest,
+              let privacy = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
+              !privacy.forgetPending else { return }
+        guard setting.isEnabled else { status = String(localized: "Off"); return }
+        guard AlarmManager.shared.authorizationState == .authorized else {
+            status = String(localized: "Allow alarms for MORE in Settings, then save again."); return
+        }
+        guard let alarms = try? AlarmManager.shared.alarms else {
+            status = String(localized: "The scheduled alarm couldn't be checked. Try saving again."); return
+        }
+        guard let recorded, alarms.contains(where: { $0.id == recorded.id }),
+              recorded.hour == setting.hour, recorded.minute == setting.minute else {
+            status = String(localized: "Your morning alarm is missing. Save again to schedule it."); return
+        }
+        status = String(localized: "Scheduled every day")
     }
 
     /// Permission is requested only from this explicit Save action.
@@ -103,7 +142,7 @@ final class MorningAlarmService {
                     try file.save(MorningAlarmFile(setting: desired, recorded: newRecord))
                 }
             recorded = newRecord; setting = desired
-            status = desired.isEnabled ? String(localized: "Scheduled every day") : String(localized: "Off")
+            refreshSystemStatus()
         } catch { status = String(localized: "The alarm couldn't be saved. Check it and try again. \(error.localizedDescription)") }
     }
 

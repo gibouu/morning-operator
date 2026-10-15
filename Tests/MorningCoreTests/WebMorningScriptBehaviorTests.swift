@@ -16,7 +16,7 @@ struct WebMorningScriptBehaviorTests {
         var touched = false;
         Object.defineProperty(this, 'document', {get() {touched=true; throw Error('DOM touched');}});
         """)
-        let script = try #require(WebMorningPolicy.script(for: .unreadCount, on: .gmail))
+        let script = try #require(WebMorningPolicy.script(for: .unreadCount, on: .instagram))
         let result = try #require(context.evaluateScript(script)?.toString())
         #expect(WebMorningOutcome.parse(result, task: .unreadCount) == .unsupported("layout"))
         #expect(context.objectForKeyedSubscript("touched")?.toBool() == false)

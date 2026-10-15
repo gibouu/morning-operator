@@ -50,7 +50,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private static let rhythmWorld = WKContentWorld.world(name: "MOREBrowserRhythm")
     var canLearn: Bool {
         privacyIsCurrent && learningAllowed && UIApplication.shared.applicationState == .active &&
-            !isSignInPage && !isClearing && !isRunning && !isFinishingLearning && !webView.isLoading &&
+            !isSignInPage && !loadFailed && !isClearing && !isRunning && !isFinishingLearning && !webView.isLoading &&
             BrowserRhythmPolicy.permits(site: site, url: webView.url)
     }
     @ObservationIgnored private var pageGeneration = 0
@@ -92,7 +92,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     @discardableResult
     func run(_ task: WebMorningTask) async -> WebMorningOutcome {
-        guard privacyIsCurrent, actionsEnabled, !isLearning, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
+        guard privacyIsCurrent, actionsEnabled, UIApplication.shared.applicationState == .active,
+              !loadFailed, !isLearning, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
         let generation = pageGeneration
         let page = webView.url
         let privacyEpoch = privacyAtCreation?.generation
@@ -102,7 +103,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         // result into the replacement page or writing a stale action log.
         guard let privacy = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
               !privacy.forgetPending, privacy.generation == privacyEpoch, actionsEnabled,
-              generation == pageGeneration, page == webView.url else { return result }
+              UIApplication.shared.applicationState == .active,
+              !loadFailed, generation == pageGeneration, page == webView.url else { return result }
         outcome = result
         Self.record(result.logLine(site: site, task: task))
         return result
@@ -201,6 +203,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func evaluate(_ task: WebMorningTask) async -> WebMorningOutcome {
+        guard !loadFailed else { return .refused(.notOffered) }
         let page = webView.url
         let generation = pageGeneration
         if let refusal = WebMorningPolicy.refusal(for: task, on: site, at: page) {
@@ -212,7 +215,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         isRunning = true
         defer { isRunning = false }
         let value = try? await webView.evaluateJavaScript(script, contentWorld: .defaultClient)
-        guard privacyIsCurrent, actionsEnabled, generation == pageGeneration, webView.url == page else { return .unsupported("layout") }
+        guard privacyIsCurrent, actionsEnabled, !loadFailed,
+              UIApplication.shared.applicationState == .active,
+              generation == pageGeneration, webView.url == page else { return .unsupported("layout") }
         return WebMorningOutcome.parse(value, task: task)
     }
 
@@ -277,13 +282,27 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) { failed(error) }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) { failed(error) }
 
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        invalidateUnavailablePage()
+        Self.record("WEBMORNING site=\(site.rawValue) load=processTerminated")
+    }
+
     private func failed(_ error: any Error) {
         let code = (error as NSError).code
         guard code != NSURLErrorCancelled else { return }
-        stopLearning()
+        invalidateUnavailablePage()
+        Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)")
+    }
+
+    /// A failed or terminated page cannot retain a successful reader result or
+    /// finish a cadence lesson. Invalidate awaits even when the URL did not change.
+    /// Reload remains an explicit action in the visible browser.
+    private func invalidateUnavailablePage() {
+        pageGeneration += 1
+        discardLearning()
+        outcome = nil
         loadFailed = true
         isSignInPage = true
-        Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)")
     }
 
     private static func record(_ line: String) {

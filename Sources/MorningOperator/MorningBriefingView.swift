@@ -268,7 +268,8 @@ struct MorningBriefingView: View {
             guard let document = await controller.refresh(), scenePhase == .active, previewAttempt == attempt,
                   store.dataGeneration == generation, !store.privacyBlocksWork,
                   !store.sessionActive, !store.voiceInputBlocksPlayback,
-                  document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier) else { return }
+                  document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier),
+                  controller.permitsPlayback(of: document) else { return }
             // This exact document remains visible until a deliberate refresh.
             playingPreview = document
             store.speech.speak(document.spokenText)

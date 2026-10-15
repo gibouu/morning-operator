@@ -14332,6 +14332,96 @@
           }
         }
       }
+    },
+    "Gmail connection cancelled.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion Gmail annulée."
+          }
+        }
+      }
+    },
+    "Gmail is unavailable. Try connecting again from this screen.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail est indisponible. Réessayez de vous connecter depuis cet écran."
+          }
+        }
+      }
+    },
+    "The scheduled alarm couldn't be checked. Try saving again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’alarme programmée n’a pas pu être vérifiée. Réenregistrez-la."
+          }
+        }
+      }
+    },
+    "Your morning alarm is missing. Save again to schedule it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre alarme du matin est absente. Enregistrez-la à nouveau pour la programmer."
+          }
+        }
+      }
+    },
+    "Connect Gmail below, or sign in to the websites your morning uses.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez Gmail ci-dessous ou identifiez-vous sur les sites de votre matin."
+          }
+        }
+      }
+    },
+    "Read the number of unread messages in your Gmail inbox. Google asks for read-only metadata access; MORE does not read message bodies.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultez le nombre de messages non lus dans votre boîte Gmail. Google demande l’accès aux métadonnées en lecture seule ; MORE ne lit pas le contenu des messages."
+          }
+        }
+      }
+    },
+    "This session and its count clear when you leave this screen or background MORE. Manage the Google account grant in your Google Account.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session et son résultat sont effacés en quittant cet écran ou en passant MORE en arrière-plan. Gérez l’autorisation Google dans votre compte Google."
+          }
+        }
+      }
+    },
+    "Connect Gmail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecter Gmail"
+          }
+        }
+      }
+    },
+    "Refresh Gmail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser Gmail"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

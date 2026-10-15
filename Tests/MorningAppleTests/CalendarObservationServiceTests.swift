@@ -1,4 +1,5 @@
 import Foundation
+import EventKit
 import Testing
 @testable import MorningApple
 
@@ -58,6 +59,36 @@ struct CalendarObservationServiceTests {
         #expect(throws: CalendarObservationError.selectedCalendarsUnavailable) {
             try service.snapshot(calendarIDs: [work.id])
         }
+    }
+
+    @Test func nativeChangeNotificationsAdvanceOnlyTheObservedStoresRevision() {
+        let center = NotificationCenter()
+        let store = EKEventStore()
+        let provider = EventKitCalendarObservationProvider(store: store, notificationCenter: center)
+        let service = CalendarObservationService(provider: provider)
+        #expect(service.changeRevision == 0)
+        center.post(name: .EKEventStoreChanged, object: EKEventStore())
+        #expect(service.changeRevision == 0)
+        center.post(name: .EKEventStoreChanged, object: store)
+        center.post(name: .EKEventStoreChanged, object: store)
+        #expect(service.changeRevision == 2)
+        // Component proof only: these synthetic notifications never query events
+        // or request access, and do not establish real EventKit delivery.
+    }
+
+    @Test func snapshotPinsItsChangeRevisionAndRefusesChangesDuringTheRead() throws {
+        let provider = CalendarFixtureProvider(choices: [work])
+        provider.changeRevision = 7
+        let service = CalendarObservationService(provider: provider)
+        let snapshot = try service.snapshot(calendarIDs: [work.id])
+        #expect(snapshot.changeRevision == 7)
+        provider.onRead = { provider.changeRevision += 1 }
+        #expect(throws: CalendarObservationError.changedDuringRead) {
+            try service.snapshot(calendarIDs: [work.id])
+        }
+        provider.onRead = nil
+        let refreshed = try service.snapshot(calendarIDs: [work.id])
+        #expect(refreshed.changeRevision == 8)
     }
 
     @Test func daylightSavingDaysUseLocalCalendarBoundariesAndReadCompletionTime() throws {
@@ -198,6 +229,7 @@ struct CalendarObservationServiceTests {
 
 @MainActor
 private final class CalendarFixtureProvider: CalendarObservationProviding {
+    var changeRevision: UInt64 = 0
     var authorized: Bool
     var choices: [CalendarChoice]
     var records: [CalendarObservationEvent]

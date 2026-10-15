@@ -23,7 +23,7 @@ struct MorningConnectionsView: View {
             case .externalApp(.whatsapp, _): site = .whatsapp
             default: site = nil
             }
-            guard let site, seen.insert(site).inserted else { return nil }
+            guard let site, site != .gmail, seen.insert(site).inserted else { return nil }
             return site
         }
     }
@@ -35,7 +35,7 @@ struct MorningConnectionsView: View {
         }
     }
     private var selectedSites: [WebMorningSite] {
-        WebMorningSite.allCases.filter { selected.contains($0) }
+        WebMorningSite.allCases.filter { $0 != .gmail && selected.contains($0) }
     }
 
     var body: some View {
@@ -60,10 +60,12 @@ struct MorningConnectionsView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         PageHeading(eyebrow: text("Before your first morning", "Avant le premier matin"),
                                     title: text("A little setup. Then you're home.", "Un instant de préparation. Puis à vous de jouer."),
-                                    subtitle: text("Sign in once, here. Your morning uses these same pages.",
-                                                   "Connectez-vous ici une fois. Votre matin utilisera ces mêmes pages."))
+                                    subtitle: text("Connect Gmail below, or sign in to the websites your morning uses.",
+                                                   "Connectez Gmail ci-dessous ou identifiez-vous sur les sites de votre matin."))
+                        GmailConnectionView().id(store.dataGeneration)
+                            .disabled(store.privacyBlocksWork)
                         VStack(spacing: 0) {
-                            ForEach(WebMorningSite.allCases) { site in siteRow(site) }
+                            ForEach(WebMorningSite.allCases.filter { $0 != .gmail }) { site in siteRow(site) }
                         }
                         Button {
                             queue = selectedSites.filter { !ready.contains($0) }
@@ -79,7 +81,7 @@ struct MorningConnectionsView: View {
                             Text(text("Marked ready by you. Sites may ask you to sign in again.",
                                       "Vous les avez indiqués prêts. Un site peut redemander une connexion."))
                                 .font(.caption).foregroundStyle(MorningStyle.muted)
-                            ForEach(WebMorningSite.allCases.filter { ready.contains($0) }) { site in
+                            ForEach(WebMorningSite.allCases.filter { $0 != .gmail && ready.contains($0) }) { site in
                                 Button {
                                     learningSite = site
                                 } label: {

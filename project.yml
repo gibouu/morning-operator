@@ -39,6 +39,9 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Configuration/iOS-Info.plist
         CODE_SIGN_ENTITLEMENTS: Configuration/MorningOperator.entitlements
+        MORE_GOOGLE_CLIENT_ID: ""
+        # An inert scheme keeps unconfigured builds valid; it cannot match a Google client.
+        MORE_GOOGLE_CALLBACK_SCHEME: "more-google-unconfigured"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     dependencies:

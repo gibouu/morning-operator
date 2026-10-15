@@ -108,11 +108,13 @@ public struct WebMorningSiteTable: Sendable, Equatable {
                 count: .matches(["span[aria-label*=\"unread\" i]", "span[aria-label*=\"non lu\" i]"]),
                 headlines: nil, video: nil)
         case .gmail:
+            // Retain saved Gmail URL compatibility, but do not scrape mailbox
+            // titles or put Google OAuth into WKWebView. The app uses the native
+            // Gmail metadata adapter after system-browser consent instead.
             WebMorningSiteTable(site: site, startURL: URL(string: "https://mail.google.com/mail/mu/")!,
                 feedURL: nil, allowedHosts: ["mail.google.com"], feedPaths: [],
                 usesDesktopUserAgent: false,
-                readyRoot: ["body"],
-                count: .title("^(?:Inbox|Boîte de réception)(?:\\s*\\((\\d+)\\))?"),
+                readyRoot: [], count: nil,
                 headlines: nil, video: nil)
         }
     }
