@@ -103,7 +103,7 @@ GitHub snapshot on 15 October: **#162 merged at b8a6c93**; the eight older PRs b
 | PR | Overlap and reconciliation |
 |---|---|
 | [#162](https://github.com/gibouu/morning-operator/pull/162) demo contract | README plus requirements/test plan/rehearsal. Current #155 story; this ledger supplies #161 module detail. |
-| [#122](https://github.com/gibouu/morning-operator/pull/122) Screen Time | Core/catalog, reader/Learn/Store/Root, strings/project/entitlements. Main already has normal learning and new Gmail target #153/#152. Recover only remaining justified deltas. |
+| [#122](https://github.com/gibouu/morning-operator/pull/122) Screen Time | Core/catalog, reader/Learn/Store/Root, strings/project/entitlements. Main already has normal learning and the learned Gmail target in [#152](https://github.com/gibouu/morning-operator/pull/152). Recover only remaining justified deltas. |
 | [#123](https://github.com/gibouu/morning-operator/pull/123) extras | Briefing/opening/Health/capture/settings/Store/Root/project. Separate desired concise facts from optional unlinked Health and closing questions. |
 | [#108](https://github.com/gibouu/morning-operator/pull/108) recognition | Context/archive/review/evidence/Store. Preserve citation/revision/unknown contracts; require #23 ground-truth quality. |
 | [#106](https://github.com/gibouu/morning-operator/pull/106) recovery | Persistence/workspace/choices/privacy/Store. Reconcile #94/#118–#120 with synthetic damaged records; preserve Gmail/reset lifecycle. |
@@ -144,4 +144,3 @@ Current flow stays explicit acquisition → bounded ordered frames/OCR → prove
 Read all 374 lines of PROJECT-START.md in four bounded chunks. Read product/UX/architecture/delivery/evidence sections of REPO-AUDIT-2.md:1–159,210–249,302–405,407–465,480–509,609–763. Templates are reference data, not execution authority.
 
 The inspection used source, documents, Git metadata and read-only GitHub issue/PR information. The subsequent authorized documentation stage created this guide and linked planning issues. No app tests, builds, model requests, phone/account actions or private inbox/recording access ran for this audit. Existing phone evidence is scoped; this file does not certify full-morning success, accessibility, release approval or model accuracy.
-
