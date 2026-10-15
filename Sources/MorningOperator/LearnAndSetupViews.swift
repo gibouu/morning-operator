@@ -4,6 +4,9 @@ import MorningCore
 
 struct LearnView: View {
     @Bindable var store: MorningStore
+    var allowsManualRoutineCreation = true
+    /// A persistent destination supplies its own return path after explicit approval.
+    var onRoutineSaved: (() -> Void)? = nil
     @ViewState<Bool> private var importing = false
     @ViewState<UUID?> private var importGeneration = nil
     @ViewState<Bool> private var recording = false
@@ -172,7 +175,7 @@ struct LearnView: View {
             }
         }
         .sheet(isPresented: $showingProposal, onDismiss: {
-            if closeAfterProposal { dismiss() }
+            if closeAfterProposal { finishLearning() }
         }) {
             RoutineEvidenceProposalView(store: store, onLearn: { showingProposal = false })
         }
@@ -180,7 +183,7 @@ struct LearnView: View {
         .onChange(of: store.busy) { _, _ in finishSuggestionIfReady() }
         .onChange(of: store.routine?.id) { _, _ in
             if showingProposal { closeAfterProposal = true }
-            else if !store.busy, !awaitingSuggestion { dismiss() }
+            else if !store.busy, !awaitingSuggestion { finishLearning() }
         }
         .onChange(of: store.dataGeneration) { _, _ in
             importGeneration = nil
@@ -226,7 +229,9 @@ struct LearnView: View {
                 .accessibilityIdentifier("learn.reviewProposal")
         }
         if !store.canSuggestSavedObservations {
-            Label(store.routinePreferencesIssue ?? String(localized: "On-device suggestions aren't ready here yet. You can build and edit your routine yourself."), systemImage: "info.circle")
+            Label(store.routinePreferencesIssue ?? (allowsManualRoutineCreation
+                  ? String(localized: "On-device suggestions aren't ready here yet. You can build and edit your routine yourself.")
+                  : String(localized: "On-device suggestions aren't ready here yet. Your observations stay saved for later.")), systemImage: "info.circle")
                 .font(.footnote).foregroundStyle(MorningStyle.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -259,9 +264,16 @@ struct LearnView: View {
             .disabled(store.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.busy || store.sessionActive ||
                       !store.storageIsAvailable || (!store.currentObservationNeedsProvenance && !store.canSuggestSavedObservations))
             .accessibilityIdentifier("learn.analyze")
-        Button("Build it myself") { store.useManualRoutine() }
-            .buttonStyle(.borderless).foregroundStyle(MorningStyle.accent)
-            .disabled(store.busy || store.sessionActive)
+        if allowsManualRoutineCreation {
+            Button("Build it myself") { store.useManualRoutine() }
+                .buttonStyle(.borderless).foregroundStyle(MorningStyle.accent)
+                .disabled(store.busy || store.sessionActive)
+        }
+    }
+
+    private func finishLearning() {
+        if let onRoutineSaved { onRoutineSaved() }
+        else { dismiss() }
     }
 
     private func openObservationDetails() {
