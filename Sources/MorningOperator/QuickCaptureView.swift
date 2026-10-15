@@ -110,7 +110,7 @@ struct QuickCaptureView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text("Catch the thought.").font(.system(.largeTitle, design: .serif, weight: .medium))
+                    Text("Catch the thought.").font(.system(.largeTitle, design: .default, weight: .medium))
                     HStack(spacing: 6) {
                         ForEach(QuickCaptureKind.allCases, id: \.self) { option in
                             Button { kind = option } label: {

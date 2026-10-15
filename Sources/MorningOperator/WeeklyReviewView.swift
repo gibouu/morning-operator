@@ -125,7 +125,7 @@ struct WeeklyReviewView: View {
             if let average = week.averageActiveDurationSeconds {
                 Text("Average routine time").font(.subheadline).foregroundStyle(MorningStyle.muted)
                 Text(MorningStyle.duration(average))
-                    .scaledFont(44, relativeTo: .largeTitle, weight: .regular, design: .serif)
+                    .scaledFont(44, relativeTo: .largeTitle, weight: .regular, design: .default)
                     .accessibilityIdentifier("review.average")
                 Text("Across \(week.timedRunCount) timed runs")
                     .font(.subheadline).foregroundStyle(MorningStyle.muted)
@@ -133,7 +133,7 @@ struct WeeklyReviewView: View {
                     .font(.caption).foregroundStyle(MorningStyle.muted)
             } else {
                 Text(week.runCount == 0 ? (hasObservationsInPeriod ? "A morning, remembered." : "Your mornings will find their shape.") : "A morning saved. Time still unknown.")
-                    .font(.system(.title2, design: .serif, weight: .medium))
+                    .font(.system(.title2, design: .default, weight: .medium))
                 Text(week.runCount == 0
                      ? (hasObservationsInPeriod
                         ? "Explore the screens you saved below. Routine time begins with a completed run."

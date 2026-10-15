@@ -50,7 +50,7 @@ private struct ObservationPeriodReviewView: View {
                         Text("\(first) – \(last)").font(.subheadline.monospacedDigit())
                     }
                     Text("Screens that appeared across your mornings.")
-                        .font(.system(.title2, design: .serif, weight: .medium))
+                        .font(.system(.title2, design: .default, weight: .medium))
                     Text("These labels describe sampled screens. They don't measure time in apps, reads or scrolls. Missing samples stay unknown.")
                         .font(.caption).foregroundStyle(MorningStyle.muted)
                     #if DEBUG
@@ -177,7 +177,7 @@ private struct ObservationRecurrenceSources: View {
         MorningList {
             if let context {
                 Section {
-                    Text(context.context.displayName).font(.system(.title2, design: .serif, weight: .medium))
+                    Text(context.context.displayName).font(.system(.title2, design: .default, weight: .medium))
                     Text("Seen on \(context.seenDayCount) distinct days. Open a quote to inspect the original sampled screen.")
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
                     Text(context.citations.contains(where: { $0.provenance == .userReviewed })
