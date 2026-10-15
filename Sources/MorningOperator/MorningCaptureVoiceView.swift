@@ -19,7 +19,7 @@ struct MorningCaptureVoiceView: View {
                         .scaledFont(36, relativeTo: .largeTitle, weight: .light).foregroundStyle(MorningStyle.accent)
                         .accessibilityHidden(true)
                     Text("What's on your mind?")
-                        .font(.system(.largeTitle, design: .serif, weight: .medium))
+                        .font(.system(.largeTitle, design: .default, weight: .medium))
                     Text("A thought, a dream, something for later. Say it in your own words.")
                         .foregroundStyle(MorningStyle.muted)
                     Picker("Spoken language", selection: $language) {

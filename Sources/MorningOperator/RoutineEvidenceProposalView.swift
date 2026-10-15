@@ -173,7 +173,7 @@ struct RoutineEvidenceProposalView: View {
         return Section {
             VStack(alignment: .leading, spacing: 10) {
                 Text(isSample ? "Sample morning" : "Your next morning")
-                    .font(.system(.title2, design: .serif, weight: .medium))
+                    .font(.system(.title2, design: .default, weight: .medium))
                 Text("Selected: \(proposal.sourceSnapshots.count) observations across \(dayCount) dated days")
                     .font(.subheadline).foregroundStyle(MorningStyle.muted).accessibilityIdentifier("proposal.sources")
                 Text(store.routine == nil ? "Review your moments, then approve when ready."

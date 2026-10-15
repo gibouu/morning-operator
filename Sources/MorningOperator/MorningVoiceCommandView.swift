@@ -17,7 +17,7 @@ struct MorningVoiceCommandView: View {
                         .scaledFont(36, relativeTo: .largeTitle, weight: .light).foregroundStyle(MorningStyle.accent)
                         .accessibilityHidden(true)
                     Text("A word from you.")
-                        .font(.system(.largeTitle, design: .serif, weight: .medium))
+                        .font(.system(.largeTitle, design: .default, weight: .medium))
                     Text("Your morning is paused. Say next, pause, resume, skip, repeat or stop.")
                         .font(.body).foregroundStyle(MorningStyle.muted)
                     Picker("Command language", selection: $language) {

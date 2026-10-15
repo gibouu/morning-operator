@@ -25,7 +25,7 @@ struct MorningActivitySettingsView: View {
                     if let namespace = store.morningActivityTestNamespace {
                         TimelineView(.periodic(from: .now, by: 1)) { _ in
                             Text(MorningActivityDiagnostics.summary(namespace: namespace))
-                                .font(.caption2.monospaced())
+                                .font(.caption2)
                                 .accessibilityIdentifier("activity.nativeDiagnostic")
                         }
                     }

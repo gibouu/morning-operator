@@ -22,7 +22,7 @@ struct ObservedMorningOverviewView: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Your observed mornings")
-                    .font(.system(.title2, design: .serif, weight: .medium))
+                    .font(.system(.title2, design: .default, weight: .medium))
                     .accessibilityIdentifier("review.observedOverview")
             }
             VStack(alignment: .leading, spacing: 18) {

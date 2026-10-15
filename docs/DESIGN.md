@@ -1,6 +1,6 @@
 # MORE — ink, paper and the time of day
 
-The reference is the owner's two-ink lake print: ultramarine, warm paper and a quiet halftone. The owner's next pass makes separate round dots the shared language for the sunrise, app icon, navigation, controls and quiet card edges. Patrick Hand gives short titles a handwritten voice; plain native text carries longer reading and controls. The font is bundled under SIL OFL 1.1, with its licence and provenance in `Resources/Fonts`.
+The reference is the owner's two-ink lake print: ultramarine, warm paper and a quiet halftone. The owner's next pass makes separate round dots the shared language for the sunrise, app icon, navigation, controls and quiet card edges. One native sans-serif family now carries titles, reading, dates and controls. The system supplies SF Pro and its language fallbacks; no app text requests a custom font.
 
 ## Light research and its limits
 
@@ -31,7 +31,7 @@ The pure logic can accept future solar times. Short winter days compress the day
 
 ## Type, texture and space
 
-- Display and section titles: Patrick Hand Regular. Body, notes and controls: native sans serif. Times keep tabular numbers. Every size follows Dynamic Type; no font request occurs at runtime.
+- Titles, body, dates and controls use the default system design (SF Pro on iPhone), with size and weight defining hierarchy. Times use tabular digits within the same family. Semantic text styles and scaled numerical displays follow Dynamic Type. See [the typography decision](TYPOGRAPHY.md).
 - Side gutter 24 pt; card inset 18 pt; section spacing 16 pt; card radius 10 pt. Reading surfaces stay opaque, with sparse dotted edges.
 - One static Canvas path draws a small halftone screen. No animated noise, image download, shader loop or per-frame timer. Dots and the sun are decorative and ignore touch and VoiceOver.
 - Reduce Transparency removes the decorative texture and sky. Reduce Motion disables sun/moon interpolation and existing dock transitions. Increase Contrast promotes secondary ink to primary ink and strengthens small dotted glyphs.
@@ -39,7 +39,7 @@ The pure logic can accept future solar times. Short winter days compress the day
 
 ## Controls and copy
 
-Primary actions are printed paper tickets with dotted ink edges and handwritten labels. Secondary actions use dotted underlines or quiet text; they are not filled system capsules. Learn keeps Record and Choose as the initial decision; the suggestion control remains unavailable until there is content. Existing run controls and their identifiers remain intact. Destructive confirmation keeps its explicit warning and a separate, readable red fill.
+Primary actions are printed paper tickets with dotted ink edges and semibold native labels. Secondary actions use dotted underlines or quiet text; they are not filled system capsules. Learn keeps Record and Choose as the initial decision; the suggestion control remains unavailable until there is content. Existing run controls and their identifiers remain intact. Destructive confirmation keeps its explicit warning and a separate, readable red fill.
 
 Four icon-only destinations keep the bottom bar quiet: Morning, Routine, Learn and Settings. Accessible names remain explicit. The date opens history. Routine, Learn and Settings use full-page presentations; compact capture, voice and invitation tasks may use sheets. Large settings pages use the same full-page treatment. Browser chrome uses the same paper, dot icons and short labels while the website stays visible. Reads and scroll requests still require a tap; the saved routine timer remains shared.
 

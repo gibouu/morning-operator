@@ -112,17 +112,17 @@ struct MorningTheme {
 
     // MARK: Type
 
-    /// A human handwritten voice for short titles; calm native text for reading.
-    /// Patrick Hand is bundled unmodified under OFL1.1. Sizes follow Dynamic Type.
+    /// One native sans-serif family for titles, reading, dates and controls.
+    /// Semantic styles keep the hierarchy and follow Dynamic Type.
     enum Typography {
-        static let display = Font.custom("PatrickHand-Regular", size: 38, relativeTo: .largeTitle)
-        static let title = Font.custom("PatrickHand-Regular", size: 29, relativeTo: .title2)
-        static let heading = Font.system(.headline, weight: .semibold)
-        static let body = Font.system(.body)
-        static let note = Font.system(.subheadline)
-        static let label = Font.system(.caption, weight: .medium)
-        static let number = Font.system(.caption).monospacedDigit()
-        static let control = Font.system(.subheadline, weight: .semibold)
+        static let display = Font.system(.largeTitle, design: .default, weight: .semibold)
+        static let title = Font.system(.title, design: .default, weight: .semibold)
+        static let heading = Font.system(.headline, design: .default, weight: .semibold)
+        static let body = Font.system(.body, design: .default)
+        static let note = Font.system(.subheadline, design: .default)
+        static let label = Font.system(.caption, design: .default, weight: .medium)
+        static let number = Font.system(.caption, design: .default).monospacedDigit()
+        static let control = Font.system(.body, design: .default, weight: .semibold)
     }
 
     // MARK: Space
@@ -218,7 +218,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(.custom("PatrickHand-Regular", size: 23, relativeTo: .headline))
+        configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 22).padding(.vertical, 12)
             .frame(minHeight: 48)
             .foregroundStyle(theme.ink)
@@ -235,7 +235,7 @@ struct CompactPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         let theme = MorningTheme.current
-        configuration.label.font(.custom("PatrickHand-Regular", size: 21, relativeTo: .headline))
+        configuration.label.font(MorningTheme.Typography.control)
             .padding(.horizontal, 18).padding(.vertical, 12)
             .frame(minHeight: 44)
             .foregroundStyle(theme.ink)

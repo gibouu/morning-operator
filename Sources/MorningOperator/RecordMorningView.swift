@@ -62,7 +62,7 @@ private struct RecordMorningContent: View {
 
                     if recording.state == .recording {
                         Text(String(format: "%02d:%02d", recording.elapsedSeconds / 60, recording.elapsedSeconds % 60))
-                            .scaledFont(44, relativeTo: .largeTitle, weight: .medium, design: .rounded).monospacedDigit()
+                            .scaledFont(44, relativeTo: .largeTitle, weight: .medium, design: .default).monospacedDigit()
                             .accessibilityLabel("Recording duration")
                         Button { recording.stopRecording() } label: {
                             Label { Text("Stop recording") } icon: {
