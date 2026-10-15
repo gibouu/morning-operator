@@ -393,7 +393,6 @@ struct TodayView: View {
     @ViewState<Bool> private var showingNotice = false
     @ViewState<Bool> private var learnAfterNoticeDismissal = false
     @ViewState<RoutineStep?> private var viewingStep = nil
-    @ViewState<RoutineStep?> private var webStep = nil
     private var terminal: Bool { store.session?.status == .completed || store.session?.status == .stopped }
 
     var body: some View {
@@ -414,21 +413,8 @@ struct TodayView: View {
             .padding(.top, 0).padding(.bottom, 8)
             .frame(maxWidth: 600).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .onChange(of: store.routine?.id) { _, _ in viewingStep = nil; webStep = nil }
+        .onChange(of: store.routine?.id) { _, _ in viewingStep = nil }
         .onChange(of: store.dataGeneration) { _, _ in viewingStep = nil; showingNotice = false }
-        .onChange(of: store.currentStep?.id) { _, id in if webStep?.id != id { webStep = nil } }
-        .onChange(of: store.sessionActive) { _, active in if !active { webStep = nil } }
-        .fullScreenCover(item: $webStep) { step in
-            if let site = step.webSite {
-                WebMorningView(site: site, minutes: step.durationMinutes,
-                    isStepActive: store.session?.status == .running && store.currentStep?.id == step.id,
-                    onNext: {
-                        guard store.currentStep?.id == step.id else { webStep = nil; return }
-                        webStep = nil
-                        store.advance()
-                    }, onClose: { webStep = nil })
-            }
-        }
         .onChange(of: viewingStep != nil || showingNotice, initial: true) { _, presented in
             store.morningDetailPresented = presented
         }
@@ -865,13 +851,6 @@ struct TodayView: View {
     }
 
     @ViewBuilder private func actionArea(_ routine: RoutineVersion) -> some View {
-        if store.sessionActive, let step = store.currentStep, let site = step.webSite {
-            Button { webStep = step } label: {
-                Label(isFrench ? "Ouvrir \(site.displayName) dans MORE" : "Open \(site.displayName) in MORE",
-                      systemImage: "safari").frame(maxWidth: .infinity).padding(.vertical, 9)
-            }.buttonStyle(.glass).controlSize(.large).accessibilityIdentifier("run.openWeb")
-                .disabled(store.session?.status != .running)
-        }
         if store.sessionActive {
             HStack(spacing: 12) {
                 if store.session?.status == .paused {

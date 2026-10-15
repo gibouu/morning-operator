@@ -56,6 +56,7 @@
 		9BFBDAE886D9DD7FDEE7633D /* BudgetAndRecapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39360C318E365C8426AEB6 /* BudgetAndRecapTests.swift */; };
 		9F01E5442FEA1ED8D7E713D5 /* ObservationEvidenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAE9D7D752FB3F5CAA2516E /* ObservationEvidenceView.swift */; };
 		9FA98FC2D731D183E8C9200C /* MorningCaptureVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCF08D94353F15FAFA50B03 /* MorningCaptureVoiceView.swift */; };
+		A2FC8B838FE52D39459A4C7F /* WebMorningController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */; };
 		A34B5E25A1C8EE150EAA55AC /* AppTransitionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6393BAB9D1CD67AB5774B214 /* AppTransitionIntent.swift */; };
 		A71F2DD1E977583E1F72289B /* QuickCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1435A178A34F6AADC746A82 /* QuickCaptureView.swift */; };
 		AD6A46591444FFDC8EA621DC /* ObservationReviewUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F5E80A4E3FEC576BDAA690 /* ObservationReviewUITestFixture.swift */; };
@@ -81,6 +82,7 @@
 		E5A4D70F8E286C13671ABAF1 /* AudioRoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED5FFFADBA9C712D53345C8 /* AudioRoutePicker.swift */; };
 		EB9D17B6D326910E328DC7DF /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC47A69EEDB044D3AB6C6C0B /* WeeklyReviewView.swift */; };
 		EF2A3AA8C02606DEA5DC111A /* PhoneLoopRunnerIntake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D1B139754329BEAA236124 /* PhoneLoopRunnerIntake.swift */; };
+		F012A4EC056AAC206151DE87 /* WebMorningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FCCE997427B67A2581A70FF /* WebMorningView.swift */; };
 		F3C83B1588CAB1A5CF137586 /* ObservationScreenReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BFF5EF3C2F41BB0D40C2C18 /* ObservationScreenReviewTests.swift */; };
 		F595041F5E281180E8DB629E /* MorningActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5DA36C0D75D5473FADCFD1 /* MorningActivityWidget.swift */; };
 		F5D5FAFF3581561C478474ED /* ObservedMorningOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7EA194BD74767684257499 /* ObservedMorningOverviewView.swift */; };
@@ -167,10 +169,12 @@
 		4B3F3A89763BAB2B46F3EEDC /* QuietMorningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuietMorningTests.swift; sourceTree = "<group>"; };
 		4BAC4FD4EC1EF1E812AA6D55 /* MorningInvitationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningInvitationView.swift; sourceTree = "<group>"; };
 		4F1A4DDE271AE7DE15330EEF /* MorningActivityDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningActivityDiagnostics.swift; sourceTree = "<group>"; };
+		4FCCE997427B67A2581A70FF /* WebMorningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMorningView.swift; sourceTree = "<group>"; };
 		5245715AA5896422DD4A58FB /* ObservationScreenReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationScreenReviewView.swift; sourceTree = "<group>"; };
 		53E140570EA270FCBB45F2D9 /* ObservationReviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationReviewViews.swift; sourceTree = "<group>"; };
 		57F9E3DE77828DFC2DC45B2B /* DeviceObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceObservationTests.swift; sourceTree = "<group>"; };
 		58F03249FE9F66A37BCFC54E /* MorningBenchmarkCalendar.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MorningBenchmarkCalendar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5ED3AE8D5046E93DEBC7276D /* resume */ = {isa = PBXFileReference; lastKnownFileType = folder; name = resume; path = .; sourceTree = SOURCE_ROOT; };
 		60FD6CE6264431F3794EA24E /* MorningObservationBenchmarkUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MorningObservationBenchmarkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6393BAB9D1CD67AB5774B214 /* AppTransitionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTransitionIntent.swift; sourceTree = "<group>"; };
 		6421A7C6E0C7191E7A400BDA /* MorningActivityWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MorningActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -192,7 +196,6 @@
 		932EF991B0E0976538F9B5B5 /* MorningOpeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningOpeningView.swift; sourceTree = "<group>"; };
 		93DDD575BBAE60C4911CB3B3 /* RecordMorningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordMorningView.swift; sourceTree = "<group>"; };
 		98E912DF2E476E75231A5383 /* OnDeviceLearningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceLearningTests.swift; sourceTree = "<group>"; };
-		9B27E620E3DD7AC5B4618C46 /* redesign */ = {isa = PBXFileReference; lastKnownFileType = folder; name = redesign; path = .; sourceTree = SOURCE_ROOT; };
 		9BCC013E335B6F8E5AC6A814 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		9C157A20523AAA3E23DE7525 /* MorningIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningIntents.swift; sourceTree = "<group>"; };
 		9D2FA2C64FBF1A704B0DB453 /* ObservedMorningOverviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservedMorningOverviewTests.swift; sourceTree = "<group>"; };
@@ -217,6 +220,7 @@
 		E1435A178A34F6AADC746A82 /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
 		E2B07E2228630BD1678C3BD3 /* RecordingProvenanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingProvenanceTests.swift; sourceTree = "<group>"; };
 		E606BC30A53C585226160F40 /* ClockObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockObservationTests.swift; sourceTree = "<group>"; };
+		EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMorningController.swift; sourceTree = "<group>"; };
 		F47BFFAE94C327E61E732A65 /* MorningVoiceCommandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningVoiceCommandView.swift; sourceTree = "<group>"; };
 		F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		F941677DE9F9C2E0BDA7D0AF /* ObservationNarrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationNarrationTests.swift; sourceTree = "<group>"; };
@@ -265,7 +269,7 @@
 		159866F1FDFE6438D4F08CA7 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				9B27E620E3DD7AC5B4618C46 /* redesign */,
+				5ED3AE8D5046E93DEBC7276D /* resume */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -393,6 +397,8 @@
 				7473723C675D8D6B48B5EAFC /* RoutineTimeBudgetView.swift */,
 				1EFA89F213C07A94F3F3D2CE /* RoutineTransferViews.swift */,
 				ADA355086C61CBBA29C54FEB /* VoicePickerView.swift */,
+				EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */,
+				4FCCE997427B67A2581A70FF /* WebMorningView.swift */,
 				FC47A69EEDB044D3AB6C6C0B /* WeeklyReviewView.swift */,
 			);
 			path = MorningOperator;
@@ -719,6 +725,8 @@
 				D2924EFEFC17BE0B652F9216 /* RoutineTimeBudgetView.swift in Sources */,
 				6B2625EB302E79CF4C530DF4 /* RoutineTransferViews.swift in Sources */,
 				6A35165297FF494C85E0FEDB /* VoicePickerView.swift in Sources */,
+				A2FC8B838FE52D39459A4C7F /* WebMorningController.swift in Sources */,
+				F012A4EC056AAC206151DE87 /* WebMorningView.swift in Sources */,
 				EB9D17B6D326910E328DC7DF /* WeeklyReviewView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

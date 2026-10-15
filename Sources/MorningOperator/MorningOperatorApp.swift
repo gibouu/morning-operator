@@ -34,8 +34,8 @@ struct MorningOperatorApp: App {
     }
 
     #if DEBUG
-    /// `--web-morning --web-morning-site=news [--web-morning-autorun]` opens the in-app
-    /// browser on its own for device checks. Autorun measures each offered task once.
+    /// `--web-morning --web-morning-site=news` opens the in-app
+    /// browser on its own for device checks. All page actions still require a tap.
     private static var webMorningLaunchSite: WebMorningSite? {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("--web-morning") else { return nil }
@@ -44,9 +44,7 @@ struct MorningOperatorApp: App {
     }
 
     private static func webMorningLaunchView(_ site: WebMorningSite) -> some View {
-        var view = WebMorningView(site: site, minutes: 10, onClose: {})
-        view.autorun = ProcessInfo.processInfo.arguments.contains("--web-morning-autorun")
-        return view
+        WebMorningView(site: site, minutes: 10, onClose: {})
     }
     #endif
 }

@@ -1,9 +1,10 @@
 import Foundation
+import CoreFoundation
 
 /// A website a routine step can open inside MORE's own browser.
 /// The person signs in themselves, sees the page the whole time and starts every action.
 /// MORE only reads a number or headlines and scrolls to the next video. It never clicks,
-/// types, posts, likes, follows or sends, and it never runs a script on a sign-in page.
+/// types, posts, likes, follows or sends, and blocks known sign-in URLs before running a script.
 public enum WebMorningSite: String, Codable, CaseIterable, Sendable, Identifiable {
     case instagram, youtube, news, whatsapp, gmail
     public var id: String { rawValue }
@@ -16,6 +17,15 @@ public enum WebMorningSite: String, Codable, CaseIterable, Sendable, Identifiabl
         case .gmail: "Gmail"
         }
     }
+    /// Only explicit supported HTTPS hosts map to script-capable sites.
+    public init?(url: URL) {
+        guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
+              url.port == nil || url.port == 443,
+              let host = url.host?.lowercased(),
+              let site = Self.allCases.first(where: { $0.table.allowedHosts.contains(host) }) else { return nil }
+        self = site
+    }
+
     public var table: WebMorningSiteTable { WebMorningSiteTable.table(for: self) }
 }
 
@@ -31,7 +41,7 @@ public enum WebMorningTask: String, Sendable, CaseIterable {
 
 /// How an unread number is found on a page.
 public enum WebMorningCountRule: Sendable, Equatable {
-    /// The first matching element's label or text holds the number; no digits means zero.
+    /// The first matching element's label or text holds the number; no digits means unsupported.
     case badge([String])
     /// The number of elements matching any selector inside the ready root.
     case matches([String])
@@ -46,8 +56,8 @@ public struct WebMorningSiteTable: Sendable, Equatable {
     /// Where short videos play, when the site has a feed MORE may scroll.
     public let feedURL: URL?
     public let allowedHosts: Set<String>
-    /// Scrolling is refused unless the page path starts with this prefix.
-    public let feedPathPrefix: String?
+    /// Exact first path components on which scrolling is offered.
+    public let feedPaths: [String]
     /// Some sites only serve their full web app to a desktop browser.
     public let usesDesktopUserAgent: Bool
     /// At least one of these must exist, proving the signed-in page MORE expects.
@@ -62,7 +72,7 @@ public struct WebMorningSiteTable: Sendable, Equatable {
         var tasks: [WebMorningTask] = []
         if count != nil { tasks.append(.unreadCount) }
         if headlines != nil { tasks.append(.headlines) }
-        if video != nil, feedPathPrefix != nil { tasks.append(.nextVideo) }
+        if video != nil, !feedPaths.isEmpty { tasks.append(.nextVideo) }
         return tasks
     }
 
@@ -72,7 +82,7 @@ public struct WebMorningSiteTable: Sendable, Equatable {
         case .instagram:
             WebMorningSiteTable(site: site, startURL: URL(string: "https://www.instagram.com/")!,
                 feedURL: URL(string: "https://www.instagram.com/reels/")!,
-                allowedHosts: ["www.instagram.com", "instagram.com"], feedPathPrefix: "/reel",
+                allowedHosts: ["www.instagram.com", "instagram.com"], feedPaths: ["reel", "reels"],
                 usesDesktopUserAgent: false,
                 readyRoot: ["a[href^=\"/direct/\"]", "video"],
                 count: .badge(["a[href=\"/direct/inbox/\"]", "a[href^=\"/direct/\"]"]),
@@ -80,26 +90,26 @@ public struct WebMorningSiteTable: Sendable, Equatable {
         case .youtube:
             WebMorningSiteTable(site: site, startURL: URL(string: "https://m.youtube.com/shorts")!,
                 feedURL: URL(string: "https://m.youtube.com/shorts")!,
-                allowedHosts: ["m.youtube.com", "www.youtube.com", "youtube.com"], feedPathPrefix: "/shorts",
+                allowedHosts: ["m.youtube.com", "www.youtube.com", "youtube.com"], feedPaths: ["shorts"],
                 usesDesktopUserAgent: false,
                 readyRoot: ["video"], count: nil, headlines: nil, video: "video")
         case .news:
             WebMorningSiteTable(site: site, startURL: URL(string: "https://www.lemonde.fr/")!,
-                feedURL: nil, allowedHosts: ["www.lemonde.fr"], feedPathPrefix: nil,
+                feedURL: nil, allowedHosts: ["www.lemonde.fr"], feedPaths: [],
                 usesDesktopUserAgent: false,
                 readyRoot: ["main", "body"], count: nil,
                 headlines: [".ds-card__title__text", ".article__title", "article h3", "article h2"],
                 video: nil)
         case .whatsapp:
             WebMorningSiteTable(site: site, startURL: URL(string: "https://web.whatsapp.com/")!,
-                feedURL: nil, allowedHosts: ["web.whatsapp.com"], feedPathPrefix: nil,
+                feedURL: nil, allowedHosts: ["web.whatsapp.com"], feedPaths: [],
                 usesDesktopUserAgent: true,
                 readyRoot: ["#pane-side"],
                 count: .matches(["span[aria-label*=\"unread\" i]", "span[aria-label*=\"non lu\" i]"]),
                 headlines: nil, video: nil)
         case .gmail:
             WebMorningSiteTable(site: site, startURL: URL(string: "https://mail.google.com/mail/mu/")!,
-                feedURL: nil, allowedHosts: ["mail.google.com"], feedPathPrefix: nil,
+                feedURL: nil, allowedHosts: ["mail.google.com"], feedPaths: [],
                 usesDesktopUserAgent: false,
                 readyRoot: ["body"],
                 count: .title("^(?:Inbox|Boîte de réception)(?:\\s*\\((\\d+)\\))?"),
@@ -135,11 +145,15 @@ public enum WebMorningPolicy {
     public static func refusal(for task: WebMorningTask, on site: WebMorningSite, at url: URL?) -> WebMorningRefusal? {
         let table = site.table
         guard let url else { return .noPage }
-        guard url.scheme?.lowercased() == "https" else { return .notSecure }
+        guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
+              url.port == nil || url.port == 443 else { return .notSecure }
         guard let host = url.host?.lowercased(), table.allowedHosts.contains(host) else { return .otherSite }
         guard !isSignInPage(url) else { return .signInPage }
         guard table.tasks.contains(task) else { return .notOffered }
-        if task == .nextVideo, let prefix = table.feedPathPrefix, !url.path.hasPrefix(prefix) { return .notTheFeed }
+        if task == .nextVideo {
+            let first = url.path.split(separator: "/").first.map(String.init)
+            guard let first, table.feedPaths.contains(first) else { return .notTheFeed }
+        }
         return nil
     }
 
@@ -159,12 +173,14 @@ public enum WebMorningPolicy {
                 if (!el) return out({status: "unsupported", reason: "layout"});
                 const text = (el.getAttribute("aria-label") || "") + " " + (el.innerText || "");
                 const m = text.match(/\\d+/);
-                return out({status: "ok", count: m ? Math.min(parseInt(m[0], 10), 9999) : 0});
+                if (!m) return out({status: "unsupported", reason: "layout"});
+                return out({status: "ok", count: Math.min(parseInt(m[0], 10), 9999)});
                 """
             case .matches(let selectors):
                 body = """
                 let n = 0;
                 for (const s of \(json(selectors))) { try { n = Math.max(n, root.querySelectorAll(s).length); } catch (_) {} }
+                if (!n) return out({status: "unsupported", reason: "layout"});
                 return out({status: "ok", count: Math.min(n, 9999)});
                 """
             case .title(let pattern):
@@ -198,8 +214,6 @@ public enum WebMorningPolicy {
             const vids = Array.from(document.querySelectorAll(\(json(video))));
             const v = vids.find(x => { const r = x.getBoundingClientRect(); return r.height > 0 && r.top < h / 2 && r.bottom > h / 2; });
             if (!v) return out({status: "unsupported", reason: "layout"});
-            const key = location.pathname + "|" + String(v.currentSrc || v.src || "").slice(-64) + "|" + vids.indexOf(v);
-            let hash = 5381; for (let i = 0; i < key.length; i++) { hash = ((hash * 33) ^ key.charCodeAt(i)) >>> 0; }
             let el = v.parentElement, scroller = null;
             while (el && el !== document.body && el !== document.documentElement) {
               const st = getComputedStyle(el);
@@ -207,15 +221,26 @@ public enum WebMorningPolicy {
               el = el.parentElement;
             }
             let method;
-            if (scroller) { scroller.scrollBy({top: scroller.clientHeight, behavior: "smooth"}); method = "container"; }
-            else if (document.scrollingElement && document.scrollingElement.scrollHeight > h + 10) { window.scrollBy({top: h, behavior: "smooth"}); method = "window"; }
-            else { document.dispatchEvent(new KeyboardEvent("keydown", {key: "ArrowDown", code: "ArrowDown", keyCode: 40, bubbles: true})); method = "key"; }
-            return out({status: "ok", token: hash.toString(16), method: method});
+            if (scroller && scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 2) { scroller.scrollBy({top: scroller.clientHeight, behavior: "smooth"}); method = "container"; }
+            else if (!scroller && document.scrollingElement && document.scrollingElement.scrollTop + h < document.scrollingElement.scrollHeight - 2) { window.scrollBy({top: h, behavior: "smooth"}); method = "window"; }
+            else { return out({status: "unsupported", reason: "layout"}); }
+            return out({status: "ok", method: method});
             """
         }
+        let feedGuard: String
+        if task == .nextVideo {
+            let paths = json(table.feedPaths)
+            feedGuard = "if (!\(paths).includes(location.pathname.split('/').filter(Boolean)[0])) return out({status: \"unsupported\", reason: \"layout\"});"
+        } else { feedGuard = "" }
         return """
         (() => {
         const out = (o) => JSON.stringify(o);
+        if (location.protocol !== "https:" || !\(json(Array(table.allowedHosts).sorted())).includes(location.hostname.toLowerCase()) ||
+            location.port && location.port !== "443" || location.username || location.password)
+          return out({status: "unsupported", reason: "layout"});
+        if (\(json(signInPathFragments)).some(s => (location.pathname.toLowerCase() + "/").includes(s)))
+          return out({status: "unsupported", reason: "signin"});
+        \(feedGuard)
         if (document.querySelector('input[type="password"], input[autocomplete="one-time-code"], input[autocomplete="current-password"]'))
           return out({status: "unsupported", reason: "signin"});
         const first = (list) => { for (const s of list) { try { const e = document.querySelector(s); if (e) return e; } catch (_) {} } return null; };
@@ -238,7 +263,8 @@ public enum WebMorningPolicy {
 public enum WebMorningOutcome: Sendable, Equatable {
     case count(Int)
     case headlines([String])
-    case scrolled(token: String, method: String)
+    /// A scroll request was issued; this does not prove a new video played.
+    case scrollRequested(method: String)
     case unsupported(String)
     case refused(WebMorningRefusal)
 
@@ -252,18 +278,17 @@ public enum WebMorningOutcome: Sendable, Equatable {
         }
         switch task {
         case .unreadCount:
-            guard let count = object["count"] as? Int, (0...9_999).contains(count) else { return .unsupported("malformed") }
+            guard let number = object["count"] as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+                  let count = object["count"] as? Int, (0...9_999).contains(count) else { return .unsupported("malformed") }
             return .count(count)
         case .headlines:
             guard let list = object["headlines"] as? [String], (1...5).contains(list.count),
                   list.allSatisfy({ !$0.isEmpty && $0.count <= 200 }) else { return .unsupported("malformed") }
             return .headlines(list)
         case .nextVideo:
-            guard let token = object["token"] as? String, (1...8).contains(token.count),
-                  token.allSatisfy(\.isHexDigit),
-                  let method = object["method"] as? String, ["container", "window", "key"].contains(method)
+            guard let method = object["method"] as? String, ["container", "window"].contains(method)
             else { return .unsupported("malformed") }
-            return .scrolled(token: token, method: method)
+            return .scrollRequested(method: method)
         }
     }
 
@@ -273,31 +298,16 @@ public enum WebMorningOutcome: Sendable, Equatable {
         switch self {
         case .count(let n): return "\(prefix) result=ok count=\(n)"
         case .headlines(let list): return "\(prefix) result=ok headlines=\(list.count)"
-        case .scrolled(_, let method): return "\(prefix) result=ok method=\(method)"
+        case .scrollRequested(let method): return "\(prefix) result=scrollRequested method=\(method)"
         case .unsupported(let reason): return "\(prefix) result=unsupported reason=\(reason)"
         case .refused(let refusal): return "\(prefix) result=refused reason=\(refusal.rawValue)"
         }
     }
 }
 
-/// Counts real advances: a scroll counts once the next run sees a different video.
-public struct WebMorningAdvanceTracker: Sendable, Equatable {
-    public private(set) var attempts = 0
-    public private(set) var advanced = 0
-    private var lastToken: String?
-    public init() {}
-    public mutating func record(_ outcome: WebMorningOutcome) {
-        guard case .scrolled(let token, _) = outcome else { return }
-        if let lastToken, lastToken != token { advanced += 1 }
-        lastToken = token
-        attempts += 1
-    }
-}
-
 /// The time a routine step gives the page. It only counts down; +2 min adds time.
 public struct WebMorningStepClock: Sendable, Equatable {
     public static let extensionMinutes = 2
-    public static let autoAdvanceSeconds = 3...60
     public private(set) var endsAt: Date
     public init(start: Date, minutes: Int) {
         endsAt = start.addingTimeInterval(TimeInterval(max(1, minutes) * 60))

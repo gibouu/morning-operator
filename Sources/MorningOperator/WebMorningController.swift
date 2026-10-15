@@ -4,14 +4,11 @@ import Observation
 import OSLog
 import WebKit
 
-/// Owns the one web view of an in-app browser moment. Every script goes through
-/// `WebMorningPolicy` first, runs in an isolated content world the page cannot reach,
-/// and returns a bounded `WebMorningOutcome`. Logs carry outcome names and counts only.
+/// One visible browser. Each script needs one foreground user request. No injected
+/// user scripts, message handlers, background readers or automatic page actions.
 @MainActor @Observable
-final class WebMorningController: NSObject, WKNavigationDelegate {
-    /// One persistent store for every site, so the person signs in once.
-    /// Its folders are excluded from device backups (see `excludeWebDataFromBackup`).
-    static let storeIdentifier = UUID(uuidString: "6D6F7265-7765-6262-726F-777365720001") ?? UUID()
+final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
+    static let storeIdentifier = UUID(uuidString: "6D6F7265-7765-6262-726F-777365720001")!
     private static let log = Logger(subsystem: "com.gibouu.morningoperator", category: "WebMorning")
     private static let desktopUserAgent =
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
@@ -19,16 +16,16 @@ final class WebMorningController: NSObject, WKNavigationDelegate {
     let site: WebMorningSite
     @ObservationIgnored let webView: WKWebView
     private(set) var outcome: WebMorningOutcome?
-    private(set) var tracker = WebMorningAdvanceTracker()
-    private(set) var isAutoAdvancing = false
     private(set) var isRunning = false
-    private(set) var isSignInPage = false
-    private(set) var pageLoads = 0
-    @ObservationIgnored private var autoTask: Task<Void, Never>?
-    /// When the moment's time runs out. Auto-advance never moves after it.
-    @ObservationIgnored var stepEndsAt = Date.distantPast
+    private(set) var isSignInPage = true
+    private(set) var loadFailed = false
+    private(set) var displayedHost = ""
+    private(set) var isClearing = false
+    /// The presenting view revokes this whenever it leaves the foreground.
+    var actionsEnabled = false
+    @ObservationIgnored private var pageGeneration = 0
 
-    init(site: WebMorningSite) {
+    init(site: WebMorningSite, initialURL: URL? = nil) {
         self.site = site
         Self.excludeWebDataFromBackup()
         let configuration = WKWebViewConfiguration()
@@ -39,23 +36,26 @@ final class WebMorningController: NSObject, WKNavigationDelegate {
         if site.table.usesDesktopUserAgent { webView.customUserAgent = Self.desktopUserAgent }
         super.init()
         webView.navigationDelegate = self
-        webView.load(URLRequest(url: site.table.startURL))
+        webView.uiDelegate = self
+        let start = initialURL.flatMap { WebMorningSite(url: $0) == site ? $0 : nil } ?? site.table.startURL
+        displayedHost = start.host ?? ""
+        webView.load(URLRequest(url: start))
     }
 
-    /// Runs one task now, after the policy allows it for the page on screen.
     @discardableResult
     func run(_ task: WebMorningTask) async -> WebMorningOutcome {
+        guard actionsEnabled, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
         let result = await evaluate(task)
         outcome = result
-        if task == .nextVideo { tracker.record(result) }
         Self.record(result.logLine(site: site, task: task))
         return result
     }
 
     private func evaluate(_ task: WebMorningTask) async -> WebMorningOutcome {
         let page = webView.url
+        let generation = pageGeneration
         if let refusal = WebMorningPolicy.refusal(for: task, on: site, at: page) {
-            // Asking for the next video away from the feed opens the feed: a navigation, no script.
+            // One tap may open the feed. It never also runs a script after navigation.
             if refusal == .notTheFeed, let feed = site.table.feedURL { webView.load(URLRequest(url: feed)) }
             return .refused(refusal)
         }
@@ -63,80 +63,70 @@ final class WebMorningController: NSObject, WKNavigationDelegate {
         isRunning = true
         defer { isRunning = false }
         let value = try? await webView.evaluateJavaScript(script, contentWorld: .defaultClient)
-        // A page that changed while the script ran gives no result.
-        guard webView.url == page else { return .unsupported("layout") }
+        guard actionsEnabled, generation == pageGeneration, webView.url == page else { return .unsupported("layout") }
         return WebMorningOutcome.parse(value, task: task)
     }
 
-    /// Moves to the next video every `seconds` until the moment's time runs out. The view
-    /// also stops it when the moment ends, the screen goes away or the phone locks. The first
-    /// move waits one interval, so the video on screen when the person turns it on plays first.
-    func startAutoAdvance(every seconds: Int) {
-        stopAutoAdvance()
-        let interval = min(max(seconds, WebMorningStepClock.autoAdvanceSeconds.lowerBound),
-                           WebMorningStepClock.autoAdvanceSeconds.upperBound)
-        isAutoAdvancing = true
-        autoTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(interval))
-                guard let self, !Task.isCancelled, Date() < self.stepEndsAt else { break }
-                guard case .scrolled = await self.run(.nextVideo) else { break }
-            }
-            self?.isAutoAdvancing = false
-            self?.autoTask = nil
-        }
-    }
-
-    func stopAutoAdvance() {
-        autoTask?.cancel()
-        autoTask = nil
-        isAutoAdvancing = false
-    }
-
-    func openFeed() {
-        guard let feed = site.table.feedURL else { return }
-        webView.load(URLRequest(url: feed))
-    }
-
-    /// Signs out of every site by clearing the shared store, then reloads the start page.
+    /// Clears every site's session in this app's dedicated WebKit store.
     func forgetSignIns() async {
-        stopAutoAdvance()
+        guard !isClearing else { return }
+        isClearing = true
+        defer { isClearing = false }
+        actionsEnabled = false
+        webView.stopLoading()
+        pageGeneration += 1
+        outcome = nil
         await webView.configuration.websiteDataStore.removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
-        outcome = nil
         webView.load(URLRequest(url: site.table.startURL))
     }
 
-    // MARK: Navigation
+    func reload() { webView.reload() }
 
-    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        MainActor.assumeIsolated { pageDidChange() }
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                 decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+        // Website links may navigate to a sign-in provider. MORE never runs scripts there.
+        // Do not launch native social apps, custom schemes, insecure pages or downloads.
+        guard let url = navigationAction.request.url, url.scheme?.lowercased() == "https",
+              url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
+        if navigationAction.targetFrame?.isMainFrame != false {
+            pageGeneration += 1
+            displayedHost = url.host ?? ""
+            isSignInPage = true
+            outcome = nil
+            loadFailed = false
+        }
+        decisionHandler(.allow)
     }
 
-    nonisolated func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        MainActor.assumeIsolated { pageDidChange() }
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        // Keep a user-opened link visible in the same browser, including sign-in pages.
+        if navigationAction.targetFrame == nil, let url = navigationAction.request.url,
+           url.scheme?.lowercased() == "https", url.user == nil, url.password == nil {
+            webView.load(navigationAction.request)
+        }
+        return nil
     }
 
-    nonisolated func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        displayedHost = webView.url?.host ?? ""
+        isSignInPage = WebMorningPolicy.isSignInPage(webView.url) || WebMorningSite(url: webView.url ?? site.table.startURL) != site
+        loadFailed = false
+        let kind = isSignInPage ? "blocked" : "site"
+        Self.record("WEBMORNING site=\(site.rawValue) page=\(kind)")
+        Self.excludeWebDataFromBackup()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) { failed(error) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) { failed(error) }
+
+    private func failed(_ error: any Error) {
         let code = (error as NSError).code
-        MainActor.assumeIsolated { Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)") }
-    }
-
-    nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
-                             withError error: any Error) {
-        let code = (error as NSError).code
-        MainActor.assumeIsolated { Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)") }
-    }
-
-    private func pageDidChange() {
-        let url = webView.url
-        let host = url?.host?.lowercased() ?? "none"
-        isSignInPage = WebMorningPolicy.isSignInPage(url) || !(site.table.allowedHosts.contains(host))
-        if isSignInPage { stopAutoAdvance() }
-        pageLoads += 1
-        // The host is the only part of an address logged: paths and queries can carry an email.
-        let kind = WebMorningPolicy.isSignInPage(url) ? "signin" : site.table.allowedHosts.contains(host) ? "site" : "other"
-        Self.record("WEBMORNING site=\(site.rawValue) page=\(kind) host=\(host)")
+        guard code != NSURLErrorCancelled else { return }
+        loadFailed = true
+        isSignInPage = true
+        Self.record("WEBMORNING site=\(site.rawValue) load=failed code=\(code)")
     }
 
     private static func record(_ line: String) {
@@ -146,17 +136,18 @@ final class WebMorningController: NSObject, WKNavigationDelegate {
         #endif
     }
 
-    /// Sign-in cookies and site data must not travel in device or iCloud backups.
-    /// WebKit keeps them under Library/WebKit and Library/Cookies; excluding a folder
-    /// excludes everything in it, including files created later.
-    static func excludeWebDataFromBackup() {
+    /// Best-effort exclusion for WebKit's app-library folders. WebKit owns its storage
+    /// layout; device backup/restore still needs a real check before claiming exclusion.
+    private static func excludeWebDataFromBackup() {
         guard let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else { return }
         for name in ["WebKit", "Cookies"] {
             var folder = library.appendingPathComponent(name, isDirectory: true)
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            var values = URLResourceValues()
-            values.isExcludedFromBackup = true
-            try? folder.setResourceValues(values)
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                var values = URLResourceValues()
+                values.isExcludedFromBackup = true
+                try folder.setResourceValues(values)
+            } catch { record("WEBMORNING backupExclusion=unverified") }
         }
     }
 }

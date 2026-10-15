@@ -546,19 +546,6 @@ struct StepEditor: View {
                     Text(automationExplanation)
                 }
                 Section {
-                    Picker("Website", selection: $step.webSite) {
-                        Text("None").tag(Optional<WebMorningSite>.none)
-                        ForEach(WebMorningSite.allCases) { site in
-                            Text(site.displayName).tag(Optional(site))
-                        }
-                    }
-                    .accessibilityIdentifier("step.webSite")
-                } header: {
-                    Text("Open in MORE")
-                } footer: {
-                    Text("Opens the site inside MORE for this moment. You sign in yourself; MORE only reads a count or headlines and moves to the next video when you ask.")
-                }
-                Section {
                     Button("Remove this step", role: .destructive) { choosingRemoval = true }
                         .accessibilityIdentifier("step.remove")
                 }

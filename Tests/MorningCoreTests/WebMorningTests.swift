@@ -29,8 +29,19 @@ struct WebMorningTests {
                 if site.table.tasks.contains(task) { #expect(refusal == expected, "\(text)") }
             }
         }
+        #expect(WebMorningPolicy.refusal(for: .nextVideo, on: .instagram, at: url("https://www.instagram.com/reels-not-a-feed/")) == .notTheFeed)
+        #expect(WebMorningPolicy.refusal(for: .unreadCount, on: .instagram, at: url("https://www.instagram.com:8443/")) == .notSecure)
+        #expect(WebMorningPolicy.refusal(for: .unreadCount, on: .instagram, at: url("https://user:secret@www.instagram.com/")) == .notSecure)
         #expect(WebMorningPolicy.refusal(for: .unreadCount, on: .instagram, at: nil) == .noPage)
         #expect(WebMorningPolicy.isSignInPage(nil))
+    }
+
+    @Test func targetURLsMapOnlyToExplicitSecureHosts() {
+        #expect(WebMorningSite(url: url("https://m.youtube.com/shorts/abc")) == .youtube)
+        #expect(WebMorningSite(url: url("https://instagram.com.evil.test/")) == nil)
+        #expect(WebMorningSite(url: url("http://www.instagram.com/")) == nil)
+        #expect(WebMorningSite(url: url("https://user:secret@www.instagram.com/")) == nil)
+        #expect(WebMorningSite(url: url("https://www.instagram.com:8443/")) == nil)
     }
 
     @Test func tasksRunOnlyWhereTheTableOffersThem() {
@@ -50,7 +61,7 @@ struct WebMorningTests {
 
     /// The scripts read and scroll. Nothing in them can click, type, submit, send or load.
     @Test func scriptsCannotTakeASocialActionOrSendData() throws {
-        let forbidden = [".click(", "submit", "fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket", ".focus(",
+        let forbidden = [".click(", "submit", "fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket", ".focus(", "dispatchEvent", "KeyboardEvent",
                          ".value", "MouseEvent", "PointerEvent", "TouchEvent", "innerHTML", "location.href =",
                          "location.assign", "window.open", "postMessage", "cookie", "localStorage", "setAttribute",
                          "eval(", "Function(", "import("]
@@ -60,11 +71,6 @@ struct WebMorningTests {
                 for token in forbidden { #expect(!script.contains(token), "\(site) \(task) contains \(token)") }
                 #expect(script.contains("input[type=\"password\"]"), "\(site) \(task) lacks the sign-in guard")
                 #expect(script.contains("reason: \"layout\""), "\(site) \(task) must fail closed")
-                // The only synthetic event is a plain ArrowDown key, used to reach the next video.
-                if script.contains("dispatchEvent") {
-                    #expect(task == .nextVideo)
-                    #expect(script.components(separatedBy: "new KeyboardEvent(\"keydown\", {key: \"ArrowDown\"").count == 2)
-                }
             }
         }
     }
@@ -90,34 +96,25 @@ struct WebMorningTests {
         #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"count\":\"3\"}", task: .unreadCount) == .unsupported("malformed"))
         #expect(WebMorningOutcome.parse("{\"status\":\"unsupported\",\"reason\":\"signin\"}", task: .unreadCount) == .unsupported("signin"))
         #expect(WebMorningOutcome.parse("{\"status\":\"unsupported\",\"reason\":\"<b>x</b>\"}", task: .unreadCount) == .unsupported("malformed"))
+        #expect(WebMorningOutcome.parse(#"{"status":"ok","count":true}"#, task: .unreadCount) == .unsupported("malformed"))
+        #expect(WebMorningOutcome.parse(#"{"status":"ok","count":1.5}"#, task: .unreadCount) == .unsupported("malformed"))
         #expect(WebMorningOutcome.parse(nil, task: .headlines) == .unsupported("malformed"))
         #expect(WebMorningOutcome.parse(42, task: .headlines) == .unsupported("malformed"))
         #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"headlines\":[\"One headline here\"]}", task: .headlines)
                 == .headlines(["One headline here"]))
         let six = "[" + Array(repeating: "\"A long enough headline\"", count: 6).joined(separator: ",") + "]"
         #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"headlines\":\(six)}", task: .headlines) == .unsupported("malformed"))
-        #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"token\":\"1a2b\",\"method\":\"container\"}", task: .nextVideo)
-                == .scrolled(token: "1a2b", method: "container"))
-        #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"token\":\"blob:https://x\",\"method\":\"container\"}", task: .nextVideo)
-                == .unsupported("malformed"))
+        #expect(WebMorningOutcome.parse("{\"status\":\"ok\",\"method\":\"container\"}", task: .nextVideo)
+                == .scrollRequested(method: "container"))
+        #expect(WebMorningOutcome.parse(#"{"status":"ok","method":"key"}"#, task: .nextVideo) == .unsupported("malformed"))
         #expect(WebMorningOutcome.parse(String(repeating: " ", count: 5_000), task: .unreadCount) == .unsupported("malformed"))
     }
 
     @Test func logLinesCarryNoPageText() {
         let line = WebMorningOutcome.headlines(["Secret headline words"]).logLine(site: .news, task: .headlines)
         #expect(line == "WEBMORNING site=news task=headlines result=ok headlines=1")
-        #expect(!WebMorningOutcome.scrolled(token: "abcd", method: "key").logLine(site: .youtube, task: .nextVideo).contains("abcd"))
-    }
-
-    @Test func advanceCountsOnlyAChangedVideo() {
-        var tracker = WebMorningAdvanceTracker()
-        tracker.record(.scrolled(token: "a", method: "container"))
-        tracker.record(.scrolled(token: "a", method: "container"))
-        tracker.record(.scrolled(token: "b", method: "container"))
-        tracker.record(.unsupported("layout"))
-        tracker.record(.scrolled(token: "c", method: "key"))
-        #expect(tracker.attempts == 4)
-        #expect(tracker.advanced == 2)
+        #expect(WebMorningOutcome.scrollRequested(method: "container").logLine(site: .youtube, task: .nextVideo)
+                == "WEBMORNING site=youtube task=nextVideo result=scrollRequested method=container")
     }
 
     @Test func stepClockCountsDownAndExtends() {
@@ -132,18 +129,4 @@ struct WebMorningTests {
         #expect(WebMorningStepClock(start: start, minutes: 0).remaining(at: start) == 60)
     }
 
-    @Test func aStepKeepsItsWebsiteAndOlderFilesStillRead() throws {
-        let step = RoutineStep(title: "Instagram in MORE", durationMinutes: 10, webSite: .instagram)
-        let restored = try JSONDecoder().decode(RoutineStep.self, from: JSONEncoder().encode(step))
-        #expect(restored.webSite == .instagram)
-        let older = #"{"id":"\#(UUID().uuidString)","title":"Old","detail":"","kind":"custom","durationMinutes":5,"isRequired":false}"#
-        #expect(try JSONDecoder().decode(RoutineStep.self, from: Data(older.utf8)).webSite == nil)
-    }
-
-    @Test func aModelSuggestionCannotAddAWebsite() {
-        let candidate = RoutineVersion(number: 1, createdAt: Date(), sourceLabel: "Model",
-            steps: [RoutineStep(title: "Scroll", webSite: .instagram)], isApproved: false)
-        let draft = RoutineVersion.inferredDraft(from: candidate, preserving: nil)
-        #expect(draft.steps.allSatisfy { $0.webSite == nil })
-    }
 }
