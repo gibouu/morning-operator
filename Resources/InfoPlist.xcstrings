@@ -91,6 +91,24 @@
         }
       }
     },
+    "NSHealthUpdateUsageDescription": {
+      "comment": "Required HealthKit submission metadata; authorization remains read-only and MORE never writes Health data.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE uses HealthKit to read the sleep and health information you choose for your morning briefing. MORE does not add or change Health data."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE utilise HealthKit pour lire les données de sommeil et de santé que vous choisissez pour votre briefing du matin. MORE n’ajoute ni ne modifie aucune donnée Santé."
+          }
+        }
+      }
+    },
     "NSMicrophoneUsageDescription": {
       "comment": "Explicitly chosen read scope; local by default, optional online voice conversation disclosed separately.",
       "extractionState": "manual",
