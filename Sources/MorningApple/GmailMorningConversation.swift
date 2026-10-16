@@ -37,6 +37,8 @@ public final class GmailMorningConversation {
         !isComposingSelfMessage && lastSendOutcome == nil && [.askingToReply, .askingForIntention, .reviewingReply].contains(state)
     }
     public private(set) var draftText = ""
+    /// Ephemeral success signal, independent of draft equality and speech playback.
+    public private(set) var replyPreparationID: UUID?
     public private(set) var lastSendOutcome: GmailSendOutcome?
     public private(set) var readOutcome: GmailMorningReadOutcome = .unavailable
     public private(set) var recipient: String?
@@ -412,6 +414,7 @@ public final class GmailMorningConversation {
     public func clear() {
         cancel(); context = nil; session = nil; messages = []; selectedIndex = 0; pendingIntention = ""
         draftText = ""; recipient = nil; summary = ""; inboxNarration = nil; message = ""; state = .idle; generation = nil; lastSendOutcome = nil
+        replyPreparationID = nil
         attentionSelection = nil
         readOutcome = .unavailable
         isComposingSelfMessage = false; selfMessageSubject = ""; selfMessageDraft = nil
@@ -515,6 +518,7 @@ public final class GmailMorningConversation {
         }
         try requireCurrent(token)
         draftText = reply; pendingIntention = ""; state = .reviewingReply
+        replyPreparationID = UUID()
         try await reviewReply(mail: mail, token: token)
     }
 
