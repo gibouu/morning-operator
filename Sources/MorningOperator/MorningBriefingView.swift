@@ -36,7 +36,7 @@ struct MorningBriefingView: View {
                     }
                 } else {
                     calendarSection.disabled(store.sessionActive)
-                    weatherSection.disabled(store.sessionActive)
+                    weatherSection
                 }
                 if let error = controller.errorMessage {
                     Section { Text(error).font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
@@ -124,55 +124,57 @@ struct MorningBriefingView: View {
 
     private var weatherSection: some View {
         Section {
-            if let city = controller.settings.weatherLocation {
-                LabeledContent("City", value: city.displayName).accessibilityIdentifier("briefing.city")
-                Picker("Temperature", selection: Binding(get: { controller.settings.temperatureUnit }, set: { unit in
-                    var settings = controller.settings; settings.temperatureUnit = unit; save(settings)
-                })) {
-                    Text("Celsius").tag(MorningBriefingTemperatureUnit.celsius)
-                    Text("Fahrenheit").tag(MorningBriefingTemperatureUnit.fahrenheit)
-                }.accessibilityIdentifier("briefing.temperatureUnit")
-                Button("Remove weather") {
-                    var settings = controller.settings; settings.weatherLocation = nil; save(settings)
-                }.accessibilityIdentifier("briefing.removeWeather")
-            }
-            HStack {
-                TextField("Search for a city", text: $cityQuery).textInputAutocapitalization(.words)
-                    .focused($cityFocused)
-                    .submitLabel(.search).onSubmit(search)
-                    .onChange(of: cityQuery) { _, text in controller.cityQueryChanged(text) }
-                    .accessibilityIdentifier("briefing.citySearch")
-                Button(action: search) { Image(systemName: "magnifyingglass") }
-                    .accessibilityLabel("Search cities").accessibilityIdentifier("briefing.searchCities")
-                    .disabled(cityQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || controller.isSearchingCities)
-            }.id(Self.citySearchAnchor)
-            if controller.isSearchingCities { ProgressView("Finding cities…") }
-            ForEach(controller.cityResults) { city in
-                Button(city.displayName) { choose(city) }
-                    .accessibilityIdentifier("briefing.cityResult.\(city.id)")
-            }
-            if controller.cityResults.isEmpty {
-                // Five suggestions keep the list short under the field.
-                ForEach(controller.citySuggestions.prefix(5)) { suggestion in
-                    Button { choose(suggestion) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(suggestion.title)
-                            if !suggestion.subtitle.isEmpty {
-                                Text(suggestion.subtitle).font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+            Group {
+                if let city = controller.settings.weatherLocation {
+                    LabeledContent("City", value: city.displayName).accessibilityIdentifier("briefing.city")
+                    Picker("Temperature", selection: Binding(get: { controller.settings.temperatureUnit }, set: { unit in
+                        var settings = controller.settings; settings.temperatureUnit = unit; save(settings)
+                    })) {
+                        Text("Celsius").tag(MorningBriefingTemperatureUnit.celsius)
+                        Text("Fahrenheit").tag(MorningBriefingTemperatureUnit.fahrenheit)
+                    }.accessibilityIdentifier("briefing.temperatureUnit")
+                    Button("Remove weather") {
+                        var settings = controller.settings; settings.weatherLocation = nil; save(settings)
+                    }.accessibilityIdentifier("briefing.removeWeather")
+                }
+                HStack {
+                    TextField("Search for a city", text: $cityQuery).textInputAutocapitalization(.words)
+                        .focused($cityFocused)
+                        .submitLabel(.search).onSubmit(search)
+                        .onChange(of: cityQuery) { _, text in controller.cityQueryChanged(text) }
+                        .accessibilityIdentifier("briefing.citySearch")
+                    Button(action: search) { Image(systemName: "magnifyingglass") }
+                        .accessibilityLabel("Search cities").accessibilityIdentifier("briefing.searchCities")
+                        .disabled(cityQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || controller.isSearchingCities)
+                }.id(Self.citySearchAnchor)
+                if controller.isSearchingCities { ProgressView("Finding cities…") }
+                ForEach(controller.cityResults) { city in
+                    Button(city.displayName) { choose(city) }
+                        .accessibilityIdentifier("briefing.cityResult.\(city.id)")
+                }
+                if controller.cityResults.isEmpty {
+                    // Five suggestions keep the list short under the field.
+                    ForEach(controller.citySuggestions.prefix(5)) { suggestion in
+                        Button { choose(suggestion) } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(suggestion.title)
+                                if !suggestion.subtitle.isEmpty {
+                                    Text(suggestion.subtitle).font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                                }
                             }
                         }
+                        .disabled(controller.isSearchingCities)
+                        .accessibilityLabel(suggestion.label)
+                        .accessibilityIdentifier("briefing.citySuggestion.\(suggestion.title)")
                     }
-                    .disabled(controller.isSearchingCities)
-                    .accessibilityLabel(suggestion.label)
-                    .accessibilityIdentifier("briefing.citySuggestion.\(suggestion.title)")
                 }
-            }
-            if let outcome = controller.citySearchOutcome, !controller.isSearchingCities, controller.cityResults.isEmpty,
-               controller.citySuggestions.isEmpty {
-                Text(outcome == .noMatch ? String(localized: "No matching cities. Try a nearby city or include the country.")
-                     : WeatherObservationError.searchUnavailable.localizedDescription)
-                    .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
-            }
+                if let outcome = controller.citySearchOutcome, !controller.isSearchingCities, controller.cityResults.isEmpty,
+                   controller.citySuggestions.isEmpty {
+                    Text(outcome == .noMatch ? String(localized: "No matching cities. Try a nearby city or include the country.")
+                         : WeatherObservationError.searchUnavailable.localizedDescription)
+                        .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                }
+            }.disabled(store.sessionActive)
             if let attribution = controller.currentWeatherSnapshot?.attribution {
                 MorningWeatherAttributionView(attribution: attribution, synthetic: store.usesSyntheticBriefing)
             }
