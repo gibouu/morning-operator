@@ -236,10 +236,12 @@ import MorningCore
         field.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + text)
         XCTAssertEqual(field.value as? String, text)
-        // The visible form, not a hidden state mutation, dismisses this keyboard.
-        let form = app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable)
-            ?? app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
-        form?.swipeUp()
+        // Scroll the Form containing this actual edited field, rather than the
+        // underlying routine or keyboard suggestions. A connected step can have
+        // an editable name while its details are read-only.
+        let form = app.collectionViews.containing(.textField, identifier: field.label).firstMatch
+        XCTAssertTrue(form.exists && form.isHittable)
+        form.swipeUp()
     }
 
     private func moveSlackToThird(titled title: String, in app: XCUIApplication) throws {
@@ -438,7 +440,16 @@ import MorningCore
         XCTAssertTrue(marker.waitForExistence(timeout: 8)); XCTAssertEqual(marker.value as? String, workspace)
     }
     private func chooseAction(_ name: String, _ app: XCUIApplication) {
-        tap("step.automation", app)
+        // The same exact Picker ID may be represented as a Button or another
+        // native accessibility type. Touch only its enabled, visible element.
+        let action = app.descendants(matching: .any).matching(identifier: "step.automation")
+        scroll(action.firstMatch, id: "step.automation", in: app)
+        guard let visible = action.allElementsBoundByIndex.first(where: { $0.exists && $0.isEnabled && $0.isHittable }) else {
+            captureFailure("long-ten-action-picker-not-tappable", app)
+            XCTFail("The exact Action picker is not visible and enabled.")
+            return
+        }
+        visible.tap()
         let choice = app.buttons[name]
         if choice.waitForExistence(timeout: 2) { scroll(choice, id: name, in: app); choice.tap() }
         else { let text = app.staticTexts[name]; scroll(text, id: name, in: app); text.tap() }
@@ -490,15 +501,23 @@ import MorningCore
         scroll(value, id: id, in: app); return value
     }
     private func tap(_ id: String, _ app: XCUIApplication) { button(id, app).tap() }
+    private func stepEditorForm(_ app: XCUIApplication) -> XCUIElement {
+        app.collectionViews.containing(.textField, identifier: "Step details").firstMatch
+    }
     private func scroll(_ value: XCUIElement, id: String, in app: XCUIApplication) {
         _ = value.waitForExistence(timeout: 6)
         for down in [false, true] {
             for _ in 0..<10 {
                 if value.exists && value.isHittable { return }
                 if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
-                let scroll = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
-                    ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) ?? app
-                if down { scroll.swipeDown() } else { scroll.swipeUp() }
+                let editor = stepEditorForm(app)
+                let holder: XCUIElement
+                if editor.exists && editor.isHittable { holder = editor }
+                else {
+                    holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
+                        ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) ?? app
+                }
+                if down { holder.swipeDown() } else { holder.swipeUp() }
             }
         }
         captureFailure("long-ten-unreachable-\(id)", app)
