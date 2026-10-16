@@ -109,7 +109,7 @@ struct WebMorningView: View {
             if site != .gmail { controller.startIfNeeded() }
             controller.actionsEnabled = isStepActive && scenePhase == .active
             controller.learningAllowed = learningOnly && scenePhase == .active
-            if site != .gmail && executionPlan == nil && !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
+            if site != .gmail && stepEndsAt == nil && executionPlan == nil && !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
         }
         .onChange(of: scenePhase) { _, phase in
             controller.actionsEnabled = isStepActive && phase == .active && !showingAbout

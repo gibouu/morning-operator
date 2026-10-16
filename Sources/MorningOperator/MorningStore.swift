@@ -67,7 +67,6 @@ final class MorningStore {
     var screenTimeBusy = false
     var screenTimeMessage: String?
     var screenTimeAccess: ScreenTimeAccess = .notAsked
-    var screenTimeDailyUsage: [ScreenTimeDailyUsage] = []
     var screenTimeLearning: ScreenTimeLearning?
     @ObservationIgnored let screenTimeSource: any ScreenTimeSource = ScreenTimeSources.make()
     @ObservationIgnored var screenTimeTask: Task<Void, Never>?
@@ -1072,7 +1071,6 @@ final class MorningStore {
         if let entryID, consumedMorningEntryIDs.contains(entryID) { return false }
         // Revealing an already running morning must not dispatch its speech again.
         if session?.status == .running { return true }
-        let suppressed = sessionActive && session?.id == handsFreeListeningSuppressedSessionID
         let decision = voiceStartDecision
         if let decision {
             guard decision.request.routineVersionID == routine.id, decision.request.generation == dataGeneration,
@@ -1083,6 +1081,8 @@ final class MorningStore {
                       !speech.handsFreeAudioSessionIsOwned else { return false }
             }
         }
+        #if MORE_JURY_DEMO
+        let suppressed = sessionActive && session?.id == handsFreeListeningSuppressedSessionID
         let resumingCloud = session?.status == .paused && cloudVoice.isActive &&
             cloudVoiceConsentSession == session?.id && cloudVoiceConsentGeneration == dataGeneration
         let needsListeningPreparation = automatic && !suppressed && !resumingCloud &&
@@ -1101,6 +1101,7 @@ final class MorningStore {
             }
             return false
         }
+        #endif
         discardCompletionReflection()
         let previousEntryIDs = consumedMorningEntryIDs
         let previousListeningSuppression = handsFreeListeningSuppressedSessionID
@@ -1134,15 +1135,18 @@ final class MorningStore {
                 naturalSpeechFailed = false; voiceFallbackMessage = nil
             }
             configureNaturalSpeech()
-            // A new morning opens first: the opening decides when its routine begins
-            // (issue #99). A resumed one continues.
             if beginsMorning {
                 morningStartCount += 1
                 #if MORE_JURY_DEMO
                 _ = mayGreet
                 beginJuryDemo()
                 #else
-                beginOpening(mayGreet: mayGreet)
+                // Approval already delegated these steps. Start goes straight to
+                // execution; listening and online voice are prepared in Settings.
+                _ = mayGreet
+                endOpening()
+                openingRoutineStarts = 1
+                runCurrentIfEnabled()
                 #endif
             } else {
                 runCurrentIfEnabled()
@@ -1211,11 +1215,13 @@ final class MorningStore {
                 : "Finish the Slack reply or close this request before resuming."
             return
         }
+        #if MORE_JURY_DEMO
         if !bypassesVoicePreparationForUITests, (automatic || readAloud),
            !hasNaturalSpeechDecision, !cloudVoice.isActive {
             _ = start()
             return
         }
+        #endif
         do {
             try session?.resume(); notice = nil
             guard persist() else { pauseAfterSaveFailure(); return }
@@ -1312,7 +1318,7 @@ final class MorningStore {
             return
         }
         if step.automation == nil {
-            speech.speak("\(step.title). \(step.detail)")
+            speech.speak(step.executionPresentationText())
             return
         }
         let attempt = UUID()
@@ -3304,7 +3310,7 @@ final class MorningStore {
         pendingRoutineProposal = nil
         pendingScreenTimeProposal = nil
         screenTimeBusy = false; screenTimeMessage = nil; screenTimeAccess = .notAsked
-        screenTimeDailyUsage = []; screenTimeLearning = nil
+        screenTimeLearning = nil
         evidenceRetentionDays = nil; evidenceRemovalStatus = nil; evidenceRemovalInProgress = false
         setAsideWorkspaceElements = []
         routinePreferences = RoutinePreferenceJournal(); routinePreferencesIssue = nil; unreadablePreferences = nil

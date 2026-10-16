@@ -51,9 +51,9 @@ final class WebRoutineJourneyTests: XCTestCase {
             MorningUITestNavigation.launch(app)
             defer { app.terminate() }
             SubmissionRoutineUITestNavigation.startSavedInstagram(in: app)
-            let about = app.buttons["web.aboutDone"]
-            if about.waitForExistence(timeout: 5) { about.tap() }
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(app.buttons["web.aboutDone"].exists, "Starting a saved routine must open its moment directly.")
+            XCTAssertTrue(app.buttons["web.nextMoment"].isHittable)
             XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
             XCTAssertEqual(app.state, .runningForeground)
             app.buttons["web.nextMoment"].tap()
@@ -94,10 +94,9 @@ final class WebRoutineJourneyTests: XCTestCase {
         XCTAssertTrue(approve.waitForExistence(timeout: 5), app.debugDescription)
         approve.tap()
         MorningUITestNavigation.tapButton("run.start", in: app)
-        let about = app.buttons["web.aboutDone"]
-        if about.waitForExistence(timeout: 5) { about.tap() }
         XCTAssertTrue(app.otherElements["web.page"].waitForExistence(timeout: 10)
             || app.webViews["web.page"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["web.aboutDone"].exists, "A routine must not open an extra introduction over its page.")
         XCTAssertEqual(app.staticTexts["web.host"].label, "www.lemonde.fr")
         let before = try remaining("web.remaining", in: app)
         let beforeEnd = Date().addingTimeInterval(TimeInterval(before))
@@ -284,21 +283,8 @@ private enum SubmissionRoutineUITestNavigation {
         }
         XCTAssertTrue(begin.exists, app.debugDescription)
         begin.tap()
-        let caption = app.scrollViews["morning.captions"]
-        XCTAssertTrue(caption.waitForExistence(timeout: 15), app.debugDescription)
-        let prepared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "preparing"
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [prepared], timeout: 15), .completed)
-        if MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "none" {
-            let play = app.buttons["morning.playback"]
-            for _ in 0..<3 {
-                if play.exists { break }
-                caption.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.65)).tap()
-                if play.waitForExistence(timeout: 2) { break }
-            }
-            XCTAssertTrue(play.exists, app.debugDescription)
-            play.tap()
-        }
+        XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertFalse(app.buttons["web.aboutDone"].exists, "The saved moment starts directly.")
+
     }
 }
