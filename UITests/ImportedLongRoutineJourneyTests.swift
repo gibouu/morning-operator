@@ -311,9 +311,10 @@ import MorningCore
             XCTFail("The actual reviewed picker must be reachable: \(id)"); return
         }
         value.tap()
-        let button = app.buttons[label].firstMatch
-        if button.waitForExistence(timeout: 2) { scroll(button, id: label, in: app); button.tap() }
-        else { let row = app.staticTexts[label].firstMatch; scroll(row, id: label, in: app); row.tap() }
+        let options = id == "step.targetApp"
+            ? ["None", "Run an installed Shortcut", "Le Monde", "Reddit", "YouTube Shorts", "Instagram", "YouTube"]
+            : ["I browse myself", "Read headlines aloud", "Browse the feed", "Watch videos", "Watch stories"]
+        chooseNativePopup(label, pickerID: id, options: options, in: app)
     }
 
     private func browserDiagnostic(_ app: XCUIApplication) throws -> [String: String] {
@@ -550,11 +551,46 @@ import MorningCore
         let native = choice.switches.firstMatch
         if native.exists && native.isHittable { native.tap() } else { choice.tap() }
         XCTAssertEqual(choice.value as? String, "1")
-        waitLabel(element("briefing.text", app), contains: "Synthetic quiet reading", timeout: 15)
+        // A readonly preview is evidence, not a tap target. Its own native
+        // sheet must scroll; the Settings list behind it is never a fallback.
+        let preview = revealBriefingText(in: app)
+        waitLabel(preview, contains: "Synthetic quiet reading", timeout: 15)
         XCTAssertFalse(app.alerts.firstMatch.exists, "No real Calendar or weather permission is requested.")
         attach("long-ten-selected-synthetic-calendar-source", app)
         app.navigationBars["Your day"].buttons["Done"].tap()
         XCTAssertTrue(app.navigationBars["Your day"].waitForNonExistence(timeout: 5))
+    }
+
+    private func revealBriefingText(in app: XCUIApplication) -> XCUIElement {
+        let preview = app.staticTexts["briefing.text"]
+        let bar = app.navigationBars["Your day"], done = bar.buttons["Done"]
+        let forms = app.collectionViews.allElementsBoundByIndex
+        guard done.exists && done.isHittable,
+              let index = forms.firstIndex(where: {
+                  $0.descendants(matching: .any).matching(identifier: "briefing.synthetic").firstMatch.exists
+              }) else {
+            captureFailure("long-ten-briefing-sheet-not-observed", app)
+            XCTFail("The Your day sheet and its synthetic source must own this scroll."); return preview
+        }
+        // Keep this exact ancestor index after its lazy header leaves the viewport.
+        let form = app.collectionViews.element(boundBy: index)
+        for _ in 0..<10 {
+            if preview.exists { return preview }
+            guard done.exists && done.isHittable, form.exists else { break }
+            let viewport = form.frame.intersection(app.frame)
+            let top = max(viewport.minY, bar.frame.maxY) + 8
+            let bottom = viewport.maxY - 24
+            guard !viewport.isNull, !viewport.isInfinite,
+                  [viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+                  viewport.width > 80, bottom - top > 120 else { break }
+            let origin = form.coordinate(withNormalizedOffset: .zero)
+            let x = viewport.midX - form.frame.minX
+            let start = origin.withOffset(CGVector(dx: x, dy: top + (bottom - top) * 0.8 - form.frame.minY))
+            let end = origin.withOffset(CGVector(dx: x, dy: top + (bottom - top) * 0.2 - form.frame.minY))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        captureFailure("long-ten-briefing-preview-not-observed", app)
+        XCTFail("The actual selected Calendar facts must be observed before approval."); return preview
     }
 
     private func configureOperation(_ index: Int, action: String, minutes: Int, detail: String,
@@ -815,10 +851,48 @@ import MorningCore
             return
         }
         visible.tap()
-        let choice = app.buttons[name]
-        if choice.waitForExistence(timeout: 2) { scroll(choice, id: name, in: app); choice.tap() }
-        else { let text = app.staticTexts[name]; scroll(text, id: name, in: app); text.tap() }
+        chooseNativePopup(name, pickerID: "step.automation", options: ["User-led moment", "Read this text aloud",
+            "Read today's calendar", "Read today's briefing", "Keep this time, then continue", "Read my mail and help me reply"], in: app)
     }
+    private func chooseNativePopup(_ name: String, pickerID: String, options: [String], in app: XCUIApplication) {
+        let labels = NSPredicate(format: "label IN %@", options + [name])
+        guard app.descendants(matching: .any).matching(labels).firstMatch.waitForExistence(timeout: 6) else {
+            captureFailure("long-ten-native-popup-not-observed-" + pickerID, app)
+            XCTFail("The native Picker must expose its real options."); return
+        }
+        for _ in 0..<12 {
+            let candidates = app.menus.allElementsBoundByIndex + app.collectionViews.allElementsBoundByIndex + app.scrollViews.allElementsBoundByIndex
+            guard let popup = candidates.filter({ item in
+                item.exists && !["step.editor.form", "routine.editor", "morning.captions"].contains(item.identifier) &&
+                    !item.frame.isEmpty && item.frame.intersects(app.frame) &&
+                    item.descendants(matching: .any).matching(labels).allElementsBoundByIndex.contains { $0.exists && $0.isHittable }
+            }).min(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) else { break }
+            let bounds = popup.frame.intersection(app.frame)
+            let exact = popup.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name))
+            if let choice = exact.allElementsBoundByIndex.first(where: {
+                [.button, .menuItem, .staticText].contains($0.elementType) && $0.exists && $0.isEnabled && $0.isHittable &&
+                    !$0.frame.isEmpty && bounds.contains($0.frame)
+            }) {
+                choice.tap()
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate(
+                    format: "exists == true AND (label CONTAINS %@ OR value CONTAINS %@)", name, name),
+                    object: app.descendants(matching: .any).matching(identifier: pickerID).firstMatch)
+                XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed,
+                               "The actual Picker must show the selected option before Save.")
+                return
+            }
+            // The native popup's frame may extend beneath the editor. Only an
+            // actual wholly visible option may receive a real scroll gesture.
+            guard let anchor = popup.descendants(matching: .any).matching(labels).allElementsBoundByIndex.first(where: {
+                [.button, .staticText, .menuItem].contains($0.elementType) && $0.exists && $0.isHittable &&
+                    !$0.frame.isEmpty && app.frame.contains($0.frame)
+            }) else { break }
+            anchor.swipeUp()
+        }
+        captureFailure("long-ten-native-popup-choice-unreachable-" + pickerID, app)
+        XCTFail("The exact option must be selected in the foreground native popup: \(name)")
+    }
+
     private func prepareSlack(_ app: XCUIApplication, intention: String) {
         tap("slackMoment.message.0", app)
         let field = element("slackMoment.intention", app)
