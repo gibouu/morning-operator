@@ -93,7 +93,7 @@ struct MorningSubscriptionEntryView: View {
 }
 
 #if DEBUG
-private enum MorningDeveloperAccess {
+enum MorningDeveloperAccess {
     static var preferenceKey: String {
         let key = "more.developerAccess.onboardingSkipped"
         guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return key }
@@ -167,8 +167,10 @@ struct MorningSubscriptionLegalSheet: View {
 }
 
 #if DEBUG
-/// An explicit preview can never buy a product or unlock the permission flow.
+/// Sample purchase actions never buy a product. An explicit Debug skip uses the
+/// existing developer-access path, then returns to the real app workspace.
 struct MorningWelcomePreview: View {
+    let onSkip: () -> Void
     @State private var state: MorningPurchasePresentation = ProcessInfo.processInfo.arguments.contains("--preview-onboarding-unavailable")
         ? .unavailable : ProcessInfo.processInfo.arguments.contains("--preview-onboarding-pending") ? .pending : .ready
     @State private var legalDocument: MorningSubscriptionLegalDocument?
@@ -179,13 +181,16 @@ struct MorningWelcomePreview: View {
                      includesFreeTrial: !ProcessInfo.processInfo.arguments.contains("--preview-onboarding-no-trial"))
     }
     var body: some View {
-        MorningWelcomeFlow(offer: offer,
+        var flow = MorningWelcomeFlow(offer: offer,
                            purchaseState: state,
                            subscribe: { state = .failed(french ? "Aperçu : aucun achat effectué. Vous pouvez réessayer."
                                                        : "Preview: no purchase made. You can try again.") },
                            restore: { state = .failed(french ? "Aperçu : aucun abonnement à restaurer."
                                                      : "Preview: no subscription to restore.") },
                            retry: { state = .ready }, showLegal: { legalDocument = $0 })
+        flow.developerAccess = onSkip
+        flow.developerAccessIsPreviewSkip = true
+        return flow
             .sheet(item: $legalDocument) { MorningSubscriptionLegalSheet(document: $0) }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("onboarding.preview")

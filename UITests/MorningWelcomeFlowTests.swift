@@ -203,6 +203,40 @@ final class MorningWelcomeFlowTests: XCTestCase {
         app.terminate()
     }
 
+    func testExplicitPreviewSkipReturnsToTheSameRealWorkspaceInEnglishAndFrench() {
+        for french in [false, true] {
+            let app = launch(french: french, extra: ["--ui-testing-real-subscription", "--ui-testing-empty-workspace"])
+            let brand = control("onboarding.brand", in: app)
+            XCTAssertTrue(brand.exists)
+            XCTAssertGreaterThan(brand.frame.midX, app.frame.midX, "Only the M mark belongs in the upper right.")
+            XCTAssertFalse(app.staticTexts["MORE"].exists, "The welcome header no longer contains a MORE wordmark.")
+            tap("onboarding.offer", in: app)
+            tap("paywall.subscribe", in: app)
+            XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 5))
+            assertNoPermissionOrHome(in: app)
+            let skip = app.buttons["onboarding.skipForNow"]
+            XCTAssertEqual(skip.label, french ? "Passer pour le moment" : "Skip for now")
+            tap("onboarding.skipForNow", in: app)
+            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(control("onboarding.preview", in: app).exists)
+            XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
+            let prefix = "--ui-testing-workspace="
+            let workspace = String(app.launchArguments.first { $0.hasPrefix(prefix) }!.dropFirst(prefix.count))
+            let marker = app.staticTexts["qa.testWorkspace"]
+            XCTAssertEqual((marker.value as? String)?.lowercased(), workspace.lowercased(),
+                           "Skipping preview keeps the same workspace and MorningStore.")
+            XCTAssertEqual(app.alerts.count, 0, "Debug access is not a system permission grant.")
+            app.terminate()
+            // Normal entry (without the explicit preview argument) retains Debug
+            // access rather than making up a StoreKit entitlement or trial.
+            app.launchArguments.removeAll { $0 == "--preview-onboarding" }
+            app.launch()
+            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(app.staticTexts["onboarding.heading"].exists)
+            app.terminate()
+        }
+    }
+
     private func launch(phase: String = "day", french: Bool = false, languages: [String]? = nil,
                         localeIdentifier: String? = nil, extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false

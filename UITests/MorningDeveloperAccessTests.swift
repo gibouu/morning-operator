@@ -28,8 +28,7 @@ final class MorningDeveloperAccessTests: XCTestCase {
         let app = launch(workspace: workspace, french: false, largestText: true)
         let offer = app.buttons["onboarding.offer"]
         XCTAssertTrue(offer.waitForExistence(timeout: 15), app.debugDescription)
-        XCTAssertTrue(offer.isHittable, app.debugDescription)
-        offer.tap()
+        MorningUITestNavigation.tapButton("onboarding.offer", in: app)
         let access = app.buttons["paywall.developerAccess"]
         assertDeveloperButton(access, label: "Developer access")
         attach("developer-access-paywall-en-largest-text", app)
