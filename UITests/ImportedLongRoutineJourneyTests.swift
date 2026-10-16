@@ -157,7 +157,8 @@ import MorningCore
         }
         XCTAssertTrue(button("routine.approve", app).isEnabled)
         XCTAssertTrue(text("routine.source", app).label.contains("Sample routine"))
-        attach("long-ten-configured-three-simulated-seven-time-only-unapproved", app)
+        attach(complete ? "complete-routine-configured-service-browser-and-media-inputs-unapproved"
+            : "long-ten-configured-three-simulated-seven-time-only-unapproved", app)
         tap("routine.approve", app)
         home(app); app.terminate()
         app.launchArguments.removeAll { $0.hasPrefix("--ui-testing-parsed-routine=") }
@@ -233,7 +234,8 @@ import MorningCore
         XCTAssertEqual(Set(trace.map(\.step)).count, 10)
         XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: Double(minutes[9] * 60 + 45)))
         try requireRecap(app, trace: trace, titles: titles, complete: complete)
-        attach("long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
+        attach(complete ? "complete-routine-completed-observed-work-and-honest-recap"
+            : "long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
         let evidence = try JSONSerialization.data(withJSONObject: [
             "scope": complete
                 ? "Synthetic parsed draft downstream: Calendar, Gmail reviewed reply, Slack uncertain, actual WebKit news/feed/video/music, one exact simulated reminder, retained reading and closing budgets. No movie inference, live service, microphone or acoustic-quality claim."
