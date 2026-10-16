@@ -273,8 +273,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         articleRefusal = nil
         articleOperation = nil; articleBusy = false; articleText = nil
         articleExpectedDestination = nil; articleResponse = nil; articleLocalResponse = nil
-        if needsArticleReturn { articleMessage = AppLanguage.isFrench ? "Lecture interrompue. Dites retour aux titres ou reprends."
-            : "Reading interrupted. Say back to headlines or resume." }
+        if needsArticleReturn { articleMessage = AppLanguage.isFrench ? "Lecture interrompue. Revenez aux titres ou reprenez."
+            : "Reading interrupted. Return to the headlines or resume." }
     }
 
     private func refuseArticle(_ reason: WebArticleRefusal, cancelOperation: Bool = false) {
@@ -378,8 +378,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.scrollView.setContentOffset(point.offset, animated: false)
         articleReturnPoint = nil
         articleExpectedDestination = nil; articleResponse = nil; articleLocalResponse = nil
-        articleMessage = AppLanguage.isFrench ? "Retour aux titres. Le temps restant est conservé. Dites reprends pour continuer."
-            : "Back at the headlines. Your remaining time is preserved. Say resume to continue."
+        articleMessage = AppLanguage.isFrench ? "Retour aux titres. Le temps restant est conservé. Reprenez pour continuer."
+            : "Back at the headlines. Your remaining time is preserved. Resume to continue."
         let generation = pageGeneration, page = webView.url
         let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines, syntheticNews: syntheticNews), contentWorld: .defaultClient)
         guard articleOperation == operation, articleAccess(context: context, privacy: privacy, authorized: authorized),
