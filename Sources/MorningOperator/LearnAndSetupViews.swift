@@ -727,6 +727,7 @@ struct StepEditor: View {
                     Section { Text(saveError).foregroundStyle(.red).accessibilityIdentifier("step.saveError") }
                 }
             }
+            .accessibilityIdentifier("step.editor.form")
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .background(MorningStyle.background)

@@ -236,12 +236,9 @@ import MorningCore
         field.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + text)
         XCTAssertEqual(field.value as? String, text)
-        // Scroll the Form containing this actual edited field, rather than the
-        // underlying routine or keyboard suggestions. A connected step can have
-        // an editable name while its details are read-only.
-        let form = app.collectionViews.containing(.textField, identifier: field.label).firstMatch
-        XCTAssertTrue(form.exists && form.isHittable)
-        form.swipeUp()
+        // A normal swipe on the full Form can start inside the keyboard.
+        // Drag only in its currently visible content, without changing focus.
+        _ = dragVisibleEditor(stepEditorForm(app), down: false, in: app)
     }
 
     private func moveSlackToThird(titled title: String, in app: XCUIApplication) throws {
@@ -502,7 +499,32 @@ import MorningCore
     }
     private func tap(_ id: String, _ app: XCUIApplication) { button(id, app).tap() }
     private func stepEditorForm(_ app: XCUIApplication) -> XCUIElement {
-        app.collectionViews.containing(.textField, identifier: "Step details").firstMatch
+        app.collectionViews["step.editor.form"].firstMatch
+    }
+    @discardableResult
+    private func dragVisibleEditor(_ form: XCUIElement, down: Bool, in app: XCUIApplication) -> Bool {
+        guard form.exists && form.isHittable else {
+            captureFailure("long-ten-editor-form-absent", app); XCTFail("The exact editor Form is not visible."); return false
+        }
+        let frame = form.frame, viewport = frame.intersection(app.frame)
+        var top = viewport.minY, bottom = viewport.maxY
+        if let bar = app.navigationBars.allElementsBoundByIndex.last(where: { $0.exists && $0.isHittable && $0.frame.intersects(viewport) }) {
+            top = max(top, bar.frame.maxY)
+        }
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.exists { bottom = min(bottom, keyboard.frame.minY) }
+        guard [frame.minX, frame.minY, viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+              !viewport.isNull, !viewport.isInfinite, viewport.width > 60, bottom - top > 120 else {
+            captureFailure("long-ten-editor-no-visible-drag-region", app)
+            XCTFail("The editor has no safe visible scroll region above the keyboard."); return false
+        }
+        let visible = CGRect(x: viewport.minX, y: top, width: viewport.width, height: bottom - top).insetBy(dx: 12, dy: 16)
+        let high = visible.minY + visible.height * 0.2, low = visible.minY + visible.height * 0.8
+        let origin = form.coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? high : low) - frame.minY))
+        let end = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? low : high) - frame.minY))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        return true
     }
     private func scroll(_ value: XCUIElement, id: String, in app: XCUIApplication) {
         _ = value.waitForExistence(timeout: 6)
@@ -511,13 +533,13 @@ import MorningCore
                 if value.exists && value.isHittable { return }
                 if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
                 let editor = stepEditorForm(app)
-                let holder: XCUIElement
-                if editor.exists && editor.isHittable { holder = editor }
-                else {
-                    holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
+                if editor.exists {
+                    guard dragVisibleEditor(editor, down: down, in: app) else { return }
+                } else {
+                    let holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
                         ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) ?? app
+                    if down { holder.swipeDown() } else { holder.swipeUp() }
                 }
-                if down { holder.swipeDown() } else { holder.swipeUp() }
             }
         }
         captureFailure("long-ten-unreachable-\(id)", app)
