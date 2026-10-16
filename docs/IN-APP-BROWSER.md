@@ -14,6 +14,13 @@ Before clicking Send, MORE persists only opaque digests and an operation identit
 
 Package/script checks use synthetic DOM inputs. Simulator UI and unsigned builds are separate evidence. Real LinkedIn/Slack sign-in, actual provider layouts, selected-model drafting, audible interruption and real message receipts require an authorized account/device acceptance run; none is established by these fixtures. Track physical acceptance in [#251](https://github.com/gibouu/morning-operator/issues/251).
 
+### Local verification — 16 October 2026
+
+- Shared/browser regression selection: 172 tests passed, including conversation identity, reviewed-send expiry, duplicate-effect reservations, receipt rejection, navigation containment and saved-routine routing. Script checks: 57 passed; localization audit: no missing French keys.
+- Two simulator UI journeys passed on iPhone 17 / iOS 26.5: automatic LinkedIn and Slack moments open their public sign-in page directly and pause the routine; services and first-use guidance remain available in French and English without changing a saved personal title. Screenshots were inspected. No account was signed in and no real message was sent.
+- The full package run completed with 2,188 passes, 16 skips and two native Vision OCR timeouts in unchanged tests (`MediaObservationLayoutTests.nativeTextAndBoundsFromSyntheticImage` and `MorningAppleTests.realVisionOCRFromSyntheticScreenshot`). The suite is not fully green; the OCR failures are tracked in [#244](https://github.com/gibouu/morning-operator/issues/244).
+- Replies implemented here are specific to LinkedIn and Slack. Other websites can keep their browser session, but supported actions still depend on a recognized service/layout. Further communication adapters are tracked in [#257](https://github.com/gibouu/morning-operator/issues/257).
+
 ## Routine execution revision — 15 October 2026
 
 Reviewed routine moments now have session-scoped feed, video, story, headline or unread-information behaviors, automatic progression and optional explicitly reviewed likes. The driver observes before/after actions, stops for sign-in or privacy/subscription choices, and journals uncertain likes before any retry. Previously saved web moments remain manual until edited. Closing an automated page pauses its session. [Execution contract and evidence boundaries](ROUTINE-AUTOMATION.md).
