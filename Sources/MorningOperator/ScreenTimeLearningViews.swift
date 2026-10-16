@@ -116,7 +116,7 @@ struct MorningScreenTimeView: View {
             }
             Text("Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown.")
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
-        }.accessibilityIdentifier("screenTime.morning.\(morning.start.timeIntervalSinceReferenceDate)")
+        }
     }
 
     private func time(_ date: Date, in zone: TimeZone) -> String {

@@ -534,7 +534,7 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
         let app = try ordinaryApp()
         try enterDeveloperAccessIfRequested(app)
         try openOrdinarySettingsDestination("setup.screenTime", in: app)
-        let mornings = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.morning."))
+        let mornings = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.window."))
         XCTAssertFalse(mornings.firstMatch.exists, "A prior in-memory result cannot establish this read.")
         let start = app.buttons["learn.screenTime.start"]
         try reveal(start, in: app)
