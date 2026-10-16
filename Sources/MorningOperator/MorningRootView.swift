@@ -27,7 +27,10 @@ struct MorningRootView: View {
     @ViewState<[HomeRoute]> private var path: [HomeRoute] = []
     private func route(_ route: HomeRoute) -> Bool { path.contains(route) }
     private func setRoute(_ route: HomeRoute, _ visible: Bool) {
-        if visible { if !path.contains(route) { path.append(route) } }
+        if visible {
+            if let index = path.firstIndex(of: route) { path.removeSubrange((index + 1)...) }
+            else { path.append(route) }
+        }
         else if let index = path.firstIndex(of: route) { path.removeSubrange(index...) }
     }
     private var showingSettings: Bool {
