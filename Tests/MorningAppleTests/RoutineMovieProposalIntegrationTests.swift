@@ -65,6 +65,7 @@ struct RoutineMovieProposalIntegrationTests {
                 report.proposalProgressTotalRequests = total
                 report.proposalCompletedRequests = completed
             })
+            report.proposalDiagnostics = model.proposalDiagnostics
             report.proposal = proposal; report.proposalCapability = model.capabilitySummary
             report.stage = "exactSourceValidation"
             report.citationsValid = proposal.isCurrent(archive: archive, baseRoutine: nil)
@@ -76,6 +77,7 @@ struct RoutineMovieProposalIntegrationTests {
             }
             report.status = "completed"
         } catch {
+            report.proposalDiagnostics = model.proposalDiagnostics
             report.errorCategory = Self.category(error)
             report.nativeError = ObservationContextErrorSanitizer.map(error)
             report.status = report.errorCategory == "localModelUnavailable" || report.classification?.status == .unavailable
@@ -122,6 +124,8 @@ private struct RoutineMovieProposalReport: Encodable {
     var acquisition: ObservationAcquisition?
     var preparedUnitCount: Int?, preparedSubmittedCharacterCount: Int?, preparedModelRequestCount: Int?
     var proposalProgressTotalRequests: Int?, proposalCompletedRequests: Int?
+    /// Optional: older reports remain readable without this content-free detail.
+    var proposalDiagnostics: RoutineProposalDiagnostics?
     var omissions: [LearningEvidenceOmission] = []
     var proposal: EvidenceRoutineProposal?
     var citationsValid: Bool?
