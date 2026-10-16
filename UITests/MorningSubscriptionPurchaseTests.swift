@@ -378,9 +378,13 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     private func assertHome(_ app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 15), app.debugDescription)
+        let actions = app.buttons["morning.actions"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 15), app.debugDescription)
+        let usable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: actions)
+        XCTAssertEqual(XCTWaiter.wait(for: [usable], timeout: 5), .completed, app.debugDescription)
         XCTAssertFalse(app.staticTexts["onboarding.heading"].exists)
         XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
+        XCTAssertFalse(app.buttons["routinePreparation.later"].exists)
         XCTAssertEqual(app.alerts.count, 0)
     }
 
