@@ -35,8 +35,8 @@ The following results are verified in the Xcode Cloud and App Store Connect web 
 
 | Cloud build | Exact source | Archive / upload / Apple processing | TestFlight state |
 | --- | --- | --- | --- |
-| `2026101635` | `8d63e9a5`, PR #261 | Complete | Missing Compliance; external post-action remains queued |
-| `2026101636` | `6d6d374d`, PR #265 | Complete | Missing Compliance; external post-action remains queued |
+| `2026101635` | `8d63e9a5`, PR #261 | Complete | Missing Compliance; external post-action fails with `Missing encryption compliance declaration` |
+| `2026101636` | `6d6d374d`, PR #265 | Complete | Missing Compliance; external availability remains blocked |
 
 This proves the automatic main-branch trigger, archive, upload and Apple processing path. The cloud-produced archives and IPAs have not been downloaded for independent signature, profile or packaged-resource inspection. No local verification from build 33 is presented as verification of these newer binaries.
 
@@ -61,7 +61,7 @@ The existing GitHub workflows remain separate checks for packages, app compilati
 ## Remaining release checks
 
 - Resolve **Missing Compliance** for the SDK-containing builds, including the French encryption declaration and Apple approval for distribution in France, using their actual contents and truthful App Store Connect answers. Track the blocker in [#263](https://github.com/gibouu/morning-operator/issues/263). Do not restore a false OS-only encryption assertion to bypass it.
-- After compliance is resolved, verify the queued external TestFlight post-action and the resulting beta-review state. External availability and installation are still unverified. Build 33 keeps its separate pending review.
+- After compliance is resolved, retry the external TestFlight post-action and verify its result and the resulting beta-review state. External availability and installation are still unverified. Build 33 keeps its separate pending review.
 - Download the cloud archive or IPA and independently inspect the actual app/widget identities, distribution signatures, profiles, matching versions/builds, app and SDK privacy resources, symbols and public runtime configuration.
 
 ## Troubleshooting
