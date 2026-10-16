@@ -284,17 +284,66 @@ import MorningCore
 
     private func moveSlackToThird(titled title: String, in app: XCUIApplication) throws {
         tap("routine.edit", app)
-        // Adjacent native moves keep both drag endpoints visible. No gesture to
-        // an offscreen coordinate, journal mutation or test Store setter is used.
-        for destination in stride(from: 8, through: 2, by: -1) {
-            let previous = button("routine.step.\(destination)", app)
-            let handle = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS %@", "Reorder", title)).firstMatch
-            scroll(handle, id: "Slack native reorder", in: app)
-            XCTAssertTrue(previous.isHittable && handle.isHittable, "Both adjacent native drag endpoints must be visible.")
-            handle.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.5))
-                .press(forDuration: 0.5, thenDragTo: previous.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.05)))
-            waitLabel(app.buttons["routine.step.\(destination)"].firstMatch, contains: title, timeout: 5)
+        let list = app.collectionViews["routine.editor"].firstMatch
+        let handle = app.buttons.matching(NSPredicate(format: "label == %@", "Reorder " + title)).firstMatch
+        scroll(handle, id: "Slack native reorder", in: app)
+        func observedRow() throws -> (XCUIElement, Int) {
+            let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "routine.step.", title + ","))
+            guard let row = rows.allElementsBoundByIndex.first(where: { $0.exists }),
+                  let index = Int(row.identifier.dropFirst("routine.step.".count)), (0..<10).contains(index) else {
+                captureFailure("long-ten-reorder-source-not-observed", app)
+                XCTFail("The actual Slack row and its current index must be observed."); throw DiagnosticFailure.invalid
+            }
+            return (row, index)
         }
+        func visibleBounds() throws -> CGRect {
+            guard list.exists, let bar = app.navigationBars.allElementsBoundByIndex.last(where: { $0.exists && $0.isHittable }) else {
+                captureFailure("long-ten-reorder-list-not-visible", app); throw DiagnosticFailure.invalid
+            }
+            let frame = list.frame.intersection(app.frame)
+            let top = max(frame.minY, bar.frame.maxY), bottom = min(frame.maxY, app.buttons["routine.approve"].frame.minY)
+            guard [frame.minX, frame.width, top, bottom].allSatisfy({ $0.isFinite }), frame.width > 100, bottom - top > 100 else {
+                captureFailure("long-ten-reorder-no-safe-viewport", app); throw DiagnosticFailure.invalid
+            }
+            return CGRect(x: frame.minX, y: top, width: frame.width, height: bottom - top).insetBy(dx: 8, dy: 8)
+        }
+        // Observe again after every real drop: a native move may skip a row or
+        // leave the order unchanged. Never infer the next index from the gesture.
+        for attempt in 0..<16 {
+            let (source, current) = try observedRow()
+            if current == 2 { break }
+            let target = app.buttons["routine.step.\(current > 2 ? current - 1 : current + 1)"].firstMatch
+            scroll(target, id: "adjacent reorder row", in: app)
+            for _ in 0..<8 {
+                let safe = try visibleBounds(), pair = source.frame.union(target.frame)
+                guard pair.height <= safe.height else {
+                    captureFailure("long-ten-reorder-pair-does-not-fit", app)
+                    XCTFail("Both whole rows must fit above approval and below navigation."); throw DiagnosticFailure.invalid
+                }
+                if safe.contains(source.frame) && safe.contains(target.frame) { break }
+                let delta = pair.minY < safe.minY ? min(safe.minY - pair.minY + 12, safe.height / 3)
+                    : -min(pair.maxY - safe.maxY + 12, safe.height / 3)
+                let origin = list.coordinate(withNormalizedOffset: .zero)
+                origin.withOffset(.init(dx: safe.midX - list.frame.minX, dy: safe.midY - delta / 2 - list.frame.minY))
+                    .press(forDuration: 0.05, thenDragTo: origin.withOffset(.init(dx: safe.midX - list.frame.minX, dy: safe.midY + delta / 2 - list.frame.minY)), withVelocity: .slow, thenHoldForDuration: 0.1)
+            }
+            let safe = try visibleBounds()
+            let handles = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reorder ")).allElementsBoundByIndex
+            guard safe.contains(source.frame), safe.contains(target.frame), source.isHittable, target.isHittable,
+                  handle.isEnabled, handle.isHittable,
+                  source.frame.contains(handle.frame),
+                  let destination = handles.first(where: { $0.exists && $0.isEnabled && $0.isHittable && target.frame.contains($0.frame) }) else {
+                captureFailure("long-ten-reorder-endpoints-not-fully-visible", app)
+                XCTFail("A partially covered row is not a valid native drag endpoint."); throw DiagnosticFailure.invalid
+            }
+            let proof = XCTAttachment(string: "attempt=\(attempt), observedIndex=\(current), source=\(source.frame), target=\(target.frame), visible=\(safe), fromHandle=\(handle.frame), toHandle=\(destination.frame)")
+            proof.name = "long-ten-native-reorder-visible-endpoints-\(attempt)"; proof.lifetime = .keepAlways; add(proof)
+            handle.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.5, thenDragTo: destination.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.5)), withVelocity: .slow, thenHoldForDuration: 0.4)
+        }
+        let (_, finalIndex) = try observedRow()
+        if finalIndex != 2 { captureFailure("long-ten-reorder-did-not-reach-third", app) }
+        XCTAssertEqual(finalIndex, 2, "The exact third position is required; the full ten-title order is checked next.")
         tap("routine.edit", app)
     }
 
