@@ -366,7 +366,11 @@ struct MorningRoutineControlsView: View {
                     : "Choose a message to review. You can also prepare a note to yourself or continue your morning."
             }
         }
-        return store.connectedActionStatus ?? store.currentStep?.detail ?? ""
+        if let status = store.connectedActionStatus { return status }
+        if let step = store.currentStep, let document = store.preparedBriefing(for: step) {
+            return MorningAppStepExecutor.text(for: step.automation, in: document)
+        }
+        return store.currentStep?.detail ?? ""
     }
 
     var body: some View {

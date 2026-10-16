@@ -60,6 +60,7 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
             guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             try await speak("\(step.title). \(step.detail)")
         case .savedObservation:
+            guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             // Resolve against the current local archive on every play and Repeat.
             // Never turn deleted or changed evidence into an ordinary static note.
             guard step.observationReference != nil, let text = resolveObservation(step),
@@ -67,7 +68,6 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
                 return .unavailable(AppLanguage.localized("This saved excerpt has changed or was removed.", bundle: .module))
             }
             try checkAttempt(token)
-            guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             try await speak(text)
         case .todayCalendar, .morningBriefing:
             if pinnedBriefing == nil {
