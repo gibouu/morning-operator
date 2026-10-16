@@ -154,7 +154,7 @@ enum OwnInterfaceWording {
         shown("Record a little of my morning", fr: "Enregistrer un peu de ma matinée"),
         shown("Sample morning, not your observed activity", fr: "Matinée d’exemple, pas votre activité observée"),
         shown("Your mornings will find their shape.", fr: "Vos matinées vont prendre forme."),
-        shown("Your morning voice", fr: "La voix de votre matinée"),
+        earlier("Your morning voice", "La voix de votre matinée"),
         // The title that stays above one sampled screen's original text, however far it scrolls.
         shown("Sampled moment", fr: "Moment échantillonné"),
         // These English lines have always identified a screen by themselves, so they still do.
@@ -319,6 +319,21 @@ enum OwnInterfaceWording {
         shown("Your day", fr: "Votre journée"),
         earlier("Your websites", "Vos sites"),
         earlier("Connect my websites", "Connecter mes sites")
+    ])
+
+    /// The installed-voice picker was replaced; its older recordings still need exclusion.
+    static let earlierVoice = Screen(name: "Voice", copy: [
+        earlier("Your choice applies to spoken morning steps", "Votre choix s’applique aux moments lus à voix haute",
+                "Votre choix s’applique aux étapes lues à voix haute"),
+        earlier("These are Apple system speech voices; Siri may use a different voice",
+                "Ce sont les voix système d’Apple ; Siri peut utiliser une voix différente"),
+        earlier("Choosing it does not translate your routine", "La choisir ne traduit pas votre routine"),
+        earlier("Your own routine text is preserved", "Le texte de vos routines est conservé")
+    ], controls: [
+        earlier("More natural voices", "Des voix plus naturelles"),
+        earlier("Installed voices", "Voix installées"),
+        earlier("Preview selected voice", "Écouter la voix choisie"),
+        earlier("Refresh installed voices", "Actualiser les voix installées")
     ])
 
     /// Current and historical screen wording share recognition rules. `shown` and `part`
@@ -542,7 +557,7 @@ enum OwnInterfaceWording {
             shown("Read each step aloud", fr: "Lire chaque étape à voix haute"),
             earlier("Listen where you like", "Écoutez où vous voulez"),
             shown("Privacy & data", fr: "Confidentialité et données"),
-            shown("Try the voice", fr: "Essayer la voix")
+            earlier("Try the voice", "Essayer la voix")
         ]),
         Screen(name: "Routine", copy: [
             earlier("min planned · Your own pace", "min prévues · À votre rythme"),
@@ -601,22 +616,6 @@ enum OwnInterfaceWording {
             shown("Stop automatically after", fr: "Arrêter automatiquement après"),
             shown("Start screen recording", fr: "Lancer l’enregistrement de l’écran"),
             shown("You're in control", fr: "C’est vous qui décidez")
-        ]),
-        Screen(name: "Voice", copy: [
-            part("Your choice applies to spoken morning steps", fr: "Votre choix s’applique aux moments lus à voix haute",
-                 of: "Matches MORE’s language, then prefers a higher-quality installed voice. Your choice applies to spoken morning steps.",
-                 earlier: "Votre choix s’applique aux étapes lues à voix haute"),
-            part("These are Apple system speech voices; Siri may use a different voice",
-                 fr: "Ce sont les voix système d’Apple ; Siri peut utiliser une voix différente",
-                 of: "Listen through your current audio output. These are Apple system speech voices; Siri may use a different voice."),
-            earlier("Choosing it does not translate your routine", "La choisir ne traduit pas votre routine"),
-            part("Your own routine text is preserved", fr: "Le texte de vos routines est conservé",
-                 of: "Only voices that match MORE’s language are shown. Your own routine text is preserved.")
-        ], controls: [
-            shown("More natural voices", fr: "Des voix plus naturelles"),
-            shown("Installed voices", fr: "Voix installées"),
-            shown("Preview selected voice", fr: "Écouter la voix choisie"),
-            shown("Refresh installed voices", fr: "Actualiser les voix installées")
         ]),
         // One saved observation: its dates, its notes and original text, its sampled moments.
         Screen(name: "Observation", copy: [
@@ -1004,7 +1003,7 @@ enum OwnInterfaceWording {
         ])
     ]
 
-    private static let recognitionScreens = screens + [earlierConnections]
+    private static let recognitionScreens = screens + [earlierConnections, earlierVoice]
 
     /// Every phrase above, for the test that compares this table with the String Catalogs.
     static var all: [Phrase] {
