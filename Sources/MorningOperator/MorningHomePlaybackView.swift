@@ -133,13 +133,24 @@ struct MorningHomePlaybackView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let width = geometry.size.width.isFinite ? max(0, geometry.size.width) : 0
+            let height = geometry.size.height.isFinite ? max(0, geometry.size.height) : 0
+            // Reserve the same reading viewport with controls shown or hidden.
+            // The central 88 pt hit target keeps 20 pt clear of every passage;
+            // a short landscape uses the left side to retain scrollable height.
+            let readingBounds = height < 400
+                ? CGRect(x: 0, y: 0, width: max(0, width / 2 - 64), height: height)
+                : CGRect(x: 0, y: 84, width: width, height: max(0, height / 2 - 148))
             ZStack {
+                Color.clear.contentShape(Rectangle())
+                    .onTapGesture(perform: toggleControls)
+                    .accessibilityHidden(true)
                 ScrollView {
                     Text(verbatim: caption)
                         .font(.raleway(.title2)).lineSpacing(7)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 540, minHeight: max(0, geometry.size.height - 160), alignment: .leading)
-                        .padding(.horizontal, 28).padding(.vertical, 80)
+                        .frame(maxWidth: 540, minHeight: max(0, readingBounds.height - 32), alignment: .leading)
+                        .padding(.horizontal, min(28, readingBounds.width / 8)).padding(.vertical, 16)
                         .frame(maxWidth: .infinity)
                         .contentTransition(.opacity)
                         .animation(.easeOut(duration: still ? 0.12 : 0.22), value: caption)
@@ -160,6 +171,8 @@ struct MorningHomePlaybackView: View {
                 .accessibilityValue(uiTestExecutionIdentity)
                 #endif
                 .accessibilityAction(named: Text(controlsLabel), toggleControls)
+                .frame(width: readingBounds.width, height: readingBounds.height)
+                .position(x: readingBounds.midX, y: readingBounds.midY)
 
                 if controlsVisible {
                     controls
