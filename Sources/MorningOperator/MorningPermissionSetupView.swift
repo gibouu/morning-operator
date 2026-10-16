@@ -77,11 +77,15 @@ struct MorningPermissionSetupView: View {
             }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).fixedSize()
                 .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
             Spacer(minLength: 12)
-            Text(verbatim: "\(setup.stepNumber) / \(setup.stepCount)")
-                .font(.system(.caption, weight: .medium).monospacedDigit()).foregroundStyle(muted)
-                .accessibilityLabel(text("Access choice \(setup.stepNumber) of \(setup.stepCount)",
-                                         "Choix d’accès \(setup.stepNumber) sur \(setup.stepCount)"))
-                .accessibilityIdentifier("permissions.progress")
+            if setup.isRevisiting, setup.current != nil {
+                Button(text("All access", "Tous les accès")) { setup.showOverview() }
+                    .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44)
+                    .disabled(setup.isRequesting).accessibilityIdentifier("permissions.back")
+            } else {
+                Text(text("At your pace", "À votre rythme"))
+                    .font(.system(.caption, weight: .medium)).foregroundStyle(muted)
+                    .accessibilityIdentifier("permissions.progress")
+            }
         }
         .frame(maxWidth: 480, minHeight: 44)
         .padding(.horizontal, 28).padding(.top, 8)
@@ -90,27 +94,56 @@ struct MorningPermissionSetupView: View {
 
     private var choice: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(setup.current?.accessHeading ?? text("Ready for your morning.", "Votre matin peut commencer."))
+            Text(setup.current?.accessHeading ?? text("Connect what matters to you.", "Vos accès, à votre rythme."))
                 .font(.system(.largeTitle, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($headingFocused)
                 .accessibilityIdentifier(setup.current.map { "permissions.title.\($0.rawValue)" } ?? "permissions.title.ready")
-            Text(setup.current?.accessBenefit ?? (setup.isRevisiting
-                 ? text("Your access choices are up to date.", "Vos choix d’accès sont à jour.")
-                 : text("Let’s discover the routine that feels like you.", "Découvrons la routine qui vous ressemble.")))
+            Text(setup.current?.accessBenefit ?? text("Choose a feature when you need it. Each access stays optional.",
+                                                                     "Choisissez une fonction quand elle vous est utile. Chaque accès reste facultatif."))
                 .foregroundStyle(muted).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("permissions.benefit")
-            DisclosureGroup(isExpanded: $detailsExpanded) {
+            if setup.current == .speech {
+                Text(text("Two iPhone permissions: speech recognition and microphone. Listening stays off during setup.",
+                          "Deux autorisations iPhone : reconnaissance vocale et micro. Aucune écoute ne démarre ici."))
+                    .font(MorningTheme.Typography.note).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("permissions.voicePrompts")
+                if !setup.isRevisiting {
+                    Text(text("Connect your other apps later, when you need them, from Settings.",
+                              "Branchez vos autres apps plus tard, au moment utile, depuis les réglages."))
+                        .font(MorningTheme.Typography.note).foregroundStyle(muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if setup.current == nil {
+                ForEach(setup.supported, id: \.rawValue) { permission in
+                    Button { setup.choose(permission) } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: permission.accessSymbol).frame(width: 24)
+                            Text(permission.accessName).multilineTextAlignment(.leading)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(muted)
+                        }
+                        .font(.system(.body, weight: .medium))
+                        .padding(16).frame(minHeight: 56)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("permissions.option.\(permission.rawValue)")
+                }
+                if let outcome = setup.lastOutcome {
+                    Text(outcome).font(MorningTheme.Typography.note).foregroundStyle(muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("permissions.lastOutcome")
+                }
+            } else {
+              DisclosureGroup(isExpanded: $detailsExpanded) {
                 VStack(alignment: .leading, spacing: 14) {
                     if let permission = setup.current {
                         Text(permission.accessExplanation).accessibilityIdentifier("permissions.explanation")
-                    }
-                    else {
-                        Text(text("You can review every access in Settings → iPhone permissions.",
-                                  "Retrouvez tous vos accès dans Réglages → Accès iPhone."))
-                        if let note = setup.screenTimeUnavailableNote { Text(note) }
                     }
                     if let outcome = setup.lastOutcome {
                         Text(outcome).accessibilityIdentifier("permissions.lastOutcome")
@@ -122,6 +155,7 @@ struct MorningPermissionSetupView: View {
                 Text(text("Learn more", "En savoir plus"))
                     .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44, alignment: .leading)
                     .accessibilityIdentifier("permissions.details")
+              }
             }
         }
     }
@@ -137,7 +171,8 @@ struct MorningPermissionSetupView: View {
                 .modifier(MorningEntryPrimaryStyle())
                 .disabled(setup.isRequesting || scenePhase != .active)
                 .accessibilityIdentifier("permissions.allow")
-                Button(text("Not now", "Plus tard")) { setup.skip() }
+                Button(setup.isRevisiting ? text("Not now", "Plus tard")
+                       : text("Continue without voice", "Continuer sans la voix")) { setup.skip() }
                     .font(.system(.subheadline, weight: .medium))
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .disabled(setup.isRequesting)
@@ -145,16 +180,6 @@ struct MorningPermissionSetupView: View {
             } else if setup.isRevisiting {
                 Button { setup.finish() } label: { primaryLabel(text("Done", "Terminer")) }
                     .modifier(MorningEntryPrimaryStyle())
-                    .accessibilityIdentifier("permissions.finish")
-            } else {
-                Button { setup.finish(learn: true) } label: {
-                    primaryLabel(text("Discover my routine", "Découvrir ma routine"))
-                }
-                .modifier(MorningEntryPrimaryStyle())
-                .accessibilityIdentifier("permissions.learn")
-                Button(text("Later", "Plus tard")) { setup.finish() }
-                    .font(.system(.subheadline, weight: .medium))
-                    .frame(maxWidth: .infinity, minHeight: 48)
                     .accessibilityIdentifier("permissions.finish")
             }
         }
@@ -175,13 +200,35 @@ struct MorningPermissionSetupView: View {
 }
 
 private extension MorningPermission {
+    var accessName: String {
+        switch self {
+        case .location: MorningPermissionSetup.text("Location & weather", "Position et météo")
+        case .calendar: MorningPermissionSetup.text("Calendar", "Calendrier")
+        case .reminders: MorningPermissionSetup.text("Reminders", "Rappels")
+        case .screenTime: MorningPermissionSetup.text("Screen Time", "Temps d’écran")
+        case .speech, .microphone: MorningPermissionSetup.text("Voice & microphone", "Voix et micro")
+        case .notifications: MorningPermissionSetup.text("Notifications", "Notifications")
+        case .alarms: MorningPermissionSetup.text("Alarms", "Réveils")
+        }
+    }
+    var accessSymbol: String {
+        switch self {
+        case .location: "location"
+        case .calendar: "calendar"
+        case .reminders: "checklist"
+        case .screenTime: "hourglass"
+        case .speech, .microphone: "waveform"
+        case .notifications: "bell"
+        case .alarms: "alarm"
+        }
+    }
     var accessHeading: String {
         switch self {
         case .location: MorningPermissionSetup.text("Your weather, here.", "Votre météo, ici.")
         case .calendar: MorningPermissionSetup.text("Your day, in view.", "Votre journée, en vue.")
         case .reminders: MorningPermissionSetup.text("A thought to keep.", "Une idée à garder.")
         case .screenTime: MorningPermissionSetup.text("Your habits take shape.", "Vos habitudes prennent forme.")
-        case .speech: MorningPermissionSetup.text("A word is enough.", "Quelques mots suffisent.")
+        case .speech: MorningPermissionSetup.text("Talk to MORE.", "Parlez à MORE.")
         case .microphone: MorningPermissionSetup.text("Make your voice heard.", "Faites entendre votre voix.")
         case .notifications: MorningPermissionSetup.text("At the right moment.", "Au bon moment.")
         case .alarms: MorningPermissionSetup.text("Wake up at your pace.", "Un réveil à votre rythme.")
@@ -193,7 +240,7 @@ private extension MorningPermission {
         case .calendar: MorningPermissionSetup.text("See your upcoming appointments as part of your morning.", "Retrouvez vos prochains rendez-vous dans votre matinée.")
         case .reminders: MorningPermissionSetup.text("Find your reminders and save a thought when you ask.", "Retrouvez vos rappels et enregistrez une idée à votre demande.")
         case .screenTime: MorningPermissionSetup.text("App-use times help MORE propose a routine that fits you.", "Les durées d’utilisation aident MORE à proposer votre routine.")
-        case .speech: MorningPermissionSetup.text("MORE understands your words for a question, a pause or what comes next.", "MORE comprend vos mots pour une question, une pause ou la suite.")
+        case .speech: MorningPermissionSetup.text("Ask a question, pause or move on with your voice. You can also use the buttons.", "Posez une question, mettez en pause ou passez à la suite avec votre voix. Les boutons restent disponibles.")
         case .microphone: MorningPermissionSetup.text("The microphone lets you talk to MORE when you start listening.", "Le micro vous permet de parler à MORE quand vous démarrez une écoute.")
         case .notifications: MorningPermissionSetup.text("Get an invitation to start your morning at the time you choose.", "Recevez une invitation à commencer votre matinée, à l’heure choisie.")
         case .alarms: MorningPermissionSetup.text("The alarm you choose can lead you into your morning with MORE.", "Le réveil que vous choisirez vous invite à commencer votre matinée avec MORE.")
@@ -205,7 +252,7 @@ private extension MorningPermission {
         case .calendar: MorningPermissionSetup.text("Allow calendar access", "Autoriser le calendrier")
         case .reminders: MorningPermissionSetup.text("Allow reminders", "Autoriser les rappels")
         case .screenTime: MorningPermissionSetup.text("Allow Screen Time", "Autoriser Temps d’écran")
-        case .speech: MorningPermissionSetup.text("Allow speech recognition", "Autoriser la reconnaissance vocale")
+        case .speech: MorningPermissionSetup.text("Enable voice", "Activer la voix")
         case .microphone: MorningPermissionSetup.text("Allow microphone", "Autoriser le microphone")
         case .notifications: MorningPermissionSetup.text("Allow notifications", "Autoriser les notifications")
         case .alarms: MorningPermissionSetup.text("Allow alarms", "Autoriser les réveils")
@@ -217,7 +264,7 @@ private extension MorningPermission {
         case .calendar: MorningPermissionSetup.text("MORE can read your upcoming events for your morning recap. Apple requires full calendar access; you choose which calendars MORE reads in Settings. Saving an event still needs your instruction.", "MORE peut lire vos prochains rendez-vous pour votre récap du matin. Apple exige l’accès complet ; vous choisissez les calendriers à lire dans les réglages. Enregistrer un événement nécessite toujours votre instruction.")
         case .reminders: MorningPermissionSetup.text("MORE can read upcoming reminders and save a thought as a reminder when you ask. Permission alone never creates, changes or completes a reminder.", "MORE peut lire vos rappels à venir et enregistrer une idée en rappel à votre demande. Cette autorisation ne crée, ne modifie et ne termine aucun rappel à elle seule.")
         case .screenTime: MorningPermissionSetup.text("Available app-use times help MORE understand your morning habits and propose a routine for you to review. The available coverage depends on your iPhone and Apple's approval; it doesn't reveal what you read inside other apps.", "Les durées d’utilisation disponibles aident MORE à comprendre vos habitudes et à proposer une routine à relire. La couverture dépend de votre iPhone et de l’autorisation Apple ; elle ne révèle pas ce que vous lisez dans les autres apps.")
-        case .speech: MorningPermissionSetup.text("Speech recognition turns your spoken instructions into text so you can pause, ask a question or shape a draft. MORE uses on-device recognition; this access doesn't activate the microphone.", "La reconnaissance vocale transforme vos instructions en texte pour mettre en pause, poser une question ou préparer un brouillon. MORE utilise la reconnaissance sur l’appareil ; cet accès n’active pas le microphone.")
+        case .speech: MorningPermissionSetup.text("The microphone hears you; on-device speech recognition turns your instructions into text. iPhone may ask for two permissions, one after the other. If you decline one, continue with the buttons and change your choice later in Settings. These permissions do not start listening or enable the optional online conversation.", "Le micro vous entend ; la reconnaissance vocale sur l’appareil transforme vos instructions en texte. L’iPhone peut demander deux autorisations successives. Si vous en refusez une, continuez avec les boutons et changez votre choix plus tard dans les réglages. Ces accès ne démarrent aucune écoute et n’activent pas la conversation en ligne facultative.")
         case .microphone: MorningPermissionSetup.text("The microphone lets MORE hear your instructions during the voice interaction you start. It stays off during this setup. You can stop a listening turn at any time.", "Le microphone permet à MORE d’entendre vos instructions pendant l’interaction vocale que vous démarrez. Il reste éteint pendant cette configuration. Vous pouvez arrêter une écoute à tout moment.")
         case .notifications: MorningPermissionSetup.text("Notifications can invite you to your next morning or remind you to start a recording. Nothing is scheduled by granting access; you choose the time later.", "Les notifications peuvent vous inviter à votre prochaine matinée ou vous rappeler de démarrer un enregistrement. Autoriser cet accès ne programme rien ; vous choisirez l’heure plus tard.")
         case .alarms: MorningPermissionSetup.text("MORE can schedule the morning alarm you choose, with a shortcut into your morning when you stop it. Allowing alarms doesn't create an alarm; you set it later.", "MORE peut programmer le réveil que vous choisissez et ouvrir votre matinée à son arrêt. Autoriser les réveils n’en crée aucun ; vous le réglerez plus tard.")

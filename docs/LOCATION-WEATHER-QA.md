@@ -1,5 +1,15 @@
 # Location, access preparation and weather Home
 
+## Current access flow
+
+The post-paywall setup now has one optional voice screen, grouping speech
+recognition and microphone. Allowing or skipping it opens Home directly. Other
+accesses are chosen in context or one at a time from the Settings access overview;
+revisiting no longer starts the eight-screen queue. Existing weather/location
+configuration stays intact. The eight-step results below describe the earlier
+checkpoint, not the current onboarding. The shortened flow has not been replayed
+on the physical iPhone.
+
 16 October 2026. Product direction: [MORE](../MORE.md). Implementation starts from upstream `7d912aa`; source checkpoint `f98d1e0` includes the first-opening persistence correction and reduced-accuracy location support.
 
 ## Delivered behavior

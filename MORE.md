@@ -63,6 +63,8 @@ Les choix personnels priment sur les nouvelles déductions. Une habitude retiré
 
 L'apprentissage, la revue et la validation se font dans l'interface, avec des éléments à lire et des boutons. La personne n'a pas besoin de mener une conversation pour configurer son matin. La validation confie les prochaines exécutions à MORE ; le démarrage d'une session suit le déclenchement prévu dans le produit.
 
+Après le paywall, une seule page facultative prépare la voix : micro et reconnaissance vocale sont expliqués ensemble, puis l'iPhone présente les autorisations nécessaires successivement. Accepter ou passer mène directement à l'accueil. Les autres accès et connexions se proposent au moment où ils deviennent utiles, ou depuis les réglages, sans imposer un parcours de huit pages. Une météo déjà configurée reste disponible et n'est pas redemandée comme une nouvelle connexion. Revoir les accès dans les réglages ouvre une liste de choix indépendants.
+
 ### Wording à travailler à partir de cette intention
 
 | Moment | Proposition de texte à tester |
