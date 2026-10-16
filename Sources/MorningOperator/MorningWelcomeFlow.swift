@@ -164,6 +164,7 @@ struct MorningWelcomeFlow: View {
             Spacer(minLength: 8)
             MorningBrandMark().frame(width: 112, height: 30).frame(height: 44)
                 .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
+                .accessibilityValue(Text(verbatim: clock.brandAccessibilityValue))
                 .accessibilityIdentifier("onboarding.brand")
         }
         .buttonStyle(.plain)

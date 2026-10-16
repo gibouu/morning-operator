@@ -20,6 +20,9 @@ final class MorningThemeClock {
     var brandAppearance: MorningBrandAppearance {
         .resolve(moonOpacity: celestial.moon.opacity)
     }
+    var brandAccessibilityValue: String {
+        AppLanguage.localized(brandAppearance == .night ? "Night" : "Day")
+    }
     private(set) var solar: MorningSolarDay = .fixed
     private(set) var location: WeatherLocation?
     private(set) var weatherScene: MorningWeatherScene?
@@ -452,9 +455,11 @@ struct MorningBrandClockLifecycle: ViewModifier {
                 #endif
                 MorningThemeClock.shared.refresh()
             }
+            #if os(iOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
                 MorningThemeClock.shared.refresh()
             }
+            #endif
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
                 MorningThemeClock.shared.refresh()
             }

@@ -125,7 +125,7 @@ struct MorningRootView: View {
                     }
                 }
         }
-        .morningBrandSurface()
+        .morningBrandSurface(overLandscape: path.isEmpty)
         .background(MorningPaper(showsSun: false))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { dockWidth = $0 }
         .background {

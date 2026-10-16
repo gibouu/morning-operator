@@ -11,15 +11,15 @@ struct MorningBrandHeader: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: "MORE"))
             .accessibilityIdentifier("brand.wordmark")
-            .accessibilityValue(MorningThemeClock.shared.brandAppearance.rawValue)
+            .accessibilityValue(Text(verbatim: MorningThemeClock.shared.brandAccessibilityValue))
             .allowsHitTesting(false)
     }
 }
 
 extension View {
-    func morningBrandSurface() -> some View {
+    func morningBrandSurface(overLandscape: Bool = false) -> some View {
         safeAreaInset(edge: .top, spacing: 0) {
-            MorningBrandHeader().background(MorningStyle.background)
+            MorningBrandHeader().background(overLandscape ? Color.clear : MorningStyle.background)
         }
         .preferredColorScheme(MorningThemeClock.shared.brandAppearance == .night ? .dark : .light)
     }

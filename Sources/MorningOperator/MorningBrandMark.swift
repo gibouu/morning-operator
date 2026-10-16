@@ -6,7 +6,7 @@ struct MorningBrandMark: View {
     var body: some View {
         MorningBrandWordmark(appearance: MorningThemeClock.shared.brandAppearance)
             .accessibilityIdentifier("brand.wordmark")
-            .accessibilityValue(Text(verbatim: MorningThemeClock.shared.brandAppearance.rawValue))
+            .accessibilityValue(Text(verbatim: MorningThemeClock.shared.brandAccessibilityValue))
             .allowsHitTesting(false)
     }
 }
