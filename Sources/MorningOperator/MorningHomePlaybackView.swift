@@ -99,6 +99,18 @@ struct MorningHomePlaybackView: View {
             : (french ? "Afficher les commandes" : "Show controls")
     }
 
+    #if DEBUG
+    private var uiTestExecutionIdentity: String {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("--ui-testing") else { return "" }
+        let identity = "\(store.session?.id.uuidString ?? "")|\(store.currentStep?.id.uuidString ?? "")"
+        guard arguments.contains("--ui-testing-ten-moments"), arguments.contains("--ui-testing-automation") else {
+            return identity
+        }
+        return identity + "|\(store.session?.routine.id.uuidString ?? "")|\(store.session?.currentStepIndex ?? -1)"
+    }
+    #endif
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -125,8 +137,7 @@ struct MorningHomePlaybackView: View {
                 .onTapGesture(perform: toggleControls)
                 .accessibilityIdentifier("morning.captions")
                 #if DEBUG
-                .accessibilityValue(ProcessInfo.processInfo.arguments.contains("--ui-testing")
-                    ? "\(store.session?.id.uuidString ?? "")|\(store.currentStep?.id.uuidString ?? "")" : "")
+                .accessibilityValue(uiTestExecutionIdentity)
                 #endif
                 .accessibilityAction(named: Text(controlsLabel), toggleControls)
 

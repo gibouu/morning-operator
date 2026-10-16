@@ -571,7 +571,8 @@ final class MorningStore {
                 routine = RoutineVersion(sourceLabel: "Demo fixture — synthetic ten-moment morning", steps:
                     titles.enumerated().map { index, title in
                         RoutineStep(title: title, detail: "Synthetic layout example.",
-                                    kind: kinds[index], durationMinutes: 2)
+                                    kind: kinds[index], durationMinutes: 2,
+                                    automation: ProcessInfo.processInfo.arguments.contains("--ui-testing-automation") ? .timedMoment : nil)
                     })
             }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
