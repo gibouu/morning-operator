@@ -609,14 +609,35 @@ import MorningCore
         _ = value.waitForExistence(timeout: 6)
         for down in [false, true] {
             for _ in 0..<10 {
-                if value.exists && value.isHittable { return }
-                if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
                 let slack = app.scrollViews["slack.setup.scroll"].firstMatch
                 let editor = stepEditorForm(app)
-                if slack.exists && slack.isHittable {
+                let slackForeground = slack.exists && slack.isHittable
+                let editorForeground = editor.exists && editor.isHittable
+                let routine = !slackForeground && !editorForeground ? routineScrollRegion(in: app) : nil
+                func visible(_ element: XCUIElement) -> Bool {
+                    guard element.exists && element.isHittable else { return false }
+                    let frame = element.frame
+                    guard !frame.isEmpty, !frame.isNull, !frame.isInfinite,
+                          [frame.minX, frame.minY, frame.maxX, frame.maxY].allSatisfy({ $0.isFinite }),
+                          app.frame.contains(frame) else { return false }
+                    return !id.hasPrefix("routine.step.") || routine?.visible.contains(frame) == true
+                }
+                if visible(value) { return }
+                if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: visible) { return }
+                if slackForeground {
                     if down { slack.swipeDown() } else { slack.swipeUp() }
-                } else if editor.exists && editor.isHittable {
+                } else if editorForeground {
                     guard dragVisibleEditor(editor, down: down, in: app) else { return }
+                } else if let routine {
+                    // The List is geometry, not the tap target. Its visible
+                    // controls establish foreground ownership even when the
+                    // collection itself reports isHittable=false.
+                    let frame = routine.container.frame, visible = routine.visible
+                    let high = visible.minY + visible.height * 0.2, low = visible.minY + visible.height * 0.8
+                    let origin = routine.container.coordinate(withNormalizedOffset: .zero)
+                    let start = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? high : low) - frame.minY))
+                    let end = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? low : high) - frame.minY))
+                    start.press(forDuration: 0.05, thenDragTo: end)
                 } else if let holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
                     ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) {
                     if down { holder.swipeDown() } else { holder.swipeUp() }
@@ -628,6 +649,27 @@ import MorningCore
         }
         captureFailure("long-ten-unreachable-\(id)", app)
         XCTFail("Unreachable ordinary UI: \(id)")
+    }
+
+    private func routineScrollRegion(in app: XCUIApplication) -> (container: XCUIElement, visible: CGRect)? {
+        let list = app.collectionViews["routine.editor"].firstMatch
+        guard list.exists else { return nil }
+        let approve = app.buttons["routine.approve"], edit = app.buttons["routine.edit"]
+        let visibleChild = list.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "routine.step."))
+            .allElementsBoundByIndex.contains { $0.exists && $0.isHittable }
+        guard (approve.exists && approve.isHittable) || (edit.exists && edit.isHittable) || visibleChild else { return nil }
+        let viewport = list.frame.intersection(app.frame)
+        guard !viewport.isNull, !viewport.isInfinite,
+              [viewport.minX, viewport.minY, viewport.maxX, viewport.maxY].allSatisfy({ $0.isFinite }) else { return nil }
+        // A navigation bar only bounds the gesture; it need not be tappable.
+        guard let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+            $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(viewport)
+        }) else { return nil }
+        let top = max(viewport.minY, bar.frame.maxY) + 8
+        let footer = approve.exists && approve.frame.intersects(viewport) ? approve.frame.minY : viewport.maxY
+        let bottom = min(viewport.maxY, footer) - 8
+        guard top.isFinite, bottom.isFinite, viewport.width > 100, bottom - top > 120 else { return nil }
+        return (list, CGRect(x: viewport.minX + 12, y: top, width: viewport.width - 24, height: bottom - top))
     }
     private func waitLabel(_ value: XCUIElement, contains: String, timeout: TimeInterval) {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", contains), object: value)
