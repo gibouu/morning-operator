@@ -10,12 +10,14 @@ import FoundationModels
 
 @Suite("Opt-in task-presence diagnostic — no routine or authority", .serialized)
 struct VisualTaskPresenceProbeTests {
-    @Test @MainActor func productionInstructionBytesStayAtTheRetainedENFRCheckpoint() {
-        // Frozen public instruction bytes at 42dc82b; no source evidence here.
+    @Test @MainActor func productionInstructionBytesStayAtTheSourceRequestAuthorityCheckpoint() {
+        // Frozen grounded instruction bytes; only the visible-request authority clause changed after 42dc82b.
+        #expect(Self.digest(Data(AppleIntelligenceService.instructions.utf8)) ==
+            "26a8ea9cd582497716aea43204d7223a97c367da6b016cc70b5c0e8090135f9a")
         #expect(Self.digest(Data(AppleIntelligenceService.groundedProposalInstructions(french: false).utf8)) ==
-            "f0f19c9b2c50063640ad64465ff8971161923da45f624ae08d37435ed237a472")
+            "81dbc940bb4cd05e1822d2599747d802a90305a33be6c343a61b2524bad76a3d")
         #expect(Self.digest(Data(AppleIntelligenceService.groundedProposalInstructions(french: true).utf8)) ==
-            "eae15f61ba3b4b6f14d07ad7dd874859885b1517d0b1d4e6ee81705e9760b165")
+            "f79fa05c87f76e1a53d10f78ed4a0219caa1c2ed4adb6c7488fa3b6f39a7aa56")
     }
 
     @Test(.enabled("Set MO_RUN_MODEL_INTEGRATION=1 and MO_RUN_VISUAL_TASK_PRESENCE_PROBE=1 with explicit private paths.") {
