@@ -88,4 +88,47 @@ struct RoutineStepExecutionRecapTests {
         let unknown = RoutineStepExecutionRecap.make(session: session, records: []).first
         #expect(unknown?.observedContents == nil && unknown?.confirmedLikes == nil)
     }
+
+    @Test("The compact summary cannot turn a browser budget into a verified service operation", arguments: [
+        RoutineExecutionRecord.Outcome.completed, .budgetFinished
+    ])
+    func overviewAndRowsAgreeOnBrowserBudgetAndConfirmedService(_ serviceOutcome: RoutineExecutionRecord.Outcome) throws {
+        let browser = RoutineStep(title: "SYNTHETIC same title", target: .inAppWeb(site: WebMorningSite.news.table.startURL),
+            webBehavior: .readHeadlines, webLikesAllowed: false)
+        let serviceTarget = RoutineStepTarget.connectedAPI(service: "slack", connectionID: "ca_synthetic",
+            tool: "SLACK_FETCH_CONVERSATION_HISTORY", argumentsJSON: "{\"channel\":\"C22222222\",\"limit\":3}")
+        let service = RoutineStep(title: browser.title, target: serviceTarget)
+        let unconfirmed = RoutineStep(title: "SYNTHETIC source without receipt", target: serviceTarget)
+        let timed = RoutineStep(title: "SYNTHETIC timed", automation: .timedMoment)
+        var session = RoutineSession(routine: .init(sourceLabel: "SYNTHETIC", steps: [browser, service, unconfirmed, timed], isApproved: true))
+        try session.start()
+        for _ in 0..<4 { try session.advance() }
+        let records = [
+            RoutineExecutionRecord(sessionID: session.id, stepID: browser.id, outcome: .budgetFinished, observedContents: 3),
+            RoutineExecutionRecord(sessionID: session.id, stepID: service.id, outcome: serviceOutcome, confirmedExternalEffect: true),
+            RoutineExecutionRecord(sessionID: session.id, stepID: unconfirmed.id, outcome: .budgetFinished),
+            RoutineExecutionRecord(sessionID: session.id, stepID: timed.id, outcome: .budgetFinished),
+            RoutineExecutionRecord(sessionID: UUID(), stepID: browser.id, outcome: .completed, observedContents: 99),
+            RoutineExecutionRecord(sessionID: session.id, stepID: UUID(), outcome: .completed)
+        ]
+        let rows = RoutineStepExecutionRecap.make(session: session, records: records)
+        #expect(rows.map(\.operation) == [.budgetFinished, .verified, .budgetFinished, .timedBudgetFinished])
+        let restoredSession = try JSONDecoder().decode(RoutineSession.self, from: JSONEncoder().encode(session))
+        let restoredRecords = try JSONDecoder().decode([RoutineExecutionRecord].self, from: JSONEncoder().encode(records))
+        for french in [false, true] {
+            let summary = try #require(RoutineStepExecutionRecap.overview(session: session, records: records, french: french))
+            #expect(summary.contains(french ? "Temps alloués terminés : 2." : "Allocated budgets finished: 2."))
+            #expect(summary.contains(french ? "Opérations vérifiées : 1." : "Verified operations: 1."))
+            #expect(summary.contains(french ? "Moments chronométrés terminés : 1." : "Timed moments finished: 1."))
+            #expect(summary.contains(french ? "Navigateur : 3 contenus observés, 0 likes confirmés." : "Browser: 3 contents observed, 0 likes confirmed."))
+            #expect(RoutineStepExecutionRecap.overview(session: restoredSession, records: restoredRecords, french: french) == summary)
+        }
+        // A browser-only run must have no "verified" operation aggregate at all.
+        var browserSession = RoutineSession(routine: .init(sourceLabel: "SYNTHETIC", steps: [browser], isApproved: true))
+        try browserSession.start(); try browserSession.advance()
+        let browserRecords = [RoutineExecutionRecord(sessionID: browserSession.id, stepID: browser.id,
+            outcome: .budgetFinished, observedContents: 3)]
+        let alone = try #require(RoutineStepExecutionRecap.overview(session: browserSession, records: browserRecords, french: false))
+        #expect(!alone.contains("Verified operations"))
+    }
 }

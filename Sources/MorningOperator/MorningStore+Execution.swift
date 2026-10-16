@@ -66,35 +66,8 @@ extension MorningStore {
     }
 
     func executionSummary(for session: RoutineSession) -> String? {
-        let records = executionRecords.filter { $0.sessionID == session.id }
-        guard !records.isEmpty else { return nil }
-        let done = records.filter { $0.outcome == .completed || $0.outcome == .budgetFinished }.count
-        let unavailable = records.filter { $0.outcome == .unavailable }.count
-        let uncertain = records.filter { $0.outcome == .uncertain }.count
-        let skipped = records.filter { $0.outcome == .skipped || $0.outcome == .interrupted }.count
-        let contents = records.reduce(0) { $0 + $1.observedContents }
-        let likes = records.reduce(0) { $0 + $1.confirmedLikes }
-        let timedIDs = Set(session.routine.steps.filter { $0.automation == .timedMoment }.map(\.id))
-        let timed = records.filter { timedIDs.contains($0.stepID) && $0.outcome == .budgetFinished }.count
-        let verified = done - timed
-        let confirmedWithoutPresentation = records.filter {
-            $0.confirmedExternalEffect == true && $0.outcome != .completed && $0.outcome != .budgetFinished
-        }.count
-        var parts: [String] = []
-        if timed > 0 { parts.append(AppLanguage.isFrench ? "Moments chronométrés terminés : \(timed)." : "Timed moments finished: \(timed).") }
-        if verified > 0 { parts.append(AppLanguage.isFrench ? "Opérations vérifiées : \(verified)." : "Verified operations: \(verified).") }
-        if confirmedWithoutPresentation > 0 {
-            parts.append(AppLanguage.isFrench
-                ? "Actions confirmées par le service, restitution incomplète : \(confirmedWithoutPresentation)."
-                : "Service-confirmed actions with incomplete presentation: \(confirmedWithoutPresentation).")
-        }
-        if skipped > 0 { parts.append(AppLanguage.isFrench ? "Moments passés : \(skipped)." : "Moments passed: \(skipped).") }
-        if unavailable > 0 { parts.append(AppLanguage.isFrench ? "Indisponibles : \(unavailable)." : "Unavailable: \(unavailable).") }
-        if uncertain > 0 { parts.append(AppLanguage.isFrench ? "Résultats à vérifier : \(uncertain)." : "Results to check: \(uncertain).") }
-        if session.routine.steps.contains(where: { $0.webBehavior != nil }) {
-            parts.append(AppLanguage.isFrench ? "Navigateur : \(contents) contenus observés, \(likes) likes confirmés." : "Browser: \(contents) contents observed, \(likes) likes confirmed.")
-        }
-        return parts.joined(separator: " ")
+        guard !privacyBlocksWork else { return nil }
+        return RoutineStepExecutionRecap.overview(session: session, records: executionRecords, french: AppLanguage.isFrench)
     }
     var currentExecutionRecord: RoutineExecutionRecord? {
         guard let session, let step = currentStep else { return nil }

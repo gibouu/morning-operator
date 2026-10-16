@@ -76,7 +76,10 @@ public struct RoutineStepExecutionRecap: Identifiable, Equatable, Sendable {
             let operation: Operation?
             switch record?.outcome {
             case .completed: operation = step.automation == .timedMoment ? .notVerified : .verified
-            case .budgetFinished: operation = step.automation == .timedMoment ? .timedBudgetFinished : .budgetFinished
+            case .budgetFinished:
+                if step.automation == .timedMoment { operation = .timedBudgetFinished }
+                else if step.target?.integrationRoute == .api, record?.confirmedExternalEffect == true { operation = .verified }
+                else { operation = .budgetFinished }
             case .unavailable:
                 operation = record?.confirmedExternalEffect == true ? .responseReceivedPresentationUnavailable : .unavailable
             case .uncertain: operation = .uncertain
@@ -93,6 +96,43 @@ public struct RoutineStepExecutionRecap: Identifiable, Equatable, Sendable {
                 observedContents: step.webBehavior != nil ? record?.observedContents : nil,
                 confirmedLikes: step.webBehavior != nil ? record?.confirmedLikes : nil)
         }
+    }
+
+    /// The compact Settings summary uses the same outcome projection as the
+    /// attributed rows. Finishing a browser budget is never a verified operation.
+    public static func overview(session: RoutineSession, records: [RoutineExecutionRecord], french: Bool) -> String? {
+        let rows = make(session: session, records: records)
+        let scoped = rows.filter { $0.progress != .notReached }.compactMap { row in
+            records.last { $0.sessionID == session.id && $0.stepID == row.id }
+        }
+        guard !scoped.isEmpty else { return nil }
+        let timed = rows.filter { $0.operation == .timedBudgetFinished }.count
+        let budgets = rows.filter { $0.operation == .budgetFinished }.count
+        let verified = rows.filter { $0.operation == .verified }.count
+        let unavailable = scoped.filter { $0.outcome == .unavailable }.count
+        let uncertain = scoped.filter { $0.outcome == .uncertain }.count
+        let skipped = scoped.filter { $0.outcome == .skipped || $0.outcome == .interrupted }.count
+        let incomplete = rows.filter {
+            $0.operation == .responseReceivedPresentationUnavailable || $0.operation == .responseReceivedPresentationInterrupted
+        }.count
+        var parts: [String] = []
+        if timed > 0 { parts.append(french ? "Moments chronométrés terminés : \(timed)." : "Timed moments finished: \(timed).") }
+        if budgets > 0 { parts.append(french ? "Temps alloués terminés : \(budgets)." : "Allocated budgets finished: \(budgets).") }
+        if verified > 0 { parts.append(french ? "Opérations vérifiées : \(verified)." : "Verified operations: \(verified).") }
+        if incomplete > 0 {
+            parts.append(french ? "Actions confirmées par le service, restitution incomplète : \(incomplete)."
+                : "Service-confirmed actions with incomplete presentation: \(incomplete).")
+        }
+        if skipped > 0 { parts.append(french ? "Moments passés : \(skipped)." : "Moments passed: \(skipped).") }
+        if unavailable > 0 { parts.append(french ? "Indisponibles : \(unavailable)." : "Unavailable: \(unavailable).") }
+        if uncertain > 0 { parts.append(french ? "Résultats à vérifier : \(uncertain)." : "Results to check: \(uncertain).") }
+        if session.routine.steps.contains(where: { $0.webBehavior != nil }) {
+            let contents = rows.compactMap(\.observedContents).reduce(0, +)
+            let likes = rows.compactMap(\.confirmedLikes).reduce(0, +)
+            parts.append(french ? "Navigateur : \(contents) contenus observés, \(likes) likes confirmés."
+                : "Browser: \(contents) contents observed, \(likes) likes confirmed.")
+        }
+        return parts.joined(separator: " ")
     }
 
     public func summary(french: Bool) -> String {
