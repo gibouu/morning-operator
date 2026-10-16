@@ -199,8 +199,8 @@ final class FixtureJourneyTests: XCTestCase {
         MorningUITestNavigation.revealMorningAction("morning.reviewDraft", in: app)
         XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), "The current draft must remain intact outside history.")
         app.buttons["morning.closeActions"].tap()
-        tapButton("morning.date", in: app)
-        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), "The date must reopen the period, not a previously pushed day detail.")
+        selectTab("Review", in: app)
+        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), "History must reopen the period, not a previously pushed day detail.")
         XCTAssertFalse(app.staticTexts["No routine saved for this day."].exists)
     }
 
@@ -452,39 +452,30 @@ enum MorningUITestNavigation {
                           file: StaticString = #filePath, line: UInt = #line) {
         switch title {
         case "Morning":
-            let home = app.buttons["morning.home"]
-            // Only the first Review screen carries the way home. From a screen
-            // pushed on top of it, go back the way a person would.
-            let back = app.navigationBars.buttons["BackButton"]
-            for _ in 0..<4 where !home.exists && !app.buttons["morning.actions"].exists && back.exists && back.isHittable {
+            // Settings, History and their details are pushed on Home. Follow
+            // the same native Back route as a person, rather than an old tab/date.
+            for _ in 0..<8 where app.navigationBars.count > 0 {
+                let back = app.navigationBars.buttons.element(boundBy: 0)
+                guard back.exists, becomesHittable(back) else {
+                    XCTFail("The visible navigation must offer Back.\n\(app.debugDescription)", file: file, line: line)
+                    return
+                }
                 back.tap()
-                _ = home.waitForExistence(timeout: 2)
-            }
-            if home.exists {
-                XCTAssertTrue(home.isHittable, app.debugDescription, file: file, line: line)
-                home.tap()
             }
             let closeActions = app.buttons["morning.closeActions"]
             if closeActions.exists, closeActions.isHittable { closeActions.tap() }
-            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5),
-                          "Morning must expose its sunrise control.\n\(app.debugDescription)", file: file, line: line)
+            let home = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                app.buttons["morning.actions"].exists || app.scrollViews["morning.captions"].exists
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [home], timeout: 5), .completed,
+                           "Home must show its landscape or current passage.\n\(app.debugDescription)", file: file, line: line)
         case "Review":
-            if app.buttons["morning.home"].exists { return }
-            let destinationClose = app.buttons["destination.close"]
-            if destinationClose.exists, destinationClose.isHittable { destinationClose.tap() }
-            let closeActions = app.buttons["morning.closeActions"]
-            if closeActions.exists, closeActions.isHittable { closeActions.tap() }
-            let date = app.buttons["morning.date"]
-            let expandedReview = app.buttons["morning.review"]
-            if expandedReview.exists, expandedReview.isHittable {
-                expandedReview.tap()
-            } else if date.waitForExistence(timeout: 5), becomesHittable(date) {
-                date.tap()
-            } else {
-                XCTFail("Morning history must open from its date control.", file: file, line: line)
-            }
-            XCTAssertTrue(app.buttons["morning.home"].waitForExistence(timeout: 5),
-                          "Review must expose its return to Morning.\n\(app.debugDescription)", file: file, line: line)
+            if app.buttons["review.period"].exists, app.buttons["review.period"].isHittable { return }
+            selectTab("Morning", in: app, file: file, line: line)
+            tapButton("morning.settings", in: app, file: file, line: line)
+            tapButton("setup.history", in: app, file: file, line: line)
+            XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5),
+                          "Settings must open morning History.\n\(app.debugDescription)", file: file, line: line)
         default:
             XCTFail("Unsupported destination: \(title)", file: file, line: line)
         }
@@ -508,6 +499,10 @@ enum MorningUITestNavigation {
         if sunrise.exists {
             XCTAssertTrue(becomesHittable(sunrise), app.debugDescription, file: file, line: line)
             sunrise.tap()
+        } else if app.scrollViews["morning.captions"].exists {
+            let passage = app.scrollViews["morning.captions"]
+            XCTAssertTrue(becomesHittable(passage), app.debugDescription, file: file, line: line)
+            passage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
         } else if !app.buttons["morning.closeActions"].exists {
             XCTAssertTrue(sunrise.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
             XCTAssertTrue(sunrise.isHittable, app.debugDescription, file: file, line: line)
@@ -574,8 +569,12 @@ enum MorningUITestNavigation {
         let editor = app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 5), file: file, line: line)
         let done = app.buttons["destination.close"]
-        XCTAssertTrue(done.isHittable, file: file, line: line)
-        done.tap()
+        if done.exists, done.isHittable { done.tap() }
+        else {
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(back.exists && becomesHittable(back), app.debugDescription, file: file, line: line)
+            back.tap()
+        }
         let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: editor)
         XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
     }

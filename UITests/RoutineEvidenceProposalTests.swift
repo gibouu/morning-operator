@@ -677,8 +677,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     }
 
     private func reviewRoot(in app: XCUIApplication) {
-        MorningUITestNavigation.selectTab("Morning", in: app)
-        tap("morning.date", in: app)
+        MorningUITestNavigation.selectTab("Review", in: app)
         XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5))
     }
 
