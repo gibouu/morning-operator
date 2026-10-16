@@ -304,7 +304,7 @@ enum ObservationContextValidation {
             // icon into a letter. A mention can block identity, never establish it.
             let mentionedCatalog = catalog.filter { entry in headers.contains { $0.contains(entry.headerText) } }
             guard visibleCatalog.count == 1, mentionedCatalog.count == 1, let entry = visibleCatalog.first,
-                  !isProvenanceLine(removingLeadingDecoration(proposal.evidenceQuote)),
+                  !ObservedTextRolePolicy.isProvenanceLine(removingLeadingDecoration(proposal.evidenceQuote)),
                   proposal.contextLabel == entry.label, headers.contains(proposal.evidenceQuote),
                   removingLeadingDecoration(proposal.evidenceQuote) == entry.headerText else { return nil }
             label = entry.label
@@ -383,18 +383,7 @@ enum ObservationContextValidation {
 
     /// This is a narrow negative role check, never a source of app identity.
     /// An ordinary name such as “Synthetic Studio” or “Test Kitchen” is retained.
-    static func isHeaderCandidate(_ line: String) -> Bool { isSafeLabel(line) && !isProvenanceLine(line) }
-
-    private static func isProvenanceLine(_ line: String) -> Bool {
-        let tokens = normalized(line).split { !$0.isLetter && !$0.isNumber }.map(String.init)
-        let markers: Set<String> = ["synthetic", "synthetique", "simulated", "simulation", "demo", "demonstration",
-            "test", "testing", "recording", "recorded", "capture", "captured", "enregistrement", "provenance", "watermark", "filigrane"]
-        let qualifiers: Set<String> = ["metadata", "metadonnees", "screen", "video", "version", "fr", "en",
-            "francais", "francaise", "french", "english", "anglais", "on", "le", "de", "the"]
-        return tokens.contains(where: markers.contains) && tokens.allSatisfy {
-            markers.contains($0) || qualifiers.contains($0) || $0.allSatisfy(\.isNumber)
-        }
-    }
+    static func isHeaderCandidate(_ line: String) -> Bool { isSafeLabel(line) && !ObservedTextRolePolicy.isProvenanceLine(line) }
 
     private static func normalized(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
