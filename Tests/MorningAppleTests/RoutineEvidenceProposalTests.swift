@@ -124,6 +124,95 @@ struct RoutineEvidenceProposalTests {
         }
     }
 
+    @Test("Generic titles do not merge independent mail and team-message frames")
+    func genericTitlesKeepIndependentSupports() throws {
+        let quotes = ["L'atelier reste en salle Cèdre à 09:15.",
+                      "La table est prête. Combien de cartes apportes-tu ?"]
+        let entry = try videoSource(texts: ["Cedar Mail - Gmail SIMULATED\n" + quotes[0],
+                                            "Cedar Team - Slack SIMULATED\n" + quotes[1]])
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let inputs = evidence.units.enumerated().map { index, unit in
+            EvidenceRoutineStepInput(title: "Review messages", detail: "A tentative review.", kind: .messages,
+                durationMinutes: index + 2, citations: [.init(unitID: unit.id, quote: quotes[index])])
+        }
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence, steps: inputs, preserving: nil, at: instant)
+        #expect(proposal.routine.steps.map(\.title) == ["Review messages", "Review messages"])
+        #expect(proposal.routine.steps.map(\.durationMinutes) == [2, 3])
+        #expect(proposal.support.map { $0.citations.map(\.quote) } == quotes.map { [$0] })
+        let frames = try #require(entry.videoEvidence).frames
+        #expect(proposal.support.map { $0.citations.first?.sampleID } == frames.map { Optional($0.id) })
+        #expect(proposal.routine.steps.allSatisfy { $0.target == nil && $0.automation == nil })
+        #expect(!proposal.routine.isApproved)
+        let restored = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored.routine.steps == proposal.routine.steps)
+        #expect(restored.isCurrent(archive: try ObservationArchive(entries: [entry]), baseRoutine: nil))
+        let kept = RoutineStep(title: "Review messages", detail: "My exact saved ritual", kind: .messages,
+            durationMinutes: 7, isRequired: true)
+        let base = RoutineVersion(sourceLabel: "My approved morning", steps: [kept], isApproved: true)
+        let journal = try RoutinePreferenceJournal(entries: [RoutinePreference(target: kept, presence: .keep)], revision: UUID())
+        #expect(throws: RoutinePreferenceError.ambiguousMatch(kept.id)) {
+            try LearningEvidencePreparation.assemble(evidence: evidence, steps: inputs,
+                preserving: base, preferences: journal, at: instant)
+        }
+        #expect(base.steps == [kept] && base.isApproved)
+        #expect(journal.entries.first?.retainedStep == kept)
+    }
+
+    @Test("A shared exact support is deduplicated before personal timing is applied and restored")
+    func sharedSupportRetainsPersonalTiming() throws {
+        let entry = try source()
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let input = step(try #require(evidence.units.first))
+        let personal = RoutineStep(title: input.title, detail: "My existing note", kind: input.kind, durationMinutes: 7)
+        let preference = try RoutinePreference(target: personal, durationMinutes: 7)
+        let journal = try RoutinePreferenceJournal(entries: [preference], revision: UUID())
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence, steps: [input, input],
+            preserving: nil, preferences: journal, at: instant)
+        #expect(proposal.routine.steps.count == 1)
+        #expect(proposal.routine.steps.first?.durationMinutes == 7)
+        #expect(proposal.support.first?.citations.count == 1)
+        #expect(proposal.support.first?.citations.first?.quote == words)
+        #expect(proposal.support.first?.reason == .inferredEvidenceWithUserPreference)
+        #expect(proposal.preferenceSnapshot == journal)
+        let restored = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored == proposal)
+        #expect(restored.isCurrent(archive: try ObservationArchive(entries: [entry]), baseRoutine: nil, preferences: journal))
+    }
+
+    @Test("The same quoted sentence in different written contexts does not establish equivalence")
+    func repeatedQuoteDoesNotEraseItsContext() throws {
+        let sources = try [source(text: words + " Then I read my team's messages."),
+                           source(day: 1, text: words + " Then I listen to music.")]
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: sources)
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence,
+            steps: evidence.units.map { step($0, quote: words) }, preserving: nil, at: instant)
+        #expect(proposal.routine.steps.count == 2)
+        #expect(proposal.support.map { $0.citations.count } == [1, 1])
+        #expect(proposal.isCurrent(archive: try ObservationArchive(entries: sources), baseRoutine: nil))
+    }
+
+    @Test("Identical text on distinct video frames stays distinct and never silently bypasses the ten-moment limit")
+    func distinctFramesKeepTheExplicitLimit() throws {
+        let entry = try videoSource(texts: Array(repeating: "Calendar\n09:00 Project planning meeting", count: 11))
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        #expect(evidence.units.count == 11)
+        #expect(throws: RoutineEvidenceProposalError.tooManySteps) {
+            try LearningEvidencePreparation.assemble(evidence: evidence,
+                steps: evidence.units.map { step($0, quote: "09:00 Project planning meeting") }, preserving: nil, at: instant)
+        }
+    }
+
+    private func videoSource(texts: [String]) throws -> ObservationAcquisition {
+        let frames = try texts.enumerated().map { index, text in
+            try ObservationFrameEvidence(requestedTimeSeconds: Double(index), actualTimeSeconds: Double(index),
+                outcome: .observed, text: text)
+        }
+        let video = try ObservationVideoEvidence(durationSeconds: Double(frames.count + 1), frames: frames)
+        return try ObservationAcquisition(importedAt: instant, observedDate: source().observedDate, origin: .synthetic,
+            sourceKind: .video, sourceLabel: "SYNTHETIC independent support test", originalText: video.renderedText,
+            videoEvidence: video)
+    }
+
     @Test("Dates, origin and original zone are explicit prerequisites")
     func rejectsUnassignedAndMixedSources() throws {
         #expect(throws: RoutineEvidenceProposalError.dateRequired) {

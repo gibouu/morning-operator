@@ -631,7 +631,7 @@ public enum LearningEvidencePreparation {
         }
         var proposed: [RoutineStep] = []
         var citationsByStep: [UUID: [RoutineEvidenceCitation]] = [:]
-        var keyIndexes: [String: Int] = [:]
+        var keyIndexes: [String: [Int]] = [:]
         let browserGroups = browserLessonGroups(evidence: evidence)
         let browserSources = browserGroups.reduce(into: Set<UUID>()) { $0.formUnion($1.acquisitionIDs) }
         let browserSteps = try browserGroups.map { group in try group.segmentUnits.map { try browserCandidate(units: $0) } }
@@ -677,7 +677,9 @@ public enum LearningEvidencePreparation {
                 continue
             }
             let key = input.kind.rawValue + ":" + ObservationText.normalized(title)
-            if let index = keyIndexes[key] {
+            if let index = keyIndexes[key]?.first(where: {
+                equivalentModelSupport(citationsByStep[proposed[$0].id] ?? [], citations, evidence: evidence)
+            }) {
                 let id = proposed[index].id
                 var existing = citationsByStep[id] ?? []
                 for citation in citations where !existing.contains(citation) { existing.append(citation) }
@@ -687,7 +689,7 @@ public enum LearningEvidencePreparation {
                 let step = RoutineStep(title: title,
                     detail: detail + "\n" + EvidenceDetailText.tentativeNote,
                     kind: input.kind, durationMinutes: input.durationMinutes)
-                keyIndexes[key] = proposed.count
+                keyIndexes[key, default: []].append(proposed.count)
                 proposed.append(step); citationsByStep[step.id] = citations
             }
             for index in browserAnchors { try insertBrowserGroup(index) }
@@ -758,6 +760,33 @@ public enum LearningEvidencePreparation {
         }
         return try EvidenceRoutineProposal(base: base, routine: routine, sources: evidence.sourceSnapshots,
             support: support, omissions: evidence.omissions, preferences: preferences, screenTimeSelection: evidence.screenTimeSelection)
+    }
+
+    /// A reusable title is not an identity. Separate frames or excerpts stay
+    /// separate unless they cite the same evidence. Independent, byte-identical
+    /// written declarations may corroborate one activity across mornings.
+    private static func equivalentModelSupport(_ lhs: [RoutineEvidenceCitation], _ rhs: [RoutineEvidenceCitation],
+                                               evidence: PreparedLearningEvidence) -> Bool {
+        func matches(_ left: RoutineEvidenceCitation, _ right: RoutineEvidenceCitation) -> Bool {
+            if left == right { return true }
+            guard left.acquisitionID != right.acquisitionID, left.sampleID == nil, right.sampleID == nil,
+                  left.sourceLayer == right.sourceLayer,
+                  left.startCharacterOffset == right.startCharacterOffset,
+                  left.endCharacterOffset == right.endCharacterOffset,
+                  left.quote.utf8.elementsEqual(right.quote.utf8),
+                  let leftUnit = evidence.units.first(where: {
+                      $0.acquisitionID == left.acquisitionID && $0.sourceLayer == left.sourceLayer
+                  }),
+                  let rightUnit = evidence.units.first(where: {
+                      $0.acquisitionID == right.acquisitionID && $0.sourceLayer == right.sourceLayer
+                  }),
+                  leftUnit.kind == .userReportedActivity, rightUnit.kind == .userReportedActivity,
+                  leftUnit.browserContext == nil, rightUnit.browserContext == nil else { return false }
+            return leftUnit.context.utf8.elementsEqual(rightUnit.context.utf8)
+        }
+        return !lhs.isEmpty && !rhs.isEmpty &&
+            lhs.allSatisfy { left in rhs.contains { matches(left, $0) } } &&
+            rhs.allSatisfy { right in lhs.contains { matches($0, right) } }
     }
 
     /// Compare with source-backed candidates before Keep reinsertion. A retained
