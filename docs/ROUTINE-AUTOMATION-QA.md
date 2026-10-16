@@ -70,55 +70,107 @@ The later Home decision (`99ef99d`, `3dfed93`) replaces scrolling history with a
 
 ## Resumed synthetic acceptance — 16 October 2026
 
-The owner explicitly resumed simulator correction/testing after the delivery
-handoff below and authorized integration on main after the complete synthetic
-routine passes. PR224 carries this continuation. The existing personal checkout
-and physical iPhone routine are not used by these tests.
+The owner resumed simulator correction/testing and authorized main integration
+after the complete synthetic routine passes. PR224 carries this continuation.
+The personal checkout and its uncommitted edits are preserved; these journeys
+use a dedicated simulator and isolated workspaces, not the physical iPhone.
 
-Shared package v26 reports **2,157 tests, zero issues, 16 optional skips**; the two
-native OCR checks are excluded from that concurrent run and separately pass
-unchanged in isolation (layout25.346s; text0.305s). The source receipt binds402
-package source/test files. Earlier v23 fails compilation; v24 fails20 Gmail
-fixture expectations and one OCR deadline. After the fixture accepts the actual
-Foundation empty-query representation of its exact send URL, the three targeted
-Gmail tests pass, followed by v26. Ordinary Gmail transport, send policy and
-journal are not relaxed. These are shared-logic results, not live deliveries.
+Shared package v32 on `a54a6b6` reports **2,172 tests, zero issues and 16 optional
+integration skips**. Its source receipt binds 525 shared/app wording inputs,
+unchanged after the run. The two native OCR checks are excluded from that full
+run and separately pass on unchanged OCR source (layout 25.346s; text 0.305s).
+The targeted current/historical EN/FR wording suite passes 31 tests. Historical
+v30 remains a failure (24 issues); the unchanged Calendar/Calendly suites then
+pass 21 isolated tests, and v32 passes those suites in the full recheck too.
+Shared-logic success does not establish live deliveries or native journeys.
 
-Frozen9o /6714173 runs six isolated native cases: five pass, one fails before
-any reminder write. EN/FR news verify the actual second article paragraph,
-Repeat completion, Return and retained paused budget; History→Settings, compact
-proposal controls and KeepCurrent also pass. The reminder helper is subsequently
-corrected from observed native DatePicker identifiers/values. Frozen9p and9q
-failures remain in their local xcresults; neither is silently relabelled green.
-Sealed Products and before/after hashes bind each runtime to its compiled app
-and runner. Long10 and the corrected exact-reminder journey remain pending.
+Main through `52befaf` is then merged before the next native build, retaining
+direct execution of approved routines and current presentation/permission work.
+On combined `318a280`, full v33 compiles but fails during Apple tests: 156
+timeouts and three subsequent assertions, followed by a City test helper reading
+an empty queue. The other completed targets pass (Live51, Health8, Core804).
+City/Health alone pass18 tests in0.171s; all13 affected groups pass169 tests in
+21.697s on the same products. Those runs do not erase the v33 failure or prove
+its initial cause. The complete v36 recheck limits Swift Testing to width1,
+retaining all assertions, app deadlines, optional gates and the same529 inputs.
+It passes **2,190 reported tests, zero issues and16 optional skips**: Live51,
+Health8, Core804 and Apple1327. Apple takes127.768s with width1. The two unchanged
+native OCR checks remain separately validated. Before/after hashes match all529
+inputs; no application or test source is changed between v33 and v36.
 
-The new complete downstream test imports an explicitly synthetic, unapproved
-10-moment/28-minute parsed draft containing no automation or target. It configures
-and approves operations through ordinary UI, cold-relaunches without the parsed
+A source-selection regression first fails because the displayed third email
+is a different message from the one required by the scenario. Correcting only
+the private attention ranking makes it pass: three tests with EN/FR variants,
+zero issues. Recipient, body, MIME, context and journal guards are unchanged.
+The ordinary reply UI also preserves intention/correction after preparation
+fails, and clears only unchanged submitted input after a successful new draft.
+Newer edits survive; preparation never authorizes Send.
+
+Frozen9o / `6714173` runs six native cases: five pass, one fails before a
+reminder write. EN/FR news verify the actual second article paragraph, completed
+Repeat, Return and the retained paused budget. History→Settings, compact proposal
+controls and KeepCurrent also pass. The later exact-reminder9u / `03309e7`
+passes in **110.630s**: exact 16 October 2026 09:25 Europe/Paris, title, alert,
+destination and session/version/step pins; one received simulated write; no
+second write on reopening; durable confirmed count after cold launch with zero
+fresh provider writes. Captures, payload and restored state are independently
+reviewed. This uses a synthetic provider, not EventKit or an acoustic command.
+
+Subsequent native failures remain failures with their private xcresults and
+source/product receipts. Long9v fails during setup on an unmaterialized Form
+field, before Start. Gmail9w selects the scenario's wrong third source and
+never reaches Send; the private ranking regression above reproduces that gap.
+Gmail9x fails before Save when a swipe on a clipped Action menu option selects
+Calendar. The accessibility-size Action picker is consequently changed to a
+native navigation list; ordinary sizes retain their existing picker. Each
+fix comes from the actual capture/AX/timeline, without relaxing effect guards.
+Products are sealed and archived with byte/size/mode verification before cache
+reuse; no historical build is inferred from mutable DerivedData.
+
+9y / `9fef967` demonstrates a real Action page, native list scroll, explicit
+Gmail tap and the selected value back in the editor. It is stopped before Save
+after identifying an incorrect test expectation: the explanation includes the
+real `Gmail · ` service prefix. The interrupted result remains STOPPED, with
+no Gmail execution/effect credited; recoverable page/AX evidence is reviewed,
+and the undecodable interrupted video is not treated as visual proof. Only the
+exact expected label is corrected for the next run.
+
+The complete downstream journey imports an explicitly synthetic, unapproved
+10-moment/28-minute parsed draft with no automation or target. It configures and
+approves operations through ordinary UI, cold-relaunches without the parsed
 argument, then exercises Calendar, corrected/reviewed Gmail sending, uncertain
 Slack, news article/return, feed pause/cold restoration, two playing video items,
-one exact reminder, reading, playing music and a closing budget. Local test
+one exact reminder, retained reading, playing music and a closing budget. Local
 origins supply finite pages and generated media to the ordinary WebKit executor;
-fictional providers receive real application payloads. No duration is accelerated
-and no timer is accepted as proof of a provider effect. All network/media/private
-fixture gates remain Debug-only and workspace-bound. The test is not yet a pass.
+fictional providers receive actual application payloads. No duration is shortened
+and a timer never proves a provider effect. The real-minute journey has its own
+CI shard; the older time-only substitute is removed. Acceptance remains pending
+until the complete native run and its payload/recap evidence are reviewed.
 
-A third separately consented OpenAI comparison replays only the frozen invented
-OCR text: one diagnostic passes in77.910s, with7/7 HTTP200 responses and7 validated
-batch outcomes. Five batches explicitly abstain; two yield four synthetic,
-unapproved moments (news, social, reminder, reading;10 proposed minutes). Exact
-citations remain bound to actual sampled frames. Calendar, Gmail, Slack, video
-and music are missing. This **4/9** source-family result is partial; the unchanged
-local full-movie v11 remains **0/9**. Neither certifies learning the whole movie.
-The temporary protected API-key file was deleted after the replay.
+The separate largest-text/night French Gmail journey retains its original
+five-minute import and explicitly adds two minutes through the ordinary UI,
+checking the same session pins and the real elapsed budget. Its correction,
+exact recipient/body review, separate Send and one received MIME are required.
+The longer driver allowance changes no product duration or acceptance guard.
 
-Separately, the ordinary-iPhone voice task verified final installation1630: all
-four French/English × Male/Female examples completed through ElevenLabs without
-Apple backup, and the owner confirmed they were audible and better. The installed
-identity activation was the cause of the previous fallback. Its documentation is
-in [PR225](https://github.com/gibouu/morning-operator/pull/225). Those fixed examples
-do not prove microphone conversation, interruption or this simulator routine.
+The separately consented OpenAI comparison replays only frozen invented OCR
+text: the third diagnostic passes in77.910s with seven HTTP200 responses and
+seven validated outcomes. Five abstain; two yield four synthetic unapproved
+moments (news, social, reminder, reading; ten proposed minutes). Exact citations
+bind to actual sampled frames. Calendar, Gmail, Slack, video and music are
+missing: **4/9 source families is partial**, and unchanged local full-movie v11
+remains **0/9**. A later local prompt contrast brings no full-disclosure gain
+and regresses bare French; that experiment is reverted. Learning remains open
+in #23, separate from parsed-draft execution. The temporary remote API-key file
+was deleted. Raw OCR, media, payloads and captures stay out of Git.
+
+Separately, ordinary-iPhone installation1630 completes all four French/English ×
+Male/Female examples through ElevenLabs without Apple backup, and the owner
+confirms they are audible and better. Activating the installed identity resolves
+the previous fallback. This evidence is documented in merged PR225. It does not
+prove microphone conversation or interruption; closed simulator fixtures use
+Apple speech. Broader live-provider/acoustic/personal MORE §10 acceptance stays
+open in #173.
 
 ## Delivery handoff — 16 October 2026
 
