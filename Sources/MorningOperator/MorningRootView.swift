@@ -76,7 +76,6 @@ struct MorningRootView: View {
                                if store.routine == nil { showingLearn = true } else { showingRoutineEditor = true }
                            },
                            motionAllowed: homeSkyIsVisible,
-                           weatherSynthetic: store.usesSyntheticBriefing,
                            needsSolarCity: store.briefing.settings.weatherLocation == nil, notice: store.notice,
                            session: store.session, currentStep: store.currentStep,
                            connectedActionStatus: store.connectedActionStatus,
@@ -528,7 +527,7 @@ struct TodayView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("moment.purpose")
                         if let briefing = store.preparedBriefing(for: step) {
-                            MorningBriefingDocumentView(document: briefing, operation: step.automation, synthetic: store.usesSyntheticBriefing)
+                            MorningBriefingDocumentView(document: briefing, operation: step.automation)
                         } else if step.automation == .spokenNote || step.automation == .savedObservation {
                             Text(step.detail).font(.raleway(.subheadline)).textSelection(.enabled)
                                 .accessibilityIdentifier("run.detail")
@@ -1206,7 +1205,6 @@ private struct MorningSunHome: View {
     var openSettings: () -> Void
     var openRoutine: () -> Void
     var motionAllowed: Bool
-    var weatherSynthetic: Bool
     var needsSolarCity: Bool
     var notice: String?
     var session: RoutineSession?
@@ -1364,9 +1362,6 @@ private struct MorningSunHome: View {
                 Text(MorningThemeClock.shared.weatherStatusDescription)
                     .font(.raleway(.caption))
                     .accessibilityIdentifier("morning.weatherStatus")
-            }
-            if let attribution = MorningThemeClock.shared.weatherAttribution {
-                MorningWeatherAttributionView(attribution: attribution, synthetic: weatherSynthetic)
             }
             if needsSolarCity {
                 Button(action: openSettings) {

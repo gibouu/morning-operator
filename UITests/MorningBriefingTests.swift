@@ -98,7 +98,8 @@ final class MorningBriefingTests: XCTestCase {
         // Wording belongs to the package tests. Here: the synthetic sources reach the screen.
         XCTAssertTrue(opening.label.contains("Synthetic"), opening.label)
         XCTAssertEqual(opening.value as? String, "silent", "The fixture keeps spoken guidance off.")
-        XCTAssertTrue(app.staticTexts["Synthetic weather attribution"].exists)
+        XCTAssertFalse(app.staticTexts["Synthetic weather attribution"].exists,
+                       "Provider credit belongs in the weather connection settings, outside playback.")
         let hear = app.buttons["opening.brief"]
         XCTAssertTrue(hear.exists, "Current sources must offer their recap.")
         XCTAssertTrue(app.buttons["opening.routine"].exists)

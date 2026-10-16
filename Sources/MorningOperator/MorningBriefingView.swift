@@ -173,6 +173,9 @@ struct MorningBriefingView: View {
                      : WeatherObservationError.searchUnavailable.localizedDescription)
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
             }
+            if let attribution = controller.currentWeatherSnapshot?.attribution {
+                MorningWeatherAttributionView(attribution: attribution, synthetic: store.usesSyntheticBriefing)
+            }
         } header: { Text("Weather · optional") } footer: {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Searches go to Apple Maps; the city you choose is sent to Apple Weather. MORE doesn't request your device location.")
@@ -229,7 +232,6 @@ struct MorningBriefingView: View {
 struct MorningBriefingDocumentView: View {
     let document: PreparedMorningBriefing
     var operation: RoutineStepAutomation? = .morningBriefing
-    var synthetic = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -245,17 +247,17 @@ struct MorningBriefingDocumentView: View {
             if document.calendar.status != .notConfigured { source(String(localized: "Calendar"), section: document.calendar, isCalendar: true) }
             if operation != .todayCalendar, document.weather.status != .notConfigured {
                 source(String(localized: "Weather"), section: document.weather, isCalendar: false)
-                if let attribution = document.weatherAttribution {
-                    MorningWeatherAttributionView(attribution: attribution, synthetic: synthetic)
-                }
             }
         }
     }
 
     private func source(_ name: String, section: MorningBriefingSection, isCalendar: Bool) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("\(name) · \(section.statusText)").font(.raleway(.caption))
-            if !section.sourceLabels.isEmpty { Text(section.sourceLabels.joined(separator: " · ")).font(.raleway(.caption2)) }
+            Text(isCalendar || section.status != .fresh ? "\(name) · \(section.statusText)" : name)
+                .font(.raleway(.caption))
+            if isCalendar, !section.sourceLabels.isEmpty {
+                Text(section.sourceLabels.joined(separator: " · ")).font(.raleway(.caption2))
+            }
             if let retrievedAt = section.retrievedAt {
                 Text(isCalendar ? "Local read at \(retrievedAt.formatted(date: .omitted, time: .standard))" : "Retrieved at \(retrievedAt.formatted(date: .omitted, time: .standard))").font(.raleway(.caption2))
             }
@@ -263,5 +265,32 @@ struct MorningBriefingDocumentView: View {
                 Text("Conditions at \(observedAt.formatted(date: .omitted, time: .standard))").font(.raleway(.caption2))
             }
         }.foregroundStyle(MorningStyle.muted)
+    }
+}
+
+/// Provider credit lives with the weather connection settings.
+struct MorningWeatherAttributionView: View {
+    let attribution: WeatherAttributionInfo
+    var synthetic = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if synthetic {
+                Text("Synthetic weather attribution").font(.raleway(.caption))
+            } else {
+                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { phase in
+                    switch phase {
+                    case .success(let image): image.resizable().scaledToFit().frame(height: 18)
+                    case .failure: Text("Apple Weather mark unavailable").font(.raleway(.caption))
+                    default: ProgressView().accessibilityLabel("Loading Apple Weather mark")
+                    }
+                }
+                .frame(maxWidth: 150, alignment: .leading)
+                .accessibilityLabel("Apple Weather")
+            }
+            Link("Weather data sources", destination: attribution.legalURL).font(.raleway(.caption))
+                .accessibilityIdentifier("weather.sources")
+        }
     }
 }

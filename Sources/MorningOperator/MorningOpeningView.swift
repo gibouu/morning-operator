@@ -25,10 +25,6 @@ struct MorningOpeningView: View {
                         .accessibilityIdentifier("opening.text")
                         .accessibilityValue(store.openingSpeechObservation)
                 }
-                if let attribution = presentation.document?.weatherAttribution,
-                   opening.segments.contains(where: { $0.source == .weather || $0.source == .umbrella }) {
-                    MorningWeatherAttributionView(attribution: attribution, synthetic: store.usesSyntheticBriefing)
-                }
                 choices(opening)
             } else {
                 HStack(spacing: 10) {
@@ -107,33 +103,6 @@ struct MorningOpeningView: View {
         case .brief: "speaker.wave.2"
         case .ritual: "play.fill"
         case .stop: "stop.fill"
-        }
-    }
-}
-
-/// The weather service's mark and its legal link, wherever a weather sentence is shown.
-struct MorningWeatherAttributionView: View {
-    let attribution: WeatherAttributionInfo
-    var synthetic = false
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if synthetic {
-                Text("Synthetic weather attribution").font(.raleway(.caption))
-            } else {
-                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { phase in
-                    switch phase {
-                    case .success(let image): image.resizable().scaledToFit().frame(height: 18)
-                    case .failure: Text("Apple Weather mark unavailable").font(.raleway(.caption))
-                    default: ProgressView().accessibilityLabel("Loading Apple Weather mark")
-                    }
-                }
-                .frame(maxWidth: 150, alignment: .leading)
-                .accessibilityLabel("Apple Weather")
-            }
-            Link("Weather data sources", destination: attribution.legalURL).font(.raleway(.caption))
-                .accessibilityIdentifier("weather.sources")
         }
     }
 }
