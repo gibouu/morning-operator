@@ -271,7 +271,7 @@ struct WebMorningView: View {
                         .font(.footnote)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-                
+
         }.frame(maxHeight: 240).accessibilityIdentifier("web.conversation")
     }
 
