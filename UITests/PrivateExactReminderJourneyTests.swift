@@ -177,6 +177,27 @@ import MorningCore
         closeNativePickerIfNeeded(app)
     }
     private func closeNativePickerIfNeeded(_ app: XCUIApplication) {
+        if let dismiss = app.buttons.matching(identifier: "PopoverDismissRegion").allElementsBoundByIndex.first(where: \.isHittable) {
+            let rect = dismiss.frame.intersection(app.frame)
+            let obstacles = app.datePickers.allElementsBoundByIndex.filter {
+                $0.exists && $0.identifier != "nativeMoment.date" && !$0.frame.isEmpty
+            }.map(\.frame) + app.pickerWheels.allElementsBoundByIndex.filter(\.exists).map(\.frame)
+            let points = [CGPoint(x: rect.minX + rect.width * 0.04, y: rect.midY),
+                          CGPoint(x: rect.maxX - rect.width * 0.04, y: rect.midY),
+                          CGPoint(x: rect.midX, y: rect.maxY - rect.height * 0.04)]
+            guard !rect.isNull, !rect.isInfinite, rect.width > 40, rect.height > 40,
+                  [rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy({ $0.isFinite }),
+                  !obstacles.isEmpty, let point = points.first(where: { point in
+                      rect.contains(point) && !obstacles.contains(where: { $0.contains(point) })
+                  }) else { fail("exact-reminder-native-popup-has-no-dismiss-point", app); return }
+            // The system dismiss button spans the screen; its centre is covered
+            // by the calendar. Tap only its observed exposed area outside it.
+            dismiss.coordinate(withNormalizedOffset: .zero).withOffset(
+                CGVector(dx: point.x - dismiss.frame.minX, dy: point.y - dismiss.frame.minY)).tap()
+            let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: dismiss)
+            XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
+            return
+        }
         if let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["Done", "Close"])).allElementsBoundByIndex.first(where: {
             $0.isHittable && $0.identifier != "morning.closeDetails" && $0.identifier != "destination.close"
         }) { done.tap() }
