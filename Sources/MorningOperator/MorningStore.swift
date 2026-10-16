@@ -866,9 +866,14 @@ final class MorningStore {
         let byID = Dictionary(uniqueKeysWithValues: current.steps.map { ($0.id, $0) })
         let steps = orderedIDs.compactMap { byID[$0] }
         guard steps.count == current.steps.count else { return false }
-        // The common edit transaction preserves an approved predecessor,
-        // invalidates pending proposals, and rolls all routine state back if saving fails.
-        return saveRoutineEdit(steps: steps, preferences: routinePreferences)
+        guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
+        do {
+            var preferences = routinePreferences
+            try preferences.rememberOrder(of: steps)
+            // The common transaction saves both the reviewed order and draft,
+            // preserving the approved predecessor and rolling back on failure.
+            return saveRoutineEdit(steps: steps, preferences: preferences)
+        } catch { notice = error.localizedDescription; return false }
     }
 
     func savedPreference(for step: RoutineStep) -> RoutinePreference? {

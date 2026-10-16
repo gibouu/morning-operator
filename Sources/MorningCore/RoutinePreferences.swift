@@ -94,21 +94,54 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
     public static let maximumEntries = 100
     public static let maximumEncodedBytes = 4 * 1_024 * 1_024
     private static let emptyRevision = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+    /// Records relative order only. It neither keeps absent moments nor grants
+    /// action authority; source identity remains separate from this user choice.
+    public struct OrderedMoment: Codable, Sendable, Equatable {
+        public let targetID: UUID
+        public let targetTitle: String
+        public let targetKind: StepKind
+        fileprivate init(_ step: RoutineStep) {
+            targetID = step.id; targetTitle = step.title; targetKind = step.kind
+        }
+        fileprivate func validate() throws {
+            guard !preferenceTitleKey(targetTitle).isEmpty, targetTitle.count <= 2_000,
+                  targetTitle.utf8.count <= 8_000,
+                  !targetTitle.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+                throw RoutinePreferenceError.invalidPreference
+            }
+        }
+    }
+
     public private(set) var entries: [RoutinePreference]
     public private(set) var revision: UUID
+    public private(set) var order: [OrderedMoment]?
 
-    public init() { entries = []; revision = Self.emptyRevision }
+    public init() { entries = []; revision = Self.emptyRevision; order = nil }
 
-    public init(entries: [RoutinePreference], revision: UUID) throws {
+    public init(entries: [RoutinePreference], revision: UUID, order: [OrderedMoment]? = nil) throws {
         self.entries = entries
         self.revision = revision
+        self.order = order
         try validate()
+    }
+
+    /// Call only for an explicit editor reorder, never for model/source order.
+    public mutating func rememberOrder(of steps: [RoutineStep]) throws {
+        let next = steps.map(OrderedMoment.init)
+        if let order, try JSONEncoder().encode(order) == JSONEncoder().encode(next) { return }
+        self = try Self(entries: entries, revision: UUID(), order: next)
     }
 
     public func validate() throws {
         guard entries.count <= Self.maximumEntries else { throw RoutinePreferenceError.tooManyPreferences }
         guard Set(entries.map(\.targetID)).count == entries.count else { throw RoutinePreferenceError.invalidPreference }
         for entry in entries { try entry.validate() }
+        if let order {
+            guard (1...10).contains(order.count), Set(order.map(\.targetID)).count == order.count else {
+                throw RoutinePreferenceError.invalidPreference
+            }
+            for moment in order { try moment.validate() }
+        }
         guard try JSONEncoder().encode(self).count <= Self.maximumEncodedBytes else {
             throw RoutinePreferenceError.preferencesTooLarge
         }
@@ -136,7 +169,7 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
             if try encoder.encode(next[index]) == encoder.encode(preference) { return }
             next[index] = preference
         } else { next.append(preference) }
-        self = try Self(entries: next, revision: UUID())
+        self = try Self(entries: next, revision: UUID(), order: order)
     }
 
     @discardableResult
@@ -149,15 +182,15 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
 
     @discardableResult
     public mutating func clear() -> Bool {
-        guard !entries.isEmpty else { return false }
-        entries.removeAll()
+        guard !entries.isEmpty || order != nil else { return false }
+        entries.removeAll(); order = nil
         revision = UUID()
         return true
     }
 
     public func reconcile(steps: [RoutineStep]) throws -> RoutinePreferenceReconciliation {
         try validate()
-        guard !entries.isEmpty else {
+        guard !entries.isEmpty || order != nil else {
             return .init(steps: steps, retainedStepIDs: [], durationOverriddenStepIDs: [],
                          excludedStepIDs: [], appliedPreferenceIDsByStepID: [:])
         }
@@ -214,15 +247,42 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
         // Duration-only and exclude choices never insert an absent activity.
         for entry in missing where entry.presence == .keep { apply(entry, to: nil) }
         guard Set(result.map(\.id)).count == result.count else { throw RoutinePreferenceError.invalidSteps }
-        return .init(steps: result, retainedStepIDs: retained, durationOverriddenStepIDs: overridden,
+        return .init(steps: try applyingOrder(to: result), retainedStepIDs: retained, durationOverriddenStepIDs: overridden,
                      excludedStepIDs: excluded, appliedPreferenceIDsByStepID: applied)
     }
 
-    private enum CodingKeys: String, CodingKey { case entries, revision }
+    /// New moments keep their slots and relative order. Only the matched
+    /// survivors are exchanged between their current slots in the reviewed order.
+    private func applyingOrder(to steps: [RoutineStep]) throws -> [RoutineStep] {
+        guard let order else { return steps }
+        var matched: [Int] = [], used = Set<Int>()
+        for moment in order {
+            let index: Int?
+            if let exact = steps.firstIndex(where: { $0.id == moment.targetID }) { index = exact }
+            else {
+                let matches = steps.indices.filter { steps[$0].kind == moment.targetKind &&
+                    preferenceTitleKey(steps[$0].title) == preferenceTitleKey(moment.targetTitle) }
+                guard matches.count <= 1 else { throw RoutinePreferenceError.ambiguousMatch(moment.targetID) }
+                index = matches.first
+            }
+            if let index {
+                guard used.insert(index).inserted else { throw RoutinePreferenceError.conflictingMatch(steps[index].id) }
+                matched.append(index)
+            }
+        }
+        var result = steps
+        for (slot, source) in zip(matched.sorted(), matched) { result[slot] = steps[source] }
+        return result
+    }
+
+    private enum CodingKeys: String, CodingKey { case entries, revision, order }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         entries = try values.decode([RoutinePreference].self, forKey: .entries)
         revision = try values.decode(UUID.self, forKey: .revision)
+        // Legacy absence means no order preference. Present malformed/null data
+        // must remain unreadable rather than silently discard a personal choice.
+        order = values.contains(.order) ? try values.decode([OrderedMoment].self, forKey: .order) : nil
         try validate()
     }
 }
