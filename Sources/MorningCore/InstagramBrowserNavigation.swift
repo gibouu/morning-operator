@@ -13,6 +13,7 @@ public struct InstagramBrowserNavigation: Sendable {
     /// web-initiated GETs in the Instagram browser through that API, accepting its next callback
     /// once. Each redirect gets the same check; POST sign-in requests keep their body.
     public mutating func decide(url: URL, kind: Kind, method: String = "GET",
+                                currentURL: URL? = nil,
                                 isTopLevel: Bool = true, isNewWindow: Bool = false,
                                 isDownload: Bool = false) -> Decision {
         guard url.user == nil, url.password == nil, !isDownload else { return .cancel }
@@ -30,7 +31,14 @@ public struct InstagramBrowserNavigation: Sendable {
             return .allow
         }
         pendingLoad = nil
-        guard method == "GET", kind == .link || kind == .other else { return .allow }
+        if method != "GET" {
+            // Same-host forms cannot trigger WebKit's app-link route. A
+            // cross-host form can, and its credential body may be unavailable
+            // for a safe replay, so leave the current page in place.
+            guard let host = url.host?.lowercased(), currentURL?.host?.lowercased() == host else { return .cancel }
+            return .allow
+        }
+        guard kind != .history else { return .allow }
         pendingLoad = url
         return .load(url)
     }

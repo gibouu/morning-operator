@@ -48,11 +48,25 @@ struct InstagramBrowserNavigationTests {
     @Test("Sign-in POSTs, history and subframes keep their request")
     func preservedNavigation() throws {
         var policy = InstagramBrowserNavigation()
-        #expect(policy.decide(url: home, kind: .form, method: "POST") == .allow)
+        #expect(policy.decide(url: home, kind: .form, method: "POST", currentURL: home) == .allow)
+        // A 302/303 after POST may retain WebKit's form navigation type while
+        // changing to GET. It must use the in-browser route too.
+        #expect(policy.decide(url: home, kind: .form, method: "GET") == .load(home))
+        #expect(policy.decide(url: home, kind: .other) == .allow)
         #expect(policy.decide(url: home, kind: .history) == .allow)
         #expect(policy.decide(url: home, kind: .other, isTopLevel: false) == .allow)
         #expect(policy.decide(url: home, kind: .link, isDownload: true) == .cancel)
         #expect(policy.decide(url: try #require(URL(string: "instagram://app")), kind: .other, isTopLevel: false) == .cancel)
+    }
+
+    @Test("Cross-host credential bodies are never replayed or handed to native apps")
+    func crossHostForms() throws {
+        var policy = InstagramBrowserNavigation()
+        let provider = try #require(URL(string: "https://www.facebook.com/login.php"))
+        #expect(policy.decide(url: home, kind: .form, method: "POST", currentURL: provider) == .cancel)
+        #expect(policy.decide(url: provider, kind: .form, method: "POST", currentURL: home) == .cancel)
+        #expect(policy.decide(url: provider, kind: .form, method: "POST", currentURL: provider) == .allow)
+        #expect(policy.decide(url: home, kind: .form, method: "POST") == .cancel)
     }
 
     @Test("HTTPS providers, app stores and redirect wrappers stay in the Instagram browser")

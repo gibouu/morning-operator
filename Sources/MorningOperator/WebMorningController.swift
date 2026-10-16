@@ -1052,11 +1052,12 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         switch action.navigationType {
         case .linkActivated: kind = .link
         case .formSubmitted, .formResubmitted: kind = .form
-        case .backForward, .reload: kind = .history
+        case .backForward: kind = .history
         default: kind = .other
         }
         return instagramNavigation.decide(url: url, kind: kind,
             method: action.request.httpMethod ?? "GET",
+            currentURL: webView.url,
             isTopLevel: action.targetFrame?.isMainFrame != false,
             isNewWindow: action.targetFrame == nil, isDownload: action.shouldPerformDownload)
     }
