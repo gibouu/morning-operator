@@ -66,8 +66,28 @@ class RoutineFixtureScorerTests(unittest.TestCase):
                 self.assertEqual(result['pipeline']['errorCategory'], 'invalidCitation')
                 self.assertEqual(result['pipeline']['omissions'], actual['omissions'])
                 self.assertFalse(result['pipeline']['proposal']['validatedDraftReported'])
-                self.assertEqual(result['pipeline']['plannedProposalModelRequestCount'], 3)
+                self.assertEqual(result['pipeline']['preparedModelRequestCount'], 3)
                 self.assertIsNone(result['pipeline']['actualProposalModelRequestCount'])
+
+    def test_preparation_and_reported_progress_never_invent_attempted_requests(self):
+        actual = self.pipeline()
+        result, _ = self.evaluate(actual)
+        self.assertEqual(result['pipeline']['preparedSubmittedCharacterCount'], 99)
+        self.assertEqual(result['pipeline']['preparedModelRequestCount'], 3)
+        self.assertIsNone(result['pipeline']['proposalProgressTotalRequests'])
+        self.assertIsNone(result['pipeline']['proposalCompletedRequests'])
+        actual.update(status='failed', preparedSubmittedCharacterCount=120,
+                      preparedModelRequestCount=4, proposalProgressTotalRequests=5, proposalCompletedRequests=2)
+        result, code = self.evaluate(actual)
+        self.assertEqual(code, 4)
+        self.assertEqual(result['pipeline']['preparedSubmittedCharacterCount'], 120)
+        self.assertEqual(result['pipeline']['preparedModelRequestCount'], 4)
+        self.assertEqual(result['pipeline']['proposalProgressTotalRequests'], 5)
+        self.assertEqual(result['pipeline']['proposalCompletedRequests'], 2)
+        self.assertIsNone(result['pipeline']['actualProposalModelRequestCount'])
+        for completed in [0, None]:
+            actual['proposalCompletedRequests'] = completed
+            self.assertEqual(self.evaluate(actual)[0]['pipeline']['proposalCompletedRequests'], completed)
 
     def test_reported_valid_draft_remains_distinct_from_user_approval_and_execution(self):
         actual = self.pipeline()

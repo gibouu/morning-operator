@@ -87,8 +87,11 @@ def pipeline_summary(actual):
                 errorCategory=actual.get('errorCategory'), nativeError=actual.get('nativeError'),
                 contextCapability=actual.get('contextCapability'), proposalCapability=actual.get('proposalCapability'),
                 extractionWarnings=actual.get('extractionWarnings', []), omissions=actual.get('omissions', []),
-                preparedUnitCount=actual.get('preparedUnitCount'), submittedCharacterCount=actual.get('submittedCharacterCount'),
-                plannedProposalModelRequestCount=actual.get('modelRequestCount'), actualProposalModelRequestCount=None,
+                preparedUnitCount=actual.get('preparedUnitCount'),
+                preparedSubmittedCharacterCount=actual.get('preparedSubmittedCharacterCount', actual.get('submittedCharacterCount')),
+                preparedModelRequestCount=actual.get('preparedModelRequestCount', actual.get('modelRequestCount')),
+                proposalProgressTotalRequests=actual.get('proposalProgressTotalRequests'),
+                proposalCompletedRequests=actual.get('proposalCompletedRequests'), actualProposalModelRequestCount=None,
                 proposal=dict(present=isinstance(proposal, dict), applicationCitationsValid=actual.get('citationsValid'),
                               stepCount=len(steps) if isinstance(proposal, dict) else None,
                               routineIsApproved=routine.get('isApproved'),
@@ -101,7 +104,7 @@ def pipeline_summary(actual):
                               stepsOmittedByScorer=len(steps) if len(steps) > 10 else 0,
                               warning='Source validation is the application report claim, not independent semantic fact accuracy, user approval or execution.'),
                 userApproval='not-performed-by-this-opt-in', providerExecution='not-run-by-this-opt-in',
-                warning='Preserves the complete pipeline outcome, including failure after completed context classification. Planned model work is not an actual request count.')
+                warning='Preserves the complete pipeline outcome, including failure after completed context classification. Prepared work and the announced progress total are not attempted request counts. Completed callbacks count completed batches only; attempted requests remain unknown.')
 
 
 def compare(manifest_path, timeline_path, oracle_path, actual_path):
