@@ -146,10 +146,16 @@ struct RoutineSessionRecapTests {
         try session.stop()
         let unsaved = RoutineSessionRecap(session: session, isPersisted: false)
         #expect(unsaved.saveState == .notSaved)
-        #expect(unsaved.saveState.displayName == "Not saved")
-        #expect(!unsaved.saveState.displayName.lowercased().hasPrefix("saved"))
         #expect(RoutineSessionRecap(session: session, isPersisted: true).saveState == .saved)
         #expect(try coded(unsaved.saveState) == .notSaved)
+    }
+
+    @Test("Saved and unsaved labels follow the primary device language")
+    func persistenceLabelsStayDistinctInTheDeviceLanguage() {
+        let saved = AppLanguage.isFrench ? "Enregistré" : "Saved"
+        let notSaved = AppLanguage.isFrench ? "Non enregistré" : "Not saved"
+        #expect(RoutineSessionRecapSaveState.saved.displayName == saved)
+        #expect(RoutineSessionRecapSaveState.notSaved.displayName == notSaved)
     }
 
     @Test("Feedback is optional and is its own record")

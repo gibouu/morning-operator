@@ -53,7 +53,7 @@ struct ObservationScreenReviewView: View {
                         Button("Remove my correction", role: .destructive) {
                             labelFocused = false
                             if store.removeFrameReview(sampleID: sampleID, expected: acquisition) { dismiss() }
-                            else { message = store.notice ?? String(localized: "The change could not be saved. Try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+                            else { message = store.notice ?? AppLanguage.localized("The change could not be saved. Try again.") }
                         }.disabled(blocked).accessibilityIdentifier("sampleLabel.reset")
                     }
                 } footer: {
@@ -116,7 +116,7 @@ struct ObservationScreenReviewView: View {
                 label: unknown ? nil : label.trimmingCharacters(in: .whitespacesAndNewlines),
                 evidenceQuote: unknown ? nil : quote, reviewedAt: Date())
             if store.saveFrameReview(review, expected: acquisition) { dismiss() }
-            else { message = store.notice ?? String(localized: "The change could not be saved. Try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+            else { message = store.notice ?? AppLanguage.localized("The change could not be saved. Try again.") }
         } catch { message = error.moreDescription }
     }
 }

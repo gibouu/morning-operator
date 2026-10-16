@@ -1,6 +1,126 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    " %lld messages could not be read.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " %lld message could not be read."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " %lld messages could not be read."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " %lld message n’a pas pu être lu."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " %lld messages n’ont pas pu être lus."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    " Correction: ": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Correction : "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Correction: "
+          }
+        }
+      }
+    },
+    " Messages mentioning urgency or a deadline come first; you can choose another message.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Les mentions d’urgence ou d’échéance passent en premier ; vous pouvez choisir un autre message."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Messages mentioning urgency or a deadline come first; you can choose another message."
+          }
+        }
+      }
+    },
+    " Other unread emails have not been reviewed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " D’autres mails non lus n’ont pas été consultés."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Other unread emails have not been reviewed."
+          }
+        }
+      }
+    },
+    " They follow your inbox order.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Ils suivent l’ordre de votre boîte de réception."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " They follow your inbox order."
+          }
+        }
+      }
+    },
+    " Would you like to reply to the first one? You can also choose a number, prepare a note to yourself, or continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Voulez-vous répondre au premier ? Vous pouvez aussi choisir un numéro, préparer une note à vous-même ou continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Would you like to reply to the first one? You can also choose a number, prepare a note to yourself, or continue your morning."
+          }
+        }
+      }
+    },
     "%@ finished.": {
       "localizations": {
         "fr": {
@@ -13,6 +133,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ finished."
+          }
+        }
+      }
+    },
+    "%@. %@. Would you like to reply?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@. %@. Voulez-vous lui répondre ?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@. %@. Would you like to reply?"
           }
         }
       }
@@ -229,6 +365,38 @@
         }
       }
     },
+    "A reply could not be prepared. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de préparer une réponse. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A reply could not be prepared. You can write your reply below."
+          }
+        }
+      }
+    },
+    "A reply is already being prepared.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une réponse est déjà en préparation."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A reply is already being prepared."
+          }
+        }
+      }
+    },
     "A selected calendar is no longer available. Review your calendar selection before refreshing.": {
       "localizations": {
         "fr": {
@@ -305,6 +473,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Add observations or import a readable screen recording before analyzing."
+          }
+        }
+      }
+    },
+    "All right, I’ll continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D’accord, je continue votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All right, I’ll continue your morning."
           }
         }
       }
@@ -389,6 +573,22 @@
         }
       }
     },
+    "Another reply to this email was already attempted this morning. This new draft has not been sent. Check sent mail before preparing another reply. Say no to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre réponse a déjà été tentée pour ce mail pendant ce matin. Ce nouveau brouillon n’a pas été envoyé. Vérifiez les messages envoyés avant de préparer une nouvelle réponse. Dites non pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another reply to this email was already attempted this morning. This new draft has not been sent. Check sent mail before preparing another reply. Say no to continue."
+          }
+        }
+      }
+    },
     "App-owned recordings removed.": {
       "localizations": {
         "fr": {
@@ -417,6 +617,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apple Foundation Models is available for local visible-context analysis."
+          }
+        }
+      }
+    },
+    "Apple Foundation Models is available. Analysis runs locally on this Mac.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Foundation Models est disponible. L’analyse s’effectue localement sur ce Mac."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Foundation Models is available. Analysis runs locally on this Mac."
           }
         }
       }
@@ -693,6 +909,22 @@
         }
       }
     },
+    "Apple's local model is unavailable. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local d’Apple est indisponible. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple's local model is unavailable. You can write your reply below."
+          }
+        }
+      }
+    },
     "Assign an observed day to every selected observation first.": {
       "localizations": {
         "fr": {
@@ -805,6 +1037,22 @@
         }
       }
     },
+    "Calendar changed while it was being read. Refresh the briefing to use the current schedule.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le calendrier a changé pendant sa lecture. Actualisez le récapitulatif pour utiliser le planning actuel."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar changed while it was being read. Refresh the briefing to use the current schedule."
+          }
+        }
+      }
+    },
     "Calendar reading is not authorized. You can continue without a calendar snapshot.": {
       "localizations": {
         "fr": {
@@ -881,6 +1129,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking microphone and speech access…"
+          }
+        }
+      }
+    },
+    "Choose Read messages and grant Gmail read-only access first.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez Lire les messages et autorisez d’abord l’accès à Gmail en lecture seule."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Read messages and grant Gmail read-only access first."
           }
         }
       }
@@ -1141,6 +1405,38 @@
         }
       }
     },
+    "Clock": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horloge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clock"
+          }
+        }
+      }
+    },
+    "Complete and review the subject and body before requesting a send.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complétez et vérifiez l’objet et le texte avant de demander l’envoi."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete and review the subject and body before requesting a send."
+          }
+        }
+      }
+    },
     "Confirm screen sharing in the system picker to begin.": {
       "localizations": {
         "fr": {
@@ -1169,6 +1465,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conflicting or duplicate proposals were rejected."
+          }
+        }
+      }
+    },
+    "Connect Gmail in settings before your next morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez Gmail dans les réglages avant votre prochain matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect Gmail in settings before your next morning."
           }
         }
       }
@@ -1205,6 +1517,39 @@
         }
       }
     },
+    "Current location": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current location"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position actuelle"
+          }
+        }
+      }
+    },
+    "Demo fixture — includes a synthetic saved observation": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo fixture — comprend une observation synthétique enregistrée"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demo fixture — includes a synthetic saved observation"
+          }
+        }
+      }
+    },
     "Device language": {
       "localizations": {
         "fr": {
@@ -1237,6 +1582,38 @@
         }
       }
     },
+    "Duplex speech could not resume.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture vocale n’a pas pu reprendre."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplex speech could not resume."
+          }
+        }
+      }
+    },
+    "Duplex speech output could not finish safely.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture vocale n’a pas pu se terminer correctement."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplex speech output could not finish safely."
+          }
+        }
+      }
+    },
     "Each selected observation needs usable activity evidence. Review its notes or choose another observation.": {
       "localizations": {
         "fr": {
@@ -1253,6 +1630,38 @@
         }
       }
     },
+    "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque observation sélectionnée doit contenir des éléments d’activité utilisables. Relisez les notes actuelles dans Apprendre ou ajoutez de nouveaux éléments."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence."
+          }
+        }
+      }
+    },
+    "Enable Apple Intelligence in system settings to prepare a local reply.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activez Apple Intelligence dans les réglages système pour préparer une réponse locale."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable Apple Intelligence in system settings to prepare a local reply."
+          }
+        }
+      }
+    },
     "Enable Apple Intelligence in system settings to use local analysis.": {
       "localizations": {
         "fr": {
@@ -1265,6 +1674,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enable Apple Intelligence in system settings to use local analysis."
+          }
+        }
+      }
+    },
+    "Enable reading and sending in Gmail settings before asking MORE to send a reply.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activez la lecture et l’envoi dans les réglages Gmail avant de demander à MORE d’envoyer une réponse."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable reading and sending in Gmail settings before asking MORE to send a reply."
           }
         }
       }
@@ -1329,6 +1754,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enter a title between 1 and 300 characters."
+          }
+        }
+      }
+    },
+    "Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters).": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez le nom exact d’un raccourci ajouté dans Raccourcis (128 caractères maximum)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters)."
           }
         }
       }
@@ -1429,6 +1870,39 @@
         }
       }
     },
+    "Fill in the subject and body of your note to yourself, then review the draft. Nothing is sent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complétez l’objet et le texte de votre note à vous-même dans les champs, puis relisez le brouillon. Rien n’est envoyé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill in the subject and body of your note to yourself, then review the draft. Nothing is sent."
+          }
+        }
+      }
+    },
+    "Finding your location took too long. Try again or choose a city.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding your location took too long. Try again or choose a city."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recherche de votre position a pris trop de temps. Réessayez ou choisissez une ville."
+          }
+        }
+      }
+    },
     "Finish forgetting local data before starting another recording.": {
       "localizations": {
         "fr": {
@@ -1477,6 +1951,166 @@
         }
       }
     },
+    "Foundation Models is not supported by this build.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version ne prend pas en charge Foundation Models."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foundation Models is not supported by this build."
+          }
+        }
+      }
+    },
+    "Gmail access was not granted. Check Google consent and account policy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à Gmail n’a pas été autorisé. Vérifiez le consentement Google et les règles du compte."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail access was not granted. Check Google consent and account policy."
+          }
+        }
+      }
+    },
+    "Gmail confirms your email was sent to %@. I’ll continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail confirme l’envoi de votre mail à %@ . Je continue votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail confirms your email was sent to %@. I’ll continue your morning."
+          }
+        }
+      }
+    },
+    "Gmail could not connect. Try again when a connection is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion à Gmail a échoué. Réessayez lorsqu’une connexion est disponible."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail could not connect. Try again when a connection is available."
+          }
+        }
+      }
+    },
+    "Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail n’a pas confirmé si cette réponse a été envoyée. MORE vérifiera les messages envoyés avant tout nouvel envoi."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send."
+          }
+        }
+      }
+    },
+    "Gmail is limiting requests. Wait before refreshing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail limite les demandes. Patientez avant d’actualiser."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail is limiting requests. Wait before refreshing."
+          }
+        }
+      }
+    },
+    "Gmail is unavailable right now. Your morning can continue without it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail est indisponible pour le moment. Votre matin peut continuer sans ce service."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail is unavailable right now. Your morning can continue without it."
+          }
+        }
+      }
+    },
+    "Gmail refused the send. No new attempt is being made. You can say no to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail a refusé l’envoi. Aucune nouvelle tentative n’est lancée. Vous pouvez dire non pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail refused the send. No new attempt is being made. You can say no to continue."
+          }
+        }
+      }
+    },
+    "Gmail returned an incomplete response. No inbox count is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail a renvoyé une réponse incomplète. Aucun nombre de messages n’est disponible."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail returned an incomplete response. No inbox count is available."
+          }
+        }
+      }
+    },
+    "Gmail returned an unexpected redirect. No inbox count is available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail a renvoyé une redirection inattendue. Aucun nombre de messages n’est disponible."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail returned an unexpected redirect. No inbox count is available."
+          }
+        }
+      }
+    },
     "Go through your morning. Recording stops after %@, or you can stop it sooner.": {
       "localizations": {
         "fr": {
@@ -1493,6 +2127,88 @@
         }
       }
     },
+    "Google could not authorize Gmail access. Check the app's Google setup and try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google n’a pas pu autoriser l’accès à Gmail. Vérifiez la configuration Google de l’app et réessayez."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google could not authorize Gmail access. Check the app's Google setup and try again."
+          }
+        }
+      }
+    },
+    "Hands-free microphone input requires an iPhone.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le microphone mains libres nécessite un iPhone."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hands-free microphone input requires an iPhone."
+          }
+        }
+      }
+    },
+    "Hands-free voice is unavailable. Your morning controls remain available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La voix mains libres est indisponible. Les commandes de votre matin restent disponibles."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hands-free voice is unavailable. Your morning controls remain available."
+          }
+        }
+      }
+    },
+    "Health access could not be prepared. Try again in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health access could not be prepared. Try again in Settings."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à Santé n’a pas pu être préparé. Réessayez dans les réglages."
+          }
+        }
+      }
+    },
+    "Health data is not available on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health data is not available on this device."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données de Santé ne sont pas disponibles sur cet appareil."
+          }
+        }
+      }
+    },
     "Heard: %@": {
       "localizations": {
         "fr": {
@@ -1505,6 +2221,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "Heard: %@"
+          }
+        }
+      }
+    },
+    "Here are %lld messages to consider. ": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Here is %lld message to consider. "
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Here are %lld messages to consider. "
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Voici %lld message à examiner. "
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Voici %lld messages à examiner. "
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "I could not prepare an answer to that question. Your previous choice is preserved; you can try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je n’ai pas pu préparer de réponse à cette question. Votre choix précédent est conservé ; vous pouvez réessayer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I could not prepare an answer to that question. Your previous choice is preserved; you can try again."
+          }
+        }
+      }
+    },
+    "I couldn't hear that clearly. Please say it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je n’ai pas bien entendu. Répétez, s’il vous plaît."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't hear that clearly. Please say it again."
+          }
+        }
+      }
+    },
+    "I couldn't prepare an answer. You can ask again, or say resume to continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je n’ai pas pu préparer de réponse. Vous pouvez réessayer ou dire reprends pour continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't prepare an answer. You can ask again, or say resume to continue your morning."
+          }
+        }
+      }
+    },
+    "I reviewed %lld unread emails. ": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "I reviewed %lld unread email. "
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "I reviewed %lld unread emails. "
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "J’ai consulté %lld mail non lu. "
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "J’ai consulté %lld mails non lus. "
+                }
+              }
+            }
           }
         }
       }
@@ -1537,6 +2381,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invitation used. Open Morning to continue."
+          }
+        }
+      }
+    },
+    "Keep shortcut input within 1,024 bytes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limitez l’entrée du raccourci à 1 024 octets."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep shortcut input within 1,024 bytes."
           }
         }
       }
@@ -1653,6 +2513,22 @@
         }
       }
     },
+    "Listening · You can interrupt MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À l’écoute · Vous pouvez interrompre MORE."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listening · You can interrupt MORE."
+          }
+        }
+      }
+    },
     "Live Activities are paused while local data is being removed.": {
       "localizations": {
         "fr": {
@@ -1681,6 +2557,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Live Activities aren't available on this device."
+          }
+        }
+      }
+    },
+    "Local conversation is unavailable on this device. Your previous choice is preserved; you can continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation locale n’est pas disponible sur cet appareil. Votre choix précédent est conservé ; vous pouvez continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local conversation is unavailable on this device. Your previous choice is preserved; you can continue your morning."
           }
         }
       }
@@ -1729,6 +2621,119 @@
           "stringUnit": {
             "state": "translated",
             "value": "Local privacy cleanup needs attention before recording can continue. %@"
+          }
+        }
+      }
+    },
+    "Location is off. Allow it in iPhone Settings or choose a city for the weather.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location is off. Allow it in iPhone Settings or choose a city for the weather."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La localisation est désactivée. Autorisez-la dans les réglages de l’iPhone ou choisissez une ville pour la météo."
+          }
+        }
+      }
+    },
+    "MORE couldn't prepare valid details for this action. Add more detail or complete the available fields.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE n’a pas pu préparer de détails valides pour cette action. Précisez votre demande ou complétez les champs disponibles."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE couldn't prepare valid details for this action. Add more detail or complete the available fields."
+          }
+        }
+      }
+    },
+    "MORE is already waiting for a shortcut. Check its outcome before running another.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE attend déjà un raccourci. Vérifiez son résultat avant d’en lancer un autre."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE is already waiting for a shortcut. Check its outcome before running another."
+          }
+        }
+      }
+    },
+    "MORE stopped waiting. The shortcut may still be running; check its outcome before running it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE a cessé d’attendre. Le raccourci est peut-être encore en cours ; vérifiez son résultat avant de le relancer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE stopped waiting. The shortcut may still be running; check its outcome before running it again."
+          }
+        }
+      }
+    },
+    "Mail": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail"
+          }
+        }
+      }
+    },
+    "Marked complete in Apple Reminders.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marqué comme terminé dans Rappels Apple."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marked complete in Apple Reminders."
+          }
+        }
+      }
+    },
+    "Messages": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages"
           }
         }
       }
@@ -1825,6 +2830,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Model-proposed visual header; not an OS-verified app identity."
+          }
+        }
+      }
+    },
+    "New email to %@. Subject: %@. Body: %@ Your draft is ready. What would you like to do next?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau mail à %@ . Objet : %@. Texte : %@ Votre brouillon est prêt. Quelle suite souhaitez-vous lui donner ?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New email to %@. Subject: %@. Body: %@ Your draft is ready. What would you like to do next?"
+          }
+        }
+      }
+    },
+    "No compatible installed voice": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune voix installée compatible"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No compatible installed voice"
           }
         }
       }
@@ -1973,6 +3010,22 @@
         }
       }
     },
+    "No subject": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans objet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No subject"
+          }
+        }
+      }
+    },
     "No supported system voice is available for this language. Choose an installed voice in Settings.": {
       "localizations": {
         "fr": {
@@ -2049,6 +3102,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Not enough activity evidence yet. Show a real activity or describe what you did; setup screens, sharing controls and app lists do not establish a routine."
+          }
+        }
+      }
+    },
+    "Note to yourself: %@. Dictate a subject and body, or fill in the fields. Nothing has been sent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note à vous-même : %@. Dictez un objet et un texte, ou complétez les champs. Rien n’est encore envoyé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note to yourself: %@. Dictate a subject and body, or fill in the fields. Nothing has been sent."
+          }
+        }
+      }
+    },
+    "Notes": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
           }
         }
       }
@@ -2229,6 +3314,22 @@
         }
       }
     },
+    "Other shortcut": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autre raccourci"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other shortcut"
+          }
+        }
+      }
+    },
     "Paused": {
       "localizations": {
         "fr": {
@@ -2257,6 +3358,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Premium"
+          }
+        }
+      }
+    },
+    "Preparation was interrupted. Your intention is preserved; say your correction or no to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La préparation a été interrompue. Votre intention est conservée ; dites votre correction ou non pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparation was interrupted. Your intention is preserved; say your correction or no to continue."
           }
         }
       }
@@ -2310,6 +3427,22 @@
         }
       }
     },
+    "Preparing hands-free voice…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation de la voix mains libres…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing hands-free voice…"
+          }
+        }
+      }
+    },
     "Preparing the microphone…": {
       "localizations": {
         "fr": {
@@ -2326,6 +3459,22 @@
         }
       }
     },
+    "Preparing your reply…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation de votre réponse…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing your reply…"
+          }
+        }
+      }
+    },
     "Read at your pace, then tap Next.": {
       "localizations": {
         "fr": {
@@ -2338,6 +3487,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read at your pace, then tap Next."
+          }
+        }
+      }
+    },
+    "Reading this image took too long. Your previous observations are unchanged. You can describe the routine instead. Try another import once the system finishes the current image.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading this image took too long. Your previous observations are unchanged. You can describe the routine instead. Try another import once the system finishes the current image."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture de cette image a pris trop de temps. Vos observations précédentes sont conservées. Vous pouvez décrire votre routine à la place. Réessayez un import quand le système aura terminé l’image en cours."
           }
         }
       }
@@ -2386,6 +3551,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ready when you start your approved routine."
+          }
+        }
+      }
+    },
+    "Reconnect this account before using it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez ce compte avant de l’utiliser."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect this account before using it."
           }
         }
       }
@@ -2518,6 +3699,38 @@
         }
       }
     },
+    "Reminders didn't answer in time. Try reading them again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rappels n’a pas répondu à temps. Essayez de relire les rappels."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reminders didn't answer in time. Try reading them again."
+          }
+        }
+      }
+    },
+    "Reply to %@: %@ Your draft is ready. What would you like to do next?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse à %@ : %@ Votre brouillon est prêt. Quelle suite souhaitez-vous lui donner ?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply to %@: %@ Your draft is ready. What would you like to do next?"
+          }
+        }
+      }
+    },
     "Retry or discard the saved recording before adding another one.": {
       "localizations": {
         "fr": {
@@ -2534,6 +3747,54 @@
         }
       }
     },
+    "Review the Slack account, channel, thread and reply text before continuing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez le compte Slack, le canal, le fil et le texte de la réponse avant de continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review the Slack account, channel, thread and reply text before continuing."
+          }
+        }
+      }
+    },
+    "Review the action details before trying again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez les détails de l’action avant de réessayer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review the action details before trying again."
+          }
+        }
+      }
+    },
+    "Saved Gmail access is unavailable on this device. Unlock it and try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès Gmail enregistré est indisponible sur cet appareil. Déverrouillez-le et réessayez."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved Gmail access is unavailable on this device. Unlock it and try again."
+          }
+        }
+      }
+    },
     "Saved briefing settings couldn't be read. Reset them to choose sources again.": {
       "localizations": {
         "fr": {
@@ -2546,6 +3807,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saved briefing settings couldn't be read. Reset them to choose sources again."
+          }
+        }
+      }
+    },
+    "Say yes to reply, no to continue, or a message number.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dites oui pour répondre, non pour continuer, ou le numéro d’un message."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Say yes to reply, no to continue, or a message number."
           }
         }
       }
@@ -2594,6 +3871,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Screen capture stopped. Waiting for the recording to finish closing before it can be removed. Retry cleanup after it closes."
+          }
+        }
+      }
+    },
+    "Screen recording failed. Check the recording controls before trying again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screen recording failed. Check the recording controls before trying again."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement a échoué. Vérifiez ses commandes avant de réessayer."
           }
         }
       }
@@ -2710,6 +4003,71 @@
         }
       }
     },
+    "Sending is not authorized for this account. Enable reading and sending in Gmail settings. Your reply has not been sent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’envoi n’est pas autorisé pour ce compte. Activez lecture et envoi dans les réglages Gmail. Votre réponse n’a pas été envoyée."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending is not authorized for this account. Enable reading and sending in Gmail settings. Your reply has not been sent."
+          }
+        }
+      }
+    },
+    "Shared rule: use of at least 30 seconds, presence in at least half the retained comparable windows, median rounded to a minute and planned duration between 1 and 240 minutes. Order stays estimated and missing use unknown. All aggregates remain in the sources.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Règle commune : usages d’au moins 30 secondes, présence sur au moins la moitié des fenêtres comparables retenues, médiane arrondie à la minute et durée prévue entre 1 et 240 minutes. L’ordre reste estimé et les absences inconnues. Tous les agrégats restent dans les sources."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared rule: use of at least 30 seconds, presence in at least half the retained comparable windows, median rounded to a minute and planned duration between 1 and 240 minutes. Order stays estimated and missing use unknown. All aggregates remain in the sources."
+          }
+        }
+      }
+    },
+    "Shortcuts couldn't open. Check that it is installed and the shortcut name is correct.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourcis n’a pas pu s’ouvrir. Vérifiez que l’application est installée et que le nom du raccourci est exact."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcuts couldn't open. Check that it is installed and the shortcut name is correct."
+          }
+        }
+      }
+    },
+    "Sleep reading is not available in this version.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep reading is not available in this version."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture du sommeil n’est pas disponible dans cette version."
+          }
+        }
+      }
+    },
     "Some OCR layout regions were omitted at the line limit; their text was preserved.": {
       "localizations": {
         "fr": {
@@ -2754,6 +4112,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Some days of app use couldn’t be read and are left out of your history."
+          }
+        }
+      }
+    },
+    "Some emails could not be read. I cannot conclude that your inbox is empty.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains mails n’ont pas pu être lus. Je ne peux pas conclure que votre boîte est vide."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some emails could not be read. I cannot conclude that your inbox is empty."
           }
         }
       }
@@ -2882,6 +4256,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speech stopped during an interruption. Play it again when ready."
+          }
+        }
+      }
+    },
+    "Speech stopped.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture s’est arrêtée."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech stopped."
           }
         }
       }
@@ -3142,6 +4532,38 @@
         }
       }
     },
+    "The Gmail connection changed. Open Gmail again to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion Gmail a changé. Ouvrez Gmail de nouveau pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Gmail connection changed. Open Gmail again to continue."
+          }
+        }
+      }
+    },
+    "The Google sign-in response could not be verified. Connect again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse de connexion Google n’a pas pu être vérifiée. Reconnectez-vous."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Google sign-in response could not be verified. Connect again."
+          }
+        }
+      }
+    },
     "The Lock Screen activity couldn't start.": {
       "localizations": {
         "fr": {
@@ -3186,6 +4608,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "The Lock Screen activity hasn't been confirmed closed. Try again."
+          }
+        }
+      }
+    },
+    "The Slack account could not be verified or has changed. Reconnect and review this reply again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le compte Slack n’a pas pu être vérifié ou a changé. Reconnectez-le et relisez cette réponse."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Slack account could not be verified or has changed. Reconnect and review this reply again."
+          }
+        }
+      }
+    },
+    "The action may already have run. Check its outcome in the connected account before another attempt. MORE will not repeat it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’action a peut-être déjà été réalisée. Vérifiez son résultat dans le compte connecté avant une autre tentative. MORE ne la relance pas."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The action may already have run. Check its outcome in the connected account before another attempt. MORE will not repeat it."
           }
         }
       }
@@ -3254,6 +4708,22 @@
         }
       }
     },
+    "The available actions could not be loaded completely. Try again later.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les actions disponibles n’ont pas pu être chargées entièrement. Réessayez plus tard."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The available actions could not be loaded completely. Try again later."
+          }
+        }
+      }
+    },
     "The available calendar list could not be read reliably. Please refresh it.": {
       "localizations": {
         "fr": {
@@ -3314,6 +4784,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "The combined suggestion contains more distinct supporting text than can fit in one reviewable plan. Your complete observations are still saved; choose a smaller set of observations. Nothing was silently shortened."
+          }
+        }
+      }
+    },
+    "The connection service could not complete this request. Try again later.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le service de connexion n’a pas pu terminer cette demande. Réessayez plus tard."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection service could not complete this request. Try again later."
           }
         }
       }
@@ -3382,6 +4868,22 @@
         }
       }
     },
+    "The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle de conversation local est indisponible. Vous pouvez toujours dire suivant, pause, reprends, répète, plus de temps ou arrête."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop."
+          }
+        }
+      }
+    },
     "The local model abstained.": {
       "localizations": {
         "fr": {
@@ -3426,6 +4928,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "The local model has not classified this frame."
+          }
+        }
+      }
+    },
+    "The local model is unavailable. Complete the available fields, or come back when local preparation is ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modèle local est indisponible. Complétez les champs disponibles ou revenez quand la préparation locale sera prête."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The local model is unavailable. Complete the available fields, or come back when local preparation is ready."
           }
         }
       }
@@ -3490,6 +5008,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "The local model was unavailable; no classification was attempted."
+          }
+        }
+      }
+    },
+    "The message says: ": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le message dit : "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The message says: "
+          }
+        }
+      }
+    },
+    "The microphone could not be released. Stop voice again before continuing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le microphone n’a pas pu être libéré. Arrêtez à nouveau la voix avant de continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The microphone could not be released. Stop voice again before continuing."
           }
         }
       }
@@ -3622,6 +5172,38 @@
         }
       }
     },
+    "The provider did not return a verified result. Check the connected account before trying the action again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fournisseur n’a pas renvoyé de résultat vérifié. Consultez le compte connecté avant de relancer l’action."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The provider did not return a verified result. Check the connected account before trying the action again."
+          }
+        }
+      }
+    },
+    "The provider reported that the action failed. Check its outcome before another attempt.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fournisseur indique que l’action a échoué. Vérifiez son résultat avant une autre tentative."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The provider reported that the action failed. Check its outcome before another attempt."
+          }
+        }
+      }
+    },
     "The recording contains no readable video. Please try a short recording again.": {
       "localizations": {
         "fr": {
@@ -3682,6 +5264,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "The recording-start metadata is invalid for this observation."
+          }
+        }
+      }
+    },
+    "The reply address is ambiguous. You can choose another message or say no.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’adresse de réponse est ambiguë. Vous pouvez choisir un autre message ou dire non."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply address is ambiguous. You can choose another message or say no."
+          }
+        }
+      }
+    },
+    "The reply safety record is unavailable. Nothing new will be sent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le registre de sécurité des réponses est indisponible. Aucun nouveau message ne sera envoyé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply safety record is unavailable. Nothing new will be sent."
+          }
+        }
+      }
+    },
+    "The reply to %@ needs your explicit request to send. You can also revise it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse à %@ attend une demande explicite de votre part. Vous pouvez aussi la corriger."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply to %@ needs your explicit request to send. You can also revise it."
           }
         }
       }
@@ -3830,6 +5460,70 @@
         }
       }
     },
+    "The send is uncertain. Say check to look for this reply in sent mail, or no to continue. I will not send it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’envoi est incertain. Dites vérifier pour rechercher cette réponse dans les messages envoyés, ou non pour continuer. Je ne la renvoie pas."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The send is uncertain. Say check to look for this reply in sent mail, or no to continue. I will not send it again."
+          }
+        }
+      }
+    },
+    "The send is unconfirmed. I will not send this message again. Say check to review sent mail, or no to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’envoi n’est pas confirmé. Je ne renvoie pas ce message. Dites vérifier pour consulter les messages envoyés, ou non pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The send is unconfirmed. I will not send this message again. Say check to review sent mail, or no to continue."
+          }
+        }
+      }
+    },
+    "The shortcut didn't return in time. Check it in Shortcuts before running it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le raccourci n’est pas revenu à temps. Vérifiez-le dans Raccourcis avant de le relancer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The shortcut didn't return in time. Check it in Shortcuts before running it again."
+          }
+        }
+      }
+    },
+    "The shortcut returned too much text. Limit its output to 8,192 bytes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le raccourci a renvoyé trop de texte. Limitez sa sortie à 8 192 octets."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The shortcut returned too much text. Limit its output to 8,192 bytes."
+          }
+        }
+      }
+    },
     "The source frame was blank or could not be extracted.": {
       "localizations": {
         "fr": {
@@ -3894,6 +5588,22 @@
         }
       }
     },
+    "The system is still finishing the previous image. Another image cannot be read yet. Your saved observations are unchanged; you can describe the routine instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system is still finishing the previous image. Another image cannot be read yet. Your saved observations are unchanged; you can describe the routine instead."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le système termine encore l’image précédente. Une autre image ne peut pas encore être lue. Vos observations enregistrées sont conservées ; vous pouvez décrire votre routine à la place."
+          }
+        }
+      }
+    },
     "The system recording request took too long. It is being cancelled; no file will be imported.": {
       "localizations": {
         "fr": {
@@ -3922,6 +5632,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "The visible-context catalog is invalid, ambiguous or too large."
+          }
+        }
+      }
+    },
+    "There are no unread emails in your inbox. I’ll continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mail non lu dans votre boîte de réception. Je continue votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no unread emails in your inbox. I’ll continue your morning."
+          }
+        }
+      }
+    },
+    "There are no unread emails in your inbox. You can prepare a note to yourself or continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mail non lu dans votre boîte de réception. Vous pouvez préparer une note à vous-même, ou continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no unread emails in your inbox. You can prepare a note to yourself or continue your morning."
+          }
+        }
+      }
+    },
+    "There is no current briefing to read.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a aucun récapitulatif à jour à lire."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no current briefing to read."
           }
         }
       }
@@ -4022,6 +5780,102 @@
         }
       }
     },
+    "This Gmail message exceeds the supported reading limits.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message Gmail dépasse les limites de lecture prises en charge."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Gmail message exceeds the supported reading limits."
+          }
+        }
+      }
+    },
+    "This Gmail message is no longer available.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message Gmail n’est plus disponible."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Gmail message is no longer available."
+          }
+        }
+      }
+    },
+    "This Gmail session has expired. Connect again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette session Gmail a expiré. Reconnectez-vous."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Gmail session has expired. Connect again."
+          }
+        }
+      }
+    },
+    "This Reminders list doesn't allow changes.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette liste de Rappels ne permet pas les modifications."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Reminders list doesn't allow changes."
+          }
+        }
+      }
+    },
+    "This action does not match the selected account. Choose the account and review it again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action ne correspond pas au compte choisi. Choisissez le compte et vérifiez-le à nouveau."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This action does not match the selected account. Choose the account and review it again."
+          }
+        }
+      }
+    },
+    "This action is too complex to prepare locally. Choose a simpler action.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action est trop complexe à préparer localement. Choisissez une action plus simple."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This action is too complex to prepare locally. Choose a simpler action."
+          }
+        }
+      }
+    },
     "This app build is missing %@. Use a configured app build before requesting access.": {
       "localizations": {
         "fr": {
@@ -4054,6 +5908,22 @@
         }
       }
     },
+    "This build needs a Google iOS OAuth client before Gmail can connect.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version nécessite un client OAuth Google pour iOS avant de pouvoir connecter Gmail."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This build needs a Google iOS OAuth client before Gmail can connect."
+          }
+        }
+      }
+    },
     "This build needs the screen-capture background mode before it can record across apps.": {
       "localizations": {
         "fr": {
@@ -4066,6 +5936,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "This build needs the screen-capture background mode before it can record across apps."
+          }
+        }
+      }
+    },
+    "This build's Google OAuth client and callback scheme need checking.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le client OAuth Google et le schéma de retour de cette version doivent être vérifiés."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This build's Google OAuth client and callback scheme need checking."
+          }
+        }
+      }
+    },
+    "This connection could not be verified. Return to MORE and start a new connection.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette connexion n’a pas pu être vérifiée. Revenez dans MORE et recommencez la connexion."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This connection could not be verified. Return to MORE and start a new connection."
+          }
+        }
+      }
+    },
+    "This connection is not available in this build yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette connexion n’est pas encore disponible dans cette version."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This connection is not available in this build yet."
           }
         }
       }
@@ -4198,6 +6116,22 @@
         }
       }
     },
+    "This installation is no longer authorized. Reconnect your account.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette installation n’est plus autorisée. Reconnectez votre compte."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This installation is no longer authorized. Reconnect your account."
+          }
+        }
+      }
+    },
     "This interpretation is not supported by the saved original evidence.": {
       "localizations": {
         "fr": {
@@ -4258,6 +6192,118 @@
           "stringUnit": {
             "state": "translated",
             "value": "This local file could not be read."
+          }
+        }
+      }
+    },
+    "This message has no readable text to reply to.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message ne contient aucun texte lisible auquel répondre."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message has no readable text to reply to."
+          }
+        }
+      }
+    },
+    "This message has no single verified reply address. Your reply has not been sent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message n’a pas d’adresse de réponse unique vérifiée. Votre réponse n’a pas été envoyée."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message has no single verified reply address. Your reply has not been sent."
+          }
+        }
+      }
+    },
+    "This message is incomplete. I cannot prepare a reply from partial content. You can choose another message or say no.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message n’est pas disponible en entier. Je ne prépare pas de réponse sur un contenu incomplet. Vous pouvez choisir un autre message ou dire non."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message is incomplete. I cannot prepare a reply from partial content. You can choose another message or say no."
+          }
+        }
+      }
+    },
+    "This message is too long for a local reply. You can write your reply below.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce message est trop long pour préparer une réponse locale. Vous pouvez écrire votre réponse ci-dessous."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message is too long for a local reply. You can write your reply below."
+          }
+        }
+      }
+    },
+    "This message’s content cannot be read here.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le contenu de ce message n’est pas lisible ici."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message’s content cannot be read here."
+          }
+        }
+      }
+    },
+    "This moment could not finish. You can retry or continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment n’a pas pu se terminer. Vous pouvez réessayer ou continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This moment could not finish. You can retry or continue your morning."
+          }
+        }
+      }
+    },
+    "This moment is managed by your morning session.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment est géré par votre session du matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This moment is managed by your morning session."
           }
         }
       }
@@ -4358,6 +6404,62 @@
         }
       }
     },
+    "This plan has room for %lld additional Screen Time app moments. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "This plan has room for %lld additional Screen Time app moment. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "This plan has room for %lld additional Screen Time app moments. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ce plan peut accueillir encore %lld moment d’app Screen Time. Choisissez les apps à ajouter dans la sélection d’observations. Les séquences observées et vos rituels gardés sont conservés."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ce plan peut accueillir encore %lld moments d’app Screen Time. Choisissez les apps à ajouter dans la sélection d’observations. Les séquences observées et vos rituels gardés sont conservés."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "This proposal exceeds ten moments, including your kept rituals. Select fewer observations or adjust which rituals to keep. No kept ritual was removed automatically.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette proposition dépasse dix moments, y compris vos rituels gardés. Réduisez les observations choisies ou ajustez les rituels à garder. Aucun rituel gardé n’a été retiré automatiquement."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This proposal exceeds ten moments, including your kept rituals. Select fewer observations or adjust which rituals to keep. No kept ritual was removed automatically."
+          }
+        }
+      }
+    },
     "This proposal is incomplete or inconsistent with its saved evidence. Create another proposal.": {
       "localizations": {
         "fr": {
@@ -4422,6 +6524,22 @@
         }
       }
     },
+    "This recap needs an update before it can be read.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce récapitulatif doit être actualisé avant sa lecture."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This recap needs an update before it can be read."
+          }
+        }
+      }
+    },
     "This recap needs an update. Open this moment to prepare it again, or tap Next.": {
       "localizations": {
         "fr": {
@@ -4450,6 +6568,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "This recording needs a screen-only selection with microphone and camera turned off."
+          }
+        }
+      }
+    },
+    "This reminder changed or is no longer available. Read your reminders again before marking it complete.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce rappel a changé ou n’est plus disponible. Relisez vos rappels avant de le marquer comme terminé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This reminder changed or is no longer available. Read your reminders again before marking it complete."
           }
         }
       }
@@ -4502,6 +6636,38 @@
         }
       }
     },
+    "This saved Gmail connection needs to be connected again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette connexion Gmail enregistrée doit être rétablie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This saved Gmail connection needs to be connected again."
+          }
+        }
+      }
+    },
+    "This saved excerpt has changed or was removed.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet extrait enregistré a changé ou a été supprimé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This saved excerpt has changed or was removed."
+          }
+        }
+      }
+    },
     "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.": {
       "localizations": {
         "fr": {
@@ -4518,6 +6684,22 @@
         }
       }
     },
+    "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet extrait enregistré a changé ou a été supprimé. Touchez Suivant ou utilisez Routine pour changer l’action du moment."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action."
+          }
+        }
+      }
+    },
     "This screen review is not supported by its saved original sample.": {
       "localizations": {
         "fr": {
@@ -4530,6 +6712,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "This screen review is not supported by its saved original sample."
+          }
+        }
+      }
+    },
+    "This send needs checking. No new email will be sent. Say check, or no to continue.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet envoi attend une vérification. Aucun nouveau mail ne sera envoyé. Dites vérifier ou non pour continuer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This send needs checking. No new email will be sent. Say check, or no to continue."
+          }
+        }
+      }
+    },
+    "This shortcut return doesn't match a pending request. Nothing was accepted.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce retour de raccourci ne correspond à aucune demande en attente. Rien n’a été accepté."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This shortcut return doesn't match a pending request. Nothing was accepted."
           }
         }
       }
@@ -4838,6 +7052,38 @@
         }
       }
     },
+    "Voice is off.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La voix est désactivée."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice is off."
+          }
+        }
+      }
+    },
+    "Voice paused after an interruption. Resume your morning to listen again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La voix est en pause après une interruption. Reprenez votre matin pour réactiver l’écoute."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice paused after an interruption. Resume your morning to listen again."
+          }
+        }
+      }
+    },
     "Waiting for the system recording request to finish. Any late start will be stopped.": {
       "localizations": {
         "fr": {
@@ -4866,6 +7112,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Weather couldn't connect to Apple. Try again when a connection is available."
+          }
+        }
+      }
+    },
+    "What would you like to reply?": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que souhaitez-vous lui répondre ?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What would you like to reply?"
           }
         }
       }
@@ -4918,6 +7180,22 @@
         }
       }
     },
+    "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez choisi de garder ce moment. Sa citation reste liée à ce choix jusqu’à ce que vous l’effaciez dans Réglages → Choix enregistrés."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices."
+          }
+        }
+      }
+    },
     "Your approved routine couldn’t be read.": {
       "localizations": {
         "fr": {
@@ -4930,6 +7208,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your approved routine couldn’t be read."
+          }
+        }
+      }
+    },
+    "Your changes need a new review before sending.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos modifications attendent une nouvelle relecture avant l’envoi."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your changes need a new review before sending."
           }
         }
       }
@@ -4966,6 +7260,22 @@
         }
       }
     },
+    "Your day is not ready. Check Calendar & weather in Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre journée n’est pas prête. Vérifiez Calendrier et météo dans Réglages."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your day is not ready. Check Calendar & weather in Settings."
+          }
+        }
+      }
+    },
     "Your day isn't ready. Check Your day in Settings, or tap Next to continue.": {
       "localizations": {
         "fr": {
@@ -4978,6 +7288,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your day isn't ready. Check Your day in Settings, or tap Next to continue."
+          }
+        }
+      }
+    },
+    "Your emails are not ready. Say retry, no, or next to continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les mails ne sont pas prêts. Dites réessaie, non ou suivant pour continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your emails are not ready. Say retry, no, or next to continue your morning."
+          }
+        }
+      }
+    },
+    "Your emails are unavailable right now. You can continue your morning.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les mails sont indisponibles pour le moment. Vous pouvez continuer votre matin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your emails are unavailable right now. You can continue your morning."
+          }
+        }
+      }
+    },
+    "Your emails could not be read. You can skip this moment or try again later.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les mails n’ont pas pu être lus. Vous pouvez passer cette étape ou réessayer plus tard."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your emails could not be read. You can skip this moment or try again later."
           }
         }
       }
@@ -5026,6 +7384,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your local data changed. Open Morning again before scheduling an invitation."
+          }
+        }
+      }
+    },
+    "Your location isn't available yet. Try again or choose a city.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your location isn't available yet. Try again or choose a city."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre position est indisponible pour le moment. Réessayez ou choisissez une ville."
           }
         }
       }
@@ -5190,6 +7565,22 @@
         }
       }
     },
+    "Your selected calendars are not ready. Check Calendar & weather in Settings.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les calendriers choisis ne sont pas prêts. Vérifiez Calendrier et météo dans Réglages."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your selected calendars are not ready. Check Calendar & weather in Settings."
+          }
+        }
+      }
+    },
     "Your selected calendars aren't ready. Check Your day in Settings, or tap Next.": {
       "localizations": {
         "fr": {
@@ -5218,6 +7609,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your settings couldn’t be read."
+          }
+        }
+      }
+    },
+    "Your sources changed. This recap needs an update.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos sources ont changé. Ce récapitulatif doit être actualisé."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your sources changed. This recap needs an update."
           }
         }
       }
@@ -5286,2377 +7693,34 @@
         }
       }
     },
-    "This build needs a Google iOS OAuth client before Gmail can connect.": {
+    "I'm listening.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette version nécessite un client OAuth Google pour iOS avant de pouvoir connecter Gmail."
+            "value": "Je vous écoute."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This build needs a Google iOS OAuth client before Gmail can connect."
+            "value": "I'm listening."
           }
         }
       }
     },
-    "This build's Google OAuth client and callback scheme need checking.": {
+    "Your morning has stopped.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le client OAuth Google et le schéma de retour de cette version doivent être vérifiés."
+            "value": "Votre matin est arrêté."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This build's Google OAuth client and callback scheme need checking."
-          }
-        }
-      }
-    },
-    "Google could not authorize Gmail access. Check the app's Google setup and try again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Google n’a pas pu autoriser l’accès à Gmail. Vérifiez la configuration Google de l’app et réessayez."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Google could not authorize Gmail access. Check the app's Google setup and try again."
-          }
-        }
-      }
-    },
-    "The Google sign-in response could not be verified. Connect again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La réponse de connexion Google n’a pas pu être vérifiée. Reconnectez-vous."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The Google sign-in response could not be verified. Connect again."
-          }
-        }
-      }
-    },
-    "Gmail access was not granted. Check Google consent and account policy.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’accès à Gmail n’a pas été autorisé. Vérifiez le consentement Google et les règles du compte."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail access was not granted. Check Google consent and account policy."
-          }
-        }
-      }
-    },
-    "This Gmail session has expired. Connect again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette session Gmail a expiré. Reconnectez-vous."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This Gmail session has expired. Connect again."
-          }
-        }
-      }
-    },
-    "Gmail could not connect. Try again when a connection is available.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La connexion à Gmail a échoué. Réessayez lorsqu’une connexion est disponible."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail could not connect. Try again when a connection is available."
-          }
-        }
-      }
-    },
-    "Gmail is limiting requests. Wait before refreshing.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail limite les demandes. Patientez avant d’actualiser."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail is limiting requests. Wait before refreshing."
-          }
-        }
-      }
-    },
-    "Gmail is unavailable right now. Your morning can continue without it.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail est indisponible pour le moment. Votre matin peut continuer sans ce service."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail is unavailable right now. Your morning can continue without it."
-          }
-        }
-      }
-    },
-    "Gmail returned an incomplete response. No inbox count is available.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail a renvoyé une réponse incomplète. Aucun nombre de messages n’est disponible."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail returned an incomplete response. No inbox count is available."
-          }
-        }
-      }
-    },
-    "Gmail returned an unexpected redirect. No inbox count is available.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail a renvoyé une redirection inattendue. Aucun nombre de messages n’est disponible."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail returned an unexpected redirect. No inbox count is available."
-          }
-        }
-      }
-    },
-    "Calendar changed while it was being read. Refresh the briefing to use the current schedule.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le calendrier a changé pendant sa lecture. Actualisez le récapitulatif pour utiliser le planning actuel."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calendar changed while it was being read. Refresh the briefing to use the current schedule."
-          }
-        }
-      }
-    },
-    "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cet extrait enregistré a changé ou a été supprimé. Touchez Suivant ou utilisez Routine pour changer l’action du moment."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This saved excerpt has changed or was removed. Tap Next, or use Routine to change the moment’s action."
-          }
-        }
-      }
-    },
-    "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chaque observation sélectionnée doit contenir des éléments d’activité utilisables. Relisez les notes actuelles dans Apprendre ou ajoutez de nouveaux éléments."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Each selected observation needs usable activity evidence. Review the current notes in Learn or add new evidence."
-          }
-        }
-      }
-    },
-    "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vous avez choisi de garder ce moment. Sa citation reste liée à ce choix jusqu’à ce que vous l’effaciez dans Réglages → Choix enregistrés."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices."
-          }
-        }
-      }
-    },
-    "Choose Read messages and grant Gmail read-only access first.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisissez Lire les messages et autorisez d’abord l’accès à Gmail en lecture seule."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose Read messages and grant Gmail read-only access first."
-          }
-        }
-      }
-    },
-    "This Gmail message is no longer available.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message Gmail n’est plus disponible."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This Gmail message is no longer available."
-          }
-        }
-      }
-    },
-    "This Gmail message exceeds the supported reading limits.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message Gmail dépasse les limites de lecture prises en charge."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This Gmail message exceeds the supported reading limits."
-          }
-        }
-      }
-    },
-    "This message has no readable text to reply to.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message ne contient aucun texte lisible auquel répondre."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This message has no readable text to reply to."
-          }
-        }
-      }
-    },
-    "This message is too long for a local reply. You can write your reply below.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message est trop long pour préparer une réponse locale. Vous pouvez écrire votre réponse ci-dessous."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This message is too long for a local reply. You can write your reply below."
-          }
-        }
-      }
-    },
-    "A reply could not be prepared. You can write your reply below.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible de préparer une réponse. Vous pouvez écrire votre réponse ci-dessous."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reply could not be prepared. You can write your reply below."
-          }
-        }
-      }
-    },
-    "Apple's local model is unavailable. You can write your reply below.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le modèle local d’Apple est indisponible. Vous pouvez écrire votre réponse ci-dessous."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple's local model is unavailable. You can write your reply below."
-          }
-        }
-      }
-    },
-    "A reply is already being prepared.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Une réponse est déjà en préparation."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A reply is already being prepared."
-          }
-        }
-      }
-    },
-    "Enable Apple Intelligence in system settings to prepare a local reply.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Activez Apple Intelligence dans les réglages système pour préparer une réponse locale."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enable Apple Intelligence in system settings to prepare a local reply."
-          }
-        }
-      }
-    },
-    "Saved Gmail access is unavailable on this device. Unlock it and try again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’accès Gmail enregistré est indisponible sur cet appareil. Déverrouillez-le et réessayez."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saved Gmail access is unavailable on this device. Unlock it and try again."
-          }
-        }
-      }
-    },
-    "This saved Gmail connection needs to be connected again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette connexion Gmail enregistrée doit être rétablie."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This saved Gmail connection needs to be connected again."
-          }
-        }
-      }
-    },
-    "The Gmail connection changed. Open Gmail again to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La connexion Gmail a changé. Ouvrez Gmail de nouveau pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The Gmail connection changed. Open Gmail again to continue."
-          }
-        }
-      }
-    },
-    " %lld messages could not be read.": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": " %lld message could not be read."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": " %lld messages could not be read."
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": " %lld message n’a pas pu être lu."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": " %lld messages n’ont pas pu être lus."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    " Correction: ": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Correction : "
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Correction: "
-          }
-        }
-      }
-    },
-    " Messages mentioning urgency or a deadline come first; you can choose another message.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Les mentions d’urgence ou d’échéance passent en premier ; vous pouvez choisir un autre message."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Messages mentioning urgency or a deadline come first; you can choose another message."
-          }
-        }
-      }
-    },
-    " Other unread emails have not been reviewed.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " D’autres mails non lus n’ont pas été consultés."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Other unread emails have not been reviewed."
-          }
-        }
-      }
-    },
-    " They follow your inbox order.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Ils suivent l’ordre de votre boîte de réception."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " They follow your inbox order."
-          }
-        }
-      }
-    },
-    " Would you like to reply to the first one? You can also choose a number, prepare a note to yourself, or continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Voulez-vous répondre au premier ? Vous pouvez aussi choisir un numéro, préparer une note à vous-même ou continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " Would you like to reply to the first one? You can also choose a number, prepare a note to yourself, or continue your morning."
-          }
-        }
-      }
-    },
-    "%@. %@. Would you like to reply?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@. %@. Voulez-vous lui répondre ?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@. %@. Would you like to reply?"
-          }
-        }
-      }
-    },
-    "All right, I’ll continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "D’accord, je continue votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All right, I’ll continue your morning."
-          }
-        }
-      }
-    },
-    "Another reply to this email was already attempted this morning. This new draft has not been sent. Check sent mail before preparing another reply. Say no to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Une autre réponse a déjà été tentée pour ce mail pendant ce matin. Ce nouveau brouillon n’a pas été envoyé. Vérifiez les messages envoyés avant de préparer une nouvelle réponse. Dites non pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Another reply to this email was already attempted this morning. This new draft has not been sent. Check sent mail before preparing another reply. Say no to continue."
-          }
-        }
-      }
-    },
-    "Apple Foundation Models is available. Analysis runs locally on this Mac.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Foundation Models est disponible. L’analyse s’effectue localement sur ce Mac."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Foundation Models is available. Analysis runs locally on this Mac."
-          }
-        }
-      }
-    },
-    "Clock": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Horloge"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Clock"
-          }
-        }
-      }
-    },
-    "Complete and review the subject and body before requesting a send.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Complétez et vérifiez l’objet et le texte avant de demander l’envoi."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Complete and review the subject and body before requesting a send."
-          }
-        }
-      }
-    },
-    "Connect Gmail in settings before your next morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connectez Gmail dans les réglages avant votre prochain matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connect Gmail in settings before your next morning."
-          }
-        }
-      }
-    },
-    "Demo fixture — includes a synthetic saved observation": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo fixture — comprend une observation synthétique enregistrée"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demo fixture — includes a synthetic saved observation"
-          }
-        }
-      }
-    },
-    "Enable reading and sending in Gmail settings before asking MORE to send a reply.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Activez la lecture et l’envoi dans les réglages Gmail avant de demander à MORE d’envoyer une réponse."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enable reading and sending in Gmail settings before asking MORE to send a reply."
-          }
-        }
-      }
-    },
-    "Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters).": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saisissez le nom exact d’un raccourci ajouté dans Raccourcis (128 caractères maximum)."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters)."
-          }
-        }
-      }
-    },
-    "Fill in the subject and body of your note to yourself, then review the draft. Nothing is sent.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Complétez l’objet et le texte de votre note à vous-même dans les champs, puis relisez le brouillon. Rien n’est envoyé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fill in the subject and body of your note to yourself, then review the draft. Nothing is sent."
-          }
-        }
-      }
-    },
-    "Foundation Models is not supported by this build.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette version ne prend pas en charge Foundation Models."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Foundation Models is not supported by this build."
-          }
-        }
-      }
-    },
-    "Gmail confirms your email was sent to %@. I’ll continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail confirme l’envoi de votre mail à %@ . Je continue votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail confirms your email was sent to %@. I’ll continue your morning."
-          }
-        }
-      }
-    },
-    "Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail n’a pas confirmé si cette réponse a été envoyée. MORE vérifiera les messages envoyés avant tout nouvel envoi."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send."
-          }
-        }
-      }
-    },
-    "Gmail refused the send. No new attempt is being made. You can say no to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail a refusé l’envoi. Aucune nouvelle tentative n’est lancée. Vous pouvez dire non pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail refused the send. No new attempt is being made. You can say no to continue."
-          }
-        }
-      }
-    },
-    "Hands-free microphone input requires an iPhone.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le microphone mains libres nécessite un iPhone."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hands-free microphone input requires an iPhone."
-          }
-        }
-      }
-    },
-    "Hands-free voice is unavailable. Your morning controls remain available.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La voix mains libres est indisponible. Les commandes de votre matin restent disponibles."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hands-free voice is unavailable. Your morning controls remain available."
-          }
-        }
-      }
-    },
-    "Here are %lld messages to consider. ": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Here is %lld message to consider. "
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Here are %lld messages to consider. "
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Voici %lld message à examiner. "
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Voici %lld messages à examiner. "
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "I could not prepare an answer to that question. Your previous choice is preserved; you can try again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je n’ai pas pu préparer de réponse à cette question. Votre choix précédent est conservé ; vous pouvez réessayer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I could not prepare an answer to that question. Your previous choice is preserved; you can try again."
-          }
-        }
-      }
-    },
-    "I couldn't hear that clearly. Please say it again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je n’ai pas bien entendu. Répétez, s’il vous plaît."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I couldn't hear that clearly. Please say it again."
-          }
-        }
-      }
-    },
-    "I couldn't prepare an answer. You can ask again, or say resume to continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je n’ai pas pu préparer de réponse. Vous pouvez réessayer ou dire reprends pour continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I couldn't prepare an answer. You can ask again, or say resume to continue your morning."
-          }
-        }
-      }
-    },
-    "I reviewed %lld unread emails. ": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "I reviewed %lld unread email. "
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "I reviewed %lld unread emails. "
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "J’ai consulté %lld mail non lu. "
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "J’ai consulté %lld mails non lus. "
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Keep shortcut input within 1,024 bytes.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Limitez l’entrée du raccourci à 1 024 octets."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keep shortcut input within 1,024 bytes."
-          }
-        }
-      }
-    },
-    "Listening · You can interrupt MORE.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À l’écoute · Vous pouvez interrompre MORE."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Listening · You can interrupt MORE."
-          }
-        }
-      }
-    },
-    "Local conversation is unavailable on this device. Your previous choice is preserved; you can continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La conversation locale n’est pas disponible sur cet appareil. Votre choix précédent est conservé ; vous pouvez continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local conversation is unavailable on this device. Your previous choice is preserved; you can continue your morning."
-          }
-        }
-      }
-    },
-    "MORE couldn't prepare valid details for this action. Add more detail or complete the available fields.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE n’a pas pu préparer de détails valides pour cette action. Précisez votre demande ou complétez les champs disponibles."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE couldn't prepare valid details for this action. Add more detail or complete the available fields."
-          }
-        }
-      }
-    },
-    "MORE is already waiting for a shortcut. Check its outcome before running another.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE attend déjà un raccourci. Vérifiez son résultat avant d’en lancer un autre."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE is already waiting for a shortcut. Check its outcome before running another."
-          }
-        }
-      }
-    },
-    "MORE stopped waiting. The shortcut may still be running; check its outcome before running it again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE a cessé d’attendre. Le raccourci est peut-être encore en cours ; vérifiez son résultat avant de le relancer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE stopped waiting. The shortcut may still be running; check its outcome before running it again."
-          }
-        }
-      }
-    },
-    "Mail": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mail"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mail"
-          }
-        }
-      }
-    },
-    "Marked complete in Apple Reminders.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Marqué comme terminé dans Rappels Apple."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Marked complete in Apple Reminders."
-          }
-        }
-      }
-    },
-    "Messages": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Messages"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Messages"
-          }
-        }
-      }
-    },
-    "New email to %@. Subject: %@. Body: %@ Your draft is ready. What would you like to do next?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nouveau mail à %@ . Objet : %@. Texte : %@ Votre brouillon est prêt. Quelle suite souhaitez-vous lui donner ?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New email to %@. Subject: %@. Body: %@ Your draft is ready. What would you like to do next?"
-          }
-        }
-      }
-    },
-    "No subject": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sans objet"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No subject"
-          }
-        }
-      }
-    },
-    "Note to yourself: %@. Dictate a subject and body, or fill in the fields. Nothing has been sent.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Note à vous-même : %@. Dictez un objet et un texte, ou complétez les champs. Rien n’est encore envoyé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Note to yourself: %@. Dictate a subject and body, or fill in the fields. Nothing has been sent."
-          }
-        }
-      }
-    },
-    "Notes": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notes"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notes"
-          }
-        }
-      }
-    },
-    "Other shortcut": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Autre raccourci"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Other shortcut"
-          }
-        }
-      }
-    },
-    "Preparation was interrupted. Your intention is preserved; say your correction or no to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La préparation a été interrompue. Votre intention est conservée ; dites votre correction ou non pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparation was interrupted. Your intention is preserved; say your correction or no to continue."
-          }
-        }
-      }
-    },
-    "Preparing hands-free voice…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Préparation de la voix mains libres…"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparing hands-free voice…"
-          }
-        }
-      }
-    },
-    "Reconnect this account before using it.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconnectez ce compte avant de l’utiliser."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconnect this account before using it."
-          }
-        }
-      }
-    },
-    "Reminders didn't answer in time. Try reading them again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rappels n’a pas répondu à temps. Essayez de relire les rappels."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reminders didn't answer in time. Try reading them again."
-          }
-        }
-      }
-    },
-    "Reply to %@: %@ Your draft is ready. What would you like to do next?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réponse à %@ : %@ Votre brouillon est prêt. Quelle suite souhaitez-vous lui donner ?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reply to %@: %@ Your draft is ready. What would you like to do next?"
-          }
-        }
-      }
-    },
-    "Review the Slack account, channel, thread and reply text before continuing.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vérifiez le compte Slack, le canal, le fil et le texte de la réponse avant de continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review the Slack account, channel, thread and reply text before continuing."
-          }
-        }
-      }
-    },
-    "Review the action details before trying again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vérifiez les détails de l’action avant de réessayer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review the action details before trying again."
-          }
-        }
-      }
-    },
-    "Say yes to reply, no to continue, or a message number.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dites oui pour répondre, non pour continuer, ou le numéro d’un message."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Say yes to reply, no to continue, or a message number."
-          }
-        }
-      }
-    },
-    "Sending is not authorized for this account. Enable reading and sending in Gmail settings. Your reply has not been sent.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’envoi n’est pas autorisé pour ce compte. Activez lecture et envoi dans les réglages Gmail. Votre réponse n’a pas été envoyée."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending is not authorized for this account. Enable reading and sending in Gmail settings. Your reply has not been sent."
-          }
-        }
-      }
-    },
-    "Shortcuts couldn't open. Check that it is installed and the shortcut name is correct.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Raccourcis n’a pas pu s’ouvrir. Vérifiez que l’application est installée et que le nom du raccourci est exact."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcuts couldn't open. Check that it is installed and the shortcut name is correct."
-          }
-        }
-      }
-    },
-    "Some emails could not be read. I cannot conclude that your inbox is empty.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Certains mails n’ont pas pu être lus. Je ne peux pas conclure que votre boîte est vide."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Some emails could not be read. I cannot conclude that your inbox is empty."
-          }
-        }
-      }
-    },
-    "The Slack account could not be verified or has changed. Reconnect and review this reply again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le compte Slack n’a pas pu être vérifié ou a changé. Reconnectez-le et relisez cette réponse."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The Slack account could not be verified or has changed. Reconnect and review this reply again."
-          }
-        }
-      }
-    },
-    "The action may already have run. Check its outcome in the connected account before another attempt. MORE will not repeat it.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’action a peut-être déjà été réalisée. Vérifiez son résultat dans le compte connecté avant une autre tentative. MORE ne la relance pas."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The action may already have run. Check its outcome in the connected account before another attempt. MORE will not repeat it."
-          }
-        }
-      }
-    },
-    "The available actions could not be loaded completely. Try again later.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les actions disponibles n’ont pas pu être chargées entièrement. Réessayez plus tard."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The available actions could not be loaded completely. Try again later."
-          }
-        }
-      }
-    },
-    "The connection service could not complete this request. Try again later.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le service de connexion n’a pas pu terminer cette demande. Réessayez plus tard."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The connection service could not complete this request. Try again later."
-          }
-        }
-      }
-    },
-    "The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le modèle de conversation local est indisponible. Vous pouvez toujours dire suivant, pause, reprends, répète, plus de temps ou arrête."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop."
-          }
-        }
-      }
-    },
-    "The local model is unavailable. Complete the available fields, or come back when local preparation is ready.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le modèle local est indisponible. Complétez les champs disponibles ou revenez quand la préparation locale sera prête."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The local model is unavailable. Complete the available fields, or come back when local preparation is ready."
-          }
-        }
-      }
-    },
-    "The message says: ": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le message dit : "
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The message says: "
-          }
-        }
-      }
-    },
-    "The microphone could not be released. Stop voice again before continuing.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le microphone n’a pas pu être libéré. Arrêtez à nouveau la voix avant de continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The microphone could not be released. Stop voice again before continuing."
-          }
-        }
-      }
-    },
-    "The provider did not return a verified result. Check the connected account before trying the action again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le fournisseur n’a pas renvoyé de résultat vérifié. Consultez le compte connecté avant de relancer l’action."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The provider did not return a verified result. Check the connected account before trying the action again."
-          }
-        }
-      }
-    },
-    "The provider reported that the action failed. Check its outcome before another attempt.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le fournisseur indique que l’action a échoué. Vérifiez son résultat avant une autre tentative."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The provider reported that the action failed. Check its outcome before another attempt."
-          }
-        }
-      }
-    },
-    "The reply address is ambiguous. You can choose another message or say no.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’adresse de réponse est ambiguë. Vous pouvez choisir un autre message ou dire non."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The reply address is ambiguous. You can choose another message or say no."
-          }
-        }
-      }
-    },
-    "The reply safety record is unavailable. Nothing new will be sent.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le registre de sécurité des réponses est indisponible. Aucun nouveau message ne sera envoyé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The reply safety record is unavailable. Nothing new will be sent."
-          }
-        }
-      }
-    },
-    "The reply to %@ needs your explicit request to send. You can also revise it.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La réponse à %@ attend une demande explicite de votre part. Vous pouvez aussi la corriger."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The reply to %@ needs your explicit request to send. You can also revise it."
-          }
-        }
-      }
-    },
-    "The send is uncertain. Say check to look for this reply in sent mail, or no to continue. I will not send it again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’envoi est incertain. Dites vérifier pour rechercher cette réponse dans les messages envoyés, ou non pour continuer. Je ne la renvoie pas."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The send is uncertain. Say check to look for this reply in sent mail, or no to continue. I will not send it again."
-          }
-        }
-      }
-    },
-    "The send is unconfirmed. I will not send this message again. Say check to review sent mail, or no to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’envoi n’est pas confirmé. Je ne renvoie pas ce message. Dites vérifier pour consulter les messages envoyés, ou non pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The send is unconfirmed. I will not send this message again. Say check to review sent mail, or no to continue."
-          }
-        }
-      }
-    },
-    "The shortcut didn't return in time. Check it in Shortcuts before running it again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le raccourci n’est pas revenu à temps. Vérifiez-le dans Raccourcis avant de le relancer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The shortcut didn't return in time. Check it in Shortcuts before running it again."
-          }
-        }
-      }
-    },
-    "The shortcut returned too much text. Limit its output to 8,192 bytes.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le raccourci a renvoyé trop de texte. Limitez sa sortie à 8 192 octets."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The shortcut returned too much text. Limit its output to 8,192 bytes."
-          }
-        }
-      }
-    },
-    "There are no unread emails in your inbox. I’ll continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun mail non lu dans votre boîte de réception. Je continue votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "There are no unread emails in your inbox. I’ll continue your morning."
-          }
-        }
-      }
-    },
-    "There are no unread emails in your inbox. You can prepare a note to yourself or continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun mail non lu dans votre boîte de réception. Vous pouvez préparer une note à vous-même, ou continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "There are no unread emails in your inbox. You can prepare a note to yourself or continue your morning."
-          }
-        }
-      }
-    },
-    "There is no current briefing to read.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il n’y a aucun récapitulatif à jour à lire."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "There is no current briefing to read."
-          }
-        }
-      }
-    },
-    "This Reminders list doesn't allow changes.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette liste de Rappels ne permet pas les modifications."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This Reminders list doesn't allow changes."
-          }
-        }
-      }
-    },
-    "This action does not match the selected account. Choose the account and review it again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette action ne correspond pas au compte choisi. Choisissez le compte et vérifiez-le à nouveau."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This action does not match the selected account. Choose the account and review it again."
-          }
-        }
-      }
-    },
-    "This action is too complex to prepare locally. Choose a simpler action.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette action est trop complexe à préparer localement. Choisissez une action plus simple."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This action is too complex to prepare locally. Choose a simpler action."
-          }
-        }
-      }
-    },
-    "This connection could not be verified. Return to MORE and start a new connection.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette connexion n’a pas pu être vérifiée. Revenez dans MORE et recommencez la connexion."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This connection could not be verified. Return to MORE and start a new connection."
-          }
-        }
-      }
-    },
-    "This connection is not available in this build yet.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette connexion n’est pas encore disponible dans cette version."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This connection is not available in this build yet."
-          }
-        }
-      }
-    },
-    "This installation is no longer authorized. Reconnect your account.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette installation n’est plus autorisée. Reconnectez votre compte."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This installation is no longer authorized. Reconnect your account."
-          }
-        }
-      }
-    },
-    "This message has no single verified reply address. Your reply has not been sent.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message n’a pas d’adresse de réponse unique vérifiée. Votre réponse n’a pas été envoyée."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This message has no single verified reply address. Your reply has not been sent."
-          }
-        }
-      }
-    },
-    "This message is incomplete. I cannot prepare a reply from partial content. You can choose another message or say no.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce message n’est pas disponible en entier. Je ne prépare pas de réponse sur un contenu incomplet. Vous pouvez choisir un autre message ou dire non."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This message is incomplete. I cannot prepare a reply from partial content. You can choose another message or say no."
-          }
-        }
-      }
-    },
-    "This message’s content cannot be read here.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le contenu de ce message n’est pas lisible ici."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This message’s content cannot be read here."
-          }
-        }
-      }
-    },
-    "This moment could not finish. You can retry or continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce moment n’a pas pu se terminer. Vous pouvez réessayer ou continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This moment could not finish. You can retry or continue your morning."
-          }
-        }
-      }
-    },
-    "This moment is managed by your morning session.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce moment est géré par votre session du matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This moment is managed by your morning session."
-          }
-        }
-      }
-    },
-    "This recap needs an update before it can be read.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce récapitulatif doit être actualisé avant sa lecture."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This recap needs an update before it can be read."
-          }
-        }
-      }
-    },
-    "This reminder changed or is no longer available. Read your reminders again before marking it complete.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce rappel a changé ou n’est plus disponible. Relisez vos rappels avant de le marquer comme terminé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This reminder changed or is no longer available. Read your reminders again before marking it complete."
-          }
-        }
-      }
-    },
-    "This saved excerpt has changed or was removed.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cet extrait enregistré a changé ou a été supprimé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This saved excerpt has changed or was removed."
-          }
-        }
-      }
-    },
-    "This send needs checking. No new email will be sent. Say check, or no to continue.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cet envoi attend une vérification. Aucun nouveau mail ne sera envoyé. Dites vérifier ou non pour continuer."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This send needs checking. No new email will be sent. Say check, or no to continue."
-          }
-        }
-      }
-    },
-    "This shortcut return doesn't match a pending request. Nothing was accepted.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce retour de raccourci ne correspond à aucune demande en attente. Rien n’a été accepté."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This shortcut return doesn't match a pending request. Nothing was accepted."
-          }
-        }
-      }
-    },
-    "Voice is off.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La voix est désactivée."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voice is off."
-          }
-        }
-      }
-    },
-    "Voice paused after an interruption. Resume your morning to listen again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La voix est en pause après une interruption. Reprenez votre matin pour réactiver l’écoute."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voice paused after an interruption. Resume your morning to listen again."
-          }
-        }
-      }
-    },
-    "What would you like to reply?": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Que souhaitez-vous lui répondre ?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What would you like to reply?"
-          }
-        }
-      }
-    },
-    "Your changes need a new review before sending.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vos modifications attendent une nouvelle relecture avant l’envoi."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your changes need a new review before sending."
-          }
-        }
-      }
-    },
-    "Your day is not ready. Check Calendar & weather in Settings.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre journée n’est pas prête. Vérifiez Calendrier et météo dans Réglages."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your day is not ready. Check Calendar & weather in Settings."
-          }
-        }
-      }
-    },
-    "Your emails are not ready. Say retry, no, or next to continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les mails ne sont pas prêts. Dites réessaie, non ou suivant pour continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your emails are not ready. Say retry, no, or next to continue your morning."
-          }
-        }
-      }
-    },
-    "Your emails are unavailable right now. You can continue your morning.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les mails sont indisponibles pour le moment. Vous pouvez continuer votre matin."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your emails are unavailable right now. You can continue your morning."
-          }
-        }
-      }
-    },
-    "Your emails could not be read. You can skip this moment or try again later.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les mails n’ont pas pu être lus. Vous pouvez passer cette étape ou réessayer plus tard."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your emails could not be read. You can skip this moment or try again later."
-          }
-        }
-      }
-    },
-    "Your selected calendars are not ready. Check Calendar & weather in Settings.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les calendriers choisis ne sont pas prêts. Vérifiez Calendrier et météo dans Réglages."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your selected calendars are not ready. Check Calendar & weather in Settings."
-          }
-        }
-      }
-    },
-    "Your sources changed. This recap needs an update.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vos sources ont changé. Ce récapitulatif doit être actualisé."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your sources changed. This recap needs an update."
-          }
-        }
-      }
-    },
-    "Speech stopped.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture s’est arrêtée."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speech stopped."
-          }
-        }
-      }
-    },
-    "Duplex speech output could not finish safely.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture vocale n’a pas pu se terminer correctement."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duplex speech output could not finish safely."
-          }
-        }
-      }
-    },
-    "Duplex speech could not resume.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture vocale n’a pas pu reprendre."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duplex speech could not resume."
-          }
-        }
-      }
-    },
-    "Preparing your reply…": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Préparation de votre réponse…"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparing your reply…"
-          }
-        }
-      }
-    },
-    "No compatible installed voice": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune voix installée compatible"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No compatible installed voice"
-          }
-        }
-      }
-    },
-    "This proposal exceeds ten moments, including your kept rituals. Select fewer observations or adjust which rituals to keep. No kept ritual was removed automatically.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette proposition dépasse dix moments, y compris vos rituels gardés. Réduisez les observations choisies ou ajustez les rituels à garder. Aucun rituel gardé n’a été retiré automatiquement."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This proposal exceeds ten moments, including your kept rituals. Select fewer observations or adjust which rituals to keep. No kept ritual was removed automatically."
-          }
-        }
-      }
-    },
-    "Shared rule: use of at least 30 seconds, presence in at least half the retained comparable windows, median rounded to a minute and planned duration between 1 and 240 minutes. Order stays estimated and missing use unknown. All aggregates remain in the sources.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Règle commune : usages d’au moins 30 secondes, présence sur au moins la moitié des fenêtres comparables retenues, médiane arrondie à la minute et durée prévue entre 1 et 240 minutes. L’ordre reste estimé et les absences inconnues. Tous les agrégats restent dans les sources."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shared rule: use of at least 30 seconds, presence in at least half the retained comparable windows, median rounded to a minute and planned duration between 1 and 240 minutes. Order stays estimated and missing use unknown. All aggregates remain in the sources."
-          }
-        }
-      }
-    },
-    "This plan has room for %lld additional Screen Time app moments. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained.": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "This plan has room for %lld additional Screen Time app moment. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "This plan has room for %lld additional Screen Time app moments. Choose which apps to add in the observation selection. Observed sequences and your kept rituals are retained."
-                }
-              }
-            }
-          }
-        },
-        "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Ce plan peut accueillir encore %lld moment d’app Screen Time. Choisissez les apps à ajouter dans la sélection d’observations. Les séquences observées et vos rituels gardés sont conservés."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Ce plan peut accueillir encore %lld moments d’app Screen Time. Choisissez les apps à ajouter dans la sélection d’observations. Les séquences observées et vos rituels gardés sont conservés."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Screen recording failed. Check the recording controls before trying again.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Screen recording failed. Check the recording controls before trying again."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’enregistrement a échoué. Vérifiez ses commandes avant de réessayer."
-          }
-        }
-      }
-    },
-    "Current location": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Current location"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Position actuelle"
-          }
-        }
-      }
-    },
-    "Location is off. Allow it in iPhone Settings or choose a city for the weather.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Location is off. Allow it in iPhone Settings or choose a city for the weather."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La localisation est désactivée. Autorisez-la dans les réglages de l’iPhone ou choisissez une ville pour la météo."
-          }
-        }
-      }
-    },
-    "Your location isn't available yet. Try again or choose a city.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your location isn't available yet. Try again or choose a city."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre position est indisponible pour le moment. Réessayez ou choisissez une ville."
-          }
-        }
-      }
-    },
-    "Finding your location took too long. Try again or choose a city.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Finding your location took too long. Try again or choose a city."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La recherche de votre position a pris trop de temps. Réessayez ou choisissez une ville."
-          }
-        }
-      }
-    },
-    "Sleep reading is not available in this version.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sleep reading is not available in this version."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lecture du sommeil n’est pas disponible dans cette version."
-          }
-        }
-      }
-    },
-    "Health access could not be prepared. Try again in Settings.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Health access could not be prepared. Try again in Settings."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’accès à Santé n’a pas pu être préparé. Réessayez dans les réglages."
-          }
-        }
-      }
-    },
-    "Health data is not available on this device.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Health data is not available on this device."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les données de Santé ne sont pas disponibles sur cet appareil."
+            "value": "Your morning has stopped."
           }
         }
       }
@@ -7770,38 +7834,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "La lecture en ligne n’a pas pu se terminer. Réessayez ou continuez avec les commandes."
-          }
-        }
-      }
-    },
-    "I'm listening.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je vous écoute."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "I'm listening."
-          }
-        }
-      }
-    },
-    "Your morning has stopped.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre matin est arrêté."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your morning has stopped."
           }
         }
       }

@@ -167,9 +167,9 @@ public struct SlackReplyActionCounts: Sendable, Equatable {
     }
 
     /// Content-free effects outlive the volatile panel and never change the read moment's outcome.
-    public func actionCounts(for session: RoutineSession) throws -> SlackReplyActionCounts {
+    public func actionCounts(for session: RoutineSession, stepID: UUID? = nil) throws -> SlackReplyActionCounts {
         let generation = try control.status().generation
-        return try journal.actionCounts(contexts: session.routine.steps.map {
+        return try journal.actionCounts(contexts: session.routine.steps.filter { stepID == nil || $0.id == stepID }.map {
             MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: $0.id)
         }, generation: generation)
     }

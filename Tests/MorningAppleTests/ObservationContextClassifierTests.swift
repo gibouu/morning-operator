@@ -108,6 +108,105 @@ struct ObservationContextClassifierTests {
         #expect(report.apps.first?.app.key == "visual-context:cedar mail")
     }
 
+    @Test("Literal punctuated headers remain visual evidence with their original citations")
+    func literalPunctuatedHeaders() throws {
+        for (raw, canonical) in [
+            ("Cedar News • Browser SIMULATED", "cedar news • browser simulated"),
+            ("Cedar News · Browser SIMULATED", "cedar news · browser simulated"),
+            ("Boreal — Actualités", "boreal — actualites"),
+            ("Atelier – Édition du matin", "atelier – edition du matin")
+        ] {
+            let source = try frame("Recording metadata\nFrench\n\(raw)\nFriday 16 October\nCurrent reading", at: 4)
+            let input = try ObservationContextValidation.prepare(frames: [source], catalog: [])
+            let batch = try #require(input.batches.first)
+            let result = ObservationContextValidation.validate(json: try json([proposal(source, label: raw)]),
+                batch: batch, catalog: [])
+            let decision = try #require(result.decisions.first)
+            #expect(decision.evidence == .identified(app: .init(key: "visual-context:\(canonical)", displayName: canonical),
+                reference: source.evidenceReference))
+            #expect(decision.evidenceQuote == raw)
+            #expect(result.diagnostics.isEmpty)
+            #expect(input.frames[0].text == source.text, "No source line, separator or qualifier is rewritten.")
+        }
+    }
+
+    @Test("A punctuated header cannot be shortened, repaired or cited from omitted body text")
+    func punctuatedQuotesStayStrict() throws {
+        let raw = "Cedar News • Browser SIMULATED"
+        let source = try frame(raw + "\nArticle title", at: 0)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [source], catalog: []).batches.first)
+        for (label, quote) in [("Cedar News", raw), (raw, "Cedar News"),
+                               (raw, "Cedar News · Browser SIMULATED"),
+                               (raw, "Cedar News Browser SIMULATED")] {
+            let result = ObservationContextValidation.validate(json: try json([proposal(source, label: label, quote: quote)]),
+                batch: batch, catalog: [])
+            #expect(result.decisions[0].evidence == .unknown)
+            #expect(!result.diagnostics.isEmpty)
+        }
+        let body = try frame("One\nTwo\nThree\nFour\nFive\nSix\n" + raw, at: 1)
+        let bodyBatch = try #require(ObservationContextValidation.prepare(frames: [body], catalog: []).batches.first)
+        let result = ObservationContextValidation.validate(json: try json([proposal(body, label: raw)]),
+            batch: bodyBatch, catalog: [])
+        #expect(result.decisions[0].evidence == .unknown)
+        #expect(result.diagnostics.contains { $0.kind == .invalidEvidence })
+    }
+
+    @Test("Header punctuation does not admit identifiers, URLs, controls or an invented login brand")
+    func punctuationDoesNotBroadenIdentitySyntax() throws {
+        for raw in ["com.apple.mobilemail", "https://mail.example.invalid", "Mail/Inbox", "Mail@example",
+                    "Mail: Inbox", "<Mail>", "Mail\u{202e}", "Mail\u{200b}", String(repeating: "M", count: 81) + "•"] {
+            let source = try frame(raw + "\nInbox", at: 0)
+            let batch = try #require(ObservationContextValidation.prepare(frames: [source], catalog: []).batches.first)
+            let result = ObservationContextValidation.validate(json: try json([proposal(source, label: raw)]),
+                batch: batch, catalog: [])
+            #expect(result.decisions[0].evidence == .unknown)
+            #expect(result.diagnostics.contains { $0.kind == .unsupportedIdentity })
+        }
+        let login = try frame("Sign in\nEmail address\nPassword", at: 0)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [login], catalog: []).batches.first)
+        let invented = ObservationContextValidation.validate(json: try json([
+            proposal(login, label: "Morning Mail • Personal", quote: "Sign in")
+        ]), batch: batch, catalog: [])
+        #expect(invented.decisions[0].evidence == .unknown)
+        let abstained = ObservationContextValidation.validate(json: try json([
+            proposal(login, label: "", quote: "", outcome: "unknown")
+        ]), batch: batch, catalog: [])
+        #expect(abstained.decisions[0].evidence == .unknown && abstained.diagnostics.isEmpty)
+    }
+
+    @Test("Provenance text cannot resolve competing punctuated catalog brands or namesake headers")
+    func punctuatedCatalogCompetitionRemainsUnknown() throws {
+        let entries = [ObservationContextCatalogEntry(label: "Morning Mail · Personal"),
+                       ObservationContextCatalogEntry(label: "Garden Calendar — Shared")]
+        let oneHeader = "• Morning Mail · Personal"
+        let oneSource = try frame("Recording metadata\nFrench\n" + oneHeader + "\nInbox", at: 0)
+        let oneBatch = try #require(ObservationContextValidation.prepare(frames: [oneSource], catalog: entries).batches.first)
+        let oneResult = ObservationContextValidation.validate(json: try json([
+            proposal(oneSource, label: entries[0].label, quote: oneHeader)
+        ]), batch: oneBatch, catalog: entries)
+        #expect(oneResult.decisions[0].evidence == .identified(app: .init(
+            key: "visual-context:morning mail · personal", displayName: entries[0].label), reference: oneSource.evidenceReference))
+        #expect(oneResult.decisions[0].evidenceQuote == oneHeader)
+        let raw = "• Morning Mail · Personal\n< Garden Calendar — Shared"
+        let source = try frame("Recording metadata\nFrench\n" + raw + "\nToday", at: 0)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [source], catalog: entries).batches.first)
+        for (entry, quote) in zip(entries, raw.split(separator: "\n").map(String.init)) {
+            let result = ObservationContextValidation.validate(json: try json([proposal(source, label: entry.label, quote: quote)]),
+                batch: batch, catalog: entries)
+            #expect(result.decisions[0].evidence == .unknown)
+            #expect(result.diagnostics.contains { $0.kind == .unsupportedIdentity })
+        }
+        let ambiguous = ObservationContextValidation.validate(json: try json([
+            proposal(source, label: "", quote: raw, outcome: "ambiguous")
+        ]), batch: batch, catalog: entries)
+        #expect(ambiguous.decisions[0].evidence == .ambiguous(reference: source.evidenceReference))
+        let namesakes = [ObservationContextCatalogEntry(label: "Journal · Personal", headerText: "Journal"),
+                         ObservationContextCatalogEntry(label: "Journal · Work", headerText: "Journal")]
+        #expect(throws: ObservationContextClassificationError.invalidCatalog) {
+            try ObservationContextValidation.prepare(frames: [source], catalog: namesakes)
+        }
+    }
+
     @Test("Blank, failed, truncated and overlong first-line frames survive as unknown with original times")
     func excludedFramesArePreserved() throws {
         let frames = try [
@@ -318,11 +417,254 @@ struct ObservationContextClassifierTests {
     }
 
     #if canImport(FoundationModels)
-    @Test("The visible-context guided-generation schema resolves without model inference")
-    func schemaResolves() throws {
-        #expect(try JSONEncoder().encode(ObservationContextGenerationSchema.make()).count > 100)
+    @Test("The guided schema requires one native option ID per frame and never generates sample IDs", arguments: [2, 4])
+    func schemaResolves(_ count: Int) throws {
+        let frames = try (0..<count).map { try frame("Visible context \($0)\nInbox", at: Double($0)) }
+        let batch = try #require(ObservationContextValidation.prepare(frames: frames, catalog: []).batches.first)
+        #expect(batch.frames.count == count)
+        let encoded = try JSONEncoder().encode(ObservationContextGenerationSchema.make(batch: batch, catalog: []))
+        let object = try JSONSerialization.jsonObject(with: encoded)
+        func objects(_ value: Any) -> [[String: Any]] {
+            if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
+            if let array = value as? [Any] { return array.flatMap(objects) }
+            return []
+        }
+        let schemas = objects(object)
+        let keys = Set((0..<count).map { "f\($0)" })
+        let root = try #require(object as? [String: Any])
+        let properties = try #require(root["properties"] as? [String: Any])
+        let required = try #require(root["required"] as? [String])
+        #expect(Set(properties.keys) == keys && Set(required) == keys && required.count == count)
+        #expect(root["additionalProperties"] as? Bool == false)
+        let definitions = root["$defs"] as? [String: Any] ?? [:]
+        let serialized = String(decoding: encoded, as: UTF8.self)
+        #expect(!serialized.contains("sampleID") && !serialized.contains("\"frames\""))
+        #expect(frames.allSatisfy { !serialized.contains($0.id.uuidString) })
+        for slot in try ObservationContextFrameSlots.make(batch: batch, catalog: []) {
+            let field = try #require(properties[slot.key] as? [String: Any])
+            let diagnostic: [String: Any] = [
+                "slot": slot.key, "expectedOptionIDs": slot.options.map(\.id),
+                "fieldSchema": field,
+                "serializedEnums": schemas.compactMap { $0["enum"] },
+                "choiceShapes": schemas.filter { $0["const"] != nil || $0["anyOf"] != nil },
+                // This schema contains only the fixed synthetic fixture above.
+                // Keep its shape visible if a different SDK uses other keys.
+                "serializedSchema": object
+            ]
+            let message = try JSONSerialization.data(withJSONObject: diagnostic, options: [.sortedKeys])
+            #expect(contextSchemaPermitsExactly(slot.options.map(\.id), field: field, definitions: definitions),
+                Comment(rawValue: "CONTEXT_SCHEMA_DIAGNOSTIC " + String(decoding: message, as: UTF8.self)))
+        }
+    }
+
+    @Test("SDK enum and singleton-union encodings must permit exactly the supplied finite choices")
+    func finiteSchemaChoicesStayExact() {
+        let expected = ["unknown", "a1", "h1"]
+        let enumeration: [String: Any] = ["type": "string", "enum": expected]
+        let union: [String: Any] = ["anyOf": expected.reversed().map { ["type": "string", "enum": [$0]] }]
+        #expect(contextSchemaPermitsExactly(expected, field: enumeration))
+        #expect(contextSchemaPermitsExactly(expected, field: union))
+        #expect(contextSchemaPermitsExactly(expected, field: ["$ref": "#/$defs/Choices"], definitions: ["Choices": union]))
+        for invalid: [String: Any] in [
+            ["type": "string", "enum": expected + ["extra"]],
+            ["type": "string", "enum": Array(expected.dropLast())],
+            ["type": "string", "enum": expected + ["a1"]],
+            ["anyOf": [enumeration, ["type": "string"]]],
+            ["anyOf": [enumeration, ["const": "extra"]]],
+            ["anyOf": [enumeration, ["type": "null"]]],
+            ["type": "number", "enum": expected],
+            ["$ref": "#/$defs/Missing"],
+            ["$ref": "https://example.invalid/schema"]
+        ] {
+            #expect(!contextSchemaPermitsExactly(expected, field: invalid))
+        }
+    }
+
+    /// SDK 26.6 emits anyOf of singleton enums; SDK 27 emits one enum. Inspect
+    /// the actual frame field, refusing open branches or unrecognized schemas.
+    private func contextSchemaPermitsExactly(_ expected: [String], field: [String: Any],
+                                            definitions: [String: Any] = [:]) -> Bool {
+        func values(_ schema: [String: Any], depth: Int = 0) -> [String]? {
+            let allowed: Set<String> = ["type", "title", "description", "$ref", "enum", "const", "anyOf"]
+            guard depth < 8, Set(schema.keys).isSubset(of: allowed),
+                  schema["type"] == nil || schema["type"] as? String == "string",
+                  ["$ref", "enum", "const", "anyOf"].filter({ schema[$0] != nil }).count == 1 else { return nil }
+            if let reference = schema["$ref"] as? String {
+                let prefix = "#/$defs/"
+                guard reference.hasPrefix(prefix) else { return nil }
+                let name = String(reference.dropFirst(prefix.count))
+                guard !name.isEmpty, !name.contains("/"), let definition = definitions[name] as? [String: Any] else { return nil }
+                return values(definition, depth: depth + 1)
+            }
+            if let enumeration = schema["enum"] as? [String] { return enumeration.isEmpty ? nil : enumeration }
+            if let constant = schema["const"] as? String { return [constant] }
+            guard let branches = schema["anyOf"] as? [[String: Any]], !branches.isEmpty else { return nil }
+            var result: [String] = []
+            for branch in branches {
+                guard let choices = values(branch, depth: depth + 1) else { return nil }
+                result += choices
+            }
+            return result
+        }
+        guard !expected.isEmpty, Set(expected).count == expected.count, let actual = values(field) else { return false }
+        return actual.count == expected.count && Set(actual) == Set(expected)
+    }
+
+    @Test("Guided source candidates retain whole-line punctuation, Unicode bytes and exact multi-line ambiguity")
+    func schemaCandidatesKeepSourceBytes() throws {
+        let composed = "Atelier Édition"
+        let decomposed = "Atelier E\u{301}dition"
+        let raw = "  Cedar News • Browser SIMULATED  \r\n\tGarden Calendar — Shared\t\r\n" + composed + "\r\n" + decomposed
+        let source = try frame(raw, at: 0)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [source], catalog: []).batches.first)
+        let choices = try #require(ObservationContextFrameSlots.make(batch: batch, catalog: []).first)
+        #expect(choices.sampleID == source.id)
+        #expect(choices.contextLabels.contains("Cedar News • Browser SIMULATED"))
+        #expect(!choices.contextLabels.contains("Cedar News"), "No shortened brand is invented.")
+        #expect(choices.evidenceQuotes.contains { $0.contains("\r\n") })
+        for quote in choices.evidenceQuotes where !quote.isEmpty {
+            #expect(Data(raw.utf8).range(of: Data(quote.utf8)) != nil)
+        }
+        for literal in [composed, decomposed] {
+            #expect(choices.evidenceQuotes.filter { Data($0.utf8) == Data(literal.utf8) }.count == 1)
+        }
+        _ = try ObservationContextGenerationSchema.make(batch: batch, catalog: [])
+        let multiLine = try #require(choices.evidenceQuotes.first { $0.contains("\r\n") })
+        let validated = ObservationContextValidation.validate(json: try json([
+            proposal(source, label: "", quote: multiLine, outcome: "ambiguous")
+        ]), batch: batch, catalog: [])
+        #expect(validated.decisions[0].evidence == .ambiguous(reference: source.evidenceReference))
+        #expect(validated.decisions[0].evidenceQuote == multiLine)
+    }
+
+    @Test("Fixed slots exclude another frame's quotes while catalog competition still reaches strict validation")
+    func schemaCandidatesDoNotWeakenValidation() throws {
+        let first = try frame("Cedar Mail\nInbox", at: 0)
+        let second = try frame("Lumen Calendar\nToday", at: 1)
+        let batch = try #require(prepared([first, second]).batches.first)
+        let choices = try #require(ObservationContextFrameSlots.make(batch: batch, catalog: catalog).first)
+        #expect(choices.contextLabels == [""] + catalog.map(\.label))
+        #expect(!choices.evidenceQuotes.contains("Lumen Calendar"))
+        #expect(throws: ObservationContextFrameSlots.Invalid.response) {
+            try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+                "f0": slotProposal(label: "Lumen Calendar"), "f1": slotProposal(outcome: "unknown")
+            ]), batch: batch, catalog: catalog)
+        }
+        let borrowed = ObservationContextValidation.validate(json: try json([
+            proposal(first, label: "Lumen Calendar"), proposal(second, label: "", quote: "", outcome: "unknown")
+        ]), batch: batch, catalog: catalog)
+        #expect(borrowed.decisions.allSatisfy { $0.evidence == .unknown })
+        #expect(borrowed.diagnostics.contains { $0.kind == .invalidEvidence })
+        let competing = try frame("Cedar Mail\nLumen Calendar\nChoose an app", at: 2)
+        let competingBatch = try #require(prepared([competing]).batches.first)
+        let competitionJSON = try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+            "f0": slotProposal(label: "Cedar Mail")
+        ]), batch: competingBatch, catalog: catalog)
+        let competition = ObservationContextValidation.validate(json: competitionJSON, batch: competingBatch, catalog: catalog)
+        #expect(competition.decisions[0].evidence == .unknown)
+        #expect(competition.diagnostics.contains { $0.kind == .unsupportedIdentity })
+    }
+
+    @Test("Guided candidates exclude omitted body and retain bounded schema and prompt byte measurements")
+    @MainActor
+    func schemaBudgetAndOmittedContent() throws {
+        let line = String(repeating: "É", count: 48) + " • qualifier"
+        let sources = try (0..<4).map { try frame(Array(repeating: line, count: 6).joined(separator: "\n") + "\nHidden body brand", at: Double($0)) }
+        let input = try ObservationContextValidation.prepare(frames: sources, catalog: [])
+        #expect(input.batches.flatMap(\.frames).count == sources.count)
+        for batch in input.batches {
+            let slots = try ObservationContextFrameSlots.make(batch: batch, catalog: [])
+            let labels = slots.flatMap(\.contextLabels), quotes = slots.flatMap(\.evidenceQuotes)
+            #expect(!labels.contains("Hidden body brand"))
+            #expect(!quotes.contains("Hidden body brand"))
+            let sourceBytes = batch.excerpts.reduce(0) { $0 + $1.text.utf8.count }
+            let candidateBytes = (labels + quotes).reduce(0) { $0 + $1.utf8.count }
+            #expect(candidateBytes <= 3 * sourceBytes)
+            #expect(labels.count <= batch.frames.count * (ObservationContextLimits.maximumExcerptNonemptyLines + 1))
+            #expect(quotes.count <= batch.frames.count * (ObservationContextLimits.maximumExcerptNonemptyLines + 2))
+            let encoded = try JSONEncoder().encode(ObservationContextGenerationSchema.make(batch: batch, catalog: []))
+            print("CONTEXT_SCHEMA_BYTES schema=\(encoded.count) prompt=\(batch.prompt.utf8.count) instructions=\(ObservationContextClassifier.instructions.utf8.count); not token counts or actual model calls")
+            #expect(batch.prompt.count <= ObservationContextLimits.maximumPromptCharacters)
+        }
     }
     #endif
+
+    @Test("Fixed fields map to native IDs in source order and preserve unknown and multi-line ambiguity")
+    func fixedSlotMapping() throws {
+        let first = try frame("Cedar News • Browser SIMULATED\r\nInbox", at: 0)
+        let second = try frame("Morning Mail\r\nGarden Calendar", at: 1)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [first, second], catalog: []).batches.first)
+        let converted = try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+            "f1": slotProposal(quote: second.text, outcome: "ambiguous"),
+            "f0": slotProposal(label: "Cedar News • Browser SIMULATED")
+        ]), batch: batch, catalog: [])
+        let result = ObservationContextValidation.validate(json: converted, batch: batch, catalog: [])
+        #expect(result.responseWasValid && result.diagnostics.isEmpty)
+        #expect(result.decisions.map(\.sampleID) == [first.id, second.id])
+        #expect(result.decisions[0].evidenceQuote == "Cedar News • Browser SIMULATED")
+        #expect(result.decisions[1].evidence == .ambiguous(reference: second.evidenceReference))
+        #expect(result.decisions[1].evidenceQuote?.utf8.elementsEqual(second.text.utf8) == true)
+        let unknown = try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+            "f0": slotProposal(outcome: "unknown"), "f1": slotProposal(outcome: "unknown")
+        ]), batch: batch, catalog: [])
+        let abstained = ObservationContextValidation.validate(json: unknown, batch: batch, catalog: [])
+        #expect(abstained.responseWasValid && abstained.diagnostics.isEmpty)
+        #expect(abstained.decisions.map(\.sampleID) == [first.id, second.id])
+        #expect(abstained.decisions.allSatisfy { $0.evidence == .unknown })
+    }
+
+    @Test("A missing, extra, malformed or ID-bearing field cannot be repaired into a valid batch")
+    func fixedSlotShapeIsExact() throws {
+        let frames = try [frame("Cedar Mail", at: 0), frame("Garden Calendar", at: 1)]
+        let batch = try #require(ObservationContextValidation.prepare(frames: frames, catalog: []).batches.first)
+        let first = slotProposal(label: "Cedar Mail"), second = slotProposal(label: "Garden Calendar")
+        var injected = first; injected["sampleID"] = frames[1].id.uuidString
+        let invalid: [[String: Any]] = [
+            ["f0": first], ["f0": first, "f1": second, "f2": second],
+            ["f0": injected, "f1": second], ["frames": [first, second]],
+            ["f0": ["outcome": "identified", "contextLabel": 1, "evidenceQuote": "Cedar Mail"], "f1": second],
+            ["f0": slotProposal(label: "Cedar Mail", outcome: "guessed"), "f1": second]
+        ]
+        for value in invalid {
+            #expect(throws: ObservationContextFrameSlots.Invalid.response) {
+                try ObservationContextFrameSlots.validationJSON(from: guidedJSON(value), batch: batch, catalog: [])
+            }
+        }
+        #expect(throws: ObservationContextFrameSlots.Invalid.input) {
+            try ObservationContextFrameSlots.make(batch: .init(frames: [], excerpts: [], prompt: "{}"), catalog: [])
+        }
+        let five = try (0..<5).map { try frame("Cedar Mail", at: Double($0)) }
+        let prepared = try ObservationContextValidation.prepare(frames: five, catalog: [])
+        #expect(throws: ObservationContextFrameSlots.Invalid.input) {
+            try ObservationContextFrameSlots.make(batch: .init(frames: five, excerpts: prepared.inputSelection.excerpts, prompt: "{}"), catalog: [])
+        }
+    }
+
+    @Test("Slot conversion neither normalizes Unicode nor borrows a canonically equivalent other-frame quote")
+    func fixedSlotUnicodeIsExact() throws {
+        let first = try frame("Atelier Édition", at: 0), second = try frame("Atelier E\u{301}dition", at: 1)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [first, second], catalog: []).batches.first)
+        let converted = try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+            "f0": slotProposal(label: first.text), "f1": slotProposal(label: second.text)
+        ]), batch: batch, catalog: [])
+        let result = ObservationContextValidation.validate(json: converted, batch: batch, catalog: [])
+        #expect(result.responseWasValid && result.diagnostics.isEmpty)
+        #expect(result.decisions[0].evidenceQuote?.utf8.elementsEqual(first.text.utf8) == true)
+        #expect(result.decisions[1].evidenceQuote?.utf8.elementsEqual(second.text.utf8) == true)
+        #expect(throws: ObservationContextFrameSlots.Invalid.response) {
+            try ObservationContextFrameSlots.validationJSON(from: guidedJSON([
+                "f0": slotProposal(label: second.text), "f1": slotProposal(label: second.text)
+            ]), batch: batch, catalog: [])
+        }
+    }
+
+    private func slotProposal(label: String = "", quote: String? = nil, outcome: String = "identified") -> [String: String] {
+        ["outcome": outcome, "contextLabel": label, "evidenceQuote": quote ?? label]
+    }
+
+    private func guidedJSON(_ fields: [String: Any]) throws -> String {
+        String(decoding: try JSONSerialization.data(withJSONObject: fields, options: .sortedKeys), as: UTF8.self)
+    }
 
     @Test("Native diagnostics preserve only allowlisted system domain/code and decode older records")
     func sanitizedErrorPrivacyAndMigration() throws {
@@ -393,13 +735,21 @@ struct ObservationContextClassifierTests {
 
     @Test("Optional saved-evidence replay measures preparation only, with no model inference",
           .enabled(if: ProcessInfo.processInfo.environment["MO_OBSERVATION_REPLAY_PATH"] != nil))
+    @MainActor
     func replaySavedEvidencePreparation() throws {
         let environment = ProcessInfo.processInfo.environment
         let path = try #require(environment["MO_OBSERVATION_REPLAY_PATH"])
         let artifact = try JSONDecoder().decode(ReplayArtifact.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
         let input = try ObservationContextValidation.prepare(frames: artifact.evidence.frames, catalog: artifact.catalog)
         var possibilities: [ReplayPossibility] = []
+        var schemaBudgets: [ReplaySchemaBudget] = []
         for batch in input.batches {
+            #if canImport(FoundationModels)
+            let schema = try ObservationContextGenerationSchema.make(batch: batch, catalog: artifact.catalog)
+            schemaBudgets.append(.init(frameCount: batch.frames.count,
+                schemaUTF8Bytes: try JSONEncoder().encode(schema).count, promptUTF8Bytes: batch.prompt.utf8.count,
+                instructionUTF8Bytes: ObservationContextClassifier.instructions.utf8.count))
+            #endif
             for frame in batch.frames {
                 let excerpt = try #require(batch.excerpts.first { $0.sampleID == frame.id })
                 for line in excerpt.text.split(whereSeparator: { $0.isNewline }).map({ $0.trimmingCharacters(in: .whitespaces) }) {
@@ -417,13 +767,14 @@ struct ObservationContextClassifierTests {
             }
         }
         let report = ReplayPreparationReport(
-            scope: "Pure preparation/validation replay. Possibilities are deterministic lexical candidates, not model outputs or foreground-app verification. No model was invoked.",
+            scope: "Pure preparation/validation replay. Possibilities are deterministic lexical candidates, not model outputs or foreground-app verification. UTF-8 byte measurements are not token counts, submittedCharacterCount or actual model calls. No model was invoked.",
             sourceFrameCount: artifact.evidence.frames.count,
             selectedFrameCount: input.inputSelection.excerpts.count,
             selectedCharacterCount: input.inputSelection.excerpts.reduce(0) { $0 + $1.text.count },
             excludedSampleIDs: input.initialDecisions.filter { decision in
                 !input.inputSelection.excerpts.contains { $0.sampleID == decision.sampleID }
             }.map { $0.sampleID },
+            schemaBudgetMeasurements: schemaBudgets,
             catalogValidationPossibilities: possibilities,
             inputSelection: input.inputSelection)
         #expect(report.selectedFrameCount <= ObservationContextLimits.maximumFrames)
@@ -451,12 +802,19 @@ struct ObservationContextClassifierTests {
         let catalogLabel: String
         let rawEvidenceQuote: String
     }
+    private struct ReplaySchemaBudget: Encodable {
+        let frameCount: Int
+        let schemaUTF8Bytes: Int
+        let promptUTF8Bytes: Int
+        let instructionUTF8Bytes: Int
+    }
     private struct ReplayPreparationReport: Encodable {
         let scope: String
         let sourceFrameCount: Int
         let selectedFrameCount: Int
         let selectedCharacterCount: Int
         let excludedSampleIDs: [UUID]
+        let schemaBudgetMeasurements: [ReplaySchemaBudget]
         let catalogValidationPossibilities: [ReplayPossibility]
         let inputSelection: ObservationContextInputSelection
     }

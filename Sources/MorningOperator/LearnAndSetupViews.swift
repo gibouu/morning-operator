@@ -27,7 +27,7 @@ struct LearnView: View {
 
     private var learningContent: some View {
         VStack(alignment: .leading, spacing: 24) {
-            PageHeading(eyebrow: String(localized: "Your rhythm", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), title: String(localized: "Make your morning yours.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+            PageHeading(eyebrow: AppLanguage.localized("Your rhythm"), title: AppLanguage.localized("Make your morning yours."))
 
             NavigationLink {
                 ScrollView {
@@ -39,8 +39,8 @@ struct LearnView: View {
                 }
                     .background(MorningPaper(showsSun: false)).navigationTitle("Screen Time").navigationBarTitleDisplayMode(.inline)
             } label: {
-                LinkRow(title: String(localized: "1 · See your rhythm", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
-                        detail: String(localized: "Start with your real Screen Time", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "clock")
+                LinkRow(title: AppLanguage.localized("1 · See your rhythm"),
+                        detail: AppLanguage.localized("Start with your real Screen Time"), symbol: "clock")
                     .padding(MorningTheme.Space.card)
                     .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
             }.buttonStyle(.plain).accessibilityIdentifier("learn.screenTime")
@@ -77,14 +77,14 @@ struct LearnView: View {
             }
 
             NavigationLink { MorningConnectionsView(store: store) } label: {
-                LinkRow(title: String(localized: "2 · Make yourself at home", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
-                        detail: String(localized: "Connect the apps you use", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "link")
+                LinkRow(title: AppLanguage.localized("2 · Make yourself at home"),
+                        detail: AppLanguage.localized("Connect the apps you use"), symbol: "link")
                     .padding(MorningTheme.Space.card)
                     .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
             }.buttonStyle(.plain).accessibilityIdentifier("learn.connections")
 
             Button { showingSavedObservations = true } label: {
-                LinkRow(title: String(localized: "Saved observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
+                LinkRow(title: AppLanguage.localized("Saved observations"),
                         detail: AppLanguage.isFrench ? "Réunir les matinées que vous avez enregistrées" : "Bring your saved mornings together", symbol: "doc.text.image")
                     .padding(MorningTheme.Space.card)
                     .background(MorningStyle.surface, in: RoundedRectangle(cornerRadius: MorningTheme.Space.radius))
@@ -92,7 +92,7 @@ struct LearnView: View {
 
             Card {
                 VStack(alignment: .leading, spacing: 18) {
-                    sectionTitle(store.hasImportedObservation ? String(localized: "What we could see", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "A few words", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "pencil.and.outline")
+                    sectionTitle(store.hasImportedObservation ? AppLanguage.localized("What we could see") : AppLanguage.localized("A few words"), symbol: "pencil.and.outline")
                     Text(store.hasImportedObservation
                          ? String(localized: "Edit what we found. Your original stays saved.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
                          : String(localized: "What would make a good morning?", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
@@ -266,7 +266,7 @@ struct LearnView: View {
                 .accessibilityIdentifier("learn.reviewProposal")
         }
         if !store.canSuggestSavedObservations {
-            Label(store.routinePreferencesIssue ?? String(localized: "On-device suggestions aren't ready here yet. You can build and edit your routine yourself.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), systemImage: "info.circle")
+            Label(store.routinePreferencesIssue ?? AppLanguage.localized("On-device suggestions aren't ready here yet. You can build and edit your routine yourself."), systemImage: "info.circle")
                 .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -363,7 +363,7 @@ struct LearnView: View {
     private var showMorningCard: some View {
         Card {
             VStack(alignment: .leading, spacing: 18) {
-                sectionTitle(String(localized: "Show your morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "rectangle.on.rectangle")
+                sectionTitle(AppLanguage.localized("Show your morning"), symbol: "rectangle.on.rectangle")
                 Text("Record a moment, or add a file.")
                     .font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -501,7 +501,7 @@ struct SetupView: View {
                             MorningAudioRoutePicker()
                         }
                         #else
-                        Text(String(localized: "Choose a speaker or HomePod from your Mac's sound controls, then try the voice here.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                        Text(AppLanguage.localized("Choose a speaker or HomePod from your Mac's sound controls, then try the voice here."))
                         #endif
                         Text("Speaker output doesn't connect a HomePod microphone. Room-to-room listening isn't available yet.")
                             .fixedSize(horizontal: false, vertical: true)
@@ -606,20 +606,24 @@ struct SetupView: View {
 }
 
 struct StepEditor: View {
+    @Bindable var store: MorningStore
     @Environment(\.dismiss) private var dismiss
     @ViewState<RoutineStep> var step: RoutineStep
     @ViewState<Bool> private var keepInSuggestions: Bool
     @ViewState<Bool> private var keepDuration: Bool
     @ViewState<Bool> private var choosingRemoval = false
     @ViewState<String?> private var saveError = nil
+    @ViewState<Bool> private var choosingSlack = false
+    let assignmentContext: RoutineStepAssignmentContext?
     let onSave: (RoutineStep, Bool, Bool) -> Bool
     let onDelete: (Bool) -> Bool
     let failureMessage: () -> String
 
-    init(step: RoutineStep, preference: RoutinePreference?,
+    init(store: MorningStore, step: RoutineStep, preference: RoutinePreference?, assignmentContext: RoutineStepAssignmentContext?,
          onSave: @escaping (RoutineStep, Bool, Bool) -> Bool,
          onDelete: @escaping (Bool) -> Bool, failureMessage: @escaping () -> String) {
         _step = ViewState(initialValue: step)
+        self.store = store; self.assignmentContext = assignmentContext
         _keepInSuggestions = ViewState(initialValue: preference?.presence == .keep)
         _keepDuration = ViewState(initialValue: preference?.durationMinutes != nil)
         self.onSave = onSave; self.onDelete = onDelete; self.failureMessage = failureMessage
@@ -673,7 +677,7 @@ struct StepEditor: View {
                 }
                 Section {
                     Picker("Action", selection: $step.automation) {
-                        Text(step.target == nil ? String(localized: "User-led moment", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        Text(step.target == nil ? AppLanguage.localized("User-led moment")
                              : (AppLanguage.isFrench ? "Action choisie ci-dessous" : "Action chosen below"))
                             .tag(Optional<RoutineStepAutomation>.none)
                         Text("Read this text aloud").tag(Optional(RoutineStepAutomation.spokenNote))
@@ -692,6 +696,21 @@ struct StepEditor: View {
                     Text(automationExplanation)
                 }
                 StepTargetEditor(target: $step.target, reviewedDetail: step.detail)
+                if assignmentContext != nil {
+                    Section {
+                        Button(AppLanguage.isFrench ? "Choisir un compte et un canal Slack" : "Choose a Slack account and channel") { choosingSlack = true }
+                            .disabled(store.busy || store.sessionActive || store.privacyBlocksWork)
+                            .accessibilityIdentifier("step.chooseSlack")
+                        if let sourceLabel = step.reviewedSourceLabel {
+                            Text(AppLanguage.isFrench ? "Source choisie" : "Selected source").font(.caption)
+                            Text(sourceLabel).fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("step.selectedSlackSource")
+                            Text(AppLanguage.isFrench ? "Votre note personnelle est conservée. Enregistrez, puis relisez et validez la routine."
+                                : "Your personal note is retained. Save, then review and approve the routine.")
+                                .font(.footnote)
+                        }
+                    } header: { Text(AppLanguage.isFrench ? "Pour ce moment" : "For this moment") }
+                }
                 if case let .inAppWeb(url) = step.target, let site = WebMorningSite(url: url), site != .gmail {
                     Section {
                         Picker(AppLanguage.isFrench ? "Ce que MORE fait" : "What MORE does", selection: $step.webBehavior) {
@@ -718,6 +737,7 @@ struct StepEditor: View {
                     Section { Text(saveError).foregroundStyle(.red).accessibilityIdentifier("step.saveError") }
                 }
             }
+            .accessibilityIdentifier("step.editor.form")
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .background(MorningStyle.background)
@@ -731,7 +751,7 @@ struct StepEditor: View {
                         do { try edited.target?.validateIntegration() }
                         catch { saveError = error.moreDescription; return }
                         edited.title = edited.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if edited.automation != .savedObservation { edited.observationReference = nil }
+                        if edited.automation != .savedObservation && edited.reviewedSourceLabel == nil { edited.observationReference = nil }
                         if edited.target != nil { edited.automation = nil }
                         if case let .inAppWeb(url) = edited.target, let site = WebMorningSite(url: url), let behavior = edited.webBehavior {
                             guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
@@ -767,6 +787,22 @@ struct StepEditor: View {
             } message: {
                 Text("Removing only this draft leaves saved choices intact. Excluding also asks future suggestions to leave this activity out until you clear that choice.")
             }
+            .sheet(isPresented: $choosingSlack) {
+                NavigationStack {
+                    SlackRoutineSetupView(store: store, assignmentContext: assignmentContext, onUse: { target, sourceLabel in
+                        guard let assignmentContext else { return false }
+                        do {
+                            step = try assignmentContext.assigning(target, to: step, routine: store.routine,
+                                generation: store.dataGeneration, sourceLabel: sourceLabel)
+                            choosingSlack = false
+                            return true
+                        } catch { saveError = error.moreDescription; return false }
+                    })
+                    .toolbar { ToolbarItem(placement: .cancellationAction) {
+                        Button(AppLanguage.isFrench ? "Annuler" : "Cancel") { choosingSlack = false }
+                    } }
+                }
+            }
             #if os(macOS)
             .frame(minWidth: 420, idealWidth: 500, minHeight: 500, idealHeight: 540)
             #endif
@@ -782,15 +818,15 @@ struct StepEditor: View {
         if step.target != nil { return step.executionDescription }
         return switch step.automation {
         case .none:
-            String(localized: "Take this moment at your own pace, then tap Next when you're ready.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            AppLanguage.localized("Take this moment at your own pace, then tap Next when you're ready.")
         case .spokenNote:
-            String(localized: "Reads the text you approve for this step. Speaking the instructions doesn't carry out the activity they describe.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            AppLanguage.localized("Reads the text you approve for this step. Speaking the instructions doesn't carry out the activity they describe.")
         case .todayCalendar:
-            String(localized: "Reads today's remaining events from calendars you select in Your day. Calendar access and spoken guidance are required.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            AppLanguage.localized("Reads today's remaining events from calendars you select in Your day. Calendar access and spoken guidance are required.")
         case .morningBriefing:
-            String(localized: "Reads a current recap from the calendars and optional city you choose in Your day. Available sources are prepared before speech; no events are changed.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            AppLanguage.localized("Reads a current recap from the calendars and optional city you choose in Your day. Available sources are prepared before speech; no events are changed.")
         case .savedObservation:
-            String(localized: "Reads the dated excerpt you selected. If the source changes or is deleted, playback stops for review. This is a saved observation, not a live inbox.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            AppLanguage.localized("Reads the dated excerpt you selected. If the source changes or is deleted, playback stops for review. This is a saved observation, not a live inbox.")
         case .timedMoment, .gmailInbox:
             step.executionDescription
         }

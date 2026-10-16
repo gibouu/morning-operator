@@ -27,7 +27,10 @@ struct MorningRootView: View {
     @ViewState<[HomeRoute]> private var path: [HomeRoute] = []
     private func route(_ route: HomeRoute) -> Bool { path.contains(route) }
     private func setRoute(_ route: HomeRoute, _ visible: Bool) {
-        if visible { if !path.contains(route) { path.append(route) } }
+        if visible {
+            if let index = path.firstIndex(of: route) { path.removeSubrange((index + 1)...) }
+            else { path.append(route) }
+        }
         else if let index = path.firstIndex(of: route) { path.removeSubrange(index...) }
     }
     private var showingSettings: Bool {
@@ -76,7 +79,7 @@ struct MorningRootView: View {
                            notice: store.notice,
                            session: store.session,
                            testingSessionSnapshot: store.uiTestSessionSnapshot,
-                           playback: store.sessionActive ? AnyView(MorningHomePlaybackView(store: store, openSettings: { showingSettings = true }).id(store.currentStep?.id)) : nil,
+                           playback: store.sessionActive && !store.privacyBlocksWork ? AnyView(MorningHomePlaybackView(store: store, openSettings: { showingActions = false; showingSettings = true }).id(store.currentStep?.id)) : nil,
                            begin: {
                                guard !store.sessionActive else { return }
                                // No routine yet: begin by learning the morning.
@@ -101,7 +104,7 @@ struct MorningRootView: View {
                     case .routine:
                         RoutineReviewEditor(store: store, onLearn: { showingLearn = true }, showsClose: false)
                     case .learn:
-                        destinationContent(String(localized: "Learn my morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), displayTitle: String(localized: "Learn", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)) {
+                        destinationContent(AppLanguage.localized("Learn my morning"), displayTitle: AppLanguage.localized("Learn")) {
                             LearnView(store: store, onClose: { learnPushed = false; if store.routine != nil { showingRoutineEditor = true } })
                         }
                     case .history:
@@ -505,14 +508,14 @@ struct MorningRootView: View {
                 storageIsAvailable: store.storageIsAvailable, hasRoutine: store.routine != nil,
                 routineIsApproved: store.routine?.isApproved == true, sessionStatus: store.session?.status),
             consumedIDs: store.consumedMorningEntryIDs)
-        let waitingNotice = String(localized: "Your morning is waiting. Finish what you're doing here, then MORE can begin.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        let waitingNotice = AppLanguage.localized("Your morning is waiting. Finish what you're doing here, then MORE can begin.")
         guard destination != .wait else {
             if scenePhase == .active, store.notice == nil { store.notice = waitingNotice }
             return
         }
         if store.notice == waitingNotice { store.notice = nil }
         if Date.now >= request.expiresAt {
-            store.notice = String(localized: "Your morning is ready when you are. Tap Start to begin.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            store.notice = AppLanguage.localized("Your morning is ready when you are. Tap Start to begin.")
         }
         if let payload = router.invitationPayload {
             do {
@@ -522,7 +525,7 @@ struct MorningRootView: View {
                 if used == nil || used?.learningTarget != nil { destination = .revealMorning }
             } catch {
                 destination = .revealMorning
-                store.notice = String(localized: "Your invitation couldn't be saved. Start your morning when you're ready.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                store.notice = AppLanguage.localized("Your invitation couldn't be saved. Start your morning when you're ready.")
             }
         }
         // Acknowledge before navigation changes trigger another view update. The
@@ -863,8 +866,8 @@ struct TodayView: View {
                 }.font(.raleway(.caption2)).foregroundStyle(MorningStyle.muted).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                     .background(MorningStyle.background)
             }.buttonStyle(.plain)
-                .accessibilityLabel(upcoming == nil ? String(localized: "Set morning invitation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Edit morning invitation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
-                .accessibilityValue(upcoming?.formatted(Date.FormatStyle(date: .complete, time: .shortened, locale: AppLanguage.locale)) ?? String(localized: "No upcoming invitation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                .accessibilityLabel(upcoming == nil ? AppLanguage.localized("Set morning invitation") : AppLanguage.localized("Edit morning invitation"))
+                .accessibilityValue(upcoming?.formatted(Date.FormatStyle(date: .complete, time: .shortened, locale: AppLanguage.locale)) ?? AppLanguage.localized("No upcoming invitation"))
                 .accessibilityIdentifier("morning.invitation")
                 .disabled(!canEditInvitation || !store.storageIsAvailable)
         }
@@ -1058,7 +1061,7 @@ struct TodayView: View {
                 // labelled without a line of its own: ten moments fit (issue #67).
                 if store.routine?.isSynthetic == true, sampleLabelInNowCard { sampleLabel }
             }
-            Text(store.currentStep?.title ?? String(localized: "Your morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+            Text(store.currentStep?.title ?? AppLanguage.localized("Your morning"))
                 .font(.serif(.headline)).accessibilityIdentifier("run.step")
                 .accessibilityValue(store.openingRoutineStartObservation)
             if compact {
@@ -1236,7 +1239,7 @@ private struct MorningActionDock: View {
     @ViewBuilder private var actionItems: some View {
         if let session = store.session, store.sessionActive {
             let intendsResume = session.status == .paused
-            action(intendsResume ? String(localized: "Continue", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Pause", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: intendsResume ? .play : .pause,
+            action(intendsResume ? AppLanguage.localized("Continue") : AppLanguage.localized("Pause"), symbol: intendsResume ? .play : .pause,
                    id: "morning.playback") {
                 // Honor the displayed command and original session, never toggle
                 // whatever state an interruption may have produced meanwhile.
@@ -1251,7 +1254,7 @@ private struct MorningActionDock: View {
             }
         } else if let routine = store.routine {
             let generation = store.dataGeneration
-            action(routine.isApproved ? String(localized: "Play", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Review", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
+            action(routine.isApproved ? AppLanguage.localized("Play") : AppLanguage.localized("Review"),
                    symbol: routine.isApproved ? .play : .review,
                    id: routine.isApproved ? "run.start" : "morning.reviewDraft",
                    keepsExpanded: routine.isApproved) {
@@ -1262,7 +1265,7 @@ private struct MorningActionDock: View {
                 } else { edit() }
             }
         } else {
-            action(String(localized: "Sample", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: .play, id: "morning.sample") { store.loadSample() }
+            action(AppLanguage.localized("Sample"), symbol: .play, id: "morning.sample") { store.loadSample() }
         }
     }
 

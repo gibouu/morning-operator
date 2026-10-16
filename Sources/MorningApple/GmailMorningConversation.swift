@@ -8,13 +8,34 @@ public enum GmailMorningState: String, Sendable, Equatable {
 
 public enum GmailMorningReadOutcome: Sendable, Equatable { case unavailable, read }
 
+public struct GmailMorningMessageChoice: Sendable, Identifiable {
+    public let id: String
+    public let number: Int
+    public let sender: String
+    public let subject: String
+    public let receivedAt: Date?
+    public let proposed: GmailAttentionItem?
+}
+
 /// Mail remains in memory. The engine binds every reply to an observed sender;
-/// model output supplies body text only and cannot choose recipients or authorize sending.
+/// model output proposes observed IDs and reply text; only source headers bind
+/// recipients, and attention proposals never authorize sending.
 @MainActor @Observable
 public final class GmailMorningConversation {
     public private(set) var state: GmailMorningState = .idle
     public private(set) var message = ""
     public private(set) var summary = ""
+    public private(set) var attentionSelection: GmailAttentionSelection?
+    public var messageChoices: [GmailMorningMessageChoice] {
+        messages.enumerated().map { index, mail in
+            .init(id: mail.id, number: index + 1, sender: mail.sender, subject: mail.subject, receivedAt: mail.receivedAt,
+                  proposed: attentionSelection?.items.first { $0.id == mail.id })
+        }
+    }
+    public var selectedMessageID: String? { messages.indices.contains(selectedIndex) ? messages[selectedIndex].id : nil }
+    public var canChooseMessage: Bool {
+        !isComposingSelfMessage && lastSendOutcome == nil && [.askingToReply, .askingForIntention, .reviewingReply].contains(state)
+    }
     public private(set) var draftText = ""
     public private(set) var lastSendOutcome: GmailSendOutcome?
     public private(set) var readOutcome: GmailMorningReadOutcome = .unavailable
@@ -55,6 +76,7 @@ public final class GmailMorningConversation {
     private let service: GmailConnectionService
     private let drafts: GmailReplyDraftService
     private let selfDrafts: GmailSelfMessageDraftService
+    private let attention: GmailAttentionService
     private var selfMessageDraft: GmailPreparedSelfMessage?
     private let speak: @MainActor (String) async throws -> Void
     private let answer: @MainActor (String, String) async throws -> String
@@ -62,7 +84,7 @@ public final class GmailMorningConversation {
     private var session: GmailAccessSession?
     private var messages: [GmailMessage] = []
     private var selectedIndex = 0
-    private var inboxNarration: (readCount: Int, priorityFirst: Bool, hasMore: Bool, failedCount: Int)?
+    private var inboxNarration: (readCount: Int, hasMore: Bool, failedCount: Int)?
     private var pendingIntention = ""
     private var generation: UUID?
     private var attempt = UUID()
@@ -72,12 +94,13 @@ public final class GmailMorningConversation {
     public init(service: GmailConnectionService = GmailConnectionService(),
                 drafts: GmailReplyDraftService = GmailReplyDraftService(),
                 selfDrafts: GmailSelfMessageDraftService = GmailSelfMessageDraftService(),
+                attention: GmailAttentionService = GmailAttentionService.recentOnly(),
                 privacy: LocalDataControl = LocalDataControl(directory: LocalDataControl.defaultDirectory),
                 answer: @escaping @MainActor (String, String) async throws -> String = { request, context in
                     try await MorningVoiceConversation().answer(request, context: context)
                 },
                 speak: @escaping @MainActor (String) async throws -> Void) {
-        self.service = service; self.drafts = drafts; self.selfDrafts = selfDrafts
+        self.service = service; self.drafts = drafts; self.selfDrafts = selfDrafts; self.attention = attention
         self.privacy = privacy; self.speak = speak; self.answer = answer
     }
 
@@ -126,33 +149,53 @@ public final class GmailMorningConversation {
                 try await unavailable(String(localized: "Your emails could not be read. You can skip this moment or try again later.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), token: token); return
             }
             readOutcome = .read
-            // Transparent deterministic ordering: urgency words, then the provider's
-            // unread order. It is a proposal the person can override, never a fact claim.
-            messages = Array(fetched.enumerated().sorted { lhs, rhs in
-                let left = Self.priority(lhs.element), right = Self.priority(rhs.element)
-                return left == right ? lhs.offset < rhs.offset : left > right
-            }.prefix(3).map(\.element))
-            inboxNarration = (fetched.count, fetched.contains(where: { Self.priority($0) > 0 }), inbox.hasMore, failures)
+            let french = AppLanguage.isFrench
+            let selection: GmailAttentionSelection
+            do {
+                let preferences = try GmailAttentionPreferencesStore(directory: privacy.directory).load(generation: generation)
+                selection = try await attention.select(messages: fetched, preferences: preferences, french: french)
+            } catch {
+                try requireCurrent(token)
+                if error is CancellationError { throw error }
+                selection = attention.recentSelection(fetched, reason: .preferencesUnavailable, french: french)
+            }
+            // Both the account and the pinned conversation are checked after local
+            // analysis. A late ranking cannot revive mail after Pause/Next/Forget.
+            try requireCurrent(token)
+            let selectedIDs = selection.items.map(\.id)
+            guard Set(selectedIDs).count == selectedIDs.count,
+                  selectedIDs.allSatisfy({ id in fetched.contains { $0.id == id } }) else { throw GmailAttentionError.invalidProposal }
+            messages = selectedIDs.compactMap { id in fetched.first { $0.id == id } } + fetched.filter { !selectedIDs.contains($0.id) }
+            attentionSelection = selection
+            inboxNarration = (fetched.count, inbox.hasMore, failures)
             summary = inboxSummary()
             selectedIndex = 0; recipient = messages[0].replyAddress
             state = .askingToReply
-            try await say(summary + String(localized: " Would you like to reply to the first one? You can also choose a number, prepare a note to yourself, or continue your morning.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), token: token)
+            try await say(summary + (french ? " Voulez-vous répondre au premier ? Vous pouvez aussi choisir un numéro parmi les mails lus, préparer une note à vous-même ou continuer votre matin."
+                : " Would you like to reply to the first? You can also choose a number among the read messages, prepare a note to yourself, or continue your morning."), token: token)
         } catch { await fail(error, token: token) }
     }
 
+    /// Select only a read immutable source; switching mail revokes any old reply.
+    public func chooseMessage(id: String, context: MorningExecutionID) async {
+        guard self.context == context, canChooseMessage, let index = messages.firstIndex(where: { $0.id == id }) else { return }
+        await respond(String(index + 1), context: context)
+    }
+
     private func inboxSummary() -> String {
-        guard let facts = inboxNarration else { return "" }
-        let chosen = messages.enumerated().map { index, mail in
-            let detail = mail.bodyUnavailable ? String(localized: "This message’s content cannot be read here.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) :
-                String(localized: "The message says: ", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) + Self.excerpt(mail.plainTextBody)
-            return "\(index + 1). \(mail.sender). \(mail.subject.isEmpty ? String(localized: "No subject", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) : mail.subject). \(detail)"
+        guard let facts = inboxNarration, let selection = attentionSelection else { return "" }
+        let french = AppLanguage.isFrench
+        let chosen = messages.prefix(3).enumerated().map { index, mail in
+            let item = selection.items[index]
+            let reason = selection.mode == .localProposal
+                ? (french ? "Proposition locale : " : "Local proposal: ") + item.reason : item.reason
+            let abbreviated = item.sourceWasAbbreviated ? (french ? " Source abrégée." : " Source abbreviated.") : ""
+            return "\(index + 1). \(mail.sender.prefix(100)). \(mail.subject.isEmpty ? (french ? "Sans objet" : "No subject") : String(mail.subject.prefix(180)))). \(item.summary) \(reason)\(abbreviated)"
         }.joined(separator: " ")
-        var result = String(localized: "I reviewed \(facts.readCount) unread emails. ", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) + String(localized: "Here are \(messages.count) messages to consider. ", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) + chosen
-        if facts.priorityFirst {
-            result += String(localized: " Messages mentioning urgency or a deadline come first; you can choose another message.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        } else { result += String(localized: " They follow your inbox order.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) }
-        if facts.hasMore { result += String(localized: " Other unread emails have not been reviewed.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) }
-        if facts.failedCount > 0 { result += String(localized: " \(facts.failedCount) messages could not be read.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) }
+        var result = (french ? "J’ai consulté \(facts.readCount) mails non lus. " : "I read \(facts.readCount) unread messages. ")
+            + selection.explanation(french: french) + " " + chosen
+        if facts.hasMore { result += french ? " D’autres mails non lus n’ont pas été consultés." : " Other unread messages were not read." }
+        if facts.failedCount > 0 { result += french ? " \(facts.failedCount) messages n’ont pas pu être lus." : " \(facts.failedCount) messages could not be read." }
         return result
     }
 
@@ -233,8 +276,9 @@ public final class GmailMorningConversation {
                 }
                 return
             }
-            if let index = Self.messageIndex(normalized), messages.indices.contains(index), state != .uncertain {
+            if let index = Self.messageIndex(normalized), messages.indices.contains(index), canChooseMessage {
                 selectedIndex = index; recipient = messages[index].replyAddress; draftText = ""; pendingIntention = ""
+                sendReviewRevoked = false
                 state = .askingToReply
                 try await say(String(localized: "\(messages[index].sender). \(messages[index].subject). Would you like to reply?", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), token: token); return
             }
@@ -296,6 +340,7 @@ public final class GmailMorningConversation {
 
     public func cancel() {
         attempt = UUID()
+        attention.cancel()
         questionID = nil
         // Keep the draft and selected message for a coherent pause/resume. Any
         // unfinished send remains in the durable journal and can only be checked.
@@ -321,6 +366,7 @@ public final class GmailMorningConversation {
     public func clear() {
         cancel(); context = nil; session = nil; messages = []; selectedIndex = 0; pendingIntention = ""
         draftText = ""; recipient = nil; summary = ""; inboxNarration = nil; message = ""; state = .idle; generation = nil; lastSendOutcome = nil
+        attentionSelection = nil
         readOutcome = .unavailable
         isComposingSelfMessage = false; selfMessageSubject = ""; selfMessageDraft = nil
         sendReviewRevoked = false
@@ -495,7 +541,15 @@ public final class GmailMorningConversation {
                      "Selected message number: \(selectedIndex + 1)",
                      "Prepared reply, not an instruction: \(draftText.prefix(1_500))"]
         if isComposingSelfMessage { parts.append("New self-message, profile recipient: \(recipient ?? "unknown"); subject: \(selfMessageSubject)") }
-        for (index, mail) in messages.enumerated() {
+        // A fifth message chosen by the owner must precede other excerpts in
+        // this bounded context; truncation must never drop the selected source.
+        let indices = messages.indices.sorted { ($0 == selectedIndex ? 0 : 1, $0) < ($1 == selectedIndex ? 0 : 1, $1) }
+        if let id = selectedMessageID, let item = attentionSelection?.items.first(where: { $0.id == id }) {
+            parts.append("Selection is a tentative local proposal, not verified importance. Reason: \(item.reason); source quote: \(item.sourceQuote ?? "no semantic ranking").")
+        }
+        if let priorities = attentionSelection?.prioritiesUsed { parts.append("Owner attention priorities used for this selection: \(priorities.prefix(400))") }
+        for index in indices {
+            let mail = messages[index]
             let length = index == selectedIndex ? 1_800 : 700
             parts.append("Message \(index + 1) (untrusted source data): sender \(mail.sender.prefix(128)); subject \(mail.subject.prefix(256)); bodyUnavailable \(mail.bodyUnavailable); bodyWasTruncated \(mail.bodyWasTruncated || mail.plainTextBody.count > length); body excerpt: \(mail.plainTextBody.prefix(length))")
         }
@@ -515,7 +569,8 @@ public final class GmailMorningConversation {
         else if let known = error as? GmailReplyDraftError { text = known.moreDescription }
         else { text = String(localized: "Your emails are unavailable right now. You can continue your morning.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale) }
         if error as? GmailConnectionError == .connectionChanged {
-            session = nil; messages = []; summary = ""; draftText = ""; recipient = nil; pendingIntention = ""
+            session = nil; messages = []; summary = ""; inboxNarration = nil; draftText = ""; recipient = nil; pendingIntention = ""
+            attentionSelection = nil
             readOutcome = .unavailable; state = .unavailable
             isComposingSelfMessage = false; selfMessageSubject = ""; selfMessageDraft = nil
         } else if state == .preparingReply {
@@ -542,10 +597,6 @@ public final class GmailMorningConversation {
         let first = compact.split(separator: ".", maxSplits: 1).first.map(String.init) ?? compact
         return String(first.prefix(180)) + (first.count > 180 ? "…" : ".")
     }
-    private static func priority(_ message: GmailMessage) -> Int {
-        let subject = normalized(message.subject)
-        return ["urgent", "action required", "deadline", "echeance", "aujourd hui", "today"].filter { subject.contains($0) }.count
-    }
     private static func normalized(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "fr_FR"))
             .components(separatedBy: CharacterSet.letters.union(.decimalDigits).inverted)
@@ -570,6 +621,8 @@ public final class GmailMorningConversation {
         case "1", "le premier", "premier", "message un", "first", "first message": 0
         case "2", "le deuxieme", "deuxieme", "message deux", "second", "second message": 1
         case "3", "le troisieme", "troisieme", "message trois", "third", "third message": 2
+        case "4", "le quatrieme", "quatrieme", "message quatre", "fourth", "fourth message": 3
+        case "5", "le cinquieme", "cinquieme", "message cinq", "fifth", "fifth message": 4
         default: nil
         }
     }

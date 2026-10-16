@@ -9,13 +9,13 @@ public struct ScreenTimeMomentSelection: Codable, Equatable, Sendable {
     /// Nil uses all eligible candidates; an explicit empty list adds no baseline.
     public let includedBundleIdentifiers: [String]?
     public init(referenceDate: Date, includedBundleIdentifiers: Set<String>? = nil) throws {
-        policyVersion = 1
+        policyVersion = 2
         self.referenceDate = referenceDate
         self.includedBundleIdentifiers = includedBundleIdentifiers.map { $0.sorted() }
         try validate()
     }
     public func validate() throws {
-        guard policyVersion == 1, referenceDate.timeIntervalSince1970.isFinite,
+        guard policyVersion == 2, referenceDate.timeIntervalSince1970.isFinite,
               referenceDate.timeIntervalSince1970 >= -62_135_596_800,
               referenceDate.timeIntervalSince1970 < 253_402_300_800,
               includedBundleIdentifiers.map({ ids in

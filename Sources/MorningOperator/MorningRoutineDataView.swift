@@ -123,7 +123,7 @@ struct MorningRoutineDataView: View {
             } catch {
                 guard !Task.isCancelled, importAttempt == attempt, store.dataGeneration == generation, !store.privacyBlocksWork else { return }
                 importLoading = false
-                importError = String(localized: "This file couldn't be opened: \(error.moreDescription) Your current routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                importError = AppLanguage.localized("This file couldn't be opened: \(error.moreDescription) Your current routine is unchanged.")
             }
             importTask = nil
         }

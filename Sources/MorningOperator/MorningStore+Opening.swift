@@ -299,7 +299,7 @@ extension MorningStore {
                 openingPresentation?.document = document
                 openingPresentation?.opening = MorningOpeningComposer.compose(briefing: document, at: Date(),
                     timeZoneIdentifier: TimeZone.current.identifier, offersBrief: false)
-                notice = String(localized: "This recap needs an update before playback.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("This recap needs an update before playback.")
                 handOverOpening(after: .failed)
                 return
             }

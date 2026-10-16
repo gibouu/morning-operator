@@ -5,6 +5,26 @@ import XCTest
 final class ObservationReviewJourneyTests: XCTestCase {
     private let clipSuffix = "000000000101"
 
+    func testHistoryReturnsToExistingSettingsWithoutDuplicatingItsBackStack() {
+        let app = launch()
+        MorningUITestNavigation.tapButton("morning.settings", in: app)
+        MorningUITestNavigation.tapButton("setup.history", in: app)
+        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.tapButton("navigation.setup", in: app)
+        let history = app.buttons["setup.history"]
+        XCTAssertTrue(history.waitForExistence(timeout: 5))
+        XCTAssertTrue(MorningUITestNavigation.becomesHittable(history), app.debugDescription)
+        attach("history-returned-to-existing-settings", app)
+        let back = app.navigationBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.exists && MorningUITestNavigation.becomesHittable(back), app.debugDescription)
+        back.tap()
+        XCTAssertTrue(app.navigationBars.firstMatch.waitForNonExistence(timeout: 5),
+                      "One Back must return Home, without a duplicate Settings or History destination.")
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(MorningUITestNavigation.becomesHittable(app.buttons["morning.actions"]), app.debugDescription)
+        attach("history-settings-one-back-to-home", app)
+    }
+
     func testWeeklySourcesOpenExactSamplesAndKeepUnknownDays() throws {
         let app = launch()
         MorningUITestNavigation.reviewAction("review.recordedPatterns", in: app)
@@ -67,14 +87,19 @@ final class ObservationReviewJourneyTests: XCTestCase {
         attach("recorded-tied-samples-originals", app)
         MorningUITestNavigation.tapButton("observation.sample.close", in: app)
         MorningUITestNavigation.tapButton("observation.edit", in: app)
+        XCTAssertTrue(app.navigationBars["Learn my morning"].waitForExistence(timeout: 5))
         let editor = app.textViews["learn.notes"]
+        if !editor.exists {
+            // Imported video text is deliberately folded beneath its observed
+            // app sequence. Open that visible disclosure before correcting it.
+            tap(app.buttons["Text read on screen"], in: app)
+        }
         reveal(editor, in: app)
         editor.tap()
         editor.typeText(" A synthetic correction for review testing.")
         if app.buttons["input.done"].isHittable { app.buttons["input.done"].tap() }
-        let back = app.navigationBars.buttons["BackButton"].firstMatch
-        XCTAssertTrue(back.waitForExistence(timeout: 5))
-        XCTAssertTrue(back.isHittable)
+        let back = app.navigationBars["Learn my morning"].buttons.element(boundBy: 0)
+        XCTAssertTrue(back.exists && MorningUITestNavigation.becomesHittable(back), app.debugDescription)
         back.tap()
         XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
         app.terminate()

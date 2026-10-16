@@ -635,6 +635,43 @@ struct OwnInterfaceWordingTests {
         #expect(unused.drift(of: phrases).count == 4)
     }
 
+    @Test("Retired Connections rows remain historical, while a message containing one phrase remains task evidence", arguments: [0, 1])
+    func retiredConnectionRowsNeedTheirScreen(index: Int) throws {
+        let titles = ["Apps & accounts", "Apps et comptes"]
+        let activity = index == 0 ? "09:00 Team planning meeting" : "09:00 Réunion de planification"
+        for key in ["Your messages, stories and feed, in MORE.", "Read your unread email and prepare replies."] {
+            let phrase = try #require(OwnInterfaceWording.all.first { $0.wordings.contains(key) })
+            #expect(phrase.catalogKey == nil)
+            let copy = phrase.wordings[index]
+            #expect(isOwnInterface("\(titles[index])\n\(copy)\n\(activity)"))
+            #expect(!isOwnInterface("Messages\n\(copy)\n\(activity)"))
+        }
+    }
+
+    @Test("Retired voice wording stays historical without treating generic voice choices as MORE", arguments: [0, 1])
+    func retiredVoiceWordingRemainsHistorical(index: Int) throws {
+        for key in ["Your morning voice", "Try the voice", "Your choice applies to spoken morning steps",
+                    "These are Apple system speech voices; Siri may use a different voice",
+                    "Your own routine text is preserved", "More natural voices", "Installed voices",
+                    "Preview selected voice", "Refresh installed voices"] {
+            let phrases = OwnInterfaceWording.all.filter { $0.wordings.contains(key) }
+            #expect(!phrases.isEmpty)
+            #expect(phrases.allSatisfy { $0.catalogKey == nil }, "Retired voice copy is still catalog-bound: \(key)")
+        }
+        let screen = OwnInterfaceWording.earlierVoice
+        for width in [18, 26, 38] {
+            let pieces = (screen.copy + screen.controls).map { $0.wordings[index] }
+            #expect(isOwnInterface(pieces.flatMap { OwnScreenFixtures.wrapped($0, width: width) }.joined(separator: "\n")))
+        }
+        let heading = index == 0 ? "Your morning voice" : "La voix de votre matinée"
+        let preview = index == 0 ? "Try the voice" : "Essayer la voix"
+        #expect(isOwnInterface("\(heading)\n\(preview)"))
+        let ordinary = index == 0
+            ? "Messages\nVoice\nMale\nFemale\nListen\nDone\n09:00 Team planning meeting"
+            : "Messages\nVoix\nHomme\nFemme\nÉcouter\nTerminé\n09:00 Réunion de planification"
+        #expect(!isOwnInterface(ordinary))
+    }
+
     @Test("Every recognized catalog string is one the app's source still shows")
     func recognizedWordingIsShownByTheApp() throws {
         let sources = try ShippedCatalogs.appSources()
@@ -1281,9 +1318,10 @@ struct OwnInterfaceWordingTests {
     }
 
     @Test("Per screen and language: controls alone never reject, one sentence alone never rejects, two pieces do",
-          arguments: OwnInterfaceWording.screens.map(\.name), [0, 1])
+          arguments: (OwnInterfaceWording.screens + [OwnInterfaceWording.earlierVoice]).map(\.name), [0, 1])
     func pairRuleHoldsForEveryRecognizedPiece(screenName: String, language: Int) throws {
-        let screen = try #require(OwnInterfaceWording.screens.first { $0.name == screenName })
+        let screen = try #require((OwnInterfaceWording.screens + [OwnInterfaceWording.earlierVoice])
+            .first { $0.name == screenName })
         let content = "09:00 Team planning meeting"
         // A few titles identify a screen by one complete line; leave those to their own tests.
         // Two labels that sit together identify their screen; that has its own tests too.

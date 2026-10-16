@@ -108,8 +108,15 @@
 		83694FFB1D487DA12331A735 /* AddStepTimeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E00F7E37441A95A894E9C5 /* AddStepTimeIntent.swift */; };
 		8385128C5855B19838E62641 /* ElevenLabsMorningVoiceTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF7EE11B7C6F7F5B6F6180E /* ElevenLabsMorningVoiceTransport.swift */; };
 		8706D4C28912FC25A45E3D1E /* RecordedObservationImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35191AAE6C75EE39494AC52A /* RecordedObservationImportTests.swift */; };
+		9A641819BA6E41F7AB773262 /* GmailAttentionJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */; };
 		874DA3D9D2981D8BDC13F924 /* MorningLiveDemo in Frameworks */ = {isa = PBXBuildFile; productRef = 86B3ADB070A450C8A2D02302 /* MorningLiveDemo */; };
 		8804FDDEF738D87906FE866D /* RoutineAutomationJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */; };
+		C1AFA387BF0A4139A6339376 /* TenTimedMomentsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */; };
+		F24C6001DE104842B8200002 /* ImportedLongRoutineJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24C6001DE104842B8200001 /* ImportedLongRoutineJourneyTests.swift */; };
+		F7406001DE104842B8200002 /* SyntheticNewsSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7406001DE104842B8200001 /* SyntheticNewsSchemeHandler.swift */; };
+		F7406001DE104842B8200004 /* PrivateNewsReadingJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7406001DE104842B8200003 /* PrivateNewsReadingJourneyTests.swift */; };
+		F7606001DE104842B8200002 /* PrivateExactReminderJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7606001DE104842B8200001 /* PrivateExactReminderJourneyTests.swift */; };
+		E73B5500CF314066A4DF0002 /* ImportedThreeMomentJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */; };
 		8891656AED94CB198DCEA7FC /* MorningSubscriptionEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7FCE7A3984FBA54B116B9E /* MorningSubscriptionEntryView.swift */; };
 		8C070F96110E5F2ED5EEC28A /* EvidenceRetentionUITestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABD06293C70F51D07609734 /* EvidenceRetentionUITestFixture.swift */; };
 		8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */; };
@@ -120,6 +127,7 @@
 		944B12853B0E63AE970290F9 /* SeamlessLearningSpikeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1DD18A7907F1F15D0C8699 /* SeamlessLearningSpikeTests.swift */; };
 		95F21F4BFB1948D2ABD031C4 /* MorningStore+Mail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2491FFBC2ACFD04646271C6D /* MorningStore+Mail.swift */; };
 		9979628CD2D1D8CC41061903 /* MorningStore+HandsFree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989827CCAE1C076F40B38AA8 /* MorningStore+HandsFree.swift */; };
+		A47C1E893CE04A729C8D7212 /* MorningStore+WebReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47C1E893CE04A729C8D7211 /* MorningStore+WebReading.swift */; };
 		9A8B244DD216406D67AD84A3 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */; };
 		9B28A88BA0E5408F61414951 /* FixtureJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129D71BF80F7E591EEEBD1A0 /* FixtureJourneyTests.swift */; };
 		9BFBDAE886D9DD7FDEE7633D /* BudgetAndRecapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39360C318E365C8426AEB6 /* BudgetAndRecapTests.swift */; };
@@ -346,17 +354,25 @@
 		87A247B68EA946F621163A6F /* MorningBrandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningBrandMark.swift; sourceTree = "<group>"; };
 		8814239D71C55071D657DCCB /* MorningLiveActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningLiveActivityTests.swift; sourceTree = "<group>"; };
 		88FFCA6CADABADA36EAE231D /* MorningStore+NativeMoment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+NativeMoment.swift"; sourceTree = "<group>"; };
-		8AA7D5AB68A5334F38F9D03B /* OrdinaryWeatherAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdinaryWeatherAcceptanceTests.swift; sourceTree = "<group>"; };
 		8D494EE3CCAD57763076ED57 /* LocalizationJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationJourneyTests.swift; sourceTree = "<group>"; };
+		8AA7D5AB68A5334F38F9D03B /* OrdinaryWeatherAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdinaryWeatherAcceptanceTests.swift; sourceTree = "<group>"; };
 		8E59C8B614136CA85666B795 /* MorningStore+Budget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+Budget.swift"; sourceTree = "<group>"; };
 		8F32518AD6A5C1556F1A6498 /* MorningStore+Opening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+Opening.swift"; sourceTree = "<group>"; };
+		7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailAttentionJourneyTests.swift; sourceTree = "<group>"; };
 		8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineAutomationJourneyTests.swift; sourceTree = "<group>"; };
+		B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenTimedMomentsJourneyTests.swift; sourceTree = "<group>"; };
+		F24C6001DE104842B8200001 /* ImportedLongRoutineJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedLongRoutineJourneyTests.swift; sourceTree = "<group>"; };
+		F7406001DE104842B8200001 /* SyntheticNewsSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticNewsSchemeHandler.swift; sourceTree = "<group>"; };
+		F7406001DE104842B8200003 /* PrivateNewsReadingJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateNewsReadingJourneyTests.swift; sourceTree = "<group>"; };
+		F7606001DE104842B8200001 /* PrivateExactReminderJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateExactReminderJourneyTests.swift; sourceTree = "<group>"; };
+		E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedThreeMomentJourneyTests.swift; sourceTree = "<group>"; };
 		922632E5A7142433B00F800F /* MorningStore+ScreenTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+ScreenTime.swift"; sourceTree = "<group>"; };
 		932EF991B0E0976538F9B5B5 /* MorningOpeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningOpeningView.swift; sourceTree = "<group>"; };
 		93B3D14A4C07EA0A7FA6845D /* MorningRoutineDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningRoutineDataView.swift; sourceTree = "<group>"; };
 		93DDD575BBAE60C4911CB3B3 /* RecordMorningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordMorningView.swift; sourceTree = "<group>"; };
 		95846B664CABA2FF92608E74 /* MorningHomePlaybackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningHomePlaybackView.swift; sourceTree = "<group>"; };
 		989827CCAE1C076F40B38AA8 /* MorningStore+HandsFree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+HandsFree.swift"; sourceTree = "<group>"; };
+		A47C1E893CE04A729C8D7211 /* MorningStore+WebReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+WebReading.swift"; sourceTree = "<group>"; };
 		98E912DF2E476E75231A5383 /* OnDeviceLearningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceLearningTests.swift; sourceTree = "<group>"; };
 		996E47D5E87C6A530593CF39 /* MorningConnectionIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningConnectionIcon.swift; sourceTree = "<group>"; };
 		9BCC013E335B6F8E5AC6A814 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -554,7 +570,13 @@
 				1F84B24064F307F7E5025342 /* RecordingLearningTests.swift */,
 				E2B07E2228630BD1678C3BD3 /* RecordingProvenanceTests.swift */,
 				3879EF0AE67267B2D4FFAD10 /* RisoThemeSnapshotTests.swift */,
+				7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */,
 				8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */,
+				B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */,
+				F24C6001DE104842B8200001 /* ImportedLongRoutineJourneyTests.swift */,
+				F7406001DE104842B8200003 /* PrivateNewsReadingJourneyTests.swift */,
+				F7606001DE104842B8200001 /* PrivateExactReminderJourneyTests.swift */,
+				E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */,
 				479AB234D28356AD1BD23AF8 /* RoutineEvidenceProposalTests.swift */,
 				7A6237A39EB8759262EEFC1F /* RoutineTransferTests.swift */,
 				A1A2FFDD0A4E90476939838D /* ScreenTimeLearningTests.swift */,
@@ -669,6 +691,7 @@
 				E65E4E1818884015F76D1273 /* MorningStore+Execution.swift */,
 				EF591750E21B49095FA36846 /* MorningStore+GoogleCalendar.swift */,
 				989827CCAE1C076F40B38AA8 /* MorningStore+HandsFree.swift */,
+				A47C1E893CE04A729C8D7211 /* MorningStore+WebReading.swift */,
 				2491FFBC2ACFD04646271C6D /* MorningStore+Mail.swift */,
 				88FFCA6CADABADA36EAE231D /* MorningStore+NativeMoment.swift */,
 				8F32518AD6A5C1556F1A6498 /* MorningStore+Opening.swift */,
@@ -718,6 +741,7 @@
 				0FC755247843C4509320356A /* StepTimerView.swift */,
 				ADA355086C61CBBA29C54FEB /* VoicePickerView.swift */,
 				EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */,
+				F7406001DE104842B8200001 /* SyntheticNewsSchemeHandler.swift */,
 				4FCCE997427B67A2581A70FF /* WebMorningView.swift */,
 				FC47A69EEDB044D3AB6C6C0B /* WeeklyReviewView.swift */,
 			);
@@ -1043,7 +1067,13 @@
 				B9CA3F9A24974695EE25E264 /* RecordingLearningTests.swift in Sources */,
 				0CE520513564C2856C889BC2 /* RecordingProvenanceTests.swift in Sources */,
 				BA19D8D71012CE0A14F61918 /* RisoThemeSnapshotTests.swift in Sources */,
+				9A641819BA6E41F7AB773262 /* GmailAttentionJourneyTests.swift in Sources */,
 				8804FDDEF738D87906FE866D /* RoutineAutomationJourneyTests.swift in Sources */,
+				C1AFA387BF0A4139A6339376 /* TenTimedMomentsJourneyTests.swift in Sources */,
+				F24C6001DE104842B8200002 /* ImportedLongRoutineJourneyTests.swift in Sources */,
+				F7406001DE104842B8200004 /* PrivateNewsReadingJourneyTests.swift in Sources */,
+				F7606001DE104842B8200002 /* PrivateExactReminderJourneyTests.swift in Sources */,
+				E73B5500CF314066A4DF0002 /* ImportedThreeMomentJourneyTests.swift in Sources */,
 				12E45878E7091717E2E2BECF /* RoutineEvidenceProposalTests.swift in Sources */,
 				026CCCD1AF6995B662735A45 /* RoutineTransferTests.swift in Sources */,
 				5A85408345D092AA70C06D8F /* ScreenTimeLearningTests.swift in Sources */,
@@ -1121,6 +1151,7 @@
 				5DAF9F414272282E32378655 /* MorningStore+Execution.swift in Sources */,
 				B5F957E38B222EAC94D2C90E /* MorningStore+GoogleCalendar.swift in Sources */,
 				9979628CD2D1D8CC41061903 /* MorningStore+HandsFree.swift in Sources */,
+				A47C1E893CE04A729C8D7212 /* MorningStore+WebReading.swift in Sources */,
 				95F21F4BFB1948D2ABD031C4 /* MorningStore+Mail.swift in Sources */,
 				2ABA9DD0B30F096C6866EA02 /* MorningStore+NativeMoment.swift in Sources */,
 				751A59D0193F23EAD44A59E8 /* MorningStore+Opening.swift in Sources */,
@@ -1170,6 +1201,7 @@
 				623A0FCF695C67D2BBD16792 /* StepTimerView.swift in Sources */,
 				6A35165297FF494C85E0FEDB /* VoicePickerView.swift in Sources */,
 				A2FC8B838FE52D39459A4C7F /* WebMorningController.swift in Sources */,
+				F7406001DE104842B8200002 /* SyntheticNewsSchemeHandler.swift in Sources */,
 				F012A4EC056AAC206151DE87 /* WebMorningView.swift in Sources */,
 				EB9D17B6D326910E328DC7DF /* WeeklyReviewView.swift in Sources */,
 			);

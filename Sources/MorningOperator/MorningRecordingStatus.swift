@@ -13,7 +13,7 @@ struct SavedRecordingRecoveryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label(store.busy ? String(localized: "Reading your recording", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Your recording is saved", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), systemImage: "externaldrive.badge.checkmark")
                 .font(.raleway(.subheadline, .medium))
-            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? String(localized: "Retry understanding it, or discard the recording.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)))
+            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? AppLanguage.localized("Retry understanding it, or discard the recording.")))
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
             if store.sessionActive {
                 Text("Finish or stop the current morning before retrying.").font(.raleway(.caption))
@@ -56,7 +56,7 @@ struct MorningRecordingStatus: View {
                         Text(recording.state == .recording ? String(localized: "Recording your morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Finishing your recording", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
                             .font(.raleway(.subheadline, .medium))
                         Text(recording.state == .recording
-                             ? String(localized: "Stops in \(remainingTime) · visible screen only", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                             ? AppLanguage.localized("Stops in \(remainingTime) · visible screen only")
                              : recording.message).font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer(minLength: 4)

@@ -7,9 +7,9 @@ public enum IntegrationRoute: String, Codable, CaseIterable, Sendable, Identifia
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .nativeIOS: String(localized: "On this iPhone", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .browser: String(localized: "Browser", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .api: String(localized: "Connected accounts", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .nativeIOS: AppLanguage.localized("On this iPhone", bundle: .module)
+        case .browser: AppLanguage.localized("Browser", bundle: .module)
+        case .api: AppLanguage.localized("Connected accounts", bundle: .module)
         }
     }
 }

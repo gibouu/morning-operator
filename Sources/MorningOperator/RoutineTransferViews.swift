@@ -114,7 +114,7 @@ struct RoutineExportView: View {
                 contentType: .json, defaultFilename: "MORE-Morning-Routine") { result in
                 switch result {
                 case .success:
-                    statusMessage = String(localized: "Routine exported. Your saved routine hasn't changed.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    statusMessage = AppLanguage.localized("Routine exported. Your saved routine hasn't changed.")
                     statusIsError = false
                 case .failure(let error):
                     let cocoaError = error as NSError
@@ -123,7 +123,7 @@ struct RoutineExportView: View {
                         statusMessage = nil
                         statusIsError = false
                     } else {
-                        statusMessage = String(localized: "The file couldn't be saved. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        statusMessage = AppLanguage.localized("The file couldn't be saved. \(error.moreDescription)")
                         statusIsError = true
                     }
                 }
@@ -151,7 +151,7 @@ struct RoutineExportView: View {
             showingFileExporter = true
         } catch {
             preparedFile = nil
-            statusMessage = String(localized: "The file couldn't be prepared. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            statusMessage = AppLanguage.localized("The file couldn't be prepared. \(error.moreDescription)")
             statusIsError = true
         }
     }
@@ -217,7 +217,7 @@ struct RoutineImportView: View {
                 Button {
                     failureMessage = nil
                     if !onUse(documentSnapshot) {
-                        failureMessage = errorMessage() ?? String(localized: "The draft couldn't be saved. Your current routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        failureMessage = errorMessage() ?? AppLanguage.localized("The draft couldn't be saved. Your current routine is unchanged.")
                     }
                 } label: {
                     Label("Use as a draft", systemImage: "square.and.pencil")
@@ -240,9 +240,9 @@ private struct RoutineTransferPreview: View {
         Section {
             LabeledContent("Source version", value: String(document.sourceRoutineVersion))
                 .accessibilityIdentifier("\(prefix).version")
-            LabeledContent("Approval when exported", value: document.approvalAtExport ? String(localized: "Approved", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Draft", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+            LabeledContent("Approval when exported", value: document.approvalAtExport ? AppLanguage.localized("Approved") : AppLanguage.localized("Draft"))
                 .accessibilityIdentifier("\(prefix).approval")
-            LabeledContent("Planned time", value: String(localized: "\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+            LabeledContent("Planned time", value: AppLanguage.localized("\(document.steps.reduce(0) { $0 + $1.durationMinutes }) minutes"))
             if document.sourceIsSynthetic {
                 Label("Sample or test plan", systemImage: "sparkles")
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
@@ -266,7 +266,7 @@ private struct RoutineTransferPreview: View {
             Section {
                 Text(verbatim: step.title).font(.serif(.headline)).textSelection(.enabled)
                     .accessibilityIdentifier("\(prefix).step.\(index).title")
-                LabeledContent(step.kind.displayName, value: String(localized: "\(step.durationMinutes) minutes planned", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                LabeledContent(step.kind.displayName, value: AppLanguage.localized("\(step.durationMinutes) minutes planned"))
                     .font(.raleway(.subheadline))
                     .accessibilityIdentifier("\(prefix).step.\(index).minutes")
                 if step.isRequired {
