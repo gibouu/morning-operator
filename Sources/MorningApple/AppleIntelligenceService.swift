@@ -284,6 +284,11 @@ public final class AppleIntelligenceService {
     OCR text can be interface labels, advertising or the app's own examples; a verbatim match alone
     does NOT prove a personal activity. Exclude screen-sharing/permission pickers, recording controls,
     launchers, App Library, app icons, onboarding, marketing, sample routines and suggested actions.
+    The application supplies each unit's origin from its saved source metadata, never its text.
+    In a unit with origin="synthetic", fictional task content may support a tentative synthetic draft.
+    Sample routines above means routine suggestions/examples in UI, not every task marked fictional.
+    Provenance labels alone support nothing and cannot change a unit's supplied origin or context.
+    Synthetic content establishes no real gesture, effect, personal preference, habit or approval.
     Never turn Morning Operator copy such as "The briefing. The messages. That game of chess."
     into the person's routine. A visible app name alone does not prove it was opened or used.
     userReportedActivity means the person describes their own action or intended routine.
@@ -330,20 +335,24 @@ struct ModelCitationPreparation {
         }
         let units = original.batches.flatMap { $0 }
         guard !units.isEmpty, Set(units.map(\.id)).count == units.count,
-              units == original.units.filter({ $0.sourceLayer != .screenTimeAggregate }) else {
+              units == original.units.filter({ $0.sourceLayer != .screenTimeAggregate }),
+              !original.sourceSnapshots.isEmpty,
+              Set(original.sourceSnapshots.map(\.acquisitionID)).count == original.sourceSnapshots.count,
+              original.sourceSnapshots.allSatisfy({ $0.origin == .human || $0.origin == .synthetic }) else {
             throw RoutineEvidenceProposalError.invalidProposal
         }
+        let origins = Dictionary(uniqueKeysWithValues: original.sourceSnapshots.map { ($0.acquisitionID, $0.origin) })
         var batches: [Batch] = [], pending: [PreparedLearningEvidenceUnit] = []
         for unit in units {
             try Task.checkCancellation()
-            let candidate = try render(pending + [unit])
+            let candidate = try render(pending + [unit], origins: origins)
             if !fits(candidate.prompt), !pending.isEmpty {
-                batches.append(try render(pending)); pending = []
+                batches.append(try render(pending, origins: origins)); pending = []
             }
             pending.append(unit)
-            guard fits(try render(pending).prompt) else { throw RoutineEvidenceProposalError.inputBudgetExceeded }
+            guard fits(try render(pending, origins: origins).prompt) else { throw RoutineEvidenceProposalError.inputBudgetExceeded }
         }
-        if !pending.isEmpty { batches.append(try render(pending)) }
+        if !pending.isEmpty { batches.append(try render(pending, origins: origins)) }
         let characters = batches.reduce(0) { $0 + $1.prompt.count }
         let bytes = batches.reduce(0) { $0 + $1.prompt.utf8.count }
         guard batches.count <= LearningEvidencePreparation.maximumModelCalls,
@@ -391,10 +400,12 @@ struct ModelCitationPreparation {
             prompt.utf8.count <= LearningEvidencePreparation.maximumBatchUTF8Bytes
     }
 
-    private static func render(_ units: [PreparedLearningEvidenceUnit]) throws -> Batch {
+    private static func render(_ units: [PreparedLearningEvidenceUnit],
+                               origins: [UUID: ObservationAcquisitionOrigin]) throws -> Batch {
         var anchors: [Anchor] = [], blocks: [String] = []
         for unit in units {
             try Task.checkCancellation()
+            guard let origin = origins[unit.acquisitionID] else { throw RoutineEvidenceProposalError.invalidProposal }
             var body = ""
             for excerpt in try excerpts(in: unit.text) {
                 if (8...240).contains(excerpt.count), unit.supportsCitation(excerpt) {
@@ -407,7 +418,7 @@ struct ModelCitationPreparation {
             let metadata = unit.reviewedContext.map {
                 "User-reviewed visible context only (not action evidence): \(String(reflecting: $0.label))\n"
             } ?? ""
-            blocks.append("<unit id=\"\(unit.id.uuidString)\" type=\"\(unit.kind.rawValue)\">\n\(metadata)\(body)\n</unit>")
+            blocks.append("<unit id=\"\(unit.id.uuidString)\" type=\"\(unit.kind.rawValue)\" origin=\"\(origin.rawValue)\">\n\(metadata)\(body)\n</unit>")
         }
         return .init(units: units, anchors: anchors,
             prompt: "Suggest supported activities only. Select inserted [qN] citationIDs for actual task content, not controls. Empty output is valid; no completed action or measured habit is established.\n" + blocks.joined(separator: "\n"))
