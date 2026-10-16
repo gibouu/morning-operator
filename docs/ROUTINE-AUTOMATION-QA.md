@@ -147,11 +147,38 @@ and a timer never proves a provider effect. The real-minute journey has its own
 CI shard; the older time-only substitute is removed. Acceptance remains pending
 until the complete native run and its payload/recap evidence are reviewed.
 
-The separate largest-text/night French Gmail journey retains its original
-five-minute import and explicitly adds two minutes through the ordinary UI,
-checking the same session pins and the real elapsed budget. Its correction,
-exact recipient/body review, separate Send and one received MIME are required.
-The longer driver allowance changes no product duration or acceptance guard.
+The separate largest-text/night French Gmail9z journey on `62d4f89` passes in
+496.185s. It retains its original five-minute import and explicitly adds two
+minutes through the ordinary UI, with the same session/version/step pins and
+real elapsed budget. It selects the displayed third message, prepares six blue
+cards, corrects to eight green cards at09:15, reviews the exact recipient/body,
+then uses a separate Send. The received decoded MIME contains the corrected
+body, intended recipient/thread and matching pins; exactly one simulated send
+and one Inbox list call are received. Root and independent UX review inspect
+Action, initial body, reviewed state, receipt and actual payload. The corrected
+body screenshot shows only its beginning; full assertions and received MIME
+establish the remaining text, without reconstructing a replacement screenshot.
+No live service, acoustic dialogue or complete Long result is credited.
+
+Long9aa on `aeac1bb` fails before Gmail Save/approval/Start in361.229s. Two frames
+from its actual recording show an explicit Gmail menu tap followed by the
+selected Action and complete Gmail explanation in the editor. The global
+first-match XCTest query fails to observe that selected value; the final AX is
+incomplete, so the exact native wrapper cause remains unproved. The next test
+scopes all matching IDs to the foreground editor with Save available, retaining
+the selected label/value and requiring the complete Gmail explanation before
+Save. It adds a failure capture and changes no product action or duration.
+Post-run product hashes match;360 archived entries preserve bytes/size/mode.
+
+Before the next combined validation, main through `cb231f86` is merged. The
+generated project is regenerated from its existing specification to resolve
+duplicate file IDs while keeping the private browser media factory in the
+UI-test target alone. Main's shared day/night sheet surfaces and SDK-free beta
+voice changes need this combined build/runtime, separately from9z. ElevenLabs
+TTS/preview remains; conversation transport is explicitly unavailable in that
+beta. CI uses the width1 package mode above, and the next local Long invocation
+explicitly enables XCTest's2700-second timeout in its command. No later native
+pass is inferred from compilation or a queued GitHub job.
 
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
