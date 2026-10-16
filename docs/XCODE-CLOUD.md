@@ -5,7 +5,7 @@ This repository preparation does not connect an account, grant GitHub access, up
 1. Open the checked-in `MorningOperator.xcodeproj` in Xcode 27 and create MORE's first Xcode Cloud workflow. Select the existing Apple team and app. Allow Apple's GitHub app to access only `gibouu/morning-operator`.
 2. Use **Branch Changes → main** so each push to main starts a build. Select Xcode 27, a **Clean** environment, and the shared **MorningOperator** scheme. Do not regenerate the project with XcodeGen; the project and `Package.resolved` are committed.
 3. Add an iOS **Archive** action using Release and **TestFlight and App Store** distribution. Restrict workflow editing as required by Apple. Add an external TestFlight group as a post-action. External beta review and export compliance still apply; a successful archive alone does not mean testers can install it.
-4. In MORE's Xcode Cloud **Settings → Build Number**, set the next number above **2026101631** and above any newer build already uploaded for version 0.1.1. Xcode Cloud then increments it. Keep the app and widget on the same version/build.
+4. In MORE's Xcode Cloud **Settings → Build Number**, set the next number to at least **2026101633** (above **2026101632**) and above any newer build already uploaded for version 0.1.1. Xcode Cloud then increments it. Keep the app and widget on the same version/build.
 5. Set the workflow environment values below, then run one build and inspect its archive configuration and TestFlight processing before relying on automatic delivery.
 
 | Workflow variable | Requirement |
