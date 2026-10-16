@@ -37,10 +37,13 @@ import MorningCore
         attach("calendar-direct-configured-through-ui-unapproved", app)
         tap("routine.approve", app)
         home(app); reveal(app); tap("morning.begin", app)
-        waitLabel(app.staticTexts["morning.caption"], contains: "Synthetic quiet reading", timeout: 90)
-        let fields = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String).components(separatedBy: "|")
+        beginRoutineFromOpening(app)
+        let pinned = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String)
+        let fields = pinned.components(separatedBy: "|")
         XCTAssertEqual(fields.count, 2, "This smoke uses the ordinary two-field QA identity, not a fake timer or model.")
         XCTAssertEqual(fields.last, document.steps[0].id.uuidString)
+        waitForNativeCalendarPassage(app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, pinned)
         attach("calendar-direct-native-facts-actual-caption-no-model-proof", app)
         // No Next, clock override, shortened budget or completion claim.
     }
@@ -141,12 +144,14 @@ import MorningCore
         XCTAssertEqual(element("step.keepFuture", app).value as? String, "1", "The personal Keep was explicitly saved in UI.")
         tap("Cancel", app)
         home(app); reveal(app); tap("morning.begin", app)
+        beginRoutineFromOpening(app)
         let first = try identity(app, index: 0)
         XCTAssertEqual(first.step, originalIDs[0])
         var trace = [first]
-        // The opening never reads its recap automatically. This source phrase
-        // must reach the actual Calendar moment's caption, not only a preview.
-        waitLabel(app.staticTexts["morning.caption"], contains: "Synthetic quiet reading", timeout: 90)
+        // The greeting also quotes Calendar facts. Only the native Calendar
+        // prefix after the real handover can establish this moment's passage.
+        waitForNativeCalendarPassage(app)
+        XCTAssertEqual(try identity(app, index: 0), first)
         attach("long-ten-selected-calendar-actual-passage", app)
         let mail = try identity(app, index: 1, timeout: 120)
         requireSameRun(mail, first, expectedID: originalIDs[1]); trace.append(mail)
@@ -194,6 +199,29 @@ import MorningCore
         app.terminate(); app.launch(); try requireWorkspace(workspace, app)
         try requireRecap(app, trace: trace, titles: titles)
         attach("long-ten-honest-recap-restored", app)
+    }
+
+    private func beginRoutineFromOpening(_ app: XCUIApplication) {
+        // This visible greeting is not the Calendar moment, even when it quotes
+        // the very same event. Continue is Home's actual chooseOpening(.ritual).
+        waitLabel(app.staticTexts["morning.caption"], contains: "Would you like", timeout: 15)
+        reveal(app)
+        let play = button("morning.playback", app)
+        XCTAssertEqual(play.label, "Continue")
+        play.tap()
+        let started = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND label == %@", "Pause"), object: play)
+        XCTAssertEqual(XCTWaiter.wait(for: [started], timeout: 8), .completed,
+                       "Pause is offered only after the opening is gone and the session is running.")
+    }
+
+    private func waitForNativeCalendarPassage(_ app: XCUIApplication) {
+        let caption = app.staticTexts["morning.caption"]
+        waitLabel(caption, contains: "Here is your briefing for", timeout: 90)
+        let facts = XCTNSPredicateExpectation(predicate: NSPredicate(
+            format: "label CONTAINS %@ AND NOT (label CONTAINS %@) AND NOT (label CONTAINS %@)",
+            "Synthetic quiet reading", "Good morning", "Would you like"), object: caption)
+        XCTAssertEqual(XCTWaiter.wait(for: [facts], timeout: 15), .completed,
+                       "Calendar facts must follow the native briefing prefix, never the opening or its fallback text.")
     }
 
     private func configureCalendar(_ app: XCUIApplication) {
