@@ -68,6 +68,8 @@ struct SyntheticNewsOriginTests {
         }
         #expect(snapshot.matchesObservation(try observation(fingerprint: "observed-list", link: second)))
         #expect(!snapshot.matchesObservation(try observation(fingerprint: "new-list", link: second)))
+        let changedRegisteredLink = URL(string: "more-qa-news://\(workspace.uuidString.lowercased())/article/three")!
+        #expect(!snapshot.matchesObservation(try observation(fingerprint: "observed-list", link: changedRegisteredLink)))
         let outside = URL(string: "more-qa-news://\(workspace.uuidString.lowercased())/not-registered")!
         #expect(!snapshot.matchesObservation(try observation(fingerprint: "observed-list", link: outside)))
         #expect(WebNewsSnapshot(context: context, privacyGeneration: privacy, pageGeneration: 3, pageURL: source.startURL,

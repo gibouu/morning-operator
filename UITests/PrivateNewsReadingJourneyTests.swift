@@ -76,13 +76,15 @@ import MorningCore
         XCTAssertTrue(app.webViews.staticTexts.matching(NSPredicate(format: "label == %@", paragraph)).firstMatch.waitForExistence(timeout: 5),
                       "The actual second document must render its exact independent source paragraph.")
         let paused = try diagnostic(app)
+        let localLoads = try XCTUnwrap(paused["localLoads"].flatMap(Int.init))
+        XCTAssertGreaterThanOrEqual(localLoads, 2, "The list and chosen article must actually be delivered by the local handler.")
         XCTAssertEqual(paused["newsContext"], context); XCTAssertEqual(paused["resource"], "/article/two")
         XCTAssertEqual(paused["articleParagraphs"], "1"); XCTAssertEqual(paused["endsAtBits"], running["endsAtBits"])
         XCTAssertNotEqual(paused["pausedAtBits"], "none")
         let budget = app.staticTexts["web.remaining"].label
         attach("private-news-second-observed-body-\(language)", app)
         tap("web.articleRepeat", app)
-        XCTAssertEqual(try diagnostic(app)["localLoads"], paused["localLoads"], "Repeat reads the retained body, without another document request.")
+        XCTAssertEqual(try diagnostic(app)["localLoads"], String(localLoads), "Repeat reads the retained body, without another document request.")
         tap("web.articleReturn", app)
         XCTAssertTrue(app.buttons["web.articleReturn"].waitForNonExistence(timeout: 25))
         XCTAssertTrue(second.waitForExistence(timeout: 10)); XCTAssertEqual(second.label, "2. " + secondTitle)
