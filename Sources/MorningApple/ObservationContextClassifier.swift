@@ -12,7 +12,7 @@ import FoundationModels
 @Observable
 public final class ObservationContextClassifier {
     public private(set) var isAvailable = false
-    public private(set) var capabilitySummary = String(localized: "Checking Apple's local model…", bundle: .module)
+    public private(set) var capabilitySummary = AppLanguage.localized("Checking Apple's local model…", bundle: .module)
     public private(set) var isClassifying = false
 
     public init() { refreshCapabilities() }
@@ -22,19 +22,19 @@ public final class ObservationContextClassifier {
         switch SystemLanguageModel.default.availability {
         case .available:
             isAvailable = true
-            capabilitySummary = String(localized: "Apple Foundation Models is available for local visible-context analysis.", bundle: .module)
+            capabilitySummary = AppLanguage.localized("Apple Foundation Models is available for local visible-context analysis.", bundle: .module)
         case .unavailable(let reason):
             isAvailable = false
             switch reason {
-            case .deviceNotEligible: capabilitySummary = String(localized: "This device does not support Apple's local model.", bundle: .module)
-            case .appleIntelligenceNotEnabled: capabilitySummary = String(localized: "Apple Intelligence is not enabled on this device.", bundle: .module)
-            case .modelNotReady: capabilitySummary = String(localized: "Apple's local model is not ready.", bundle: .module)
-            @unknown default: capabilitySummary = String(localized: "Apple's local model is unavailable.", bundle: .module)
+            case .deviceNotEligible: capabilitySummary = AppLanguage.localized("This device does not support Apple's local model.", bundle: .module)
+            case .appleIntelligenceNotEnabled: capabilitySummary = AppLanguage.localized("Apple Intelligence is not enabled on this device.", bundle: .module)
+            case .modelNotReady: capabilitySummary = AppLanguage.localized("Apple's local model is not ready.", bundle: .module)
+            @unknown default: capabilitySummary = AppLanguage.localized("Apple's local model is unavailable.", bundle: .module)
             }
         }
         #else
         isAvailable = false
-        capabilitySummary = String(localized: "Foundation Models is not supported by this build.", bundle: .module)
+        capabilitySummary = AppLanguage.localized("Foundation Models is not supported by this build.", bundle: .module)
         #endif
     }
 
@@ -57,7 +57,7 @@ public final class ObservationContextClassifier {
         guard !input.batches.isEmpty else { return result(.noEligibleFrames) }
         guard isAvailable else {
             for frame in input.batches.flatMap(\.frames) {
-                decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: String(localized: "The local model was unavailable; no classification was attempted.", bundle: .module))
+                decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: AppLanguage.localized("The local model was unavailable; no classification was attempted.", bundle: .module))
             }
             return result(.unavailable)
         }
@@ -69,7 +69,7 @@ public final class ObservationContextClassifier {
         do { schema = try ObservationContextGenerationSchema.make() }
         catch {
             for frame in input.batches.flatMap(\.frames) {
-                decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: String(localized: "The local model schema could not be prepared.", bundle: .module))
+                decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: AppLanguage.localized("The local model schema could not be prepared.", bundle: .module))
             }
             return result(.failed, diagnostics: [.init(kind: .invalidResponse, nativeError: ObservationContextErrorSanitizer.map(error))])
         }
@@ -96,7 +96,7 @@ public final class ObservationContextClassifier {
                 failed += 1
                 diagnostics.append(.init(kind: .generationFailed, nativeError: ObservationContextErrorSanitizer.map(error)))
                 for frame in batch.frames {
-                    decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: String(localized: "Local model generation failed for this batch; context remains unknown.", bundle: .module))
+                    decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: AppLanguage.localized("Local model generation failed for this batch; context remains unknown.", bundle: .module))
                 }
             }
         }

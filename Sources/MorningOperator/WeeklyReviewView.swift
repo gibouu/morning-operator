@@ -192,15 +192,15 @@ struct WeeklyReviewView: View {
 
     private func daySummaryText(_ day: MorningDaySummary) -> String {
         let observations = store.observationArchive.entries.filter { $0.observedDate?.dayKey == day.dayKey }.count
-        let observationSummary = String(localized: "\(observations) observations")
+        let observationSummary = AppLanguage.localized("\(observations) observations")
         guard day.runCount > 0 else {
             if observations > 0 { return observationSummary }
-            return day.hasEvidence ? String(localized: "App observations") : String(localized: "Nothing saved")
+            return day.hasEvidence ? AppLanguage.localized("App observations") : AppLanguage.localized("Nothing saved")
         }
-        if observations > 0 { return String(localized: "\(day.runCount) runs · \(observations) observations") }
+        if observations > 0 { return AppLanguage.localized("\(day.runCount) runs · \(observations) observations") }
         let time = day.timedRunCount == day.runCount
-            ? MorningStyle.duration(day.totalActiveDurationSeconds) : String(localized: "incomplete timing")
-        return String(localized: "\(day.runCount) runs · \(time)")
+            ? MorningStyle.duration(day.totalActiveDurationSeconds) : AppLanguage.localized("incomplete timing")
+        return AppLanguage.localized("\(day.runCount) runs · \(time)")
     }
 
     private var observationArchiveLinks: some View {
@@ -210,15 +210,15 @@ struct WeeklyReviewView: View {
                 NavigationLink {
                     ObservationHistoryView(store: store, onlyUndated: true, onLearn: onLearn)
                 } label: {
-                    actionRow(String(localized: "Date needed"), detail: String(localized: "\(undatedCount) observations need an observed day"), symbol: "calendar.badge.questionmark")
+                    actionRow(AppLanguage.localized("Date needed"), detail: AppLanguage.localized("\(undatedCount) observations need an observed day"), symbol: "calendar.badge.questionmark")
                 }.accessibilityIdentifier("review.undatedObservations")
                 Divider()
             }
             NavigationLink {
                 ObservationHistoryView(store: store, onLearn: onLearn)
             } label: {
-                actionRow(String(localized: "Saved observations"), detail: store.observationArchive.entries.isEmpty
-                          ? String(localized: "Original evidence and your corrections") : String(localized: "\(store.observationArchive.entries.count) saved · separate from routine runs"),
+                actionRow(AppLanguage.localized("Saved observations"), detail: store.observationArchive.entries.isEmpty
+                          ? AppLanguage.localized("Original evidence and your corrections") : AppLanguage.localized("\(store.observationArchive.entries.count) saved · separate from routine runs"),
                           symbol: "doc.text.image")
             }.accessibilityIdentifier("review.observations")
         }.buttonStyle(.plain)
@@ -227,36 +227,36 @@ struct WeeklyReviewView: View {
     private var reviewActions: some View {
         VStack(spacing: 0) {
             Button { showingRoutineEditor = true } label: {
-                actionRow(String(localized: "Your routine"), detail: routineDetail, symbol: "list.bullet")
+                actionRow(AppLanguage.localized("Your routine"), detail: routineDetail, symbol: "list.bullet")
             }.accessibilityIdentifier("review.routine")
             Divider()
             Button(action: onLearn) {
-                actionRow(store.hasImportedObservation ? String(localized: "Review your observation") : String(localized: "Learn from a morning"),
-                          detail: store.hasPendingRecording ? String(localized: "A saved recording needs attention") : String(localized: "Record, describe or refine"), symbol: "sparkles")
+                actionRow(store.hasImportedObservation ? AppLanguage.localized("Review your observation") : AppLanguage.localized("Learn from a morning"),
+                          detail: store.hasPendingRecording ? AppLanguage.localized("A saved recording needs attention") : AppLanguage.localized("Record, describe or refine"), symbol: "sparkles")
             }.accessibilityIdentifier("review.learn")
             Divider()
             NavigationLink {
                 CapturesView(store: store).navigationTitle("Saved thoughts").background(MorningStyle.background)
             } label: {
-                actionRow(String(localized: "Saved thoughts"), detail: store.captures.isEmpty ? String(localized: "A place for what comes to mind") : String(localized: "\(store.captures.count) saved"), symbol: "text.bubble")
+                actionRow(AppLanguage.localized("Saved thoughts"), detail: store.captures.isEmpty ? AppLanguage.localized("A place for what comes to mind") : AppLanguage.localized("\(store.captures.count) saved"), symbol: "text.bubble")
             }.accessibilityIdentifier("review.thoughts")
             Divider()
             NavigationLink {
                 ScrollView { AppActivityView().padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity) }
                     .background(MorningStyle.background).navigationTitle("App activity")
             } label: {
-                actionRow(String(localized: "App activity"), detail: String(localized: "Today's connected app entries"), symbol: "arrow.triangle.2.circlepath")
+                actionRow(AppLanguage.localized("App activity"), detail: AppLanguage.localized("Today's connected app entries"), symbol: "arrow.triangle.2.circlepath")
             }.accessibilityIdentifier("review.appActivity")
             Divider()
             Button(action: onSettings) {
-                actionRow(String(localized: "Settings & connections"), detail: String(localized: "Voice, calendar and preferences"), symbol: "slider.horizontal.3")
+                actionRow(AppLanguage.localized("Settings & connections"), detail: AppLanguage.localized("Voice, calendar and preferences"), symbol: "slider.horizontal.3")
             }.accessibilityIdentifier("navigation.setup")
         }.buttonStyle(.plain)
     }
 
     private var routineDetail: String {
-        guard let routine = store.routine else { return String(localized: "Build a routine that feels like you") }
-        return routine.isApproved ? String(localized: "\(routine.steps.count) moments · approved") : String(localized: "\(routine.steps.count) moments · ready for your review")
+        guard let routine = store.routine else { return AppLanguage.localized("Build a routine that feels like you") }
+        return routine.isApproved ? AppLanguage.localized("\(routine.steps.count) moments · approved") : AppLanguage.localized("\(routine.steps.count) moments · ready for your review")
     }
 
     private func actionRow(_ title: String, detail: String, symbol: String) -> some View {
@@ -403,7 +403,7 @@ struct RoutineReviewEditor: View {
                     store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing)
                 }, onDelete: { exclude in
                     store.removeStep(step, excludeFromSuggestions: exclude)
-                }, failureMessage: { store.notice ?? String(localized: "Your change couldn't be saved. Try again.") })
+                }, failureMessage: { store.notice ?? AppLanguage.localized("Your change couldn't be saved. Try again.") })
             }
         }
         #if os(macOS)
@@ -524,7 +524,7 @@ private struct ReviewDayDetail: View {
                 Section {
                     MorningRecapView(store: store, session: run.session, showsMomentNames: false)
                     LabeledContent("Active routine time", value: MorningStyle.duration(run.activeDurationSeconds))
-                    LabeledContent("Planned time", value: String(localized: "\(run.plannedDurationMinutes) min"))
+                    LabeledContent("Planned time", value: AppLanguage.localized("\(run.plannedDurationMinutes) min"))
                     if run.activeDurationSeconds == nil {
                         Text("Timing is incomplete or unavailable; this run is excluded from time averages.")
                             .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)

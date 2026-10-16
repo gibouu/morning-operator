@@ -4,7 +4,7 @@ import Foundation
 /// This factory never reads observations, migrates saved routines or connects apps.
 /// DemoFixtures remains the separate, stable four-step test baseline.
 public enum PhoneMorningSample {
-    public static func routine(locale: Locale = .current) -> RoutineVersion {
+    public static func routine(locale: Locale = AppLanguage.locale) -> RoutineVersion {
         let french = locale.language.languageCode?.identifier == "fr"
         func text(_ english: String, _ frenchText: String) -> String {
             french ? frenchText : english

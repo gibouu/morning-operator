@@ -604,14 +604,14 @@ public struct ScreenTimeRoutineProposal: Codable, Equatable, Sendable, Identifia
         }
         guard !steps.isEmpty else { throw ScreenTimeProposalError.nothingIncluded }
         return RoutineVersion(number: base?.nextNumber ?? 1, createdAt: date,
-                              sourceLabel: String(localized: "From Screen Time", bundle: .module), steps: steps)
+                              sourceLabel: AppLanguage.localized("From Screen Time", bundle: .module), steps: steps)
     }
 
     static func detail(for step: Step, of mornings: Int) -> String {
-        let usual = String(localized: "Usually \(step.medianMinutes) min, on \(step.morningsSeen) of \(mornings) mornings.", bundle: .module)
+        let usual = AppLanguage.localized("Usually \(step.medianMinutes) min, on \(step.morningsSeen) of \(mornings) mornings.", bundle: .module)
         let label = step.minutesMeasured
-            ? String(localized: "Measured by Screen Time.", bundle: .module)
-            : String(localized: "Estimated from hourly Screen Time.", bundle: .module)
+            ? AppLanguage.localized("Measured by Screen Time.", bundle: .module)
+            : AppLanguage.localized("Estimated from hourly Screen Time.", bundle: .module)
         return usual + " " + label
     }
 

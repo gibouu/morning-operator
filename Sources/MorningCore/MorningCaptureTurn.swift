@@ -5,8 +5,8 @@ public enum MorningCaptureTurnError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .empty: String(localized: "No words were received. Try again or type your thought.", bundle: .module)
-        case .tooLong: String(localized: "That capture is longer than 4,000 characters. Try a shorter thought or type it instead.", bundle: .module)
+        case .empty: AppLanguage.localized("No words were received. Try again or type your thought.", bundle: .module)
+        case .tooLong: AppLanguage.localized("That capture is longer than 4,000 characters. Try a shorter thought or type it instead.", bundle: .module)
         }
     }
 }

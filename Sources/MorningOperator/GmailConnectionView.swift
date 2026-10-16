@@ -125,7 +125,7 @@ struct GmailConnectionView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(verbatim: message.sender).font(.caption).foregroundStyle(MorningStyle.muted)
                                 .lineLimit(2)
-                            Text(verbatim: message.subject.isEmpty ? String(localized: "No subject") : message.subject)
+                            Text(verbatim: message.subject.isEmpty ? AppLanguage.localized("No subject") : message.subject)
                                 .font(.subheadline.weight(.medium)).lineLimit(2)
                             if let receivedAt = message.receivedAt {
                                 Text(receivedAt, style: .date).font(.caption2).foregroundStyle(MorningStyle.muted)

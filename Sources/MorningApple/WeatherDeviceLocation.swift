@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 import CoreLocation
 
@@ -9,9 +10,9 @@ public enum WeatherDeviceLocationError: Error, LocalizedError, Sendable, Equatab
     case denied, unavailable, timedOut, invalidReading
     public var errorDescription: String? {
         switch self {
-        case .denied: String(localized: "Location is off. Allow it in iPhone Settings or choose a city for the weather.", bundle: .module)
-        case .unavailable, .invalidReading: String(localized: "Your location isn't available yet. Try again or choose a city.", bundle: .module)
-        case .timedOut: String(localized: "Finding your location took too long. Try again or choose a city.", bundle: .module)
+        case .denied: AppLanguage.localized("Location is off. Allow it in iPhone Settings or choose a city for the weather.", bundle: .module)
+        case .unavailable, .invalidReading: AppLanguage.localized("Your location isn't available yet. Try again or choose a city.", bundle: .module)
+        case .timedOut: AppLanguage.localized("Finding your location took too long. Try again or choose a city.", bundle: .module)
         }
     }
 }
@@ -134,7 +135,7 @@ public final class WeatherDeviceLocation: NSObject, WeatherDeviceLocationProvidi
         guard reading.horizontalAccuracy.isFinite, (0...maximumUncertainty).contains(reading.horizontalAccuracy),
               age.isFinite, (-60...maximumAge).contains(age) else { throw WeatherDeviceLocationError.invalidReading }
         return try WeatherLocation(latitude: reading.coordinate.latitude, longitude: reading.coordinate.longitude,
-            displayName: String(localized: "Current location", bundle: .module))
+            displayName: AppLanguage.localized("Current location", bundle: .module))
     }
 
     private func startTimer(id: UUID, duration: Duration) {

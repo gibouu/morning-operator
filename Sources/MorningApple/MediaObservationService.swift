@@ -31,14 +31,14 @@ public enum MediaObservationError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .localFileRequired: String(localized: "Choose a local file using the import picker.", bundle: .module)
-        case .unsupportedFormat: String(localized: "Choose a screenshot, a video, or a UTF-8 text/Markdown file.", bundle: .module)
-        case .fileTooLarge: String(localized: "This file exceeds the prototype's 512 MB limit. Export a shorter recording first.", bundle: .module)
-        case .unreadableImage: String(localized: "This image could not be decoded. Try a PNG or JPEG screenshot.", bundle: .module)
-        case .unreadableText: String(localized: "This text file could not be read as UTF-8, or exceeds the 32,000-character import limit.", bundle: .module)
-        case .invalidVideoDuration: String(localized: "This video has no readable finite duration. Try another recording.", bundle: .module)
-        case .videoTooLong(let maximum): String(localized: "Choose a recording shorter than \(maximum) minutes for this prototype.", bundle: .module)
-        case .noRecognizableText: String(localized: "No readable screen text was found. The image may be blank, protected, or too small. You can describe the routine in your own words.", bundle: .module)
+        case .localFileRequired: AppLanguage.localized("Choose a local file using the import picker.", bundle: .module)
+        case .unsupportedFormat: AppLanguage.localized("Choose a screenshot, a video, or a UTF-8 text/Markdown file.", bundle: .module)
+        case .fileTooLarge: AppLanguage.localized("This file exceeds the prototype's 512 MB limit. Export a shorter recording first.", bundle: .module)
+        case .unreadableImage: AppLanguage.localized("This image could not be decoded. Try a PNG or JPEG screenshot.", bundle: .module)
+        case .unreadableText: AppLanguage.localized("This text file could not be read as UTF-8, or exceeds the 32,000-character import limit.", bundle: .module)
+        case .invalidVideoDuration: AppLanguage.localized("This video has no readable finite duration. Try another recording.", bundle: .module)
+        case .videoTooLong(let maximum): AppLanguage.localized("Choose a recording shorter than \(maximum) minutes for this prototype.", bundle: .module)
+        case .noRecognizableText: AppLanguage.localized("No readable screen text was found. The image may be blank, protected, or too small. You can describe the routine in your own words.", bundle: .module)
         }
     }
 }
@@ -234,10 +234,10 @@ public actor MediaObservationService {
         }
         var warnings: [String] = []
         if unavailableLayoutCount > 0 {
-            warnings.append(String(localized: "Layout metadata was unavailable or invalid for \(unavailableLayoutCount) OCR regions; their text was preserved.", bundle: .module))
+            warnings.append(AppLanguage.localized("Layout metadata was unavailable or invalid for \(unavailableLayoutCount) OCR regions; their text was preserved.", bundle: .module))
         }
         if cappedLayoutCount > 0 {
-            warnings.append(String(localized: "Layout metadata for \(cappedLayoutCount) OCR regions was omitted at the line limit; their text was preserved.", bundle: .module))
+            warnings.append(AppLanguage.localized("Layout metadata for \(cappedLayoutCount) OCR regions was omitted at the line limit; their text was preserved.", bundle: .module))
         }
         return RecognizedFrameText(text: parts.joined(separator: "\n"), lines: lines, warnings: warnings)
     }
@@ -295,7 +295,7 @@ struct DecodedFrameTiming: Sendable {
         original = try? ObservationMediaTime(value: time.value, timescale: time.timescale,
                                               epoch: time.epoch, flags: time.flags.rawValue)
         warnings = original == nil ? [
-            String(localized: "Original media timing could not be preserved; the decoded image and available decimal sample time were retained.", bundle: .module)
+            AppLanguage.localized("Original media timing could not be preserved; the decoded image and available decimal sample time were retained.", bundle: .module)
         ] : []
     }
 }

@@ -6,15 +6,15 @@ public enum ObservationVideoEvidenceError: Error, LocalizedError, Sendable, Equa
 
     public var errorDescription: String? {
         switch self {
-        case .invalidFrame: String(localized: "A video sample contains inconsistent extraction evidence.", bundle: .module)
-        case .invalidDuration: String(localized: "The video evidence has an unsupported duration.", bundle: .module)
-        case .invalidFrameOrder: String(localized: "Requested video samples must remain in time order.", bundle: .module)
-        case .duplicateSample: String(localized: "The video evidence contains a repeated sample identifier.", bundle: .module)
-        case .evidenceTooLarge: String(localized: "The video evidence exceeds the bounded frame or text budget.", bundle: .module)
-        case .unknownDecisionSample: String(localized: "A screen interpretation refers to an unknown sample.", bundle: .module)
-        case .duplicateDecision: String(localized: "A sample has more than one screen interpretation.", bundle: .module)
-        case .decisionTimeMismatch: String(localized: "A screen interpretation changed its source timestamp.", bundle: .module)
-        case .invalidCitation: String(localized: "A screen interpretation is not supported by its exact source sample.", bundle: .module)
+        case .invalidFrame: AppLanguage.localized("A video sample contains inconsistent extraction evidence.", bundle: .module)
+        case .invalidDuration: AppLanguage.localized("The video evidence has an unsupported duration.", bundle: .module)
+        case .invalidFrameOrder: AppLanguage.localized("Requested video samples must remain in time order.", bundle: .module)
+        case .duplicateSample: AppLanguage.localized("The video evidence contains a repeated sample identifier.", bundle: .module)
+        case .evidenceTooLarge: AppLanguage.localized("The video evidence exceeds the bounded frame or text budget.", bundle: .module)
+        case .unknownDecisionSample: AppLanguage.localized("A screen interpretation refers to an unknown sample.", bundle: .module)
+        case .duplicateDecision: AppLanguage.localized("A sample has more than one screen interpretation.", bundle: .module)
+        case .decisionTimeMismatch: AppLanguage.localized("A screen interpretation changed its source timestamp.", bundle: .module)
+        case .invalidCitation: AppLanguage.localized("A screen interpretation is not supported by its exact source sample.", bundle: .module)
         }
     }
 }
@@ -126,11 +126,11 @@ public struct ObservationFrameEvidence: Codable, Identifiable, Sendable, Equatab
                 textWasTruncated: source.textWasTruncated, warnings: source.warnings,
                 ocrLines: source.ocrLines, originalPresentationTime: original)
         } catch {
-            let warning = String(localized: "Original media timing metadata was invalid or inconsistent and was omitted; saved sample time and text were preserved.", bundle: .module)
+            let warning = AppLanguage.localized("Original media timing metadata was invalid or inconsistent and was omitted; saved sample time and text were preserved.", bundle: .module)
             let warnings: [String]
             if source.warnings.contains(warning) { warnings = source.warnings }
             else if source.warnings.count < 8 { warnings = source.warnings + [warning] }
-            else { warnings = Array(source.warnings.prefix(7)) + [warning + String(localized: " One prior warning was omitted.", bundle: .module)] }
+            else { warnings = Array(source.warnings.prefix(7)) + [warning + AppLanguage.localized(" One prior warning was omitted.", bundle: .module)] }
             self = try Self(id: source.id, requestedTimeSeconds: source.requestedTimeSeconds,
                 actualTimeSeconds: source.actualTimeSeconds, outcome: source.outcome, text: source.text,
                 textWasTruncated: source.textWasTruncated, warnings: warnings, ocrLines: source.ocrLines)

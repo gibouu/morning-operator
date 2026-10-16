@@ -41,7 +41,7 @@ extension MorningStore {
                 try Task.checkCancellation()
                 guard self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 guard source.access != .unavailable else {
-                    self.screenTimeMessage = String(localized: "Learning from Screen Time needs iOS 26.4 or later.")
+                    self.screenTimeMessage = AppLanguage.localized("Learning from Screen Time needs iOS 26.4 or later.")
                     return
                 }
                 if source.access != .approved { try await source.requestAccess() }
@@ -85,19 +85,19 @@ extension MorningStore {
                         ? (AppLanguage.isFrench
                             ? "Screen Time n’a fourni aucune donnée d’usage pour cette période. Vous pouvez aussi ajouter vos vidéos ou apprendre dans le navigateur."
                             : "Screen Time returned no app-use data for this period. You can also add your videos or learn in the browser.")
-                        : String(localized: "Screen Time returned app use, but no complete morning could be identified yet.")
+                        : AppLanguage.localized("Screen Time returned app use, but no complete morning could be identified yet.")
                     return
                 }
                 if self.savePendingScreenTimeProposal(proposal) {
                     self.screenTimeMessage = nil
                 } else if self.notice == nil {
-                    self.screenTimeMessage = String(localized: "The suggestion couldn't be saved. Your routine is unchanged.")
+                    self.screenTimeMessage = AppLanguage.localized("The suggestion couldn't be saved. Your routine is unchanged.")
                 }
             } catch {
                 guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 self.refreshScreenTimeAccess()
                 self.screenTimeMessage = self.screenTimeAccess == .approved
-                    ? String(localized: "Screen Time didn't answer this time. Try again in a moment.")
+                    ? AppLanguage.localized("Screen Time didn't answer this time. Try again in a moment.")
                     : self.screenTimeAccessExplanation
             }
         }
@@ -105,11 +105,11 @@ extension MorningStore {
 
     var screenTimeAccessExplanation: String {
         switch screenTimeAccess {
-        case .approved: String(localized: "Screen Time is connected.")
-        case .unavailable: String(localized: "Learning from Screen Time needs iOS 26.4 or later.")
-        case .approvedWithoutData: String(localized: "Screen Time was approved without app-use data. Check this build’s capabilities and your device’s eligibility.")
-        case .denied: String(localized: "Screen Time access wasn't given. You can allow it in Settings → Screen Time, then try again.")
-        case .notAsked: String(localized: "Connect Screen Time to read the app-use data available on this iPhone.")
+        case .approved: AppLanguage.localized("Screen Time is connected.")
+        case .unavailable: AppLanguage.localized("Learning from Screen Time needs iOS 26.4 or later.")
+        case .approvedWithoutData: AppLanguage.localized("Screen Time was approved without app-use data. Check this build’s capabilities and your device’s eligibility.")
+        case .denied: AppLanguage.localized("Screen Time access wasn't given. You can allow it in Settings → Screen Time, then try again.")
+        case .notAsked: AppLanguage.localized("Connect Screen Time to read the app-use data available on this iPhone.")
         }
     }
 }

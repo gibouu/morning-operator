@@ -8,12 +8,12 @@ public enum MorningActivityCategory: String, Codable, Hashable, Sendable, CaseIt
     case briefing, messages, calendar, wellbeing, entertainment, custom
     public var displayName: String {
         switch self {
-        case .briefing: String(localized: "Briefing", bundle: .module)
-        case .messages: String(localized: "Messages", bundle: .module)
-        case .calendar: String(localized: "Calendar", bundle: .module)
-        case .wellbeing: String(localized: "Wellbeing", bundle: .module)
-        case .entertainment: String(localized: "Time to enjoy", bundle: .module)
-        case .custom: String(localized: "Your moment", bundle: .module)
+        case .briefing: AppLanguage.localized("Briefing", bundle: .module)
+        case .messages: AppLanguage.localized("Messages", bundle: .module)
+        case .calendar: AppLanguage.localized("Calendar", bundle: .module)
+        case .wellbeing: AppLanguage.localized("Wellbeing", bundle: .module)
+        case .entertainment: AppLanguage.localized("Time to enjoy", bundle: .module)
+        case .custom: AppLanguage.localized("Your moment", bundle: .module)
         }
     }
 }
@@ -22,9 +22,9 @@ public enum MorningActivityStatus: String, Codable, Hashable, Sendable, CaseIter
     case running, paused, needsAttention
     public var displayName: String {
         switch self {
-        case .running: String(localized: "In progress", bundle: .module)
-        case .paused: String(localized: "Paused", bundle: .module)
-        case .needsAttention: String(localized: "Your turn", bundle: .module)
+        case .running: AppLanguage.localized("In progress", bundle: .module)
+        case .paused: AppLanguage.localized("Paused", bundle: .module)
+        case .needsAttention: AppLanguage.localized("Your turn", bundle: .module)
         }
     }
 }
@@ -84,9 +84,9 @@ public struct MorningActivityStepTimer: Codable, Hashable, Sendable {
 
     /// "Next: Instagram", "Next: MORE" or "Finish".
     public var nextLabel: String {
-        guard hasNextStep else { return String(localized: "Finish", bundle: .module) }
+        guard hasNextStep else { return AppLanguage.localized("Finish", bundle: .module) }
         let name = nextDestination?.displayName ?? "MORE"
-        return String(localized: "Next: \(name)", bundle: .module)
+        return AppLanguage.localized("Next: \(name)", bundle: .module)
     }
 }
 

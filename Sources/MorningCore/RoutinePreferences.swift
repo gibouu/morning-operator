@@ -10,12 +10,12 @@ public enum RoutinePreferenceError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidPreference: String(localized: "This saved routine preference is invalid. Review or reset it before learning again.", bundle: .module)
-        case .tooManyPreferences: String(localized: "At most 100 routine preferences can be saved. Clear an unused preference first.", bundle: .module)
-        case .preferencesTooLarge: String(localized: "These saved preferences exceed the local storage limit. Shorten a retained moment or clear an unused preference.", bundle: .module)
-        case .invalidSteps: String(localized: "The suggested routine has conflicting step identities. Your routine is unchanged.", bundle: .module)
-        case .ambiguousMatch: String(localized: "More than one suggested moment could match a saved preference. Review the matching activities before trying again.", bundle: .module)
-        case .conflictingMatch: String(localized: "Two saved preferences conflict for the same suggested moment. Review those preferences before trying again.", bundle: .module)
+        case .invalidPreference: AppLanguage.localized("This saved routine preference is invalid. Review or reset it before learning again.", bundle: .module)
+        case .tooManyPreferences: AppLanguage.localized("At most 100 routine preferences can be saved. Clear an unused preference first.", bundle: .module)
+        case .preferencesTooLarge: AppLanguage.localized("These saved preferences exceed the local storage limit. Shorten a retained moment or clear an unused preference.", bundle: .module)
+        case .invalidSteps: AppLanguage.localized("The suggested routine has conflicting step identities. Your routine is unchanged.", bundle: .module)
+        case .ambiguousMatch: AppLanguage.localized("More than one suggested moment could match a saved preference. Review the matching activities before trying again.", bundle: .module)
+        case .conflictingMatch: AppLanguage.localized("Two saved preferences conflict for the same suggested moment. Review those preferences before trying again.", bundle: .module)
         }
     }
 }

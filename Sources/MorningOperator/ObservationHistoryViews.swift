@@ -37,19 +37,19 @@ struct ObservationHistoryView: View {
     }
     private var holdsEntry: Bool { choosingMornings || confirmingClear || learnAfterProposalDismissal || editAfterProposalDismissal }
     private var selectionIssue: String? {
-        guard !selectedIDs.isEmpty else { return String(localized: "Choose one to five observations.") }
-        guard selectedIDs.count <= 5 else { return String(localized: "Choose at most five observations for one update.") }
-        guard selectedEntries.count == selectedIDs.count else { return String(localized: "A selected observation was removed. Clear the selection and choose again.") }
-        if selectedEntries.contains(where: { eligibilityIssue($0) != nil }) { return String(localized: "Check the date, origin and notes of your selected observations.") }
-        guard Set(selectedEntries.compactMap { $0.observedDate?.timeZoneIdentifier }).count == 1 else { return String(localized: "Choose observations from one time zone for this update.") }
-        guard Set(selectedEntries.map { $0.origin.rawValue }).count == 1 else { return String(localized: "Choose personal mornings or samples separately.") }
+        guard !selectedIDs.isEmpty else { return AppLanguage.localized("Choose one to five observations.") }
+        guard selectedIDs.count <= 5 else { return AppLanguage.localized("Choose at most five observations for one update.") }
+        guard selectedEntries.count == selectedIDs.count else { return AppLanguage.localized("A selected observation was removed. Clear the selection and choose again.") }
+        if selectedEntries.contains(where: { eligibilityIssue($0) != nil }) { return AppLanguage.localized("Check the date, origin and notes of your selected observations.") }
+        guard Set(selectedEntries.compactMap { $0.observedDate?.timeZoneIdentifier }).count == 1 else { return AppLanguage.localized("Choose observations from one time zone for this update.") }
+        guard Set(selectedEntries.map { $0.origin.rawValue }).count == 1 else { return AppLanguage.localized("Choose personal mornings or samples separately.") }
         return nil
     }
     private var selectionSummary: String {
         let days = Set(selectedEntries.compactMap { $0.observedDate?.dayKey }).count
-        let prefix = selectedEntries.first?.origin == .synthetic ? String(localized: "Sample update · ") : ""
+        let prefix = selectedEntries.first?.origin == .synthetic ? AppLanguage.localized("Sample update · ") : ""
         let count = selectedIDs.count
-        return prefix + String(localized: "\(count) observations across \(days) dated days")
+        return prefix + AppLanguage.localized("\(count) observations across \(days) dated days")
     }
 
     var body: some View {
@@ -210,7 +210,7 @@ struct ObservationHistoryView: View {
                 finishSuggestionIfReady()
             } label: {
                 Label(dynamicTypeSize.isAccessibilitySize
-                      ? (AppLanguage.isFrench ? "Proposer" : "Suggest") : String(localized: "Suggest an update"), systemImage: "sparkles")
+                      ? (AppLanguage.isFrench ? "Proposer" : "Suggest") : AppLanguage.localized("Suggest an update"), systemImage: "sparkles")
                     .frame(maxWidth: .infinity)
             }
             .accessibilityLabel("Suggest an update")
@@ -276,18 +276,18 @@ struct ObservationHistoryView: View {
     }
 
     private func eligibilityIssue(_ entry: ObservationAcquisition) -> String? {
-        if entry.observedDate == nil { return String(localized: "Set the observed day before using this observation.") }
-        if entry.origin == .unknown { return String(localized: "Confirm whether this is your morning or a sample.") }
-        if entry.origin == .automated { return String(localized: "Automated activity isn't used to learn a personal morning.") }
-        if entry.effectiveText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return String(localized: "Add readable notes before using this observation.") }
+        if entry.observedDate == nil { return AppLanguage.localized("Set the observed day before using this observation.") }
+        if entry.origin == .unknown { return AppLanguage.localized("Confirm whether this is your morning or a sample.") }
+        if entry.origin == .automated { return AppLanguage.localized("Automated activity isn't used to learn a personal morning.") }
+        if entry.effectiveText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return AppLanguage.localized("Add readable notes before using this observation.") }
         return nil
     }
 
     private func compatibilityIssue(_ entry: ObservationAcquisition) -> String? {
         guard !selectedIDs.contains(entry.id), let first = selectedEntries.first else { return nil }
-        if first.origin != entry.origin { return String(localized: "Choose personal mornings and samples separately.") }
-        if first.observedDate?.timeZoneIdentifier != entry.observedDate?.timeZoneIdentifier { return String(localized: "Choose observations from the same time zone.") }
-        if selectedIDs.count >= 5 { return String(localized: "Five observations selected; remove one to choose another.") }
+        if first.origin != entry.origin { return AppLanguage.localized("Choose personal mornings and samples separately.") }
+        if first.observedDate?.timeZoneIdentifier != entry.observedDate?.timeZoneIdentifier { return AppLanguage.localized("Choose observations from the same time zone.") }
+        if selectedIDs.count >= 5 { return AppLanguage.localized("Five observations selected; remove one to choose another.") }
         return nil
     }
 
@@ -351,7 +351,7 @@ struct ObservationHistoryDetail: View {
                         LabeledContent("Time zone", value: date.timeZoneIdentifier)
                         Text(date.provenance == .screenTimeReport
                              ? (AppLanguage.isFrench ? "Jour et fuseau du rapport Screen Time." : "Day and time zone of the Screen Time report.")
-                             : String(localized: date.provenance == .recordingSession ? "Day recorded by this recording session." : "Day assigned by you."))
+                             : AppLanguage.localized(date.provenance == .recordingSession ? "Day recorded by this recording session." : "Day assigned by you."))
                             .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                     }
                     LabeledContent("Origin", value: observationOriginLabel(entry.origin))
@@ -423,12 +423,12 @@ struct ObservationHistoryDetail: View {
                         .disabled(store.busy || store.sessionActive)
                         .accessibilityIdentifier("observation.edit")
                     DisclosureGroup("Current notes") {
-                        Text(entry.effectiveText.isEmpty ? String(localized: "No notes saved.") : entry.effectiveText)
+                        Text(entry.effectiveText.isEmpty ? AppLanguage.localized("No notes saved.") : entry.effectiveText)
                             .textSelection(.enabled).font(.raleway(.subheadline))
                             .accessibilityIdentifier("observation.currentText")
                     }
                     DisclosureGroup("Original extracted text") {
-                        Text(entry.originalText.isEmpty ? String(localized: "No original text was retained.") : entry.originalText)
+                        Text(entry.originalText.isEmpty ? AppLanguage.localized("No original text was retained.") : entry.originalText)
                             .textSelection(.enabled).font(.raleway(.subheadline))
                             .accessibilityIdentifier("observation.originalText")
                     }
@@ -601,7 +601,7 @@ private struct ObservationTimeZonePicker: View {
 }
 
 private func observationDateLabel(_ entry: ObservationAcquisition) -> String {
-    guard let value = entry.observedDate else { return String(localized: "Date needed") }
+    guard let value = entry.observedDate else { return AppLanguage.localized("Date needed") }
     let formatter = DateFormatter()
     formatter.dateStyle = .medium
     formatter.timeStyle = .none
@@ -612,15 +612,15 @@ private func observationDateLabel(_ entry: ObservationAcquisition) -> String {
 
 private func observationOriginLabel(_ origin: ObservationAcquisitionOrigin) -> String {
     switch origin {
-    case .human: String(localized: "My morning")
-    case .synthetic: String(localized: "Sample or test")
-    case .automated: String(localized: "Automated activity")
-    case .unknown: String(localized: "Origin unsure")
+    case .human: AppLanguage.localized("My morning")
+    case .synthetic: AppLanguage.localized("Sample or test")
+    case .automated: AppLanguage.localized("Automated activity")
+    case .unknown: AppLanguage.localized("Origin unsure")
     }
 }
 
 private func observationImportDateLabel(_ entry: ObservationAcquisition) -> String {
-    entry.importedAt?.formatted(date: .abbreviated, time: .shortened) ?? String(localized: "Import date unknown")
+    entry.importedAt?.formatted(date: .abbreviated, time: .shortened) ?? AppLanguage.localized("Import date unknown")
 }
 
 private func observationRecordingStartLabel(_ context: ObservationRecordingContext) -> String {
@@ -634,10 +634,10 @@ private func observationRecordingStartLabel(_ context: ObservationRecordingConte
 
 private func observationClassificationLabel(_ status: ObservationContextInferenceStatus) -> String {
     switch status {
-    case .completed: String(localized: "Screen interpretation saved; unclear samples remain unknown.")
-    case .noEligibleFrames: String(localized: "No samples have enough complete text to recognize a screen.")
-    case .unavailable: String(localized: "Screen interpretation unavailable; original evidence is retained.")
-    case .partialFailure: String(localized: "Some screen interpretations failed; those samples remain unknown.")
-    case .failed: String(localized: "Screen interpretation failed; original evidence is retained.")
+    case .completed: AppLanguage.localized("Screen interpretation saved; unclear samples remain unknown.")
+    case .noEligibleFrames: AppLanguage.localized("No samples have enough complete text to recognize a screen.")
+    case .unavailable: AppLanguage.localized("Screen interpretation unavailable; original evidence is retained.")
+    case .partialFailure: AppLanguage.localized("Some screen interpretations failed; those samples remain unknown.")
+    case .failed: AppLanguage.localized("Screen interpretation failed; original evidence is retained.")
     }
 }

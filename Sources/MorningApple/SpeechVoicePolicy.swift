@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 
 public enum SpeechVoiceQuality: Int, Sendable, Equatable {
@@ -5,9 +6,9 @@ public enum SpeechVoiceQuality: Int, Sendable, Equatable {
 
     public var displayName: String {
         switch self {
-        case .standard: String(localized: "Standard", bundle: .module)
-        case .enhanced: String(localized: "Enhanced", bundle: .module)
-        case .premium: String(localized: "Premium", bundle: .module)
+        case .standard: AppLanguage.localized("Standard", bundle: .module)
+        case .enhanced: AppLanguage.localized("Enhanced", bundle: .module)
+        case .premium: AppLanguage.localized("Premium", bundle: .module)
         }
     }
 }

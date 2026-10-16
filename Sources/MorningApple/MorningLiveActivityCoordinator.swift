@@ -9,12 +9,12 @@ public enum MorningLiveActivityError: Error, LocalizedError, Sendable, Equatable
     case unavailable, requestFailed, updateFailed, endFailed, endUnconfirmed, privacyBlocked, invalidSnapshot
     public var errorDescription: String? {
         switch self {
-        case .unavailable: String(localized: "Live Activities aren't available on this device.", bundle: .module)
-        case .requestFailed: String(localized: "The Lock Screen activity couldn't start.", bundle: .module)
-        case .updateFailed: String(localized: "The Lock Screen activity couldn't update. Open MORE for current progress.", bundle: .module)
-        case .endFailed, .endUnconfirmed: String(localized: "The Lock Screen activity hasn't been confirmed closed. Try again.", bundle: .module)
-        case .privacyBlocked: String(localized: "Live Activities are paused while local data is being removed.", bundle: .module)
-        case .invalidSnapshot: String(localized: "This morning's progress isn't current enough to display.", bundle: .module)
+        case .unavailable: AppLanguage.localized("Live Activities aren't available on this device.", bundle: .module)
+        case .requestFailed: AppLanguage.localized("The Lock Screen activity couldn't start.", bundle: .module)
+        case .updateFailed: AppLanguage.localized("The Lock Screen activity couldn't update. Open MORE for current progress.", bundle: .module)
+        case .endFailed, .endUnconfirmed: AppLanguage.localized("The Lock Screen activity hasn't been confirmed closed. Try again.", bundle: .module)
+        case .privacyBlocked: AppLanguage.localized("Live Activities are paused while local data is being removed.", bundle: .module)
+        case .invalidSnapshot: AppLanguage.localized("This morning's progress isn't current enough to display.", bundle: .module)
         }
     }
 }

@@ -31,6 +31,8 @@ struct MorningOperatorApp: App {
             MorningSubscriptionEntryView(store: store)
             #endif
             }
+            .environment(\.locale, AppLanguage.locale)
+            .environment(\.layoutDirection, .leftToRight)
             #if DEBUG
             .overlay(alignment: .topLeading) {
                 if ProcessInfo.processInfo.arguments.contains("--qa-system-checks"),

@@ -28,21 +28,21 @@ struct VideoObservationBuilder {
         // native time nor a manufactured replacement when the source time is out of range.
         let original = outcome != .decodeFailed && actual == nil ? nil : originalPresentationTime
         if outcome != .decodeFailed, actual == nil {
-            warnings.append(String(localized: "Actual presentation time was unavailable; the requested sample time is retained as a fallback.", bundle: .module))
+            warnings.append(AppLanguage.localized("Actual presentation time was unavailable; the requested sample time is retained as a fallback.", bundle: .module))
         }
-        if outcome == .decodeFailed { warnings.append(String(localized: "This requested frame could not be decoded.", bundle: .module)) }
-        if outcome == .ocrFailed { warnings.append(String(localized: "This decoded frame could not be analyzed for text.", bundle: .module)) }
+        if outcome == .decodeFailed { warnings.append(AppLanguage.localized("This requested frame could not be decoded.", bundle: .module)) }
+        if outcome == .ocrFailed { warnings.append(AppLanguage.localized("This decoded frame could not be analyzed for text.", bundle: .module)) }
         let bounded = Self.prefix(text, maximumCharacters: remainingCharacters, maximumBytes: remainingBytes)
         let truncated = bounded != text
-        if truncated { warnings.append(String(localized: "OCR text was truncated or omitted to stay within the extraction budget.", bundle: .module)) }
+        if truncated { warnings.append(AppLanguage.localized("OCR text was truncated or omitted to stay within the extraction budget.", bundle: .module)) }
         let boundedCharacterCount = bounded.count
         let completeLines = ocrLines.map { $0.filter { $0.endCharacterOffset <= boundedCharacterCount } }
         let retainedLines = completeLines.map { Array($0.prefix(ObservationFrameEvidence.maximumOCRLines)) }
         if let ocrLines, let completeLines, completeLines.count != ocrLines.count {
-            warnings.append(String(localized: "Some OCR layout regions were omitted because their complete text did not survive the extraction limits.", bundle: .module))
+            warnings.append(AppLanguage.localized("Some OCR layout regions were omitted because their complete text did not survive the extraction limits.", bundle: .module))
         }
         if let completeLines, let retainedLines, retainedLines.count != completeLines.count {
-            warnings.append(String(localized: "Some OCR layout regions were omitted at the line limit; their text was preserved.", bundle: .module))
+            warnings.append(AppLanguage.localized("Some OCR layout regions were omitted at the line limit; their text was preserved.", bundle: .module))
         }
         let evidence = try ObservationFrameEvidence(id: id, requestedTimeSeconds: requestedTimeSeconds,
             actualTimeSeconds: actual, outcome: outcome, text: bounded,
@@ -55,13 +55,13 @@ struct VideoObservationBuilder {
 
     func finish() throws -> ObservationVideoEvidence {
         var warnings = [
-            String(localized: "Sparse sampling may miss fast transitions and does not reveal exact taps or the user's intent.", bundle: .module),
-            String(localized: "File duration and sample times do not establish wall-clock recording start or continuous capture coverage.", bundle: .module)
+            AppLanguage.localized("Sparse sampling may miss fast transitions and does not reveal exact taps or the user's intent.", bundle: .module),
+            AppLanguage.localized("File duration and sample times do not establish wall-clock recording start or continuous capture coverage.", bundle: .module)
         ]
         let failed = frames.filter { $0.outcome == .decodeFailed || $0.outcome == .ocrFailed }.count
-        if failed > 0 { warnings.append(String(localized: "\(failed) of \(frames.count) requested frames could not be analyzed.", bundle: .module)) }
+        if failed > 0 { warnings.append(AppLanguage.localized("\(failed) of \(frames.count) requested frames could not be analyzed.", bundle: .module)) }
         let truncated = frames.filter(\.textWasTruncated).count
-        if truncated > 0 { warnings.append(String(localized: "\(truncated) frames contain truncated or omitted OCR and cannot support app identification.", bundle: .module)) }
+        if truncated > 0 { warnings.append(AppLanguage.localized("\(truncated) frames contain truncated or omitted OCR and cannot support app identification.", bundle: .module)) }
         return try ObservationVideoEvidence(durationSeconds: durationSeconds, frames: frames, warnings: warnings)
     }
 

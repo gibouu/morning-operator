@@ -11,7 +11,7 @@ extension QuickCaptureKind {
         case .calendarIdea: "calendar"
         }
     }
-    var shortTitle: String { self == .calendarIdea ? String(localized: "Calendar") : displayName }
+    var shortTitle: String { self == .calendarIdea ? AppLanguage.localized("Calendar") : displayName }
 }
 
 struct CapturesView: View {
@@ -20,8 +20,8 @@ struct CapturesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
-                PageHeading(eyebrow: String(localized: "Keep a little spark"), title: String(localized: "Before it slips away."),
-                            subtitle: String(localized: "A dream. An idea. Something for later. Give it a place to land."))
+                PageHeading(eyebrow: AppLanguage.localized("Keep a little spark"), title: AppLanguage.localized("Before it slips away."),
+                            subtitle: AppLanguage.localized("A dream. An idea. Something for later. Give it a place to land."))
                 Button { store.openCapture() } label: {
                     HStack {
                         Image(systemName: "plus").font(.serif(.title3))
@@ -39,8 +39,8 @@ struct CapturesView: View {
                 }
                 let items = store.captures.filter { filter == nil || $0.kind == filter }
                 if items.isEmpty {
-                    EmptyMoment(symbol: filter?.symbol ?? "sparkles", title: filter == .dream ? String(localized: "A home for your dreams.") : String(localized: "Room for a new idea."),
-                        detail: String(localized: "Write it here, use your keyboard's dictation, or ask Siri to capture it with MORE."))
+                    EmptyMoment(symbol: filter?.symbol ?? "sparkles", title: filter == .dream ? AppLanguage.localized("A home for your dreams.") : AppLanguage.localized("Room for a new idea."),
+                        detail: AppLanguage.localized("Write it here, use your keyboard's dictation, or ask Siri to capture it with MORE."))
                 } else {
                     ForEach(items) { capture in
                         Card {
@@ -79,7 +79,7 @@ struct CapturesView: View {
     }
     private func filterChip(_ kind: QuickCaptureKind?) -> some View {
         Button { filter = kind } label: {
-            Text(kind?.shortTitle ?? String(localized: "All")).font(.raleway(.subheadline, .medium))
+            Text(kind?.shortTitle ?? AppLanguage.localized("All")).font(.raleway(.subheadline, .medium))
                 .padding(.horizontal, 16).padding(.vertical, 11)
                 .background(filter == kind ? MorningStyle.selected : MorningStyle.surface, in: Capsule())
         }.buttonStyle(.plain).accessibilityIdentifier("capture.filter.\(kind?.rawValue ?? "all")").accessibilityAddTraits(filter == kind ? .isSelected : [])
@@ -102,8 +102,8 @@ struct QuickCaptureView: View {
     @ViewState<QuickCaptureSource> private var source: QuickCaptureSource = .typed
     private var isSchedule: Bool { kind == .reminder || kind == .calendarIdea }
     private var buttonTitle: String {
-        if isSchedule && saveToSystem { return kind == .reminder ? String(localized: "Add to Reminders") : String(localized: "Add to Calendar") }
-        return kind == .dream ? String(localized: "Save my dream") : String(localized: "Save thought")
+        if isSchedule && saveToSystem { return kind == .reminder ? AppLanguage.localized("Add to Reminders") : AppLanguage.localized("Add to Calendar") }
+        return kind == .dream ? AppLanguage.localized("Save my dream") : AppLanguage.localized("Save thought")
     }
 
     var body: some View {
@@ -204,7 +204,7 @@ struct QuickCaptureView: View {
         else { hasDate = false }
         explanation = parsed.dateExplanation
         if parsed.needsDateReview && parsed.suggestedDate == nil {
-            explanation = String(localized: "Choose the date and time you meant before saving.")
+            explanation = AppLanguage.localized("Choose the date and time you meant before saving.")
         }
     }
 }

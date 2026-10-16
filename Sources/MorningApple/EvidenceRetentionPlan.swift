@@ -55,27 +55,27 @@ public enum EvidenceRetentionReason: String, Sendable, Equatable, CaseIterable {
     public var explanation: String {
         switch self {
         case .approvedQuotation:
-            String(localized: "You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source.", bundle: .module)
+            AppLanguage.localized("You approved this quotation as part of a routine. It stays as a separate copy until you remove that step, and it can no longer be replayed from its source.", bundle: .module)
         case .keptChoice:
-            String(localized: "You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.", bundle: .module)
+            AppLanguage.localized("You chose to keep this moment. Its quotation stays with that choice until you clear it in Settings → Saved choices.", bundle: .module)
         case .markedRequired:
-            String(localized: "This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it.", bundle: .module)
+            AppLanguage.localized("This moment is marked to stay in your routine, so its quotation is kept. It is listed so you can review or remove it.", bundle: .module)
         case .savedRun:
-            String(localized: "This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it.", bundle: .module)
+            AppLanguage.localized("This quotation is part of a saved run of your morning. It stays with that run and is listed so you can see it.", bundle: .module)
         case .choicesUnavailable:
-            String(localized: "Your saved choices could not be read, so this quotation is kept until they can be checked.", bundle: .module)
+            AppLanguage.localized("Your saved choices could not be read, so this quotation is kept until they can be checked.", bundle: .module)
         case .unlinkedMatchingText:
-            String(localized: "This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it.", bundle: .module)
+            AppLanguage.localized("This step holds words that match the observation but no link to it, so it is treated as yours and stays. It is listed so you can review or remove it.", bundle: .module)
         case .unapprovedDraftQuotation:
-            String(localized: "This quotation sits unchanged in a draft you have not approved or kept, so it goes with its observation. The step's name and timing are yours and stay.", bundle: .module)
+            AppLanguage.localized("This quotation sits unchanged in a draft you have not approved or kept, so it goes with its observation. The step's name and timing are yours and stay.", bundle: .module)
         case .reworkedStep:
-            String(localized: "This step no longer matches its saved excerpt exactly, so its wording is treated as yours and stays. Only its link to the observation stops working.", bundle: .module)
+            AppLanguage.localized("This step no longer matches its saved excerpt exactly, so its wording is treated as yours and stays. Only its link to the observation stops working.", bundle: .module)
         case .suggestionSource:
-            String(localized: "This pending suggestion was built from the observation and has to be worked out again.", bundle: .module)
+            AppLanguage.localized("This pending suggestion was built from the observation and has to be worked out again.", bundle: .module)
         case .suggestionCitation:
-            String(localized: "This pending suggestion quotes the observation. The suggestion is set aside and has to be worked out again.", bundle: .module)
+            AppLanguage.localized("This pending suggestion quotes the observation. The suggestion is set aside and has to be worked out again.", bundle: .module)
         case .insideDiscardedSuggestion:
-            String(localized: "This copy sits inside a pending suggestion that has to be worked out again. A choice you kept is listed separately.", bundle: .module)
+            AppLanguage.localized("This copy sits inside a pending suggestion that has to be worked out again. A choice you kept is listed separately.", bundle: .module)
         }
     }
 }

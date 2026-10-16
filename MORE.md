@@ -180,9 +180,11 @@ Les permissions et les connexions se préparent dans l'interface. Une difficult�
 
 ### Découvrir MORE et s’abonner
 
+Au premier lancement, MORE utilise automatiquement la langue principale de l’iPhone : le français si cette langue est le français, l’anglais dans tous les autres cas, même si le français figure ensuite dans les langues préférées. La région de l’iPhone ne choisit pas la langue de l’interface. Aucun questionnaire ni choix de langue ne précède la découverte.
+
 Le parcours d’entrée présente d’abord la valeur de MORE : comprendre ses habitudes, ajuster sa routine, puis la confier à MORE pour un matin mains libres. Il présente ensuite un abonnement mensuel à **4,99 € avec une semaine d’essai gratuit**, selon l’éligibilité confirmée par l’App Store. Le prix localisé et les conditions réellement disponibles viennent de la boutique Apple.
 
-Les demandes d’accès commencent seulement après la confirmation de l’abonnement, essai compris. Chaque demande explique son utilité avant d’ouvrir l’autorisation correspondante. Le paysage, les polices, les couleurs et le cycle jour/nuit accompagnent toute cette découverte, sans dépendre du paiement ni d’une autorisation de localisation. La restauration des achats et les contrôles de confidentialité restent accessibles sans abonnement actif.
+Les demandes d’accès commencent seulement après la confirmation de l’abonnement, essai compris. Chaque demande explique son utilité avant d’ouvrir l’autorisation correspondante. Le paysage, les polices, les couleurs et le cycle jour/nuit accompagnent toute cette découverte, sans dépendre du paiement ni d’une autorisation de localisation. La restauration des achats et les contrôles de confidentialité restent accessibles sans abonnement actif. Les surfaces givrées et les commandes Liquid Glass restent sobres ; la réduction de la transparence et le contraste renforcé gardent des surfaces pleines et lisibles. Le monogramme original de MORE reprend deux arches continues, sans points ni rayons décoratifs.
 
 ## 9. Ce qui doit encore être construit et prouvé
 

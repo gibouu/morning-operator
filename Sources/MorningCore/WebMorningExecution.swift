@@ -7,21 +7,21 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .browseFeed: String(localized: "Browse the feed", bundle: .module)
-        case .watchVideos: String(localized: "Watch videos", bundle: .module)
-        case .watchStories: String(localized: "Watch stories", bundle: .module)
-        case .readHeadlines: String(localized: "Read headlines aloud", bundle: .module)
-        case .readUnread: String(localized: "Read visible unread information", bundle: .module)
+        case .browseFeed: AppLanguage.localized("Browse the feed", bundle: .module)
+        case .watchVideos: AppLanguage.localized("Watch videos", bundle: .module)
+        case .watchStories: AppLanguage.localized("Watch stories", bundle: .module)
+        case .readHeadlines: AppLanguage.localized("Read headlines aloud", bundle: .module)
+        case .readUnread: AppLanguage.localized("Read visible unread information", bundle: .module)
         }
     }
 
     public var behaviorDescription: String {
         switch self {
-        case .browseFeed: String(localized: "MORE reads visible posts and scrolls through your feed at a gentle pace.", bundle: .module)
-        case .watchVideos: String(localized: "MORE opens the video feed and moves to the next video after each viewing moment.", bundle: .module)
-        case .watchStories: String(localized: "MORE opens your stories and advances through the visible stories.", bundle: .module)
-        case .readHeadlines: String(localized: "MORE reads the visible headlines and continues through the page.", bundle: .module)
-        case .readUnread: String(localized: "MORE reads the unread information visible in this browser.", bundle: .module)
+        case .browseFeed: AppLanguage.localized("MORE reads visible posts and scrolls through your feed at a gentle pace.", bundle: .module)
+        case .watchVideos: AppLanguage.localized("MORE opens the video feed and moves to the next video after each viewing moment.", bundle: .module)
+        case .watchStories: AppLanguage.localized("MORE opens your stories and advances through the visible stories.", bundle: .module)
+        case .readHeadlines: AppLanguage.localized("MORE reads the visible headlines and continues through the page.", bundle: .module)
+        case .readUnread: AppLanguage.localized("MORE reads the unread information visible in this browser.", bundle: .module)
         }
     }
 

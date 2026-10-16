@@ -5,9 +5,9 @@ public enum MorningInvitationError: LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .futureDateRequired: String(localized: "Choose a time in the future for your invitation.", bundle: .module)
-        case .invalidTimeZone: String(localized: "Choose a valid time zone for your invitation.", bundle: .module)
-        case .invalidRecord: String(localized: "The saved invitation could not be read safely. Cancel it before creating another.", bundle: .module)
+        case .futureDateRequired: AppLanguage.localized("Choose a time in the future for your invitation.", bundle: .module)
+        case .invalidTimeZone: AppLanguage.localized("Choose a valid time zone for your invitation.", bundle: .module)
+        case .invalidRecord: AppLanguage.localized("The saved invitation could not be read safely. Cancel it before creating another.", bundle: .module)
         }
     }
 }

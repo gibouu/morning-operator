@@ -181,47 +181,47 @@ public enum GmailConnectionError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .configurationMissing:
-            String(localized: "This build needs a Google iOS OAuth client before Gmail can connect.", bundle: .module)
+            AppLanguage.localized("This build needs a Google iOS OAuth client before Gmail can connect.", bundle: .module)
         case .configurationInvalid:
-            String(localized: "This build's Google OAuth client and callback scheme need checking.", bundle: .module)
+            AppLanguage.localized("This build's Google OAuth client and callback scheme need checking.", bundle: .module)
         case .authorizationFailed:
-            String(localized: "Google could not authorize Gmail access. Check the app's Google setup and try again.", bundle: .module)
+            AppLanguage.localized("Google could not authorize Gmail access. Check the app's Google setup and try again.", bundle: .module)
         case .invalidCallback:
-            String(localized: "The Google sign-in response could not be verified. Connect again.", bundle: .module)
+            AppLanguage.localized("The Google sign-in response could not be verified. Connect again.", bundle: .module)
         case .permissionDenied:
-            String(localized: "Gmail access was not granted. Check Google consent and account policy.", bundle: .module)
+            AppLanguage.localized("Gmail access was not granted. Check Google consent and account policy.", bundle: .module)
         case .sessionExpired:
-            String(localized: "This Gmail session has expired. Connect again.", bundle: .module)
+            AppLanguage.localized("This Gmail session has expired. Connect again.", bundle: .module)
         case .networkUnavailable:
-            String(localized: "Gmail could not connect. Try again when a connection is available.", bundle: .module)
+            AppLanguage.localized("Gmail could not connect. Try again when a connection is available.", bundle: .module)
         case .rateLimited:
-            String(localized: "Gmail is limiting requests. Wait before refreshing.", bundle: .module)
+            AppLanguage.localized("Gmail is limiting requests. Wait before refreshing.", bundle: .module)
         case .serviceUnavailable:
-            String(localized: "Gmail is unavailable right now. Your morning can continue without it.", bundle: .module)
+            AppLanguage.localized("Gmail is unavailable right now. Your morning can continue without it.", bundle: .module)
         case .invalidResponse:
-            String(localized: "Gmail returned an incomplete response. No inbox count is available.", bundle: .module)
+            AppLanguage.localized("Gmail returned an incomplete response. No inbox count is available.", bundle: .module)
         case .redirectRejected:
-            String(localized: "Gmail returned an unexpected redirect. No inbox count is available.", bundle: .module)
+            AppLanguage.localized("Gmail returned an unexpected redirect. No inbox count is available.", bundle: .module)
         case .readAccessRequired:
-            String(localized: "Choose Read messages and grant Gmail read-only access first.", bundle: .module)
+            AppLanguage.localized("Choose Read messages and grant Gmail read-only access first.", bundle: .module)
         case .messageUnavailable:
-            String(localized: "This Gmail message is no longer available.", bundle: .module)
+            AppLanguage.localized("This Gmail message is no longer available.", bundle: .module)
         case .messageTooLarge:
-            String(localized: "This Gmail message exceeds the supported reading limits.", bundle: .module)
+            AppLanguage.localized("This Gmail message exceeds the supported reading limits.", bundle: .module)
         case .credentialStorageUnavailable:
-            String(localized: "Saved Gmail access is unavailable on this device. Unlock it and try again.", bundle: .module)
+            AppLanguage.localized("Saved Gmail access is unavailable on this device. Unlock it and try again.", bundle: .module)
         case .savedConnectionInvalid:
-            String(localized: "This saved Gmail connection needs to be connected again.", bundle: .module)
+            AppLanguage.localized("This saved Gmail connection needs to be connected again.", bundle: .module)
         case .sendAccessRequired:
-            String(localized: "Enable reading and sending in Gmail settings before asking MORE to send a reply.", bundle: .module)
+            AppLanguage.localized("Enable reading and sending in Gmail settings before asking MORE to send a reply.", bundle: .module)
         case .invalidRecipient:
-            String(localized: "This message has no single verified reply address. Your reply has not been sent.", bundle: .module)
+            AppLanguage.localized("This message has no single verified reply address. Your reply has not been sent.", bundle: .module)
         case .sendUncertain:
-            String(localized: "Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send.", bundle: .module)
+            AppLanguage.localized("Gmail has not confirmed whether this reply was sent. MORE will check Sent before any further send.", bundle: .module)
         case .sendJournalUnavailable:
-            String(localized: "The reply safety record is unavailable. Nothing new will be sent.", bundle: .module)
+            AppLanguage.localized("The reply safety record is unavailable. Nothing new will be sent.", bundle: .module)
         case .connectionChanged:
-            String(localized: "The Gmail connection changed. Open Gmail again to continue.", bundle: .module)
+            AppLanguage.localized("The Gmail connection changed. Open Gmail again to continue.", bundle: .module)
         }
     }
 }

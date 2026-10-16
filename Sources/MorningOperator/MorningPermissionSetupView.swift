@@ -29,7 +29,7 @@ struct MorningPermissionSetupView: View {
                                           animated: false, active: false,
                                           strongInk: reduceTransparency || contrast == .increased)
                         .frame(height: verticalSizeClass == .compact ? 110 : 180)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
                     choice
                     if let issue = setup.saveIssue {
                         Text(issue).font(MorningTheme.Typography.note).foregroundStyle(ink)
@@ -51,7 +51,7 @@ struct MorningPermissionSetupView: View {
                     .background(paper.ignoresSafeArea(edges: .bottom))
             }
         }
-        .background(paper.ignoresSafeArea())
+        .background { MorningEntryBackdrop() }
         .foregroundStyle(ink).font(MorningTheme.Typography.body).tint(ink)
         .preferredColorScheme(night ? .dark : .light)
         .accessibilityElement(children: .contain)
@@ -71,7 +71,11 @@ struct MorningPermissionSetupView: View {
 
     private var navigation: some View {
         HStack(spacing: 20) {
-            Text(verbatim: "MORE").font(.system(.subheadline, weight: .semibold)).tracking(4)
+            HStack(spacing: 7) {
+                MorningBrandMark().frame(width: 24, height: 24)
+                Text(verbatim: "MORE").font(.system(.subheadline, weight: .semibold)).tracking(1.5)
+            }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).fixedSize()
+                .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
             Spacer(minLength: 12)
             Text(verbatim: "\(setup.stepNumber) / \(setup.stepCount)")
                 .font(.system(.caption, weight: .medium).monospacedDigit()).foregroundStyle(muted)
@@ -87,7 +91,7 @@ struct MorningPermissionSetupView: View {
     private var choice: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(setup.current?.accessHeading ?? text("Ready for your morning.", "Votre matin peut commencer."))
-                .font(MorningTheme.Typography.display)
+                .font(.system(.largeTitle, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($headingFocused)
@@ -130,7 +134,7 @@ struct MorningPermissionSetupView: View {
                 } label: {
                     primaryLabel(setup.current?.accessAction ?? "")
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .modifier(MorningEntryPrimaryStyle())
                 .disabled(setup.isRequesting || scenePhase != .active)
                 .accessibilityIdentifier("permissions.allow")
                 Button(text("Not now", "Plus tard")) { setup.skip() }
@@ -140,13 +144,13 @@ struct MorningPermissionSetupView: View {
                     .accessibilityIdentifier("permissions.skip")
             } else if setup.isRevisiting {
                 Button { setup.finish() } label: { primaryLabel(text("Done", "Terminer")) }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .modifier(MorningEntryPrimaryStyle())
                     .accessibilityIdentifier("permissions.finish")
             } else {
                 Button { setup.finish(learn: true) } label: {
                     primaryLabel(text("Discover my routine", "Découvrir ma routine"))
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .modifier(MorningEntryPrimaryStyle())
                 .accessibilityIdentifier("permissions.learn")
                 Button(text("Later", "Plus tard")) { setup.finish() }
                     .font(.system(.subheadline, weight: .medium))

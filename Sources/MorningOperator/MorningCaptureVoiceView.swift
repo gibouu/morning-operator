@@ -8,7 +8,7 @@ struct MorningCaptureVoiceView: View {
     @Bindable var store: MorningStore
     @Environment(\.dismiss) private var dismiss
     @ViewState<MorningVoiceCommandLanguage> private var language =
-        Locale.current.language.languageCode?.identifier == "fr" ? .french : .english
+        AppLanguage.isFrench ? .french : .english
     @ViewState<Bool> private var began = false
 
     var body: some View {
@@ -27,8 +27,8 @@ struct MorningCaptureVoiceView: View {
                         Text("Français").tag(MorningVoiceCommandLanguage.french)
                     }.pickerStyle(.segmented).disabled(store.voiceInputBlocksPlayback)
                     Text(store.completionCaptureFeedback ?? (store.completionCapturePreparing
-                        ? (store.voiceCommands.isBusy ? store.voiceCommands.message : String(localized: "Getting ready to listen…"))
-                        : String(localized: "Speak when you're ready.")))
+                        ? (store.voiceCommands.isBusy ? store.voiceCommands.message : AppLanguage.localized("Getting ready to listen…"))
+                        : AppLanguage.localized("Speak when you're ready.")))
                         .font(.raleway(.subheadline)).accessibilityIdentifier("captureVoice.status")
                     if store.voiceCommands.isBusy, !store.voiceCommands.transcript.isEmpty {
                         Text(store.voiceCommands.transcript).font(.serif(.title3))

@@ -7,13 +7,13 @@ public enum ObservationNarrationError: Error, LocalizedError, Sendable, Equatabl
     case sourceMissing, sourceChanged, invalidExcerpt
     public var errorDescription: String? {
         switch self {
-        case .dateRequired: String(localized: "Choose the observed day before adding this saved text to your morning.", bundle: .module)
-        case .originNotEligible: String(localized: "Choose your own observation or a separate synthetic sample.", bundle: .module)
-        case .unsupportedSource: String(localized: "This observation has no supported text source for narration.", bundle: .module)
-        case .noUsableExcerpt: String(localized: "No complete short excerpt is available. Review or write a shorter note first.", bundle: .module)
-        case .sourceMissing: String(localized: "The saved observation was removed. Review this moment or skip it.", bundle: .module)
-        case .sourceChanged: String(localized: "The saved observation changed. Review and approve this moment again before speaking.", bundle: .module)
-        case .invalidExcerpt: String(localized: "This excerpt no longer matches a complete line in the saved source.", bundle: .module)
+        case .dateRequired: AppLanguage.localized("Choose the observed day before adding this saved text to your morning.", bundle: .module)
+        case .originNotEligible: AppLanguage.localized("Choose your own observation or a separate synthetic sample.", bundle: .module)
+        case .unsupportedSource: AppLanguage.localized("This observation has no supported text source for narration.", bundle: .module)
+        case .noUsableExcerpt: AppLanguage.localized("No complete short excerpt is available. Review or write a shorter note first.", bundle: .module)
+        case .sourceMissing: AppLanguage.localized("The saved observation was removed. Review this moment or skip it.", bundle: .module)
+        case .sourceChanged: AppLanguage.localized("The saved observation changed. Review and approve this moment again before speaking.", bundle: .module)
+        case .invalidExcerpt: AppLanguage.localized("This excerpt no longer matches a complete line in the saved source.", bundle: .module)
         }
     }
 }

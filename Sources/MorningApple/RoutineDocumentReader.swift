@@ -60,9 +60,9 @@ public enum RoutineDocumentReadError: LocalizedError, Sendable {
     case notAFile, tooLarge, unreadable
     public var errorDescription: String? {
         switch self {
-        case .notAFile: String(localized: "Choose a saved routine file.", bundle: .module)
-        case .tooLarge: String(localized: "This routine file is too large. The limit is 1 MB.", bundle: .module)
-        case .unreadable: String(localized: "This routine file could not be opened. Your current routine is unchanged.", bundle: .module)
+        case .notAFile: AppLanguage.localized("Choose a saved routine file.", bundle: .module)
+        case .tooLarge: AppLanguage.localized("This routine file is too large. The limit is 1 MB.", bundle: .module)
+        case .unreadable: AppLanguage.localized("This routine file could not be opened. Your current routine is unchanged.", bundle: .module)
         }
     }
 }

@@ -8,19 +8,19 @@ public enum ObservationArchiveError: Error, LocalizedError, Sendable, Equatable 
     case archiveFull, archiveTooLarge, unknownAcquisition, invalidClassification, correctedObservation, invalidFrameReview
     public var errorDescription: String? {
         switch self {
-        case .invalidSource: String(localized: "An observation contains invalid or inconsistent source evidence.", bundle: .module)
-        case .invalidDate: String(localized: "Choose a valid observed date and time zone.", bundle: .module)
-        case .invalidDigest: String(localized: "The observation file fingerprint is invalid.", bundle: .module)
-        case .invalidRecordingContext: String(localized: "The recording-start metadata is invalid for this observation.", bundle: .module)
-        case .invalidWindowCapture: String(localized: "This learning-window record does not match the recording it was saved with.", bundle: .module)
-        case .duplicateAcquisition: String(localized: "Two observations use the same acquisition identifier.", bundle: .module)
-        case .duplicateDigest: String(localized: "The archive contains the same file more than once.", bundle: .module)
-        case .archiveFull: String(localized: "The observation archive is full. Delete an observation before adding another.", bundle: .module)
-        case .archiveTooLarge: String(localized: "The observation archive exceeds its storage limit. Delete an observation before adding more.", bundle: .module)
-        case .unknownAcquisition: String(localized: "This observation is no longer in the archive.", bundle: .module)
-        case .invalidClassification: String(localized: "This interpretation is not supported by the saved original evidence.", bundle: .module)
-        case .correctedObservation: String(localized: "Corrected notes cannot retain an interpretation of the original recording.", bundle: .module)
-        case .invalidFrameReview: String(localized: "This screen review is not supported by its saved original sample.", bundle: .module)
+        case .invalidSource: AppLanguage.localized("An observation contains invalid or inconsistent source evidence.", bundle: .module)
+        case .invalidDate: AppLanguage.localized("Choose a valid observed date and time zone.", bundle: .module)
+        case .invalidDigest: AppLanguage.localized("The observation file fingerprint is invalid.", bundle: .module)
+        case .invalidRecordingContext: AppLanguage.localized("The recording-start metadata is invalid for this observation.", bundle: .module)
+        case .invalidWindowCapture: AppLanguage.localized("This learning-window record does not match the recording it was saved with.", bundle: .module)
+        case .duplicateAcquisition: AppLanguage.localized("Two observations use the same acquisition identifier.", bundle: .module)
+        case .duplicateDigest: AppLanguage.localized("The archive contains the same file more than once.", bundle: .module)
+        case .archiveFull: AppLanguage.localized("The observation archive is full. Delete an observation before adding another.", bundle: .module)
+        case .archiveTooLarge: AppLanguage.localized("The observation archive exceeds its storage limit. Delete an observation before adding more.", bundle: .module)
+        case .unknownAcquisition: AppLanguage.localized("This observation is no longer in the archive.", bundle: .module)
+        case .invalidClassification: AppLanguage.localized("This interpretation is not supported by the saved original evidence.", bundle: .module)
+        case .correctedObservation: AppLanguage.localized("Corrected notes cannot retain an interpretation of the original recording.", bundle: .module)
+        case .invalidFrameReview: AppLanguage.localized("This screen review is not supported by its saved original sample.", bundle: .module)
         }
     }
 }
@@ -104,11 +104,11 @@ public enum ObservationAcquisitionWarning: String, Codable, Sendable {
     public var message: String {
         switch self {
         case .invalidClassificationRemoved:
-            String(localized: "An unsupported saved interpretation was removed. The original observation is still available.", bundle: .module)
+            AppLanguage.localized("An unsupported saved interpretation was removed. The original observation is still available.", bundle: .module)
         case .invalidRecordingContextRemoved:
-            String(localized: "Unsupported recording-start metadata was removed. The original observation and its chosen day are still available.", bundle: .module)
+            AppLanguage.localized("Unsupported recording-start metadata was removed. The original observation and its chosen day are still available.", bundle: .module)
         case .invalidFrameReviewsRemoved:
-            String(localized: "Unsupported saved screen reviews and their original interpretation were removed. The original observation is still available for review.", bundle: .module)
+            AppLanguage.localized("Unsupported saved screen reviews and their original interpretation were removed. The original observation is still available for review.", bundle: .module)
         }
     }
 }

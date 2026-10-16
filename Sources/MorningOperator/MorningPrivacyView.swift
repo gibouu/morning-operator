@@ -23,12 +23,12 @@ struct MorningPrivacyView: View {
             }
             Section("Saved in MORE") {
                 if store.privacyInventoryIsReadable {
-                    LabeledContent("Current routine", value: store.routine == nil ? String(localized: "None") : "1")
-                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? String(localized: "None") : "1")
+                    LabeledContent("Current routine", value: store.routine == nil ? AppLanguage.localized("None") : "1")
+                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? AppLanguage.localized("None") : "1")
                     LabeledContent("Saved mornings", value: String(store.history.runs.count))
-                    countRow(String(localized: "Observations"), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
-                    countRow(String(localized: "Saved thoughts & ideas"), value: String(store.captures.count), identifier: "privacy.captures")
-                    countRow(String(localized: "Saved choices"), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : String(localized: "Unavailable"), identifier: "privacy.choices")
+                    countRow(AppLanguage.localized("Observations"), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
+                    countRow(AppLanguage.localized("Saved thoughts & ideas"), value: String(store.captures.count), identifier: "privacy.captures")
+                    countRow(AppLanguage.localized("Saved choices"), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : AppLanguage.localized("Unavailable"), identifier: "privacy.choices")
                 } else {
                     Text(store.privacyBlocksWork ? "Saved data is unavailable while removal needs attention." : "Saved data couldn’t be read. You can still choose to remove it.")
                 }

@@ -13,12 +13,12 @@ public struct ShortcutTemplate: Identifiable, Hashable, Sendable {
 
     public var title: String {
         switch id {
-        case "text": String(localized: "Text someone", bundle: .module)
-        case "email": String(localized: "Email someone", bundle: .module)
-        case "playlist": String(localized: "Morning playlist", bundle: .module)
-        case "focus": String(localized: "Work Focus on", bundle: .module)
-        case "home": String(localized: "Lights and coffee", bundle: .module)
-        case "water": String(localized: "Log water", bundle: .module)
+        case "text": AppLanguage.localized("Text someone", bundle: .module)
+        case "email": AppLanguage.localized("Email someone", bundle: .module)
+        case "playlist": AppLanguage.localized("Morning playlist", bundle: .module)
+        case "focus": AppLanguage.localized("Work Focus on", bundle: .module)
+        case "home": AppLanguage.localized("Lights and coffee", bundle: .module)
+        case "water": AppLanguage.localized("Log water", bundle: .module)
         default: id
         }
     }

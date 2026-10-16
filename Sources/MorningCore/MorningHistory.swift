@@ -4,10 +4,10 @@ public enum MorningHistoryError: Error, LocalizedError, Sendable, Equatable {
     case invalidTimeZone, invalidDate, unfinishedSession, invalidObservation
     public var errorDescription: String? {
         switch self {
-        case .invalidTimeZone: String(localized: "The recorded time zone is not valid.", bundle: .module)
-        case .invalidDate: String(localized: "The recorded date is not valid.", bundle: .module)
-        case .unfinishedSession: String(localized: "Finish or stop the session before adding it to history.", bundle: .module)
-        case .invalidObservation: String(localized: "Observation measurements must be nonnegative and match their coverage.", bundle: .module)
+        case .invalidTimeZone: AppLanguage.localized("The recorded time zone is not valid.", bundle: .module)
+        case .invalidDate: AppLanguage.localized("The recorded date is not valid.", bundle: .module)
+        case .unfinishedSession: AppLanguage.localized("Finish or stop the session before adding it to history.", bundle: .module)
+        case .invalidObservation: AppLanguage.localized("Observation measurements must be nonnegative and match their coverage.", bundle: .module)
         }
     }
 }

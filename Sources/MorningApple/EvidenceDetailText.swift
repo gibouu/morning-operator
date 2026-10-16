@@ -1,14 +1,15 @@
+import MorningCore
 import Foundation
 
 /// Localized fragments appended to suggested step details. Creation writes the
 /// current language; validation and display read every language ever saved.
 public enum EvidenceDetailText {
-    public static var label: String { String(localized: "Evidence:", bundle: .module) }
+    public static var label: String { AppLanguage.localized("Evidence:", bundle: .module) }
 
     public static func line(_ quote: String) -> String { line(quote, label: label) }
 
     public static var tentativeNote: String {
-        String(localized: "Tentative suggestion from selected evidence; duration is planned, not measured.", bundle: .module)
+        AppLanguage.localized("Tentative suggestion from selected evidence; duration is planned, not measured.", bundle: .module)
     }
 
     // A step detail is saved with the fragments of the language it was written in, and
@@ -59,10 +60,10 @@ public enum EvidenceDetailText {
     private static func line(_ quote: String, label: String) -> String { "\(label) “\(quote)”" }
 
     public static var visibleContentNote: String {
-        String(localized: "Visible content only; this does not prove an action or repeated habit.", bundle: .module)
+        AppLanguage.localized("Visible content only; this does not prove an action or repeated habit.", bundle: .module)
     }
 
     public static var suggestedDurationNote: String {
-        String(localized: "Suggested duration; review before approving.", bundle: .module)
+        AppLanguage.localized("Suggested duration; review before approving.", bundle: .module)
     }
 }

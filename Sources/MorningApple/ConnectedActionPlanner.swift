@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
@@ -7,9 +8,9 @@ public enum ConnectedActionPlanningError: LocalizedError, Sendable, Equatable {
     case unavailable, tooLarge, invalidProposal, needsDetails(String)
     public var errorDescription: String? {
         switch self {
-        case .unavailable: String(localized: "The local model is unavailable. Complete the available fields, or come back when local preparation is ready.", bundle: .module)
-        case .tooLarge: String(localized: "This action is too complex to prepare locally. Choose a simpler action.", bundle: .module)
-        case .invalidProposal: String(localized: "MORE couldn't prepare valid details for this action. Add more detail or complete the available fields.", bundle: .module)
+        case .unavailable: AppLanguage.localized("The local model is unavailable. Complete the available fields, or come back when local preparation is ready.", bundle: .module)
+        case .tooLarge: AppLanguage.localized("This action is too complex to prepare locally. Choose a simpler action.", bundle: .module)
+        case .invalidProposal: AppLanguage.localized("MORE couldn't prepare valid details for this action. Add more detail or complete the available fields.", bundle: .module)
         case .needsDetails(let question): question
         }
     }

@@ -1,3 +1,4 @@
+import MorningCore
 import SwiftUI
 #if os(iOS)
 import AVKit
@@ -13,7 +14,7 @@ struct MorningAudioRoutePicker: View {
             .accessibilityHint("Select an available speaker or headphones using the system picker.")
             .accessibilityIdentifier("audio.chooseOutput")
         #else
-        Label(String(localized: "Choose output in Control Center"), systemImage: "airplay.audio")
+        Label(AppLanguage.localized("Choose output in Control Center"), systemImage: "airplay.audio")
             .font(.raleway(.callout))
             .foregroundStyle(MorningStyle.muted)
             .accessibilityIdentifier("audio.outputInstructions")

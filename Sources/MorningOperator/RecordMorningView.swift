@@ -1,3 +1,4 @@
+import MorningCore
 import SwiftUI
 import MorningApple
 
@@ -146,12 +147,12 @@ private struct RecordMorningContent: View {
 
     private var title: String {
         switch recording.state {
-        case .recording: String(localized: "Go through your morning.")
-        case .ready: String(localized: "A little of your routine, captured.")
-        case .stopping: String(localized: "Finishing your recording.")
-        case .starting: String(localized: "Getting ready to record.")
-        case .failed: String(localized: "Let's try that again.")
-        case .idle, .choosing: String(localized: "Show how your morning goes.")
+        case .recording: AppLanguage.localized("Go through your morning.")
+        case .ready: AppLanguage.localized("A little of your routine, captured.")
+        case .stopping: AppLanguage.localized("Finishing your recording.")
+        case .starting: AppLanguage.localized("Getting ready to record.")
+        case .failed: AppLanguage.localized("Let's try that again.")
+        case .idle, .choosing: AppLanguage.localized("Show how your morning goes.")
         }
     }
 }

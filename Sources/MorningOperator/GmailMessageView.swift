@@ -1,3 +1,4 @@
+import MorningCore
 import MorningApple
 import SwiftUI
 
@@ -14,7 +15,7 @@ struct GmailMessageView: View {
             }.buttonStyle(.plain).accessibilityIdentifier("gmail.message.close")
             if let message = controller.selectedMessage {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: message.subject.isEmpty ? String(localized: "No subject") : message.subject)
+                    Text(verbatim: message.subject.isEmpty ? AppLanguage.localized("No subject") : message.subject)
                         .font(.headline).textSelection(.enabled)
                     Text(verbatim: message.sender).font(.subheadline).foregroundStyle(MorningStyle.muted)
                         .textSelection(.enabled)

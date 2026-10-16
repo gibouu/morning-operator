@@ -43,7 +43,7 @@ struct EndMorningIntent: AppIntent {
 }
 private enum RoutineCaptureError: LocalizedError {
     case empty
-    var errorDescription: String? { String(localized: "Add a few words to capture.") }
+    var errorDescription: String? { AppLanguage.localized("Add a few words to capture.") }
 }
 
 struct NoteDreamIntent: AppIntent {
@@ -52,7 +52,7 @@ struct NoteDreamIntent: AppIntent {
     @Parameter(title: "Dream", requestValueDialog: "What did you dream?") var text: String
     @MainActor func perform() async throws -> some IntentResult {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RoutineCaptureError.empty }
-        try MorningIntentRouter.shared.requestCapture("\(String(localized: "Dream")): \(text)"); return .result()
+        try MorningIntentRouter.shared.requestCapture("\(AppLanguage.localized("Dream")): \(text)"); return .result()
     }
 }
 struct RememberMorningIntent: AppIntent {
@@ -61,7 +61,7 @@ struct RememberMorningIntent: AppIntent {
     @Parameter(title: "Thought", requestValueDialog: "What would you like to remember?") var text: String
     @MainActor func perform() async throws -> some IntentResult {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RoutineCaptureError.empty }
-        try MorningIntentRouter.shared.requestCapture("\(String(localized: "Thought")): \(text)"); return .result()
+        try MorningIntentRouter.shared.requestCapture("\(AppLanguage.localized("Thought")): \(text)"); return .result()
     }
 }
 
@@ -77,7 +77,7 @@ extension MorningStore {
         case .brief:
             if currentOpening != nil { chooseOpening(.brief); return }
             guard !sessionActive, !voiceInputBlocksPlayback else {
-                notice = String(localized: "Pause or finish your morning before playing another recap."); return
+                notice = AppLanguage.localized("Pause or finish your morning before playing another recap."); return
             }
             let generation = dataGeneration
             Task {

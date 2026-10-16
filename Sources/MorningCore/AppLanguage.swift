@@ -1,23 +1,44 @@
 import Foundation
 
-/// The language the app's interface resolved to. Spoken prose and formatted
-/// dates follow it so a French interface never reads English text aloud.
+/// French follows the primary device language; every other language uses English.
 public enum AppLanguage {
-    /// Localizations shipped with the app, in priority order of the device's preferences.
     public static var code: String {
-        let resolved = Bundle.main.preferredLocalizations.first ?? "en"
-        return resolved.hasPrefix("fr") ? "fr" : "en"
+        resolvedCode(preferredLanguages: Locale.preferredLanguages)
     }
 
     public static var isFrench: Bool { code == "fr" }
 
-    /// A locale for formatting in the interface language, keeping the device region when it matches.
+    /// Keep regional formats and explicit calendar/number preferences in the UI language.
     public static var locale: Locale {
-        let current = Locale.current
-        if current.language.languageCode?.identifier == code { return current }
-        return Locale(identifier: code == "fr" ? "fr_FR" : "en_US")
+        resolvedLocale(preferredLanguages: Locale.preferredLanguages, current: .current)
     }
 
     /// The locale identifier passed to deterministic composers such as the morning briefing.
     public static var localeIdentifier: String { locale.identifier }
+
+    /// A resource's locale selects the translation; String's locale only formats values.
+    public static func localized(_ value: String.LocalizationValue, table: String? = nil,
+                                 bundle: Bundle = .main, comment: StaticString? = nil) -> String {
+        localized(value, table: table, bundle: bundle, locale: locale, comment: comment)
+    }
+
+    static func localized(_ value: String.LocalizationValue, table: String? = nil,
+                          bundle: Bundle, locale: Locale, comment: StaticString? = nil) -> String {
+        String(localized: LocalizedStringResource(value, table: table, locale: locale,
+                                                 bundle: .atURL(bundle.bundleURL), comment: comment))
+    }
+
+    static func resolvedCode(preferredLanguages: [String]) -> String {
+        guard let primary = preferredLanguages.first else { return "en" }
+        return Locale.Language(identifier: primary).languageCode?.identifier == "fr" ? "fr" : "en"
+    }
+
+    static func resolvedLocale(preferredLanguages: [String], current: Locale) -> Locale {
+        let language = resolvedCode(preferredLanguages: preferredLanguages)
+        guard current.language.languageCode?.identifier != language else { return current }
+        var components = Locale.Components(locale: current)
+        components.languageComponents.languageCode = Locale.LanguageCode(language)
+        components.languageComponents.script = nil
+        return Locale(components: components)
+    }
 }

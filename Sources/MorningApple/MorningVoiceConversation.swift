@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
@@ -70,8 +71,8 @@ public enum MorningVoiceConversationError: LocalizedError, Sendable, Equatable {
     case unavailable, failed
     public var errorDescription: String? {
         switch self {
-        case .unavailable: String(localized: "The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop.", bundle: .module)
-        case .failed: String(localized: "I couldn't prepare an answer. You can ask again, or say resume to continue your morning.", bundle: .module)
+        case .unavailable: AppLanguage.localized("The local conversation model is unavailable. You can still say next, pause, resume, repeat, more time or stop.", bundle: .module)
+        case .failed: AppLanguage.localized("I couldn't prepare an answer. You can ask again, or say resume to continue your morning.", bundle: .module)
         }
     }
 }

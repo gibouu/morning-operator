@@ -32,8 +32,8 @@ enum MorningStyle {
     }
     static func duration(_ seconds: Double?) -> String {
         guard let seconds else { return "—" }
-        if seconds < 60 { return String(localized: "\(Int(seconds)) sec") }
-        return String(localized: "\(Int((seconds / 60).rounded())) min")
+        if seconds < 60 { return AppLanguage.localized("\(Int(seconds)) sec") }
+        return AppLanguage.localized("\(Int((seconds / 60).rounded())) min")
     }
 }
 

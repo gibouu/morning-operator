@@ -118,6 +118,61 @@ final class MorningWelcomeFlowTests: XCTestCase {
         }
     }
 
+    func testFirstLaunchUsesThePrimaryLanguageIndependentlyOfRegionAndSecondaryFrench() {
+        let cases: [(languages: [String], region: String, french: Bool)] = [
+            (["fr", "en"], "en_US", true),
+            (["en", "fr"], "fr_FR", false),
+            (["es", "fr"], "fr_FR", false),
+            (["de", "fr"], "fr_FR", false),
+            (["ar", "fr"], "fr_FR", false)
+        ]
+        for configuration in cases {
+            let french = configuration.french
+            let app = launch(languages: configuration.languages, localeIdentifier: configuration.region)
+            let headings = french
+                ? ["Retrouvez\nvotre matin.", "Gardez ce qui\nvous plaît.", "Votre matin,\nles mains libres."]
+                : ["Meet your\nmorning.", "Keep what\nyou love.", "Your morning,\nhands free."]
+            for (index, title) in headings.enumerated() {
+                XCTAssertEqual(app.staticTexts["onboarding.heading"].label, title, app.debugDescription)
+                XCTAssertEqual(control("onboarding.progress", in: app).label,
+                               french ? "Étape \(index + 1) sur 4" : "Step \(index + 1) of 4")
+                XCTAssertEqual(app.buttons["onboarding.next"].label,
+                               index == 2 ? (french ? "Découvrir mon offre" : "See my offer") : (french ? "Continuer" : "Continue"))
+                assertNoLanguageQuestion(in: app)
+                tap("onboarding.next", in: app)
+            }
+            XCTAssertEqual(app.staticTexts["onboarding.heading"].label,
+                           french ? "Un peu plus de\ntemps pour vous." : "A little more\ntime for you.")
+            assertOffer(in: app, french: french)
+            XCTAssertEqual(app.buttons["paywall.subscribe"].label,
+                           french ? "Commencer mes 7 jours gratuits" : "Start my 7 days free")
+            XCTAssertEqual(app.buttons["paywall.restore"].label,
+                           french ? "Déjà abonné ? Restaurer mes achats" : "Already subscribed? Restore purchases")
+            assertNoLanguageQuestion(in: app)
+            attach("onboarding-primary-\(configuration.languages[0])-region-\(configuration.region)", app)
+
+            for (identifier, title) in [("paywall.terms", french ? "Votre abonnement" : "Your subscription"),
+                                        ("paywall.privacy", french ? "Vos données, vos choix." : "Your data, your choices.")] {
+                tap(identifier, in: app)
+                XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5), app.debugDescription)
+                assertNoLanguageQuestion(in: app)
+                let close = app.buttons[french ? "Fermer" : "Close"]
+                XCTAssertTrue(close.waitForExistence(timeout: 5), app.debugDescription)
+                close.tap()
+            }
+
+            tap("paywall.subscribe", in: app)
+            let notice = app.staticTexts["paywall.notice"]
+            XCTAssertTrue(notice.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(notice.label.hasPrefix(french ? "Aperçu :" : "Preview:"), notice.label)
+            assertOffer(in: app, french: french)
+            tap("paywall.restore", in: app)
+            XCTAssertTrue(notice.label.hasPrefix(french ? "Aperçu :" : "Preview:"), notice.label)
+            assertNoPermissionOrHome(in: app)
+            app.terminate()
+        }
+    }
+
     func testFrenchLargestTextKeepsNavigationAndOfferReachableInPortraitAndLandscape() {
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
@@ -144,20 +199,32 @@ final class MorningWelcomeFlowTests: XCTestCase {
         app.terminate()
     }
 
-    private func launch(phase: String = "day", french: Bool = false, extra: [String] = []) -> XCUIApplication {
+    private func launch(phase: String = "day", french: Bool = false, languages: [String]? = nil,
+                        localeIdentifier: String? = nil, extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
+        let preferredLanguages = languages ?? [french ? "fr" : "en"]
         app.launchArguments = [
             "--ui-testing", "--preview-onboarding", "--theme-phase=\(phase)",
             "--ui-testing-reduce-motion", "--ui-testing-workspace=\(UUID().uuidString)",
-            "-AppleLanguages", french ? "(fr)" : "(en)",
-            "-AppleLocale", french ? "fr_FR" : "en_US"
+            "-AppleLanguages", "(\(preferredLanguages.joined(separator: ", ")))",
+            "-AppleLocale", localeIdentifier ?? (french ? "fr_FR" : "en_US")
         ] + extra
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "onboarding.preview").firstMatch
-            .waitForExistence(timeout: 10), "This suite requires the isolated preview: \(app.debugDescription)")
+            .waitForExistence(timeout: 10), "This suite requires the nonvisual preview root: \(app.debugDescription)")
+        XCTAssertFalse(app.staticTexts["onboarding.preview"].exists, "Preview identification must not create a visible badge.")
+        XCTAssertFalse(app.staticTexts["APERÇU · AUCUN ACHAT"].exists)
+        XCTAssertFalse(app.staticTexts["PREVIEW · NO PURCHASE"].exists)
         XCTAssertTrue(app.staticTexts["onboarding.heading"].waitForExistence(timeout: 5), app.debugDescription)
         return app
+    }
+
+    private func assertNoLanguageQuestion(in app: XCUIApplication) {
+        XCTAssertEqual(app.pickers.count, 0, "Language should resolve on first launch without asking the person.")
+        XCTAssertEqual(app.textFields.count, 0)
+        XCTAssertEqual(app.secureTextFields.count, 0)
+        assertNoPermissionOrHome(in: app)
     }
 
     private func assertOffer(in app: XCUIApplication, french: Bool) {

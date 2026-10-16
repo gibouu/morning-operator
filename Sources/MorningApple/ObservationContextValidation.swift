@@ -16,9 +16,9 @@ public enum ObservationContextClassificationError: LocalizedError, Sendable, Equ
     case invalidFrames, invalidCatalog, alreadyClassifying
     public var errorDescription: String? {
         switch self {
-        case .invalidFrames: String(localized: "The observation frames have invalid or duplicate identifiers or timestamps.", bundle: .module)
-        case .invalidCatalog: String(localized: "The visible-context catalog is invalid, ambiguous or too large.", bundle: .module)
-        case .alreadyClassifying: String(localized: "A visible-context analysis is already running.", bundle: .module)
+        case .invalidFrames: AppLanguage.localized("The observation frames have invalid or duplicate identifiers or timestamps.", bundle: .module)
+        case .invalidCatalog: AppLanguage.localized("The visible-context catalog is invalid, ambiguous or too large.", bundle: .module)
+        case .alreadyClassifying: AppLanguage.localized("A visible-context analysis is already running.", bundle: .module)
         }
     }
 }
@@ -180,19 +180,19 @@ enum ObservationContextValidation {
         }
         for (index, frame) in frames.enumerated() {
             let reason: String?
-            if frame.outcome != .observed { reason = String(localized: "The source frame was blank or could not be extracted.", bundle: .module) }
-            else if frame.textWasTruncated { reason = String(localized: "The source text was truncated; context remains unknown.", bundle: .module) }
-            else if frame.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { reason = String(localized: "No visible text was extracted.", bundle: .module) }
-            else if index >= ObservationContextLimits.maximumFrames { reason = String(localized: "Excluded by the model frame limit.", bundle: .module) }
+            if frame.outcome != .observed { reason = AppLanguage.localized("The source frame was blank or could not be extracted.", bundle: .module) }
+            else if frame.textWasTruncated { reason = AppLanguage.localized("The source text was truncated; context remains unknown.", bundle: .module) }
+            else if frame.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { reason = AppLanguage.localized("No visible text was extracted.", bundle: .module) }
+            else if index >= ObservationContextLimits.maximumFrames { reason = AppLanguage.localized("Excluded by the model frame limit.", bundle: .module) }
             else { reason = nil }
             if let reason { reasons[frame.id] = reason; continue }
             var excerpt = headerExcerpt(frame)
             guard !excerpt.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                reasons[frame.id] = String(localized: "No complete header line fits the model excerpt limit.", bundle: .module)
+                reasons[frame.id] = AppLanguage.localized("No complete header line fits the model excerpt limit.", bundle: .module)
                 continue
             }
             guard totalText + excerpt.text.count <= ObservationContextLimits.maximumTotalTextCharacters else {
-                reasons[frame.id] = String(localized: "Excluded by the total text limit.", bundle: .module)
+                reasons[frame.id] = AppLanguage.localized("Excluded by the total text limit.", bundle: .module)
                 continue
             }
             var singlePrompt = try prompt(frames: [frame], excerpts: [excerpt], orders: [index], catalog: catalog)
@@ -204,7 +204,7 @@ enum ObservationContextValidation {
                 singlePrompt = try prompt(frames: [frame], excerpts: [excerpt], orders: [index], catalog: catalog)
             }
             guard singlePrompt.count <= ObservationContextLimits.maximumPromptCharacters else {
-                reasons[frame.id] = String(localized: "Excluded by the encoded model-context limit.", bundle: .module)
+                reasons[frame.id] = AppLanguage.localized("Excluded by the encoded model-context limit.", bundle: .module)
                 continue
             }
             let candidate = try prompt(frames: current + [frame], excerpts: currentExcerpts + [excerpt],
@@ -214,7 +214,7 @@ enum ObservationContextValidation {
             }
             current.append(frame); currentExcerpts.append(excerpt); currentOrders.append(index)
             selectedExcerpts.append(excerpt); totalText += excerpt.text.count
-            reasons[frame.id] = String(localized: "The local model has not classified this frame.", bundle: .module)
+            reasons[frame.id] = AppLanguage.localized("The local model has not classified this frame.", bundle: .module)
         }
         try flush()
         let selection = ObservationContextInputSelection(policyIdentifier: "whole-line-source-prefix-layout-v2",
@@ -222,7 +222,7 @@ enum ObservationContextValidation {
             maximumNonemptyLines: ObservationContextLimits.maximumExcerptNonemptyLines,
             excerpts: selectedExcerpts)
         return .init(frames: frames, catalog: catalog, batches: batches,
-                     initialDecisions: frames.map { unknown($0, reason: reasons[$0.id] ?? String(localized: "Context remains unknown.", bundle: .module)) },
+                     initialDecisions: frames.map { unknown($0, reason: reasons[$0.id] ?? AppLanguage.localized("Context remains unknown.", bundle: .module)) },
                      inputSelection: selection)
     }
 
@@ -231,7 +231,7 @@ enum ObservationContextValidation {
         guard json.count <= ObservationContextLimits.maximumResponseCharacters,
               let response = try? JSONDecoder().decode(ContextModelResponse.self, from: Data(json.utf8)),
               response.frames.count <= ObservationContextLimits.maximumBatchFrames * 2 else {
-            return .init(decisions: batch.frames.map { unknown($0, reason: String(localized: "The model response could not be validated.", bundle: .module)) },
+            return .init(decisions: batch.frames.map { unknown($0, reason: AppLanguage.localized("The model response could not be validated.", bundle: .module)) },
                          diagnostics: [.init(kind: .invalidResponse)], responseWasValid: false)
         }
         let knownIDs = Set(batch.frames.map(\.id))
@@ -246,14 +246,14 @@ enum ObservationContextValidation {
         }
         let decisions = batch.frames.map { frame -> ObservationFrameIdentityDecision in
             guard let candidates = proposals[frame.id] else {
-                return unknown(frame, reason: String(localized: "The local model omitted this frame.", bundle: .module))
+                return unknown(frame, reason: AppLanguage.localized("The local model omitted this frame.", bundle: .module))
             }
             guard candidates.count == 1, let proposal = candidates.first else {
                 diagnostics.append(.init(kind: .duplicateSampleID, sampleID: frame.id))
-                return unknown(frame, reason: String(localized: "Conflicting or duplicate proposals were rejected.", bundle: .module))
+                return unknown(frame, reason: AppLanguage.localized("Conflicting or duplicate proposals were rejected.", bundle: .module))
             }
             if proposal.outcome == "unknown", proposal.contextLabel.isEmpty, proposal.evidenceQuote.isEmpty {
-                return unknown(frame, reason: String(localized: "The local model abstained.", bundle: .module))
+                return unknown(frame, reason: AppLanguage.localized("The local model abstained.", bundle: .module))
             }
             let quote = proposal.evidenceQuote
             guard let excerpt = batch.excerpts.first(where: { $0.sampleID == frame.id }),
@@ -262,20 +262,20 @@ enum ObservationContextValidation {
                   Data(frame.text.utf8).range(of: Data(quote.utf8)) != nil,
                   frame.outcome == .observed, !frame.textWasTruncated else {
                 diagnostics.append(.init(kind: .invalidEvidence, sampleID: frame.id))
-                return unknown(frame, reason: String(localized: "The proposed quote was not grounded in this frame.", bundle: .module))
+                return unknown(frame, reason: AppLanguage.localized("The proposed quote was not grounded in this frame.", bundle: .module))
             }
             if proposal.outcome == "ambiguous", proposal.contextLabel.isEmpty {
                 return .init(sampleID: frame.id, timeSeconds: frame.timeSeconds, timeBasis: frame.timeBasis,
                              evidence: .ambiguous(reference: frame.evidenceReference), evidenceQuote: quote,
-                             reason: String(localized: "The local model reported ambiguous visible context.", bundle: .module))
+                             reason: AppLanguage.localized("The local model reported ambiguous visible context.", bundle: .module))
             }
             guard proposal.outcome == "identified", let identity = identity(for: proposal, excerpt: excerpt.text, catalog: catalog) else {
                 diagnostics.append(.init(kind: .unsupportedIdentity, sampleID: frame.id))
-                return unknown(frame, reason: String(localized: "The proposed visual identity was unsupported.", bundle: .module))
+                return unknown(frame, reason: AppLanguage.localized("The proposed visual identity was unsupported.", bundle: .module))
             }
             return .init(sampleID: frame.id, timeSeconds: frame.timeSeconds, timeBasis: frame.timeBasis,
                          evidence: .identified(app: identity, reference: frame.evidenceReference),
-                         evidenceQuote: quote, reason: String(localized: "Model-proposed visual header; not an OS-verified app identity.", bundle: .module))
+                         evidenceQuote: quote, reason: AppLanguage.localized("Model-proposed visual header; not an OS-verified app identity.", bundle: .module))
         }
         return .init(decisions: decisions, diagnostics: diagnostics, responseWasValid: true)
     }
@@ -457,6 +457,6 @@ private func requireOnlyKeys(_ expected: Set<String>, from decoder: any Decoder)
     let container = try decoder.container(keyedBy: ContextResponseKey.self)
     guard Set(container.allKeys.map(\.stringValue)) == expected else {
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
-                                               debugDescription: String(localized: "Unexpected visible-context response fields.", bundle: .module)))
+                                               debugDescription: AppLanguage.localized("Unexpected visible-context response fields.", bundle: .module)))
     }
 }

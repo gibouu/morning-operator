@@ -32,7 +32,7 @@ struct AppActivityView: View {
                     Text("Today's configured app automations only. These entries are separate from phone pickups; gaps and other apps may be missing.")
                         .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                 } else {
-                    Text(errorMessage ?? String(localized: "Connect the apps you want to understand. Their entries and repeated returns will appear here."))
+                    Text(errorMessage ?? AppLanguage.localized("Connect the apps you want to understand. Their entries and repeated returns will appear here."))
                         .font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
                     Button("Connect app activity") { showingSetup = true }
                         .buttonStyle(SecondaryButtonStyle())
@@ -52,7 +52,7 @@ struct AppActivityView: View {
             errorMessage = nil
         } catch {
             summary = nil
-            errorMessage = String(localized: "Your saved app activity couldn't be read. It has been kept intact.")
+            errorMessage = AppLanguage.localized("Your saved app activity couldn't be read. It has been kept intact.")
         }
     }
 }
@@ -67,11 +67,11 @@ private struct AppActivitySetupView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    PageHeading(eyebrow: String(localized: "A little more context"), title: String(localized: "Notice the loops."),
-                                subtitle: String(localized: "Connect Instagram, TikTok or Snapchat once with Apple's Shortcuts app. Only app names and times are saved locally."))
-                    instruction("1", String(localized: "Choose one app"), String(localized: "In Shortcuts, open Automation and create an App automation. Choose one supported app and Is Opened. Select Run Immediately if you want it to work automatically."))
-                    instruction("2", String(localized: "Add Morning Operator"), String(localized: "Add the action Log an app transition. Choose that same app and Opened or switched to. Leave Event ID empty for ordinary use."))
-                    instruction("3", String(localized: "Track when you leave"), String(localized: "Create a separate Is Closed automation for the same app. Choose Closed or switched from in our action. Repeat for any other supported apps you want to include."))
+                    PageHeading(eyebrow: AppLanguage.localized("A little more context"), title: AppLanguage.localized("Notice the loops."),
+                                subtitle: AppLanguage.localized("Connect Instagram, TikTok or Snapchat once with Apple's Shortcuts app. Only app names and times are saved locally."))
+                    instruction("1", AppLanguage.localized("Choose one app"), AppLanguage.localized("In Shortcuts, open Automation and create an App automation. Choose one supported app and Is Opened. Select Run Immediately if you want it to work automatically."))
+                    instruction("2", AppLanguage.localized("Add Morning Operator"), AppLanguage.localized("Add the action Log an app transition. Choose that same app and Opened or switched to. Leave Event ID empty for ordinary use."))
+                    instruction("3", AppLanguage.localized("Track when you leave"), AppLanguage.localized("Create a separate Is Closed automation for the same app. Choose Closed or switched from in our action. Repeat for any other supported apps you want to include."))
                     Text("Try opening two connected apps and returning to the first, then return to the app activity card. Counts appear after those automations actually run. This setup does not start screen recording or read messages.")
                         .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
                     #if os(iOS)
@@ -116,9 +116,9 @@ private struct AppActivitySetupView: View {
         do {
             try await AppTransitionLogStore.shared.clear()
             await onCleared()
-            clearMessage = String(localized: "Recorded app activity cleared.")
+            clearMessage = AppLanguage.localized("Recorded app activity cleared.")
         } catch {
-            clearMessage = String(localized: "The saved app activity couldn't be cleared. Try again.")
+            clearMessage = AppLanguage.localized("The saved app activity couldn't be cleared. Try again.")
         }
     }
 

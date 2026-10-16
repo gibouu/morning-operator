@@ -1,3 +1,4 @@
+import MorningCore
 import AVFAudio
 import MorningApple
 import SwiftUI
@@ -15,7 +16,7 @@ struct VoicePickerView: View {
         NavigationStack {
             MorningList {
                 Section {
-                    voiceRow(name: String(localized: "Automatic"), detail: automaticDetail, identifier: nil)
+                    voiceRow(name: AppLanguage.localized("Automatic"), detail: automaticDetail, identifier: nil)
                         .accessibilityIdentifier("voice.default")
                 } footer: {
                     Text("Matches your device’s language and dialect, then prefers a higher-quality installed voice. Your choice applies to spoken morning steps.")
@@ -83,7 +84,7 @@ struct VoicePickerView: View {
                         .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
                     Link("Apple’s voice settings guide", destination: URL(string: "https://support.apple.com/en-ie/guide/iphone/iph96b214f0/27/ios/27")!)
                     #else
-                    Text(String(localized: "More voices can be downloaded through the accessibility voice controls in System Settings. Return here when the download finishes."))
+                    Text(AppLanguage.localized("More voices can be downloaded through the accessibility voice controls in System Settings. Return here when the download finishes."))
                         .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
                     #endif
                     Button("Refresh installed voices") { voices = speech.availableVoices }
@@ -124,7 +125,7 @@ struct VoicePickerView: View {
     }
 
     private var automaticDetail: String {
-        guard let voice = speech.recommendedVoice else { return String(localized: "Follow this device’s language") }
+        guard let voice = speech.recommendedVoice else { return AppLanguage.localized("Follow this device’s language") }
         return "\(voice.name) · \(languageName(voice.language)) · \(voice.quality.displayName)"
     }
 
@@ -155,7 +156,7 @@ struct VoicePickerView: View {
     }
 
     private func languageName(_ code: String) -> String {
-        Locale.current.localizedString(forIdentifier: code) ?? code
+        AppLanguage.locale.localizedString(forIdentifier: code) ?? code
     }
 
     private func stopPreview() {

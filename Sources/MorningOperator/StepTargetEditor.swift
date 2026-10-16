@@ -116,11 +116,11 @@ struct StepTargetEditor: View {
     private func prompt(_ kind: StepAppDetailKind) -> String {
         switch kind {
         case .none: ""
-        case .phoneNumber: String(localized: "Phone number (optional)")
-        case .messageID: String(localized: "Mail Message-ID (optional)")
-        case .username: String(localized: "Username (optional)")
-        case .place: String(localized: "Place (optional)")
-        case .webAddress: String(localized: "Web address")
+        case .phoneNumber: AppLanguage.localized("Phone number (optional)")
+        case .messageID: AppLanguage.localized("Mail Message-ID (optional)")
+        case .username: AppLanguage.localized("Username (optional)")
+        case .place: AppLanguage.localized("Place (optional)")
+        case .webAddress: AppLanguage.localized("Web address")
         }
     }
 }

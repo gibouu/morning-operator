@@ -1,3 +1,4 @@
+import MorningCore
 import SwiftUI
 import MorningApple
 import CryptoKit
@@ -150,10 +151,10 @@ private struct ObservationPeriodReviewView: View {
 
     private func originTitle(_ origin: ObservationAcquisitionOrigin) -> String {
         switch origin {
-        case .human: String(localized: "My mornings")
-        case .synthetic: String(localized: "Samples & tests")
-        case .automated: String(localized: "Automated activity")
-        case .unknown: String(localized: "Origin unsure")
+        case .human: AppLanguage.localized("My mornings")
+        case .synthetic: AppLanguage.localized("Samples & tests")
+        case .automated: AppLanguage.localized("Automated activity")
+        case .unknown: AppLanguage.localized("Origin unsure")
         }
     }
 }

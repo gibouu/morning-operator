@@ -89,7 +89,7 @@ public final class NativeConnectionsService {
     public func shortcutCouldNotOpen(requestID: UUID? = nil) {
         if let requestID, bridge.pending?.id != requestID { return }
         bridge.cancel(); shortcutDeadline?.cancel(); shortcutDeadline = nil
-        shortcutMessage = String(localized: "Shortcuts couldn't open. Check that it is installed and the shortcut name is correct.", bundle: .module)
+        shortcutMessage = AppLanguage.localized("Shortcuts couldn't open. Check that it is installed and the shortcut name is correct.", bundle: .module)
     }
 
     public func refreshAccess() {
@@ -99,7 +99,7 @@ public final class NativeConnectionsService {
 
     public func stopWaitingForShortcut() {
         bridge.cancel(); shortcutDeadline?.cancel(); shortcutDeadline = nil
-        shortcutMessage = String(localized: "MORE stopped waiting. The shortcut may still be running; check its outcome before running it again.", bundle: .module)
+        shortcutMessage = AppLanguage.localized("MORE stopped waiting. The shortcut may still be running; check its outcome before running it again.", bundle: .module)
     }
 
     public func readUpcomingReminders() {
@@ -121,7 +121,7 @@ public final class NativeConnectionsService {
                     do { try await Task.sleep(for: .seconds(10)) } catch { return }
                     guard let self, self.reminderAttempt == attempt else { return }
                     self.cancelReminderRead()
-                    self.reminderMessage = String(localized: "Reminders didn't answer in time. Try reading them again.", bundle: .module)
+                    self.reminderMessage = AppLanguage.localized("Reminders didn't answer in time. Try reading them again.", bundle: .module)
                 }
                 let values = try await reminderService.fetchUpcomingReminders(limit: 50)
                 try Task.checkCancellation(); try withReadyAccess { }
@@ -143,7 +143,7 @@ public final class NativeConnectionsService {
                       (0..<300).contains(Date().timeIntervalSince(readAt)) else { throw ReminderServiceError.reminderChanged }
                 try reminderService.completeReminder(reminder)
                 reminders.removeAll { $0.id == reminder.id }
-                reminderMessage = String(localized: "Marked complete in Apple Reminders.", bundle: .module)
+                reminderMessage = AppLanguage.localized("Marked complete in Apple Reminders.", bundle: .module)
             }
         } catch {
             reminders = []; remindersReadAt = nil

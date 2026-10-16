@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
@@ -9,15 +10,15 @@ public enum GmailReplyDraftError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .emptyMessage:
-            String(localized: "This message has no readable text to reply to.", bundle: .module)
+            AppLanguage.localized("This message has no readable text to reply to.", bundle: .module)
         case .inputTooLong:
-            String(localized: "This message is too long for a local reply. You can write your reply below.", bundle: .module)
+            AppLanguage.localized("This message is too long for a local reply. You can write your reply below.", bundle: .module)
         case .invalidReply, .failed:
-            String(localized: "A reply could not be prepared. You can write your reply below.", bundle: .module)
+            AppLanguage.localized("A reply could not be prepared. You can write your reply below.", bundle: .module)
         case .modelUnavailable:
-            String(localized: "Apple's local model is unavailable. You can write your reply below.", bundle: .module)
+            AppLanguage.localized("Apple's local model is unavailable. You can write your reply below.", bundle: .module)
         case .alreadyPreparing:
-            String(localized: "A reply is already being prepared.", bundle: .module)
+            AppLanguage.localized("A reply is already being prepared.", bundle: .module)
         }
     }
 }
@@ -97,11 +98,11 @@ public final class GmailReplyDraftService {
         case .unavailable(let reason):
             switch reason {
             case .deviceNotEligible:
-                return String(localized: "This device does not support Apple's local model.", bundle: .module)
+                return AppLanguage.localized("This device does not support Apple's local model.", bundle: .module)
             case .appleIntelligenceNotEnabled:
-                return String(localized: "Enable Apple Intelligence in system settings to prepare a local reply.", bundle: .module)
+                return AppLanguage.localized("Enable Apple Intelligence in system settings to prepare a local reply.", bundle: .module)
             case .modelNotReady:
-                return String(localized: "Apple's local model is not ready. It may still be downloading.", bundle: .module)
+                return AppLanguage.localized("Apple's local model is not ready. It may still be downloading.", bundle: .module)
             @unknown default:
                 return GmailReplyDraftError.modelUnavailable.localizedDescription
             }

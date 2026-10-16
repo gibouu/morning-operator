@@ -57,5 +57,5 @@ struct LogAppTransitionIntent: AppIntent {
 
 private enum TransitionIntentError: LocalizedError {
     case invalidEventID
-    var errorDescription: String? { String(localized: "Use a valid UUID for the event identifier, or leave it empty.") }
+    var errorDescription: String? { AppLanguage.localized("Use a valid UUID for the event identifier, or leave it empty.") }
 }

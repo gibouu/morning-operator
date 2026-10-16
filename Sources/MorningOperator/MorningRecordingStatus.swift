@@ -1,3 +1,4 @@
+import MorningCore
 import SwiftUI
 import MorningApple
 
@@ -12,7 +13,7 @@ struct SavedRecordingRecoveryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label(store.busy ? "Reading your recording" : "Your recording is saved", systemImage: "externaldrive.badge.checkmark")
                 .font(.raleway(.subheadline, .medium))
-            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? String(localized: "Retry understanding it, or discard the recording.")))
+            Text(store.busy ? store.analysisStatus : (store.observationIssue ?? AppLanguage.localized("Retry understanding it, or discard the recording.")))
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
             if store.sessionActive {
                 Text("Finish or stop the current morning before retrying.").font(.raleway(.caption))
@@ -55,7 +56,7 @@ struct MorningRecordingStatus: View {
                         Text(recording.state == .recording ? "Recording your morning" : "Finishing your recording")
                             .font(.raleway(.subheadline, .medium))
                         Text(recording.state == .recording
-                             ? String(localized: "Stops in \(remainingTime) · visible screen only")
+                             ? AppLanguage.localized("Stops in \(remainingTime) · visible screen only")
                              : recording.message).font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                     }
                     Spacer(minLength: 4)

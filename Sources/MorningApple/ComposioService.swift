@@ -96,7 +96,7 @@ public enum ComposioServiceError: LocalizedError, Sendable, Equatable {
     case requestFailed(Int), backend(ComposioFailure), executionUncertain(UUID)
 
     public var errorDescription: String? {
-        let french = Locale.current.language.languageCode?.identifier == "fr"
+        let french = AppLanguage.isFrench
         switch self {
         case .notConfigured: return french ? "Les connexions en ligne ne sont pas encore disponibles dans cette version." : "Online connections are not available in this build yet."
         case .insecureURL: return french ? "Le service de connexion doit utiliser une adresse HTTPS sécurisée." : "The connection service must use a secure HTTPS address."

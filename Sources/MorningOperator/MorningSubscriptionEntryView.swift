@@ -150,13 +150,8 @@ struct MorningWelcomePreview: View {
                                                      : "Preview: no subscription to restore.") },
                            retry: { state = .ready }, showLegal: { legalDocument = $0 })
             .sheet(item: $legalDocument) { MorningSubscriptionLegalSheet(document: $0) }
-            .overlay(alignment: .top) {
-                Text(french ? "APERÇU · AUCUN ACHAT" : "PREVIEW · NO PURCHASE")
-                    .font(.system(.caption2)).padding(3)
-                    .dynamicTypeSize(.medium)
-                    .background(.regularMaterial, in: Capsule()).allowsHitTesting(false)
-                    .accessibilityIdentifier("onboarding.preview")
-            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("onboarding.preview")
     }
 }
 #endif

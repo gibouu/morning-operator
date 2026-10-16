@@ -6,7 +6,7 @@ import MorningApple
 struct MorningVoiceCommandView: View {
     @Bindable var store: MorningStore
     @ViewState<MorningVoiceCommandLanguage> private var language =
-        Locale.current.language.languageCode?.identifier == "fr" ? .french : .english
+        AppLanguage.isFrench ? .french : .english
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

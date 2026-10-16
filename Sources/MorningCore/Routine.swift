@@ -4,12 +4,12 @@ public enum StepKind: String, Codable, CaseIterable, Sendable {
     case briefing, messages, calendar, wellbeing, entertainment, custom
     public var displayName: String {
         switch self {
-        case .briefing: String(localized: "Briefing", bundle: .module)
-        case .messages: String(localized: "Messages", bundle: .module)
-        case .calendar: String(localized: "Calendar", bundle: .module)
-        case .wellbeing: String(localized: "Wellbeing", bundle: .module)
-        case .entertainment: String(localized: "Entertainment", bundle: .module)
-        case .custom: String(localized: "Custom", bundle: .module)
+        case .briefing: AppLanguage.localized("Briefing", bundle: .module)
+        case .messages: AppLanguage.localized("Messages", bundle: .module)
+        case .calendar: AppLanguage.localized("Calendar", bundle: .module)
+        case .wellbeing: AppLanguage.localized("Wellbeing", bundle: .module)
+        case .entertainment: AppLanguage.localized("Entertainment", bundle: .module)
+        case .custom: AppLanguage.localized("Custom", bundle: .module)
         }
     }
 }
@@ -20,12 +20,12 @@ public enum RoutineStepAutomation: String, Codable, CaseIterable, Sendable {
     case spokenNote, todayCalendar, morningBriefing, savedObservation, timedMoment, gmailInbox
     public var displayName: String {
         switch self {
-        case .spokenNote: String(localized: "Read this note aloud", bundle: .module)
-        case .todayCalendar: String(localized: "Read today's calendar", bundle: .module)
-        case .morningBriefing: String(localized: "Read today's briefing", bundle: .module)
-        case .savedObservation: String(localized: "Read reviewed observation text", bundle: .module)
-        case .timedMoment: String(localized: "Keep this moment, then continue", bundle: .module)
-        case .gmailInbox: String(localized: "Read my mail and help me reply", bundle: .module)
+        case .spokenNote: AppLanguage.localized("Read this note aloud", bundle: .module)
+        case .todayCalendar: AppLanguage.localized("Read today's calendar", bundle: .module)
+        case .morningBriefing: AppLanguage.localized("Read today's briefing", bundle: .module)
+        case .savedObservation: AppLanguage.localized("Read reviewed observation text", bundle: .module)
+        case .timedMoment: AppLanguage.localized("Keep this moment, then continue", bundle: .module)
+        case .gmailInbox: AppLanguage.localized("Read my mail and help me reply", bundle: .module)
         }
     }
 }
@@ -221,10 +221,10 @@ public enum DemoFixtures {
     /// Synthetic demonstration data, never a recorded personal morning.
     public static var candidateRoutine: RoutineVersion {
         RoutineVersion(sourceLabel: "Demo fixture — synthetic morning, not observed personal data", steps: [
-            RoutineStep(title: String(localized: "Your morning", bundle: .module), detail: String(localized: "Good morning. Let’s see what’s ahead.", bundle: .module), kind: .briefing, durationMinutes: 3, automation: .spokenNote),
-            RoutineStep(title: String(localized: "People and messages", bundle: .module), detail: String(localized: "Check in with the people who matter.", bundle: .module), kind: .messages, durationMinutes: 5),
-            RoutineStep(title: String(localized: "Make room for the day", bundle: .module), detail: String(localized: "Read today’s events from your connected calendar.", bundle: .module), kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
-            RoutineStep(title: String(localized: "A little time to play", bundle: .module), detail: String(localized: "A little chess. A little joy. Keep this time for yourself.", bundle: .module), kind: .entertainment, durationMinutes: 8, isRequired: true)
+            RoutineStep(title: AppLanguage.localized("Your morning", bundle: .module), detail: AppLanguage.localized("Good morning. Let’s see what’s ahead.", bundle: .module), kind: .briefing, durationMinutes: 3, automation: .spokenNote),
+            RoutineStep(title: AppLanguage.localized("People and messages", bundle: .module), detail: AppLanguage.localized("Check in with the people who matter.", bundle: .module), kind: .messages, durationMinutes: 5),
+            RoutineStep(title: AppLanguage.localized("Make room for the day", bundle: .module), detail: AppLanguage.localized("Read today’s events from your connected calendar.", bundle: .module), kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
+            RoutineStep(title: AppLanguage.localized("A little time to play", bundle: .module), detail: AppLanguage.localized("A little chess. A little joy. Keep this time for yourself.", bundle: .module), kind: .entertainment, durationMinutes: 8, isRequired: true)
         ])
     }
     public static var routine: RoutineVersion { candidateRoutine.approved() }

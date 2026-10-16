@@ -5,7 +5,7 @@ import UIKit
 
 extension MorningStore {
     private var externalAppOpenFailureNotice: String {
-        String(localized: "This app couldn't open. You can continue in MORE or choose Next.")
+        AppLanguage.localized("This app couldn't open. You can continue in MORE or choose Next.")
     }
 
     var activeStepTimer: StepTimer? {
@@ -110,7 +110,7 @@ extension MorningStore {
                                   self.nativeStepContext?.requestID == requestID,
                                   self.session?.id == session.id, self.currentStep?.id == step.id else { return }
                             self.nativeConnections.shortcutCouldNotOpen(requestID: requestID)
-                            self.notice = String(localized: "Shortcuts couldn't open. Check the installed shortcut before trying again.")
+                            self.notice = AppLanguage.localized("Shortcuts couldn't open. Check the installed shortcut before trying again.")
                         }
                     }
                 case let .connectedAPI(service, connectionID, tool, arguments):
@@ -129,7 +129,7 @@ extension MorningStore {
             synchronizeMorningActivity()
             return true
         } catch {
-            notice = String(localized: "This moment couldn't start: \(error.localizedDescription)")
+            notice = AppLanguage.localized("This moment couldn't start: \(error.localizedDescription)")
             pause()
             return true
         }
@@ -159,7 +159,7 @@ extension MorningStore {
                 self.advance(commandID: timer.stepID)
                 return
             }
-            self.notice = String(localized: "Time's up. Choose +2 min or Next.")
+            self.notice = AppLanguage.localized("Time's up. Choose +2 min or Next.")
             let nextLabel = self.nextStepTimerLabel
             await StepTimerActivity.publish(timer: alertedTimer, timeIsUp: true)
             guard !Task.isCancelled, let current = self.activeStepTimer,
@@ -168,14 +168,14 @@ extension MorningStore {
             // Background execution and audibility are system decisions. Ask for speech
             // only while MORE already has its foreground spoken-guidance path.
             if UIApplication.shared.applicationState == .active, self.readAloud, !self.voiceInputBlocksPlayback {
-                self.speech.speak(String(localized: "Time's up. \(nextLabel)"))
+                self.speech.speak(AppLanguage.localized("Time's up. \(nextLabel)"))
             }
         }
     }
 
     var nextStepTimerLabel: String {
-        guard let session, let next = StepNavigation.nextStep(in: session) else { return String(localized: "Finish") }
-        return String(localized: "Next: \(next.target?.destination.displayName ?? "MORE")")
+        guard let session, let next = StepNavigation.nextStep(in: session) else { return AppLanguage.localized("Finish") }
+        return AppLanguage.localized("Next: \(next.target?.destination.displayName ?? "MORE")")
     }
 
     func extendStepTimer(expectedTimer: StepTimer? = nil) async {
@@ -238,7 +238,7 @@ extension MorningStore {
         pendingWebTarget = nil
         stepTimerRevision += 1
         if !retired, !privacyBlocksWork {
-            notice = String(localized: "The timer couldn't be stopped safely. Try again before leaving this moment.")
+            notice = AppLanguage.localized("The timer couldn't be stopped safely. Try again before leaving this moment.")
         }
         return retired
     }

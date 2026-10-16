@@ -1,3 +1,4 @@
+import MorningCore
 import Foundation
 
 public enum NativeShortcutOperation: String, Codable, CaseIterable, Sendable, Identifiable {
@@ -6,11 +7,11 @@ public enum NativeShortcutOperation: String, Codable, CaseIterable, Sendable, Id
     public static let configurable: [Self] = [.messages, .mail, .notes, .clock, .custom]
     public var displayName: String {
         switch self {
-        case .messages: String(localized: "Messages", bundle: .module)
-        case .mail: String(localized: "Mail", bundle: .module)
-        case .notes: String(localized: "Notes", bundle: .module)
-        case .clock: String(localized: "Clock", bundle: .module)
-        case .custom: String(localized: "Other shortcut", bundle: .module)
+        case .messages: AppLanguage.localized("Messages", bundle: .module)
+        case .mail: AppLanguage.localized("Mail", bundle: .module)
+        case .notes: AppLanguage.localized("Notes", bundle: .module)
+        case .clock: AppLanguage.localized("Clock", bundle: .module)
+        case .custom: AppLanguage.localized("Other shortcut", bundle: .module)
         }
     }
 }
@@ -34,12 +35,12 @@ public enum ShortcutBridgeError: LocalizedError, Sendable, Equatable {
     case invalidName, inputTooLarge, alreadyWaiting, invalidCallback, noPendingRequest, expired, resultTooLarge
     public var errorDescription: String? {
         switch self {
-        case .invalidName: String(localized: "Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters).", bundle: .module)
-        case .inputTooLarge: String(localized: "Keep shortcut input within 1,024 bytes.", bundle: .module)
-        case .alreadyWaiting: String(localized: "MORE is already waiting for a shortcut. Check its outcome before running another.", bundle: .module)
-        case .invalidCallback, .noPendingRequest: String(localized: "This shortcut return doesn't match a pending request. Nothing was accepted.", bundle: .module)
-        case .expired: String(localized: "The shortcut didn't return in time. Check it in Shortcuts before running it again.", bundle: .module)
-        case .resultTooLarge: String(localized: "The shortcut returned too much text. Limit its output to 8,192 bytes.", bundle: .module)
+        case .invalidName: AppLanguage.localized("Enter the exact name of a shortcut you added in Shortcuts (up to 128 characters).", bundle: .module)
+        case .inputTooLarge: AppLanguage.localized("Keep shortcut input within 1,024 bytes.", bundle: .module)
+        case .alreadyWaiting: AppLanguage.localized("MORE is already waiting for a shortcut. Check its outcome before running another.", bundle: .module)
+        case .invalidCallback, .noPendingRequest: AppLanguage.localized("This shortcut return doesn't match a pending request. Nothing was accepted.", bundle: .module)
+        case .expired: AppLanguage.localized("The shortcut didn't return in time. Check it in Shortcuts before running it again.", bundle: .module)
+        case .resultTooLarge: AppLanguage.localized("The shortcut returned too much text. Limit its output to 8,192 bytes.", bundle: .module)
         }
     }
 }
