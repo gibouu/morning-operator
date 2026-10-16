@@ -417,7 +417,7 @@ struct ObservationContextClassifierTests {
     }
 
     #if canImport(FoundationModels)
-    @Test("The guided schema requires one fixed object per frame and never generates sample IDs", arguments: [2, 4])
+    @Test("The guided schema requires one native option ID per frame and never generates sample IDs", arguments: [2, 4])
     func schemaResolves(_ count: Int) throws {
         let frames = try (0..<count).map { try frame("Visible context \($0)\nInbox", at: Double($0)) }
         let batch = try #require(ObservationContextValidation.prepare(frames: frames, catalog: []).batches.first)
@@ -438,7 +438,9 @@ struct ObservationContextClassifierTests {
         let serialized = String(decoding: encoded, as: UTF8.self)
         #expect(!serialized.contains("sampleID") && !serialized.contains("\"frames\""))
         #expect(frames.allSatisfy { !serialized.contains($0.id.uuidString) })
-        #expect(schemas.contains { ($0["enum"] as? [String]) == ["identified", "ambiguous", "unknown"] })
+        for slot in try ObservationContextFrameSlots.make(batch: batch, catalog: []) {
+            #expect(schemas.contains { ($0["enum"] as? [String]) == slot.options.map(\.id) })
+        }
     }
 
     @Test("Guided source candidates retain whole-line punctuation, Unicode bytes and exact multi-line ambiguity")

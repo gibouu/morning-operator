@@ -46,6 +46,7 @@ public struct ObservationContextNativeError: Codable, Sendable, Equatable {
 }
 
 public struct ObservationContextDiagnostic: Codable, Sendable, Equatable {
+    public enum SelectionFailure: String, Codable, Sendable, Error { case shape, keys, membership }
     public enum Kind: String, Codable, Sendable {
         case unknownSampleID, duplicateSampleID, invalidResponse, invalidEvidence
         case unsupportedIdentity, generationFailed
@@ -54,8 +55,11 @@ public struct ObservationContextDiagnostic: Codable, Sendable, Equatable {
     public let sampleID: UUID?
     /// Optional so classifications saved before sanitized diagnostics still decode.
     public let nativeError: ObservationContextNativeError?
-    public init(kind: Kind, sampleID: UUID? = nil, nativeError: ObservationContextNativeError? = nil) {
+    public let selectionFailure: SelectionFailure?
+    public init(kind: Kind, sampleID: UUID? = nil, nativeError: ObservationContextNativeError? = nil,
+                selectionFailure: SelectionFailure? = nil) {
         self.kind = kind; self.sampleID = sampleID; self.nativeError = nativeError
+        self.selectionFailure = selectionFailure
     }
 }
 
@@ -290,7 +294,7 @@ enum ObservationContextValidation {
         let headers = headerLines(excerpt)
         let label: String
         if catalog.isEmpty {
-            guard isSafeLabel(proposal.contextLabel), proposal.contextLabel == proposal.evidenceQuote,
+            guard isHeaderCandidate(proposal.contextLabel), proposal.contextLabel == proposal.evidenceQuote,
                   headers.contains(proposal.evidenceQuote) else { return nil }
             label = proposal.contextLabel
         } else {
@@ -300,6 +304,7 @@ enum ObservationContextValidation {
             // icon into a letter. A mention can block identity, never establish it.
             let mentionedCatalog = catalog.filter { entry in headers.contains { $0.contains(entry.headerText) } }
             guard visibleCatalog.count == 1, mentionedCatalog.count == 1, let entry = visibleCatalog.first,
+                  !isProvenanceLine(removingLeadingDecoration(proposal.evidenceQuote)),
                   proposal.contextLabel == entry.label, headers.contains(proposal.evidenceQuote),
                   removingLeadingDecoration(proposal.evidenceQuote) == entry.headerText else { return nil }
             label = entry.label
@@ -374,6 +379,21 @@ enum ObservationContextValidation {
         return (2...80).contains(label.count) && label == label.trimmingCharacters(in: .whitespacesAndNewlines) &&
             label.unicodeScalars.contains(where: CharacterSet.letters.contains) &&
             label.unicodeScalars.allSatisfy(allowed.contains)
+    }
+
+    /// This is a narrow negative role check, never a source of app identity.
+    /// An ordinary name such as “Synthetic Studio” or “Test Kitchen” is retained.
+    static func isHeaderCandidate(_ line: String) -> Bool { isSafeLabel(line) && !isProvenanceLine(line) }
+
+    private static func isProvenanceLine(_ line: String) -> Bool {
+        let tokens = normalized(line).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        let markers: Set<String> = ["synthetic", "synthetique", "simulated", "simulation", "demo", "demonstration",
+            "test", "testing", "recording", "recorded", "capture", "captured", "enregistrement", "provenance", "watermark", "filigrane"]
+        let qualifiers: Set<String> = ["metadata", "metadonnees", "screen", "video", "version", "fr", "en",
+            "francais", "francaise", "french", "english", "anglais", "on", "le", "de", "the"]
+        return tokens.contains(where: markers.contains) && tokens.allSatisfy {
+            markers.contains($0) || qualifiers.contains($0) || $0.allSatisfy(\.isNumber)
+        }
     }
 
     private static func normalized(_ value: String) -> String {
