@@ -444,7 +444,10 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
         try reveal(included, in: app)
         XCTAssertTrue(["0", "1"].contains(included.value as? String ?? ""),
                       "The ordinary Health choice did not expose a known state.")
-        if included.value as? String == "0" { included.tap() }
+        if included.value as? String == "0" {
+            XCTAssertTrue(included.isHittable && included.isEnabled)
+            included.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
         else {
             let expand = app.buttons["briefing.expandHealth"]
             if expand.exists && expand.isHittable { expand.tap() }
