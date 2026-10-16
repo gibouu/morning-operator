@@ -38,7 +38,7 @@ The following results are verified in the Xcode Cloud and App Store Connect web 
 | `2026101635` | `8d63e9a5`, PR #261 | Complete | Missing Compliance; external post-action fails with `Missing encryption compliance declaration` |
 | `2026101636` | `6d6d374d`, PR #265 | Complete | Missing Compliance; external availability remains blocked |
 
-This proves the automatic main-branch trigger, archive, upload and Apple processing path. The cloud-produced archives and IPAs have not been downloaded for independent signature, profile or packaged-resource inspection. No local verification from build 33 is presented as verification of these newer binaries.
+This proves the automatic main-branch trigger, archive, upload and Apple processing path. The downloaded build 35 App Store IPA has SHA-256 `63161747f987e4cf952eb7990c57142d0d68c6db6c4f61b884f1384c50c3c863`. Independent inspection passes strict Apple Distribution signatures, team and App Store profiles, matching app/widget `0.1.1 (2026101635)` versions, expected entitlements, base/English/French permission text and ten privacy manifests. The actual binary links the restored SDK frameworks and includes WebRTC crypto. The download contains no dSYM, so no symbol-match result is claimed. Build 36 has upload/processing evidence only; build 33 remains separate.
 
 Build 33's OS-only encryption evidence applies only to its frozen SDK-free binary. Future builds from `main` contain SDK code and need an export-compliance assessment of their actual signed contents and truthful App Store Connect answers. PR #261 removes the `ITSAppUsesNonExemptEncryption = false` assertion from the source; do not carry build 33's conclusion into these builds automatically.
 
@@ -62,7 +62,7 @@ The existing GitHub workflows remain separate checks for packages, app compilati
 
 - Resolve **Missing Compliance** for the SDK-containing builds, including the French encryption declaration and Apple approval for distribution in France, using their actual contents and truthful App Store Connect answers. Track the blocker in [#263](https://github.com/gibouu/morning-operator/issues/263). Do not restore a false OS-only encryption assertion to bypass it.
 - After compliance is resolved, retry the external TestFlight post-action and verify its result and the resulting beta-review state. External availability and installation are still unverified. Build 33 keeps its separate pending review.
-- Download the cloud archive or IPA and independently inspect the actual app/widget identities, distribution signatures, profiles, matching versions/builds, app and SDK privacy resources, symbols and public runtime configuration.
+- Keep each release tied to its actual signed artifact. Build 35 passes the independent IPA checks above; symbol matching and independent inspection of later binaries remain separate checks.
 
 ## Troubleshooting
 
