@@ -171,6 +171,7 @@ public struct MorningLiveActivityRecord: Sendable, Equatable {
                 guard mayRetain(snapshot) else { try await endAllRecords(); return }
                 guard token == revision else { return }
                 if currentSnapshot?.state.hasSameProgress(as: snapshot.state) != true ||
+                    currentSnapshot.map({ $0.state.brandAppearance(at: $0.state.updatedAt) }) != snapshot.state.brandAppearance(at: instant) ||
                     (record?.state == .stale && isForeground) {
                     do { try await provider.update(id: id, snapshot: snapshot,
                         staleDate: snapshot.state.staleDate(staleAfter: Self.staleAfter)) }

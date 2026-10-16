@@ -427,7 +427,7 @@ struct MorningRoutineControlsView: View {
         .onChange(of: store.sessionActive) { _, active in if !active { showingDetails = false } }
         .onChange(of: store.dataGeneration) { _, _ in showingDetails = false }
         .onDisappear { store.morningDetailPresented = false }
-        .sheet(isPresented: $showingDetails) { interaction }
+        .morningSheet(isPresented: $showingDetails) { interaction }
     }
 
     private var interaction: some View {

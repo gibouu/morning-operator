@@ -106,7 +106,7 @@ struct ForgetObservationButton: View {
         }
         .disabled(store.busy || store.sessionActive || !store.privacyInventoryIsReadable || store.evidenceRemovalInProgress)
         .accessibilityIdentifier("observation.forget")
-        .sheet(isPresented: Binding(get: { reviewing != nil }, set: { if !$0 { reviewing = nil } }), onDismiss: {
+        .morningSheet(isPresented: Binding(get: { reviewing != nil }, set: { if !$0 { reviewing = nil } }), onDismiss: {
             guard forgotten else { return }
             forgotten = false
             onForgotten()
