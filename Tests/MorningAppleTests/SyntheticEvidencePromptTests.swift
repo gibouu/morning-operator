@@ -67,14 +67,16 @@ struct SyntheticEvidencePromptTests {
         }
     }
 
-    @Test("An injected supported synthetic task remains manual, unapproved and source-bound")
-    func syntheticTaskDoesNotCreateAuthority() throws {
-        let text = "SYNTHETIC\n09:15 Review the workshop supplies\nNo real account, send, write or like"
+    @Test("Displayed events and messages support review candidates without action authority", arguments: [
+        "09:15 Workshop supply review", "Please bring the printed meeting notes tomorrow."
+    ])
+    func syntheticTaskDoesNotCreateAuthority(_ task: String) throws {
+        let text = "SYNTHETIC\n" + task + "\nNo real account, send, write or like"
         let observation = try entry(text)
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [observation])
         let prepared = try ModelCitationPreparation.prepare(evidence)
         let batch = try #require(prepared.batchesByFirstUnitID.values.first)
-        let anchor = try #require(batch.anchors.first { $0.citation.quote.trimmingCharacters(in: .whitespacesAndNewlines) == "09:15 Review the workshop supplies" })
+        let anchor = try #require(batch.anchors.first { $0.citation.quote.trimmingCharacters(in: .whitespacesAndNewlines) == task })
         let generated = EvidenceModelRoutineProposal(outcome: "supportedActivities", steps: [
             .init(title: "Review visible task content", detail: "A tentative synthetic activity.", kind: "custom",
                   durationMinutes: 2, citationIDs: [anchor.id])
@@ -89,6 +91,18 @@ struct SyntheticEvidencePromptTests {
         #expect(proposal.isCurrent(archive: try ObservationArchive(entries: [observation]), baseRoutine: nil))
         #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
             try LearningEvidencePreparation.prepare(acquisitions: [entry("SYNTHETIC • FR\nNo real account, send, write or like")])
+        }
+    }
+
+    @Test("Labels, setup and promotion do not become review candidates", arguments: [
+        "Calendar\nToday\nDone",
+        "Screen Sharing\nMorning Operator\nShare Screen\nCancel\n09:15 Workshop supply review",
+        "Subscribe now\nFree trial\n09:15 Workshop supply review",
+        "Show your morning\n09:15 Workshop supply review"
+    ])
+    func nonTaskSurfacesStayExcluded(_ text: String) throws {
+        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+            try LearningEvidencePreparation.prepare(acquisitions: [entry(text)])
         }
     }
 
@@ -156,6 +170,32 @@ struct SyntheticEvidencePromptTests {
                 #expect(citation.acquisitionID == observation.id && citation.sampleID == nil && citation.sourceLayer == .original)
                 #expect(Data(text.utf8).range(of: Data(citation.quote.utf8)) != nil)
             }
+        }
+    }
+
+    @Test("The real propose-and-anchor path abstains on a concrete advertisement", .enabled(
+        "Set MO_RUN_MODEL_INTEGRATION=1 and MO_RUN_SYNTHETIC_VISUAL_NEGATIVE=1; no inference runs by default.") {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["MO_RUN_MODEL_INTEGRATION"] == "1" && environment["MO_RUN_SYNTHETIC_VISUAL_NEGATIVE"] == "1"
+    })
+    @MainActor
+    func realSyntheticVisualPromotionAbstention() async throws {
+        let observation = try entry("Sponsored advertisement\nBuy a new notebook today and save twenty percent.")
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [observation])
+        let anchored = try ModelCitationPreparation.prepare(evidence)
+        try #require(anchored.batchesByFirstUnitID.values.allSatisfy { !$0.anchors.isEmpty })
+        let service = AppleIntelligenceService()
+        try #require(service.isAvailable, "The explicitly requested negative control needs the real local model.")
+        defer { printDiagnostics(service, label: "SYNTHETIC_VISUAL_NEGATIVE_DIAGNOSTIC") }
+        do {
+            _ = try await service.propose(evidence: evidence, preserving: nil)
+            Issue.record("Advertising alone must not create a personal activity proposal.")
+        } catch RoutineEvidenceProposalError.insufficientEvidence {
+            let diagnostic = try #require(service.proposalDiagnostics)
+            #expect(diagnostic.phase == .assembling && diagnostic.validatedBatchCount > 0)
+            #expect(diagnostic.respondInvocations == diagnostic.responseReturns)
+            #expect(diagnostic.resolvedStepCount == 0)
+            #expect(diagnostic.batches.allSatisfy { $0.phase == .validated && $0.outcome == .insufficientEvidence && $0.stepCount == 0 })
         }
     }
 
