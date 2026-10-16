@@ -188,6 +188,7 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
     public let canAdvance: Bool?
     public let storyRoute: String?
     public let mediaPlaying: Bool?
+    public let mediaPlaybackSeconds: Double?
     public let scrollOffset: Double?
     public let consentCanDismiss: Bool?
     public let pageAccessRefusal: WebPageAccessRefusal?
@@ -202,6 +203,7 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
               result.reason.map({ ["expired", "origin", "hidden"].contains($0) }) != false,
               result.pageAccessRefusal == nil || result.status == .choice,
               result.scrollOffset.map({ $0.isFinite && $0 >= 0 && $0 <= 100_000_000 }) != false,
+              result.mediaPlaybackSeconds.map({ $0.isFinite && $0 >= 0 && $0 <= 604_800 }) != false,
               (result.text?.count ?? 0) <= 5,
               (result.articles?.count ?? 0) <= 5,
               result.articles?.allSatisfy({ !$0.title.isEmpty && $0.title.count <= 240 && $0.href.absoluteString.utf8.count <= 2_048 }) != false,
@@ -257,7 +259,9 @@ public struct WebMorningLikeJournal: Sendable {
 }
 
 public enum WebMorningExecutionPolicy {
-    public static func permits(site: WebMorningSite, url: URL?, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+    public static func permits(site: WebMorningSite, url: URL?, syntheticNews: SyntheticNewsOrigin? = nil,
+                               syntheticRoutine: SyntheticRoutineBrowserOrigin? = nil) -> Bool {
+        if let syntheticRoutine { return syntheticNews == nil && site == syntheticRoutine.site && syntheticRoutine.permits(url) }
         if let syntheticNews { return site == .news && syntheticNews.permits(url) }
         guard let url, WebMorningSite(url: url) == site, !WebMorningPolicy.isSignInPage(url), site != .gmail else { return false }
         return true
@@ -278,14 +282,19 @@ public enum WebMorningExecutionPolicy {
     public static func script(site: WebMorningSite, behavior: WebMorningBehavior,
                               command: String = "observe", fingerprint: String? = nil,
                               likesAllowed: Bool = false, expiresAt: Date = Date().addingTimeInterval(2),
-                              syntheticNews: SyntheticNewsOrigin? = nil) -> String {
+                              syntheticNews: SyntheticNewsOrigin? = nil,
+                              syntheticRoutine: SyntheticRoutineBrowserOrigin? = nil) -> String {
         guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
             return "JSON.stringify({status:'unavailable'})"
         }
         if syntheticNews != nil && (site != .news || behavior != .readHeadlines) {
             return "JSON.stringify({status:'unavailable'})"
         }
-        let originCheck = syntheticNews?.javascriptPermits("location") ??
+        if let syntheticRoutine, syntheticNews != nil || site != syntheticRoutine.site ||
+            (site == .reddit ? behavior != .browseFeed : behavior != .watchVideos) {
+            return "JSON.stringify({status:'unavailable'})"
+        }
+        let originCheck = syntheticRoutine?.javascriptPermits("location") ?? syntheticNews?.javascriptPermits("location") ??
             "(location.protocol==='https:' && \(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) && (!location.port || location.port==='443') && !location.username && !location.password)"
         let articleCheck = syntheticNews?.javascriptPermits("u") ?? "(u.protocol==='https:' && u.origin===location.origin && !u.username && !u.password)"
         let selectors: [String]
@@ -475,7 +484,7 @@ public enum WebMorningExecutionPolicy {
           }
           scroller=scroller && scroller!==document.body && scroller!==document.documentElement ? scroller : document.scrollingElement;
           const canScroll=!!scroller && scroller.scrollTop+scroller.clientHeight<scroller.scrollHeight-2;
-          const result = {status:'ready',fingerprint,contentID,mediaPlaying:video ? !video.paused && video.readyState>=2 : null,liked:!!likedButton,canLike:!!likeButton && !!contentID,scrollOffset:scroller?.scrollTop ?? 0,canAdvance:!!next || behavior!=='watchStories' && canScroll,text:behavior==='readHeadlines' ? nodes.slice(0,5).map(e=>clean(e.innerText||e.textContent).slice(0,600)).filter(Boolean) : text ? [text] : []};
+          const result = {status:'ready',fingerprint,contentID,mediaPlaying:video ? !video.paused && video.readyState>=2 : null,mediaPlaybackSeconds:video ? video.currentTime : null,liked:!!likedButton,canLike:!!likeButton && !!contentID,scrollOffset:scroller?.scrollTop ?? 0,canAdvance:!!next || behavior!=='watchStories' && canScroll,text:behavior==='readHeadlines' ? nodes.slice(0,5).map(e=>clean(e.innerText||e.textContent).slice(0,600)).filter(Boolean) : text ? [text] : []};
           if(site==='news' && behavior==='readHeadlines'){
             const articles=[], seen=new Set();
             for(const e of nodes){

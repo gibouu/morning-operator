@@ -133,7 +133,7 @@ struct WebMorningView: View {
             Button(action: onClose) {
                 MorningDottedIcon(systemName: "xmark").frame(width: 23, height: 23).frame(width: 44, height: 44)
             }.accessibilityLabel(text("Close", "Fermer")).accessibilityIdentifier("web.close")
-            Text(controller.isSyntheticNews ? controller.sourceLabel : site == .gmail || controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
+            Text(controller.isSyntheticNews || controller.isSyntheticRoutine ? controller.sourceLabel : site == .gmail || controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).lineLimit(1)
                 .accessibilityIdentifier("web.host")
             Spacer(minLength: 4)
@@ -353,6 +353,7 @@ struct WebMorningView: View {
         let source = controller.executionEvent?.contextText ?? []
         let position = Int(controller.webView.scrollView.contentOffset.y.rounded())
         let execution = "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)"
+        if controller.isSyntheticRoutine { return "\(controller.syntheticRoutineDiagnostic) \(execution)" }
         guard controller.isSyntheticNews else { return execution }
         // Keep identity, budget and Repeat receipts ahead of admission detail
         // so bounded accessibility snapshots retain the proof's essential fields.
