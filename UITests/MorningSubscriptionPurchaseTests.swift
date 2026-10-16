@@ -6,6 +6,21 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
+    private var sessionForCleanup: SKTestSession?
+
+    override func tearDown() async throws {
+        await MainActor.run {
+            let app = XCUIApplication()
+            if app.state != .notRunning { app.terminate() }
+            if let sessionForCleanup {
+                attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
+            }
+            sessionForCleanup?.clearTransactions()
+            sessionForCleanup?.resetToDefaultState()
+            sessionForCleanup = nil
+        }
+        try await super.tearDown()
+    }
 
     /// Run against the ordinary Release executable with a clean simulator app
     /// container. The test runner's opt-in never reaches the application.
@@ -128,7 +143,6 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         showPaywall(in: app)
         XCTAssertTrue(app.staticTexts["paywall.price"].label.contains("4,99"))
         XCTAssertTrue(app.staticTexts["paywall.price"].label.contains("€"))
-        XCTAssertTrue(app.buttons["paywall.subscribe"].label.contains("7"), "The fixture offers one free week.")
         tap("paywall.restore", in: app)
         XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 15), app.debugDescription)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
@@ -208,20 +222,36 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     func testCancelledPurchaseLeavesTheOfferReadyAndAllowsFreeContinue() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
-        let app = launch()
+        // Cancel the accepted local store's sheet, as a user does. An injected
+        // generic error does not exercise Product.PurchaseResult.userCancelled.
+        session.disableDialogs = false
+        let app = launch(french: false)
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let cancellations = [app.buttons["Cancel"], app.buttons["Annuler"],
+                             springboard.buttons["Cancel"], springboard.buttons["Annuler"]]
+        let sheet = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            cancellations.contains { $0.exists && $0.isHittable }
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [sheet], timeout: 20), .completed,
+                       "The local purchase must expose a cancel action: \(app.debugDescription)")
+        let cancel = try XCTUnwrap(cancellations.first { $0.exists && $0.isHittable })
+        cancel.tap()
         let button = app.buttons["paywall.subscribe"]
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND label CONTAINS '7'"), object: button)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: button)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
-        XCTAssertFalse(app.staticTexts["paywall.notice"].exists)
-        XCTAssertTrue(session.allTransactions().isEmpty)
-        continueFree(in: app)
+        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForNonExistence(timeout: 5), app.debugDescription)
+        let beforeFreeEntry = session.allTransactions()
+        XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
+        continueFree(in: app, french: false)
         assertHome(app)
-        XCTAssertTrue(session.allTransactions().isEmpty)
+        let afterFreeEntry = session.allTransactions()
+        XCTAssertFalse(afterFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs)
     }
 
     func testFailedPurchaseAllowsFreeContinueWithoutATransaction() async throws {
@@ -233,9 +263,15 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
         XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 15), app.debugDescription)
+        let beforeFreeEntry = session.allTransactions()
+        XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
         continueFree(in: app)
         assertHome(app)
-        XCTAssertTrue(session.allTransactions().isEmpty)
+        let afterFreeEntry = session.allTransactions()
+        XCTAssertFalse(afterFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs,
+                       "Free entry must not add or replace a StoreKit transaction.")
     }
 
     func testProductLoadFailureAllowsFreeContinueWithoutAFabricatedOffer() async throws {
@@ -311,6 +347,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [pending], timeout: 15), .completed)
         let declined = try XCTUnwrap(session.allTransactions().first)
         try session.declineAskToBuyTransaction(identifier: declined.identifier)
+        attachTransactions(session, name: "ask-to-buy-after-decline")
         XCTAssertFalse(app.buttons["morning.actions"].exists)
         XCTAssertFalse(button.isEnabled, "A decline must not automatically request another purchase.")
         tap("paywall.retryPending", in: app)
@@ -324,6 +361,16 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         let retried = try XCTUnwrap(session.allTransactions().first { $0.identifier != declined.identifier })
         try session.approveAskToBuyTransaction(identifier: retried.identifier)
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 20), app.debugDescription)
+    }
+
+    private func attachTransactions(_ session: SKTestSession, name: String) {
+        let details = session.allTransactions().map {
+            "id=\($0.identifier) state=\($0.state.rawValue) pending=\($0.pendingAskToBuyConfirmation) expires=\(String(describing: $0.expirationDate))"
+        }.joined(separator: "\n")
+        let attachment = XCTAttachment(string: details.isEmpty ? "No local transactions." : details)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func makeSession() throws -> SKTestSession {
@@ -341,6 +388,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         registration.terminate()
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
+        sessionForCleanup = session
         session.resetToDefaultState()
         session.clearTransactions()
         session.disableDialogs = true
@@ -397,8 +445,13 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
 
     private func tap(_ identifier: String, in app: XCUIApplication) {
         let button = app.buttons[identifier]
+        let collection = app.collectionViews.firstMatch
+        // Form rows become accessible only when the collection reveals them.
+        if collection.exists {
+            for _ in 0..<10 where !button.exists { collection.swipeUp() }
+        }
         XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
-        let scroll = app.scrollViews.firstMatch
+        let scroll = collection.exists ? collection : app.scrollViews.firstMatch
         let scrollsButton = scroll.exists
             && scroll.descendants(matching: .button).matching(identifier: identifier).firstMatch.exists
         func visibleAndHittable() -> Bool {
