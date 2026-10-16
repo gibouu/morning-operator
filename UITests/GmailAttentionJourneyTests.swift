@@ -288,7 +288,7 @@ import MorningCore
                 }, object: nil)
                 XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 6), .completed,
                                "Only an explicit choice followed by the editor's selected Gmail value counts.")
-                let explanation = "Lire vos mails non lus, préparer et corriger une réponse. Envoyer seulement à votre demande."
+                let explanation = "Gmail · Lire vos mails non lus, préparer et corriger une réponse. Envoyer seulement à votre demande."
                 XCTAssertEqual(replyControl(explanation, app).label, explanation)
                 attach("gmail-reply-french-largest-night-action-gmail-observed-before-save", app)
                 return
