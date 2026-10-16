@@ -316,9 +316,10 @@ struct RoutineReviewEditor: View {
                                 .accessibilityIdentifier("routine.step.\(index)")
                         }
                         .onMove { source, destination in
-                            var steps = store.routine?.steps ?? []
+                            var steps = routine.steps
                             steps.move(fromOffsets: source, toOffset: destination)
-                            store.updateSteps(steps)
+                            _ = store.reorderSteps(steps.map(\.id), expectedRoutineID: routine.id,
+                                expectedGeneration: store.dataGeneration)
                         }
                         .moveDisabled(store.busy || store.sessionActive)
                         Button {
@@ -432,8 +433,9 @@ struct RoutineReviewEditor: View {
     }
 
     @ViewBuilder private var savedChoicesLink: some View {
-        // Only when saved choices can't be read: approval waits for their reset here.
-        if store.routinePreferencesIssue != nil {
+        // Saved choices remain inspectable and individually reversible, including
+        // an order-only journal. An unreadable journal exposes its recovery here.
+        if store.routinePreferencesIssue != nil || !store.routinePreferences.entries.isEmpty || store.routinePreferences.order != nil {
             NavigationLink { RoutinePreferencesView(store: store) } label: {
                 Label { Text(store.routinePreferencesIssue == nil ? String(localized: "Saved choices", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Saved choices need review", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)) } icon: {
                     MorningDottedIcon(systemName: store.routinePreferencesIssue == nil ? "heart.text.clipboard" : "exclamationmark.circle").frame(width: 22, height: 22)
@@ -461,6 +463,25 @@ struct RoutinePreferencesView: View {
                         .accessibilityIdentifier("preferences.reset")
                 }
             } else {
+                if let order = store.routinePreferences.order {
+                    Section {
+                        Text(verbatim: AppLanguage.isFrench ? "Ordre enregistré" : "Saved order")
+                            .font(MorningTheme.Typography.heading)
+                        Text(verbatim: AppLanguage.isFrench
+                            ? "Les moments retrouvés dans vos prochaines suggestions gardent cet ordre. Les nouveaux moments restent à vérifier."
+                            : "Matching moments keep this order in future suggestions. New moments still need your review.")
+                            .font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
+                        ForEach(Array(order.enumerated()), id: \.element.targetID) { index, moment in
+                            Text(verbatim: "\(index + 1). \(moment.targetTitle)")
+                        }
+                        Button(AppLanguage.isFrench ? "Ne plus conserver cet ordre" : "Forget saved order") {
+                            _ = store.clearSavedRoutineOrder()
+                        }
+                        .disabled(store.busy || store.sessionActive)
+                        .accessibilityIdentifier("preferences.clearOrder")
+                    }
+                    .accessibilityIdentifier("preferences.savedOrder")
+                }
                 ForEach(store.routinePreferences.entries) { preference in
                     Section {
                         Text(preference.targetTitle).font(MorningTheme.Typography.heading)
@@ -476,7 +497,7 @@ struct RoutinePreferencesView: View {
                             .accessibilityIdentifier("preferences.clear.\(preference.targetID.uuidString)")
                     }
                 }
-                if store.routinePreferences.entries.isEmpty {
+                if store.routinePreferences.entries.isEmpty && store.routinePreferences.order == nil {
                     ContentUnavailableView("No saved choices", systemImage: "heart",
                         description: Text("Future suggestions can vary. Keep a moment or its duration when editing your routine."))
                         .accessibilityIdentifier("preferences.empty")

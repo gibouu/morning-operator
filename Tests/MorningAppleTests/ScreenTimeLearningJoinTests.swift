@@ -64,6 +64,53 @@ struct ScreenTimeLearningJoinTests {
         return try LearningEvidencePreparation.assemble(evidence: evidence, steps: inputs, preserving: base, preferences: preferences, at: at(14, 14))
     }
 
+    @Test("An explicit native order survives restoration while canonical authority and source selection remain checked")
+    func nativeOrderIsRecreatedOnlyByTheExactStandingChoice() throws {
+        let hours: [ScreenTimeHour] = [
+            .init(interval: .init(start: at(14, 7), duration: 3600), firstPickup: at(14, 7),
+                longestActivity: .init(start: at(14, 7), duration: 780), apps: [
+                    .init(bundleIdentifier: "com.burbn.instagram", seconds: 480),
+                    .init(bundleIdentifier: "com.google.Gmail", seconds: 180),
+                    .init(bundleIdentifier: "com.apple.Music", seconds: 120)])]
+        let report = try #require(ScreenTimeObservationEvidence.make(hours: hours, queryStart: at(13, 18),
+            now: at(14, 14), calendar: calendar).first { $0.day == at(14, 0) })
+        let source = try ObservationAcquisition.screenTime(report), archive = try ObservationArchive(entries: [source])
+        let empty = RoutinePreferenceJournal(), canonical = try assemble([source], preferences: empty)
+        #expect(canonical.routine.steps.count == 3)
+        var journal = empty
+        try journal.rememberOrder(of: Array(canonical.routine.steps.reversed()))
+        journal = try JSONDecoder().decode(RoutinePreferenceJournal.self, from: JSONEncoder().encode(journal))
+        let proposal = try assemble([source], preferences: journal)
+        #expect(proposal.routine.steps.map(\.id) == canonical.routine.steps.reversed().map(\.id))
+        let restored = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored.isCurrent(archive: archive, baseRoutine: nil, preferences: journal))
+        #expect(restored.support.map(\.citations).allSatisfy { !$0.isEmpty && $0.allSatisfy { $0.sourceLayer == .screenTimeAggregate } })
+        #expect(restored.routine.steps.allSatisfy { $0.automation == nil && $0.target == nil })
+        func permuted(_ proposal: EvidenceRoutineProposal) throws -> EvidenceRoutineProposal {
+            var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(proposal)) as? [String: Any])
+            var routine = try #require(json["routine"] as? [String: Any])
+            var steps = try #require(routine["steps"] as? [[String: Any]])
+            steps.swapAt(0, 1); routine["steps"] = steps; json["routine"] = routine
+            return try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONSerialization.data(withJSONObject: json))
+        }
+        #expect(try !permuted(canonical).isCurrent(archive: archive, baseRoutine: nil, preferences: empty), "Without a recorded order, a source permutation remains invalid.")
+        #expect(try !permuted(restored).isCurrent(archive: archive, baseRoutine: nil, preferences: journal), "A different permutation cannot borrow the recorded order's authority.")
+        var changed = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(restored)) as? [String: Any])
+        var selection = try #require(changed["screenTimeSelection"] as? [String: Any])
+        selection["includedBundleIdentifiers"] = [String](); changed["screenTimeSelection"] = selection
+        let omitted = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONSerialization.data(withJSONObject: changed))
+        #expect(!omitted.isCurrent(archive: archive, baseRoutine: nil, preferences: journal), "Order does not make removed/unselected source apps current.")
+        var kept = canonical.routine.steps[0]; kept.detail = "Owner's exact native ritual."; kept.durationMinutes = 4
+        try journal.upsert(.init(target: kept, presence: .keep, durationMinutes: 4))
+        try journal.upsert(.init(target: canonical.routine.steps[1], presence: .exclude))
+        let personalized = try assemble([source], preferences: journal)
+        let reloaded = try JSONDecoder().decode(EvidenceRoutineProposal.self, from: JSONEncoder().encode(personalized))
+        #expect(reloaded.isCurrent(archive: archive, baseRoutine: nil, preferences: journal))
+        #expect(reloaded.routine.steps.count == 2 && reloaded.routine.steps.last == kept)
+        #expect(reloaded.support.last?.reason == .preservedUserDecision)
+        #expect(!reloaded.routine.steps.contains { $0.id == canonical.routine.steps[1].id })
+    }
+
     @Test("Three source types share one proposal; app totals do not rewrite observed gestures or budgets")
     func threeSourceJoin() throws {
         let entries = try [ObservationAcquisition.screenTime(report()), lesson(), video()]

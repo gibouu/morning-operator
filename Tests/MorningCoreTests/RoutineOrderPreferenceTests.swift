@@ -60,6 +60,29 @@ struct RoutineOrderPreferenceTests {
         #expect(throws: RoutinePreferenceError.conflictingMatch(fresh.id)) { try colliding.reconcile(steps: [fresh]) }
     }
 
+    @Test func forgettingOrderPreservesEveryOtherChoiceAcrossPersistence() throws {
+        let read = activity("Read"), mail = activity("Mail"), shopping = activity("Shopping")
+        var journal = RoutinePreferenceJournal()
+        try journal.rememberOrder(of: [read, mail, shopping])
+        try journal.upsert(.init(target: read, presence: .keep))
+        try journal.upsert(.init(target: shopping, presence: .exclude))
+        try journal.upsert(.init(target: mail, durationMinutes: 7))
+        journal = try restored(journal)
+        let before = journal
+        let cleared = journal.clearOrder()
+        #expect(cleared && journal.order == nil && journal.revision != before.revision)
+        #expect(journal.entries == before.entries)
+        let loaded = try restored(journal)
+        #expect(loaded == journal && loaded.order == nil)
+        let result = try loaded.reconcile(steps: [mail, shopping, read])
+        #expect(result.steps.map(\.id) == [mail.id, read.id])
+        #expect(result.steps[0].durationMinutes == 7)
+        #expect(result.retainedStepIDs == [read.id] && result.excludedStepIDs == [shopping.id])
+        let revision = journal.revision
+        let clearedAgain = journal.clearOrder()
+        #expect(!clearedAgain && journal.revision == revision && journal.entries == before.entries)
+    }
+
     @Test func legacyAbsenceAndMalformedOrdersRemainDistinct() throws {
         let empty = RoutinePreferenceJournal()
         let bytes = try JSONEncoder().encode(empty)

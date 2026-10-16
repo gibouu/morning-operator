@@ -968,6 +968,21 @@ final class MorningStore {
     }
 
     @discardableResult
+    func clearSavedRoutineOrder() -> Bool {
+        guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive,
+              routinePreferencesIssue == nil else { return false }
+        let old = routinePreferences
+        let oldProposal = pendingRoutineProposal
+        guard routinePreferences.clearOrder() else { return true }
+        pendingRoutineProposal = nil
+        guard persist() else { routinePreferences = old; pendingRoutineProposal = oldProposal; return false }
+        notice = AppLanguage.isFrench
+            ? "L’ordre enregistré a été oublié. Vos autres choix et la routine actuelle sont conservés."
+            : "Saved order forgotten. Your other choices and current routine are unchanged."
+        return true
+    }
+
+    @discardableResult
     func resetUnreadableRoutinePreferences() -> Bool {
         guard !privacyBlocksWork else { return false }
         guard !busy, !sessionActive, routinePreferencesIssue != nil else { return false }

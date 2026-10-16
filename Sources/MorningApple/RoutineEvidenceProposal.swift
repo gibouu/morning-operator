@@ -185,7 +185,8 @@ public struct EvidenceRoutineProposal: Codable, Equatable, Sendable, Identifiabl
             var restoredCandidates = try LearningEvidencePreparation.restoredBrowserCandidates(
                 evidence: restoredEvidence, proposal: self, citations: &restoredCitations)
             let restoredNativeCandidates = try LearningEvidencePreparation.joiningScreenTime(evidence: restoredEvidence,
-                steps: &restoredCandidates, citations: &restoredCitations, preserving: baseRoutine, preferences: preferences, restoring: true)
+                steps: &restoredCandidates, citations: &restoredCitations, preserving: baseRoutine, preferences: preferences,
+                restoring: true, recordedOrder: routine.steps.map(\.id))
             let restoredNativeIDs = Set(restoredNativeCandidates.keys)
             let candidate = RoutineVersion(createdAt: routine.createdAt, sourceLabel: routine.sourceLabel,
                 steps: restoredCandidates)
@@ -922,7 +923,8 @@ public enum LearningEvidencePreparation {
     /// distribute its minutes among gestures or supply action authority.
     fileprivate static func joiningScreenTime(evidence: PreparedLearningEvidence,
         steps: inout [RoutineStep], citations: inout [UUID: [RoutineEvidenceCitation]],
-        preserving base: RoutineVersion?, preferences: RoutinePreferenceJournal?, restoring: Bool = false) throws -> [UUID: RoutineStep] {
+        preserving base: RoutineVersion?, preferences: RoutinePreferenceJournal?, restoring: Bool = false,
+        recordedOrder: [UUID]? = nil) throws -> [UUID: RoutineStep] {
         let units = evidence.units.filter { $0.screenTimeContext != nil }
         guard !units.isEmpty else { return [:] }
         guard let selection = evidence.screenTimeSelection else { throw RoutineEvidenceProposalError.invalidSelection }
@@ -1019,7 +1021,18 @@ public enum LearningEvidencePreparation {
             citations[id] = combined
         }
         if restoring, !zip(baselinePositions, baselinePositions.dropFirst()).allSatisfy({ $0 < $1 }) {
-            throw RoutineEvidenceProposalError.invalidProposal
+            // Native source order remains canonical. A saved permutation is valid
+            // only if the exact current journal recreates the full recorded order
+            // from those canonical candidates, including Keep/Exclude decisions.
+            guard let preferences, preferences.order != nil, let recordedOrder else {
+                throw RoutineEvidenceProposalError.invalidProposal
+            }
+            var canonical = steps
+            for (slot, source) in zip(baselinePositions.sorted(), baselinePositions) { canonical[slot] = steps[source] }
+            guard try preferences.reconcile(steps: canonical).steps.map(\.id) == recordedOrder else {
+                throw RoutineEvidenceProposalError.invalidProposal
+            }
+            steps = canonical
         }
         steps.removeAll { nativeOnlySavedIDs.contains($0.id) && nativeCandidates[$0.id] == nil }
         return nativeCandidates

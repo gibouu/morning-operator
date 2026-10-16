@@ -128,7 +128,8 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
     /// Call only for an explicit editor reorder, never for model/source order.
     public mutating func rememberOrder(of steps: [RoutineStep]) throws {
         let next = steps.map(OrderedMoment.init)
-        if let order, try JSONEncoder().encode(order) == JSONEncoder().encode(next) { return }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        if let order, try encoder.encode(order) == encoder.encode(next) { return }
         self = try Self(entries: entries, revision: UUID(), order: next)
     }
 
@@ -176,6 +177,14 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
     public mutating func remove(targetID: UUID) -> Bool {
         guard entries.contains(where: { $0.targetID == targetID }) else { return false }
         entries.removeAll { $0.targetID == targetID }
+        revision = UUID()
+        return true
+    }
+
+    @discardableResult
+    public mutating func clearOrder() -> Bool {
+        guard order != nil else { return false }
+        order = nil
         revision = UUID()
         return true
     }

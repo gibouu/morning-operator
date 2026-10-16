@@ -28,7 +28,7 @@ struct MorningPrivacyView: View {
                     LabeledContent("Saved mornings", value: String(store.history.runs.count))
                     countRow(String(localized: "Observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
                     countRow(String(localized: "Saved thoughts & ideas", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: String(store.captures.count), identifier: "privacy.captures")
-                    countRow(String(localized: "Saved choices", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : String(localized: "Unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), identifier: "privacy.choices")
+                    countRow(String(localized: "Saved choices", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count + (store.routinePreferences.order == nil ? 0 : 1)) : String(localized: "Unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), identifier: "privacy.choices")
                 } else {
                     Text(store.privacyBlocksWork ? String(localized: "Saved data is unavailable while removal needs attention.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Saved data couldn’t be read. You can still choose to remove it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
                 }
