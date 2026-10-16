@@ -45,17 +45,26 @@ struct InstagramBrowserNavigationTests {
         }
     }
 
-    @Test("Sign-in POSTs, history, subframes and other HTTPS providers keep their request")
+    @Test("Sign-in POSTs, history and subframes keep their request")
     func preservedNavigation() throws {
         var policy = InstagramBrowserNavigation()
         #expect(policy.decide(url: home, kind: .form, method: "POST") == .allow)
         #expect(policy.decide(url: home, kind: .history) == .allow)
         #expect(policy.decide(url: home, kind: .other, isTopLevel: false) == .allow)
-        for raw in ["https://www.facebook.com/login.php", "https://accounts.google.com/o/oauth2/auth",
-                    "https://instagram.com.evil.test/", "https://example.com/"] {
-            #expect(policy.decide(url: try #require(URL(string: raw)), kind: .link) == .allow)
-        }
         #expect(policy.decide(url: home, kind: .link, isDownload: true) == .cancel)
         #expect(policy.decide(url: try #require(URL(string: "instagram://app")), kind: .other, isTopLevel: false) == .cancel)
+    }
+
+    @Test("HTTPS providers, app stores and redirect wrappers stay in the Instagram browser")
+    func redirectChains() throws {
+        var policy = InstagramBrowserNavigation()
+        for raw in ["https://l.instagram.com/?u=https%3A%2F%2Fapps.apple.com%2Fapp%2Fid389801252",
+                    "https://apps.apple.com/app/instagram/id389801252", "https://www.facebook.com/login.php",
+                    "https://accounts.google.com/o/oauth2/auth", "https://instagram.com.evil.test/"] {
+            let url = try #require(URL(string: raw))
+            #expect(policy.decide(url: url, kind: .other) == .load(url))
+            #expect(policy.decide(url: url, kind: .other) == .allow)
+        }
+        #expect(policy.decide(url: try #require(URL(string: "intent://instagram.com/#Intent;scheme=instagram;end")), kind: .other) == .cancel)
     }
 }

@@ -1062,6 +1062,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        instagramNavigation = InstagramBrowserNavigation()
         displayedHost = webView.url?.host ?? ""
         isSignInPage = !pageBelongsToSite(webView.url)
         loadFailed = false
@@ -1095,6 +1096,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// finish a cadence lesson. Invalidate awaits even when the URL did not change.
     /// Reload remains an explicit action in the visible browser.
     private func invalidateUnavailablePage() {
+        instagramNavigation = InstagramBrowserNavigation()
         pageGeneration += 1
         discardLearning()
         clearSourceText()

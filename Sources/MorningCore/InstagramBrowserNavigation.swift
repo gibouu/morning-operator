@@ -10,7 +10,7 @@ public struct InstagramBrowserNavigation: Sendable {
     public init() {}
 
     /// A public WKWebView.load request does not try universal app links. Replay
-    /// web-initiated Instagram GETs through that API, accepting its next callback
+    /// web-initiated GETs in the Instagram browser through that API, accepting its next callback
     /// once. Each redirect gets the same check; POST sign-in requests keep their body.
     public mutating func decide(url: URL, kind: Kind, method: String = "GET",
                                 isTopLevel: Bool = true, isNewWindow: Bool = false,
@@ -22,7 +22,9 @@ public struct InstagramBrowserNavigation: Sendable {
             return .load(destination)
         }
         guard url.scheme?.lowercased() == "https" else { return .cancel }
-        guard isTopLevel, Self.isInstagramURL(url) else { return .allow }
+        // An Instagram redirect may lead to an app-store or link-wrapper host.
+        // Keeping this whole browser's GET chain in WebKit closes that escape too.
+        guard isTopLevel else { return .allow }
         if !isNewWindow, kind == .other, method == "GET", pendingLoad == url {
             pendingLoad = nil
             return .allow
@@ -31,11 +33,6 @@ public struct InstagramBrowserNavigation: Sendable {
         guard method == "GET", kind == .link || kind == .other else { return .allow }
         pendingLoad = url
         return .load(url)
-    }
-
-    private static func isInstagramURL(_ url: URL) -> Bool {
-        guard url.port == nil || url.port == 443, let host = url.host?.lowercased() else { return false }
-        return host == "instagram.com" || host.hasSuffix(".instagram.com")
     }
 
     /// Only browser equivalents with an unambiguous destination are translated.
