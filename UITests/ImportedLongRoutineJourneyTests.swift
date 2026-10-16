@@ -297,7 +297,10 @@ import MorningCore
             return (row, index)
         }
         func visibleBounds() throws -> CGRect {
-            guard list.exists, let bar = app.navigationBars.allElementsBoundByIndex.last(where: { $0.exists && $0.isHittable }) else {
+            // A navigation bar supplies geometry, not a gesture target.
+            guard list.exists, let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+                $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(app.frame)
+            }) else {
                 captureFailure("long-ten-reorder-list-not-visible", app); throw DiagnosticFailure.invalid
             }
             let frame = list.frame.intersection(app.frame)
@@ -598,7 +601,9 @@ import MorningCore
         }
         let frame = form.frame, viewport = frame.intersection(app.frame)
         var top = viewport.minY, bottom = viewport.maxY
-        if let bar = app.navigationBars.allElementsBoundByIndex.last(where: { $0.exists && $0.isHittable && $0.frame.intersects(viewport) }) {
+        if let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+            $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(viewport)
+        }) {
             top = max(top, bar.frame.maxY)
         }
         let keyboard = app.keyboards.firstMatch
