@@ -23,11 +23,24 @@ struct VisualTaskPresenceProbeTests {
         return env["MO_RUN_MODEL_INTEGRATION"] == "1" && env["MO_RUN_VISUAL_TASK_PRESENCE_PROBE"] == "1"
     })
     @MainActor func compareThreeUnchangedSourcesWithoutAssemblingAProposal() async throws {
+        try await runProbe(flatStepsFirst: false)
+    }
+
+    @Test(.enabled("Set MO_RUN_MODEL_INTEGRATION=1 and MO_RUN_VISUAL_TASK_FLAT_SELECTION_PROBE=1 with explicit private paths.") {
+        let env = ProcessInfo.processInfo.environment
+        return env["MO_RUN_MODEL_INTEGRATION"] == "1" && env["MO_RUN_VISUAL_TASK_FLAT_SELECTION_PROBE"] == "1"
+    })
+    @MainActor func compareFlatStepsBeforeAnExplicitDecision() async throws {
+        try await runProbe(flatStepsFirst: true)
+    }
+
+    @MainActor private func runProbe(flatStepsFirst: Bool) async throws {
         #if canImport(FoundationModels)
         let env = ProcessInfo.processInfo.environment
         let inputPath = try #require(env["MO_TASK_PRESENCE_SOURCE_REPORT_PATH"])
         let videoPath = try #require(env["MO_TASK_PRESENCE_VIDEO_PATH"])
-        let outputPath = try #require(env["MO_TASK_PRESENCE_REPORT_PATH"])
+        let outputKey = flatStepsFirst ? "MO_TASK_FLAT_SELECTION_REPORT_PATH" : "MO_TASK_PRESENCE_REPORT_PATH"
+        let outputPath = try #require(env[outputKey])
         let rawTime = try #require(env["MO_TASK_PRESENCE_FRAME_REQUESTED_SECONDS"])
         let requested = try #require(Double(rawTime)); try #require(requested.isFinite)
         let input = URL(fileURLWithPath: inputPath).standardizedFileURL.resolvingSymlinksInPath()
@@ -40,6 +53,10 @@ struct VisualTaskPresenceProbeTests {
         try #require(output != input && output != videoURL && output.pathExtension == "json")
         try #require(!FileManager.default.fileExists(atPath: output.path))
         var report = PresenceReport()
+        if flatStepsFirst {
+            report.mode = "diagnostic-flat-steps-before-explicit-outcome-not-proposal"
+            report.scope = "Same three synthetic acquisitions, retained production instruction bytes and anchored-input builder. Experimental test-only selection schema generates zero to four steps before an obligatory explicit outcome, with unchanged step hints and supplied qN IDs, at the production 1100-token response limit. The ordinary strict envelope decoder, anchor resolver and batch policy reject contradictions; no decision is derived or repaired from cardinality. No routine is assembled, approved or executed. A nonempty validated selection still requires independent semantic review, and the advertisement must be explicitly excluded. No oracle, account, provider or raw response is logged. Fresh unit IDs do not establish byte identity with historical SDK requests."
+        }
         do {
             guard (try input.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max) <= 8 * 1_024 * 1_024 else { throw ProbeFailure.invalidInput }
             let bytes = try Data(contentsOf: input), decoder = JSONDecoder()
@@ -86,7 +103,9 @@ struct VisualTaskPresenceProbeTests {
                 guard anchored.evidence.batches.count == 1, let units = anchored.evidence.batches.first,
                       let first = units.first, let batch = anchored.batchesByFirstUnitID[first.id], batch.units == units,
                       !batch.anchors.isEmpty else { throw ProbeFailure.invalidInput }
-                let schema = try Self.schema(citationIDs: batch.anchors.map(\.id))
+                let schema = try flatStepsFirst
+                    ? Self.flatSelectionSchema(citationIDs: batch.anchors.map(\.id))
+                    : Self.schema(citationIDs: batch.anchors.map(\.id))
                 var record = PresenceCase(label: label, sourceKind: acquisition.sourceKind.rawValue,
                     origin: acquisition.origin.rawValue, unitCount: units.count, anchorCount: batch.anchors.count,
                     promptSHA256: Self.digest(Data(batch.prompt.utf8)), promptUTF8Bytes: batch.prompt.utf8.count,
@@ -95,16 +114,32 @@ struct VisualTaskPresenceProbeTests {
                 report.respondInvocations += 1
                 do {
                     let response = try await session.respond(to: batch.prompt, schema: schema,
-                        options: GenerationOptions(temperature: 0, maximumResponseTokens: 200))
+                        options: GenerationOptions(temperature: 0, maximumResponseTokens: flatStepsFirst ? 1_100 : 200))
                     report.responseReturns += 1
                     try Task.checkCancellation()
-                    let value = try JSONDecoder().decode(PresenceAnswer.self, from: Data(response.content.jsonString.utf8))
-                    guard !value.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                          value.description.count <= 160, value.description.utf8.count <= 640,
-                          value.citationID == nil || batch.anchors.contains(where: { $0.id == value.citationID }) else { throw ProbeFailure.invalidDiagnostic }
-                    record.answer = value // Parsed diagnostic only; no raw SDK response or routine assembly.
+                    let bytes = Data(response.content.jsonString.utf8)
+                    if flatStepsFirst {
+                        record.nativeSelectionValidated = false
+                        let returned = try FlatSelectionResponse(bytes: bytes)
+                        record.explicitOutcome = RoutineProposalDiagnostics.Outcome(rawValue: returned.selection.outcome) ?? .unrecognized
+                        record.returnedStepCount = returned.selection.steps.count
+                        record.validatedSelection = try returned.validated(in: batch)
+                        record.nativeSelectionValidated = true
+                        if label == "existingAdvertisementControl" {
+                            let excluded = returned.selection.outcome == "insufficientEvidence" && returned.selection.steps.isEmpty
+                            record.advertisementExplicitlyExcluded = excluded
+                            guard excluded else { throw ProbeFailure.advertisementNotExcluded }
+                        }
+                    } else {
+                        let value = try JSONDecoder().decode(PresenceAnswer.self, from: bytes)
+                        guard !value.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                              value.description.count <= 160, value.description.utf8.count <= 640,
+                              value.citationID == nil || batch.anchors.contains(where: { $0.id == value.citationID }) else { throw ProbeFailure.invalidDiagnostic }
+                        record.answer = value // Parsed diagnostic only; no assembly.
+                    }
                 } catch {
-                    record.errorCategory = error is ProbeFailure ? "invalidDiagnostic" : ObservationContextErrorSanitizer.map(error).category.rawValue
+                    if case .advertisementNotExcluded? = error as? ProbeFailure { record.errorCategory = "advertisementNotExcluded" }
+                    else { record.errorCategory = error is ProbeFailure ? "invalidDiagnostic" : ObservationContextErrorSanitizer.map(error).category.rawValue }
                     report.failedCases += 1
                 }
                 report.cases.append(record)
@@ -118,14 +153,105 @@ struct VisualTaskPresenceProbeTests {
         }
         report.elapsedSeconds = Date().timeIntervalSince(report.createdAt)
         try Self.write(report, to: output)
-        print("VISUAL_TASK_PRESENCE_REPORT_SAVED status=\(report.status)")
-        #expect(report.status == "diagnosticCompleted", "A diagnostic error is a failure; either Boolean answer alone is not product acceptance.")
+        let prefix = flatStepsFirst ? "VISUAL_TASK_FLAT_SELECTION_REPORT_SAVED" : "VISUAL_TASK_PRESENCE_REPORT_SAVED"
+        print("\(prefix) status=\(report.status)")
+        #expect(report.status == "diagnosticCompleted", "Errors or an advertised activity fail; a nonempty selection or Boolean answer is not product acceptance.")
         #else
         Issue.record("The explicitly requested diagnostic needs the local Foundation Models SDK.")
         #endif
     }
 
+    @Test("The flat diagnostic never repairs an explicit outcome or bypasses citation policy")
+    func flatSelectionPreservesDecisionsAndRejectsContradictions() throws {
+        let acquisition = try ObservationAcquisition(
+            observedDate: .init(date: Date(timeIntervalSince1970: 1_792_123_200), timeZoneIdentifier: "UTC", provenance: .userAssigned),
+            origin: .synthetic, sourceKind: .manual, sourceLabel: "Flat decoder contract",
+            originalText: "I review the project agenda after breakfast.")
+        let prepared = try ModelCitationPreparation.prepare(LearningEvidencePreparation.prepare(acquisitions: [acquisition]))
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first), id = try #require(batch.anchors.first?.id)
+        func response(outcome: String, ids: [String]) throws -> Data {
+            let steps: [[String: Any]] = ids.map {
+                ["citationIDs": [$0], "kind": "custom", "title": "Review the agenda", "durationMinutes": 2]
+            }
+            return try JSONSerialization.data(withJSONObject: ["selection": ["steps": steps, "outcome": outcome]])
+        }
+        for (outcome, ids) in [("insufficientEvidence", [String]()), ("supportedActivities", [id])] {
+            let value = try FlatSelectionResponse(bytes: response(outcome: outcome, ids: ids))
+            #expect(value.selection.outcome == outcome && value.selection.steps.count == ids.count)
+            let checked = try value.validated(in: batch)
+            #expect(checked.count == ids.count)
+            if let step = checked.first {
+                #expect(step.citationIDs == [id] && step.quotes == [batch.anchors[0].citation.quote])
+            }
+        }
+        for (outcome, ids) in [("insufficientEvidence", [id]), ("supportedActivities", []),
+                                ("unknown", []), ("supportedActivities", ["forged"]),
+                                ("supportedActivities", Array(repeating: id, count: 5))] {
+            let bytes = try response(outcome: outcome, ids: ids)
+            let value = try FlatSelectionResponse(bytes: bytes)
+            #expect(value.selection.outcome == outcome && value.selection.steps.count == ids.count)
+            #expect(throws: (any Error).self) { try value.validated(in: batch) }
+        }
+        // Unknown envelope fields remain the strict decoder's refusal; parsing
+        // diagnostic counts first cannot strip the field to make it pass.
+        let legitimate = try response(outcome: "supportedActivities", ids: [id])
+        var extra = try #require(JSONSerialization.jsonObject(with: legitimate) as? [String: Any])
+        extra["approval"] = true
+        let extraBytes = try JSONSerialization.data(withJSONObject: extra)
+        let extraValue = try FlatSelectionResponse(bytes: extraBytes)
+        #expect(throws: RoutineEvidenceProposalError.invalidProposal) { try extraValue.validated(in: batch) }
+    }
+
     #if canImport(FoundationModels)
+    // Experimental schema stays exclusively in this test. Production union42
+    // and its decision/cardinality validator are unchanged.
+    private static func flatSelectionSchema(citationIDs: [String]) throws -> GenerationSchema {
+        let citation = DynamicGenerationSchema(name: "SuppliedCitationID", anyOf: citationIDs)
+        let kind = DynamicGenerationSchema(name: "EvidenceStepKind", anyOf: StepKind.allCases.map(\.rawValue))
+        let outcome = DynamicGenerationSchema(name: "ExplicitEvidenceOutcome", anyOf: ["insufficientEvidence", "supportedActivities"])
+        let step = DynamicGenerationSchema(name: "CitedRoutineStep", properties: [
+            .init(name: "citationIDs", description: "Select exactly one inserted ID of actual supporting task content or reported activity; never generic controls or labels.", schema: .init(arrayOf: .init(referenceTo: "SuppliedCitationID"), minimumElements: 1, maximumElements: 1)),
+            .init(name: "kind", description: EvidenceRoutineFieldGuidance.kind, schema: .init(referenceTo: "EvidenceStepKind")),
+            .init(name: "title", description: EvidenceRoutineFieldGuidance.title, schema: .init(type: String.self)),
+            .init(name: "durationMinutes", description: EvidenceRoutineFieldGuidance.duration, schema: .init(type: Int.self, guides: [.range(1...60)]))
+        ])
+        let selection = DynamicGenerationSchema(name: "EvidenceSelection", description: EvidenceRoutineFieldGuidance.selection, properties: [
+            .init(name: "steps", schema: .init(arrayOf: .init(referenceTo: "CitedRoutineStep"), minimumElements: 0, maximumElements: 4)),
+            .init(name: "outcome", schema: .init(referenceTo: "ExplicitEvidenceOutcome"))
+        ])
+        let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
+            .init(name: "selection", schema: .init(referenceTo: "EvidenceSelection"))
+        ])
+        return try GenerationSchema(root: root, dependencies: [citation, kind, outcome, step, selection])
+    }
+
+    @Test("The flat diagnostic retains explicit outcomes, both empty and cited selections, and the original step hints")
+    func flatDiagnosticSchemaRetainsTheExistingFieldsAndLimits() throws {
+        let bytes = try JSONEncoder().encode(Self.flatSelectionSchema(citationIDs: ["q1", "q2"]))
+        let value = try JSONSerialization.jsonObject(with: bytes)
+        func objects(_ value: Any) -> [[String: Any]] {
+            if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
+            if let array = value as? [Any] { return array.flatMap(objects) }
+            return []
+        }
+        let nodes = objects(value)
+        let fields = try #require(nodes.first { $0["outcome"] != nil && $0["steps"] != nil })
+        #expect(Set(fields.keys) == ["steps", "outcome"])
+        let steps = try #require(fields["steps"] as? [String: Any])
+        #expect(steps["minItems"] as? Int == 0 && steps["maxItems"] as? Int == 4)
+        #expect(nodes.contains { ($0["enum"] as? [String]) == ["insufficientEvidence", "supportedActivities"] })
+        let step = try #require(nodes.first { $0["citationIDs"] != nil && $0["durationMinutes"] != nil })
+        #expect(Set(step.keys) == ["citationIDs", "kind", "title", "durationMinutes"])
+        for (name, hint) in [("kind", EvidenceRoutineFieldGuidance.kind), ("title", EvidenceRoutineFieldGuidance.title),
+                             ("durationMinutes", EvidenceRoutineFieldGuidance.duration)] {
+            #expect((step[name] as? [String: Any])?["description"] as? String == hint)
+        }
+        let citations = try #require(step["citationIDs"] as? [String: Any])
+        #expect(citations["minItems"] as? Int == 1 && citations["maxItems"] as? Int == 1)
+        #expect(nodes.contains { ($0["enum"] as? [String]) == ["q1", "q2"] })
+        #expect(!nodes.contains { $0["actualTaskPresent"] != nil || $0["detail"] != nil })
+    }
+
     private static func schema(citationIDs: [String]) throws -> GenerationSchema {
         let citations = DynamicGenerationSchema(name: "PresenceCitationID", anyOf: citationIDs)
         let categories = DynamicGenerationSchema(name: "PresenceCategory", anyOf: PresenceCategory.allCases.map(\.rawValue))
@@ -162,12 +288,43 @@ private struct PresenceCase: Encodable {
     let label: String, sourceKind: String, origin: String, unitCount: Int, anchorCount: Int
     let promptSHA256: String, promptUTF8Bytes: Int, schemaSHA256: String
     var answer: PresenceAnswer?, errorCategory: String?
+    var explicitOutcome: RoutineProposalDiagnostics.Outcome?, returnedStepCount: Int?
+    var nativeSelectionValidated: Bool?, validatedSelection: [FlatValidatedStep]?
+    var advertisementExplicitlyExcluded: Bool?
 }
 private struct PresenceReport: Encodable {
-    let mode = "diagnostic-task-presence-not-proposal", schemaVersion = 1, createdAt = Date()
-    let scope = "Production instruction bytes and anchored-input builder, deliberately different output schema/task. Fresh unit IDs do not establish byte identity with a historical SDK submission. A short model declaration is not its internal cause, a validated routine, OCR authenticity or execution proof. All sources are synthetic. No oracle, prompt/raw response logging, assembly, approval, provider or account."
+    var mode = "diagnostic-task-presence-not-proposal"
+    let schemaVersion = 1, createdAt = Date()
+    var scope = "Production instruction bytes and anchored-input builder, deliberately different output schema/task. Fresh unit IDs do not establish byte identity with a historical SDK submission. A short model declaration is not its internal cause, a validated routine, OCR authenticity or execution proof. All sources are synthetic. No oracle, prompt/raw response logging, assembly, approval, provider or account."
     var status = "failed", elapsedSeconds = 0.0, respondInvocations = 0, responseReturns = 0, failedCases = 0
     var inputReportSHA256: String?, instructionSHA256: String?, instructionLanguage: String?, instructionUTF8Bytes: Int?
     var fingerprint: ObservationFileFingerprint?, cases: [PresenceCase] = [], errorCategory: String?
 }
-private enum ProbeFailure: Error { case invalidInput, modelUnavailable, invalidDiagnostic, reportNotSaved }
+private enum ProbeFailure: Error { case invalidInput, modelUnavailable, invalidDiagnostic, reportNotSaved, advertisementNotExcluded }
+
+// Only the test's parseable diagnostic fields are retained before validation.
+// The original bytes go to the original decoder: no outcome or step repair.
+private struct FlatSelectionResponse {
+    let selection: EvidenceModelRoutineProposal
+    private let bytes: Data
+    init(bytes: Data) throws {
+        guard bytes.count <= 32 * 1_024,
+              let root = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+              let returned = root["selection"] as? [String: Any] else { throw ProbeFailure.invalidDiagnostic }
+        selection = try JSONDecoder().decode(EvidenceModelRoutineProposal.self,
+            from: JSONSerialization.data(withJSONObject: returned))
+        self.bytes = bytes
+    }
+    func validated(in batch: ModelCitationPreparation.Batch) throws -> [FlatValidatedStep] {
+        let exact = try JSONDecoder().decode(GroundedRoutineSelection.self, from: bytes).selection
+        let resolved = try exact.resolvedSteps(in: batch)
+        try LearningEvidencePreparation.validateBatchResult(resolved, units: batch.units)
+        return zip(exact.steps, resolved).map { model, source in
+            .init(title: source.title, kind: source.kind.rawValue, durationMinutes: source.durationMinutes,
+                  citationIDs: model.citationIDs, quotes: source.citations.map(\.quote))
+        }
+    }
+}
+private struct FlatValidatedStep: Encodable {
+    let title: String, kind: String, durationMinutes: Int, citationIDs: [String], quotes: [String]
+}
