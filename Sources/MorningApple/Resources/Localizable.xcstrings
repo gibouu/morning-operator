@@ -7179,6 +7179,38 @@
           }
         }
       }
+    },
+    "Reading this image took too long. Your previous observations are unchanged. You can describe the routine instead. Try another import once the system finishes the current image.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading this image took too long. Your previous observations are unchanged. You can describe the routine instead. Try another import once the system finishes the current image."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lecture de cette image a pris trop de temps. Vos observations précédentes sont conservées. Vous pouvez décrire votre routine à la place. Réessayez un import quand le système aura terminé l’image en cours."
+          }
+        }
+      }
+    },
+    "The system is still finishing the previous image. Another image cannot be read yet. Your saved observations are unchanged; you can describe the routine instead.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system is still finishing the previous image. Another image cannot be read yet. Your saved observations are unchanged; you can describe the routine instead."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le système termine encore l’image précédente. Une autre image ne peut pas encore être lue. Vos observations enregistrées sont conservées ; vous pouvez décrire votre routine à la place."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

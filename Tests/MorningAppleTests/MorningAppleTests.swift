@@ -130,7 +130,7 @@ struct MorningAppleTests {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("png")
         defer { try? FileManager.default.removeItem(at: url) }
         try Self.writeSyntheticScreenshot(to: url)
-        let result = try await MediaObservationService().extract(from: url)
+        let result = try await MediaObservationService(ocr: MediaOCRLane()).extract(from: url)
         #expect(result.kind == .image)
         #expect(result.sampledFrameCount == 1)
         #expect(result.text.lowercased().contains("calendar"))
