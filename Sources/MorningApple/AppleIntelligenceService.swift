@@ -553,6 +553,9 @@ struct ModelCitationPreparation {
                     let id = "q\(anchors.count + 1)"
                     anchors.append(.init(id: id, citation: .init(unitID: unit.id, quote: excerpt)))
                     body += "[\(id)]"
+                } else if unit.kind == .visibleTaskContent, ObservedTextRolePolicy.isPureProvenance(excerpt) {
+                    // Describe the existing negative role without erasing source wording.
+                    body += "[non-citable provenance]"
                 }
                 body += excerpt
             }
