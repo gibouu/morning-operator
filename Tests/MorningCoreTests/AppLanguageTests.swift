@@ -44,10 +44,23 @@ struct AppLanguageTests {
             try withIsolatedDefaults { defaults, name in
                 defaults.setPersistentDomain(["more.appLanguage": "fr", "AppleLanguages": languages,
                                               "unrelated": "kept"], forName: name)
+                var expected = try #require(defaults.persistentDomain(forName: name))
+                if let codes = languages as? [String] {
+                    #expect(expected["AppleLanguages"] as? [String] == codes)
+                } else if let persisted = expected["AppleLanguages"] {
+                    if let text = languages as? String {
+                        #expect(persisted as? String == text)
+                    } else {
+                        #expect(persisted as? Int == languages as? Int)
+                    }
+                }
+                // Foundation may reject malformed AppleLanguages values on write.
+                // Preserve the actual persisted snapshot, not an unpersisted input.
+                expected.removeValue(forKey: "more.appLanguage")
                 AppLanguage.removeLegacyLanguageOverride(in: defaults, domainName: name)
                 let domain = try #require(defaults.persistentDomain(forName: name))
                 #expect(domain["more.appLanguage"] == nil)
-                #expect((domain["AppleLanguages"] as? NSObject) == (languages as? NSObject))
+                #expect(NSDictionary(dictionary: domain).isEqual(to: expected))
                 #expect(domain["unrelated"] as? String == "kept")
                 // The old marker cannot later erase a newly matching preference.
                 defaults.set(["fr"], forKey: "AppleLanguages")

@@ -24,7 +24,7 @@ struct QuickCaptureTests {
         let reminder = try QuickCapture(kind: .reminder, text: "Call later", timeZoneIdentifier: "UTC", source: .voice)
         #expect(dream.requestedDate == nil)
         #expect(reminder.requestedDate == nil)
-        #expect(dream.kind.displayName == "Dream")
+        #expect(dream.kind == .dream)
     }
 
     @Test func invalidInputAndDecodedInvalidRequestsAreRejected() throws {
