@@ -157,7 +157,7 @@ import MorningCore
         guard wheels.count == 2 else { fail("exact-reminder-native-month-year-wheels-unavailable", app); throw ProofError.unavailable }
         wheels[0].adjust(toPickerWheelValue: "October"); wheels[1].adjust(toPickerWheelValue: "2026")
         guard let selectedHeader = app.buttons.matching(NSPredicate(format: "identifier == %@ AND value == %@",
-            "DatePicker.Show", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
+            "DatePicker.Hide", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
             fail("exact-reminder-absolute-month-year-not-observed", app); throw ProofError.unavailable
         }
         selectedHeader.tap()
