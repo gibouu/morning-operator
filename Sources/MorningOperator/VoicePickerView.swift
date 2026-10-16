@@ -10,6 +10,9 @@ struct VoicePickerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var previewTask: Task<Void, Never>?
     @State private var previewAttempt: UUID?
+    #if DEBUG
+    @State private var previewReceipt: MorningVoicePreviewReceipt?
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -22,7 +25,14 @@ struct VoicePickerView: View {
                         let attempt = UUID()
                         previewAttempt = attempt
                         previewTask = Task { @MainActor in
+                            #if DEBUG
+                            await store.previewNaturalVoice { receipt in
+                                guard previewAttempt == attempt, !store.privacyBlocksWork else { return }
+                                previewReceipt = receipt
+                            }
+                            #else
                             await store.previewNaturalVoice()
+                            #endif
                             guard previewAttempt == attempt else { return }
                             previewAttempt = nil; previewTask = nil
                         }
@@ -39,6 +49,13 @@ struct VoicePickerView: View {
                     if let message = store.voiceFallbackMessage {
                         Text(message).font(.footnote).foregroundStyle(MorningStyle.muted)
                     }
+                    #if DEBUG
+                    if let previewReceipt, !store.privacyBlocksWork {
+                        Text(AppLanguage.isFrench ? "Diagnostic de l’exemple vocal" : "Voice sample diagnostic").font(.caption)
+                            .accessibilityIdentifier("voice.preview.receipt")
+                            .accessibilityValue(previewReceipt.diagnostic)
+                    }
+                    #endif
                 }
             }
             .navigationTitle("Voice")
@@ -52,6 +69,8 @@ struct VoicePickerView: View {
             }
             .onDisappear { stopPreview() }
             .onChange(of: AppLanguage.code) { _, _ in stopPreview() }
+            .onChange(of: store.dataGeneration) { _, _ in stopPreview() }
+            .onChange(of: store.privacyBlocksWork) { _, blocked in if blocked { stopPreview() } }
             .onChange(of: store.sessionActive) { _, active in if active { stopPreview() } }
             .onChange(of: scenePhase) { _, phase in if phase == .background { stopPreview() } }
         }
@@ -86,6 +105,9 @@ struct VoicePickerView: View {
     }
 
     private func stopPreview() {
+        #if DEBUG
+        previewReceipt = nil
+        #endif
         previewAttempt = nil
         previewTask?.cancel(); previewTask = nil
     }
