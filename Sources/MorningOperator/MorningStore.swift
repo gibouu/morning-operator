@@ -3401,13 +3401,21 @@ extension MorningStore {
     /// presented as a learned observation or installed in ordinary MORE.
     private func configureJuryDemo() {
         guard storageIsAvailable else { return }
+        let morningLabel = String(localized: "My morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        let wakeUpDetail = String(localized: "Sleep, weather and a few tips to start your day.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
         if routine == nil {
-            routine = RoutineVersion(sourceLabel: "Routine de démonstration préparée", steps: [
-                RoutineStep(title: "Mon réveil", detail: "Sommeil et météo préparés pour cette démonstration.", kind: .wellbeing, durationMinutes: 1),
+            routine = RoutineVersion(sourceLabel: morningLabel, steps: [
+                RoutineStep(title: "Mon réveil", detail: wakeUpDetail, kind: .wellbeing, durationMinutes: 1),
                 RoutineStep(title: "Mes messages", detail: "Conversation et réponse Gmail réelle au destinataire configuré.", kind: .messages, durationMinutes: 2),
                 RoutineStep(title: "Mon moment Instagram", detail: "Mon compte dans le navigateur de MORE.", kind: .entertainment, durationMinutes: 1),
                 RoutineStep(title: "Prêt à partir", detail: "Retrouver les actions réellement confirmées.", kind: .calendar, durationMinutes: 1)
             ], isApproved: true)
+            persist()
+        } else if routine?.sourceLabel == "Routine de démonstration préparée" {
+            routine?.sourceLabel = morningLabel
+            if let index = routine?.steps.firstIndex(where: { $0.detail == "Sommeil et météo préparés pour cette démonstration." }) {
+                routine?.steps[index].detail = wakeUpDetail
+            }
             persist()
         }
         juryDemoVoice.onText = { [weak self] text in

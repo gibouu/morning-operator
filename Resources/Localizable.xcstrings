@@ -26641,6 +26641,54 @@
           }
         }
       }
+    },
+    "Sleep, weather and a few tips to start your day.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep, weather and a few tips to start your day."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommeil, météo et quelques conseils pour commencer la journée."
+          }
+        }
+      }
+    },
+    "Voice conversation is available during your morning.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice conversation is available during your morning."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation vocale est disponible pendant votre matin."
+          }
+        }
+      }
+    },
+    "Product meeting — MORE morning routine.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Product meeting — MORE morning routine."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point produit — routine du matin MORE."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

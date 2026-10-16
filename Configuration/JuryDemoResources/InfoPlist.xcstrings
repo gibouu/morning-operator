@@ -170,13 +170,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE connects to your local demonstration service for the interactive morning you choose to start."
+            "value": "MORE connects to your local service for the morning conversation and actions you choose to start."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE se connecte à votre service local de démonstration pour le matin interactif que vous choisissez de lancer."
+            "value": "MORE se connecte à votre service local pour la conversation et les actions de votre matin que vous choisissez de lancer."
           }
         }
       }

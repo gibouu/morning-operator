@@ -32,7 +32,7 @@ with (app/'Info.plist').open('rb') as stream:
 bundle = info['CFBundleIdentifier']
 require(bundle != 'com.gibouu.morningoperator', 'Refusing to overwrite normal MORE')
 require('demo' in bundle.lower().split('.'), 'Demo identifier must contain a demo component')
-require(info['CFBundleDisplayName'] == 'MORE Démo', 'Unexpected app name')
+require(info['CFBundleDisplayName'] == 'MORE', 'Unexpected app name')
 require(info.get('MorningJuryDemo') is True, 'Not a jury demo app')
 require(info['MorningURLScheme'] == 'more-demo', 'Unexpected deep link')
 widgets = list((app/'PlugIns').glob('*.appex'))

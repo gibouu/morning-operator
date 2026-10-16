@@ -35,7 +35,7 @@ for name, plist, suffix in [('MorningOperator', 'JuryDemo-Info.plist', ''), ('Mo
 with (root/'Configuration/JuryDemo-Info.plist').open('rb') as stream:
     info = plistlib.load(stream)
 assert info['MorningURLScheme'] == 'more-demo'
-assert info['CFBundleDisplayName'] == 'MORE Démo'
+assert info['CFBundleDisplayName'] == 'MORE'
 assert 'audio' in info['UIBackgroundModes']
 assert info['NSAppTransportSecurity'] == {'NSAllowsLocalNetworking': True}
 assert info['MorningJuryDemoBaseURL'] == '$(MORE_JURY_DEMO_BASE_URL)'
