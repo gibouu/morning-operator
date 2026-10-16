@@ -4,7 +4,7 @@ Checked 15 October 2026. This is a built prototype, not an App Store approval or
 
 ## Inline sign-in and browser replies — 16 October 2026
 
-LinkedIn and Slack are ordinary browser destinations, independent of the remote API catalogue. The routine and learning open their websites directly. Website sign-ins share the existing dedicated persistent WebKit store; they remain available until the provider expires or revokes them, or the owner clears website data. No cookie values or credentials are exported. This is not a promise that every identity provider accepts an embedded browser. Supported APIs remain optional alternatives.
+LinkedIn and Slack are ordinary browser destinations, independent of the remote API catalogue. The routine and learning open their websites directly. Website sign-ins share the existing dedicated persistent WebKit store; they remain available until the provider expires or revokes them, or the owner clears website data. No cookie values or credentials are exported. LinkedIn and Slack HTTPS links are reloaded through the visible WebKit view so app links do not hand the routine to a native app; their authentication form requests retain their original body without replay. This is not a promise that every identity provider accepts an embedded browser. Supported APIs remain optional alternatives.
 
 A routine that encounters sign-in pauses its saved budget, asks the owner to sign in on the visible page, and resumes that same moment when a supported content layout is observed. Closing, backgrounding or explicitly pausing revokes automatic resumption. No separate account-setup checklist is required.
 

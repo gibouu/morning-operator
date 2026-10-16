@@ -164,6 +164,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     init(site: WebMorningSite, initialURL: URL? = nil, routineContext: MorningVoiceCommandContext? = nil,
          runtimePrivacyGeneration: UUID? = nil) {
         self.site = site
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         self.routineContext = routineContext
         #if DEBUG
         syntheticNewsRequested = site == .news && ProcessInfo.processInfo.arguments.contains("--ui-testing-private-news")
@@ -188,7 +189,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         configuration.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
-        if site == .instagram { webView.allowsLinkPreview = false }
+        if [.instagram, .linkedin, .slack].contains(site) { webView.allowsLinkPreview = false }
         if site.table.usesDesktopUserAgent { webView.customUserAgent = Self.desktopUserAgent }
         super.init()
         webView.navigationDelegate = self
@@ -1159,7 +1160,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func reload() {
         if privacyIsCurrent {
-            instagramNavigation = InstagramBrowserNavigation()
+            instagramNavigation = InstagramBrowserNavigation(site: site)
             executionFinished = false
             webView.reload()
         }
@@ -1170,7 +1171,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         // Website links may navigate to a sign-in provider. MORE never runs scripts there.
         // Do not launch native social apps, custom schemes, insecure pages or downloads.
         guard privacyIsCurrent, let url = navigationAction.request.url, url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
-        if site == .instagram {
+        if [.instagram, .linkedin, .slack].contains(site) {
             switch instagramDecision(for: navigationAction) {
             case .cancel: decisionHandler(.cancel); return
             case let .load(destination):
@@ -1260,7 +1261,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         // Keep a user-opened link visible in the same browser, including sign-in pages.
-        if site == .instagram, privacyIsCurrent, navigationAction.targetFrame == nil {
+        if [.instagram, .linkedin, .slack].contains(site), privacyIsCurrent, navigationAction.targetFrame == nil {
             switch instagramDecision(for: navigationAction) {
             case .cancel: return nil
             case let .load(destination):
@@ -1302,7 +1303,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        instagramNavigation = InstagramBrowserNavigation()
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         displayedHost = webView.url?.host ?? ""
         isSignInPage = !pageBelongsToSite(webView.url)
         loadFailed = false
@@ -1336,7 +1337,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// finish a cadence lesson. Invalidate awaits even when the URL did not change.
     /// Reload remains an explicit action in the visible browser.
     private func invalidateUnavailablePage() {
-        instagramNavigation = InstagramBrowserNavigation()
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         pageGeneration += 1
         discardLearning()
         clearSourceText()

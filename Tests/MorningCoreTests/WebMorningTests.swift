@@ -250,3 +250,18 @@ struct WebMorningTests {
     }
 
 }
+
+@Suite("Messaging browser containment")
+struct MessagingBrowserContainmentTests {
+    @Test("Messaging links stay in the visible browser", arguments: [WebMorningSite.linkedin, .slack])
+    func messagingLinks(site: WebMorningSite) throws {
+        var policy = InstagramBrowserNavigation(site: site)
+        let url = site.table.startURL
+        #expect(policy.decide(url: url, kind: .link) == .load(url))
+        #expect(policy.decide(url: url, kind: .other) == .allow)
+        let native = try #require(URL(string: "instagram://app"))
+        #expect(policy.decide(url: native, kind: .link) == .cancel)
+        let provider = try #require(URL(string: "https://identity.example.test/sso"))
+        #expect(policy.decide(url: provider, kind: .form, method: "POST", committedURL: url) == .allow)
+    }
+}
