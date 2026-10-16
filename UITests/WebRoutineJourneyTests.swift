@@ -15,7 +15,7 @@ final class WebRoutineJourneyTests: XCTestCase {
                 "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"]
             MorningUITestNavigation.launch(app)
             defer { app.terminate() }
-            MorningUITestNavigation.tapButton("run.start", in: app)
+            SubmissionRoutineUITestNavigation.startSavedInstagram(in: app)
             let about = app.buttons["web.aboutDone"]
             if about.waitForExistence(timeout: 5) { about.tap() }
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
@@ -145,7 +145,7 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
                 MorningUITestNavigation.launch(app)
                 app.terminate()
             }
-            MorningUITestNavigation.tapButton("run.start", in: app)
+            SubmissionRoutineUITestNavigation.startSavedInstagram(in: app)
             let about = app.buttons["web.aboutDone"]
             if about.waitForExistence(timeout: 5) { about.tap() }
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
@@ -167,10 +167,12 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
             XCTAssertTrue(extend.waitForExistence(timeout: 5), springboard.debugDescription)
             XCTAssertTrue(next.waitForExistence(timeout: 5), springboard.debugDescription)
             XCTAssertTrue(timer.waitForExistence(timeout: 5), springboard.debugDescription)
-            XCTAssertTrue(springboard.staticTexts["Instagram in MORE"].exists
-                          || springboard.staticTexts["Instagram dans MORE"].exists, springboard.debugDescription)
+            let destination = springboard.staticTexts[language == "fr" ? "Instagram dans MORE" : "Instagram in MORE"]
+            let status = springboard.staticTexts[language == "fr" ? "À vous" : "Your turn"]
+            XCTAssertTrue(destination.exists, springboard.debugDescription)
+            XCTAssertTrue(status.exists, springboard.debugDescription)
             let bounds = springboard.frame
-            for element in [extend, next, timer] {
+            for element in [extend, next, timer, destination, status] {
                 XCTAssertTrue(bounds.contains(element.frame), "A native Island control must remain on screen: \(element)")
                 XCTAssertTrue(element.isHittable, "The expanded native Island must expose its full control: \(element)")
             }
@@ -201,5 +203,38 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
         let parts = value.label.split(separator: ":").compactMap { Int($0) }
         return try XCTUnwrap(parts.count == 2 ? parts[0] * 60 + parts[1] : nil,
                              "Expected the live minute:second countdown, got \(value.label)")
+    }
+}
+
+/// Home deliberately hides its controls after five seconds. Tap the requested
+/// control directly after revealing it; unrelated frame queries can outlast that
+/// interval on a busy simulator and must not be mistaken for an app failure.
+@MainActor
+private enum SubmissionRoutineUITestNavigation {
+    static func startSavedInstagram(in app: XCUIApplication) {
+        let begin = app.buttons["morning.begin"]
+        for _ in 0..<3 {
+            if begin.exists { break }
+            app.buttons["morning.actions"].coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.65)).tap()
+            if begin.waitForExistence(timeout: 2) { break }
+        }
+        XCTAssertTrue(begin.exists, app.debugDescription)
+        begin.tap()
+        let caption = app.scrollViews["morning.captions"]
+        XCTAssertTrue(caption.waitForExistence(timeout: 15), app.debugDescription)
+        let prepared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "preparing"
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [prepared], timeout: 15), .completed)
+        if MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "none" {
+            let play = app.buttons["morning.playback"]
+            for _ in 0..<3 {
+                if play.exists { break }
+                caption.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.65)).tap()
+                if play.waitForExistence(timeout: 2) { break }
+            }
+            XCTAssertTrue(play.exists, app.debugDescription)
+            play.tap()
+        }
     }
 }

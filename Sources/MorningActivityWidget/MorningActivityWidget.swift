@@ -484,7 +484,7 @@ private struct MorningWidgetProgressDots: Shape {
     func path(in rect: CGRect) -> Path {
         // ActivityKit can ask a mask for its path during an unconstrained layout
         // pass. Wait for finite geometry before converting the dot count to Int.
-        guard !rect.isEmpty, rect.width.isFinite, rect.height.isFinite,
+        guard !rect.isEmpty, !rect.isInfinite, rect.width.isFinite, rect.height.isFinite,
               rect.origin.x.isFinite, rect.origin.y.isFinite,
               rect.maxX.isFinite, rect.maxY.isFinite else { return Path() }
         let count = Int(min(256, max(2, rect.width / 10)))
