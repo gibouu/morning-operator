@@ -243,57 +243,66 @@ import MorningCore
     private func choosePrivateReplyAction(_ app: XCUIApplication) {
         let name = "Lire mes mails et m’aider à répondre"
         replyControl("step.automation", app).tap()
-        let labels = ["Moment mené par vous", "Lire ce texte à voix haute", "Lire l’agenda du jour",
-                      "Lire le récap du jour", "Prendre ce temps, puis continuer", name]
-        let choices = NSPredicate(format: "label IN %@", labels)
-        guard app.descendants(matching: .any).matching(choices).firstMatch.waitForExistence(timeout: 6) else {
-            replyFailure("gmail-reply-action-popup-not-observed", app)
-            XCTFail("The native Action popup must expose its real choices before scrolling."); return
+        let bar = app.navigationBars["Action"]
+        let back = bar.buttons.matching(identifier: "BackButton").firstMatch
+        guard bar.waitForExistence(timeout: 6), back.exists && back.isHittable else {
+            replyFailure("gmail-reply-action-page-not-observed", app)
+            XCTFail("The accessible Action picker must open its real page and Back control."); return
         }
-        attach("gmail-reply-french-largest-night-native-action-popup", app)
+        let labels = NSPredicate(format: "label IN %@", ["Moment mené par vous", "Lire ce texte à voix haute",
+            "Lire l’agenda du jour", "Lire le récap du jour", "Prendre ce temps, puis continuer", name])
+        let containers = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex +
+            app.scrollViews.allElementsBoundByIndex
+        guard let list = containers.first(where: {
+            $0.exists && !["step.editor.form", "routine.editor", "morning.captions"].contains($0.identifier) &&
+                $0.descendants(matching: .any).matching(labels).allElementsBoundByIndex.contains { $0.exists && $0.isHittable }
+        }) else {
+            replyFailure("gmail-reply-action-page-list-absent", app)
+            XCTFail("The Action page must own a native scrolling list of observed choices."); return
+        }
+        attach("gmail-reply-french-largest-night-native-action-page", app)
         for _ in 0..<12 {
-            // The menu's own collection can extend under the editor's bars.
-            // Its observed choices establish scope; never drag the Form behind it.
-            let containers = app.menus.allElementsBoundByIndex + app.collectionViews.allElementsBoundByIndex +
-                app.scrollViews.allElementsBoundByIndex
-            guard let popup = containers.filter({ candidate in
-                candidate.exists && !["step.editor.form", "routine.editor", "morning.captions"].contains(candidate.identifier) &&
-                    !candidate.frame.isEmpty && candidate.frame.intersects(app.frame) &&
-                    candidate.descendants(matching: .any).matching(choices).allElementsBoundByIndex
-                        .contains { $0.exists && $0.isHittable }
-            }).min(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) else {
-                replyFailure("gmail-reply-action-popup-scope-lost", app)
-                XCTFail("No native popup containing Action choices is in the foreground."); return
-            }
-            let visible = popup.frame.intersection(app.frame)
-            let exact = popup.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name))
-            if let choice = exact.allElementsBoundByIndex.first(where: {
-                [.button, .menuItem, .staticText].contains($0.elementType) && $0.exists && $0.isEnabled && $0.isHittable &&
+            guard bar.exists && back.exists && back.isHittable && list.exists else { break }
+            let viewport = list.frame.intersection(app.frame)
+            let keyboard = app.keyboards.firstMatch
+            let top = max(viewport.minY, bar.frame.maxY) + 12
+            let bottom = min(viewport.maxY - 24, keyboard.exists ? keyboard.frame.minY - 8 : viewport.maxY - 24)
+            guard !viewport.isNull, !viewport.isInfinite,
+                  [viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+                  viewport.width > 80, bottom - top > 120 else { break }
+            let visible = CGRect(x: viewport.minX + 12, y: top, width: viewport.width - 24, height: bottom - top)
+            let choices = list.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name))
+            if let choice = choices.allElementsBoundByIndex.first(where: {
+                [.button, .staticText].contains($0.elementType) && $0.exists && $0.isEnabled && $0.isHittable &&
                     !$0.frame.isEmpty && visible.contains($0.frame)
             }) {
                 choice.tap()
-                let selected = XCTNSPredicateExpectation(predicate: NSPredicate(
-                    format: "exists == true AND (label CONTAINS %@ OR value CONTAINS %@)", name, name),
-                    object: app.buttons["step.automation"])
-                XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed,
-                               "The actual Picker must show Gmail selected before Save.")
+                if bar.exists && back.exists && back.isHittable { back.tap() }
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let form = app.collectionViews["step.editor.form"]
+                    let save = app.buttons["step.save"]
+                    return !bar.exists && save.exists && save.isHittable && form.exists &&
+                        form.descendants(matching: .any).matching(identifier: "step.automation").allElementsBoundByIndex.contains {
+                            $0.exists && ($0.label.contains(name) || ($0.value as? String ?? "").contains(name))
+                        }
+                }, object: nil)
+                XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 6), .completed,
+                               "Only an explicit choice followed by the editor's selected Gmail value counts.")
+                let explanation = "Lire vos mails non lus, préparer et corriger une réponse. Envoyer seulement à votre demande."
+                XCTAssertEqual(replyControl(explanation, app).label, explanation)
+                attach("gmail-reply-french-largest-night-action-gmail-observed-before-save", app)
                 return
             }
-            // A native popup's collection frame may exceed its clipped surface.
-            // Swipe an actual visible option inside it, not that oversized frame
-            // and not the editor exposed below the popup (observed in 9s).
-            guard let anchor = popup.staticTexts.matching(choices).allElementsBoundByIndex.first(where: {
-                $0.exists && $0.isHittable && !$0.frame.isEmpty && app.frame.contains($0.frame)
-            }) ?? popup.buttons.matching(choices).allElementsBoundByIndex.first(where: {
-                $0.exists && $0.isHittable && !$0.frame.isEmpty && app.frame.contains($0.frame)
-            }) else {
-                replyFailure("gmail-reply-action-popup-no-visible-option", app)
-                XCTFail("No actual visible popup option can receive a normal scroll gesture."); return
-            }
-            anchor.swipeUp()
+            // This is the Action page's ordinary List, not a drag-to-select
+            // popup. Both gesture endpoints stay inside its exposed content.
+            let origin = list.coordinate(withNormalizedOffset: .zero)
+            let x = visible.midX - list.frame.minX
+            let start = origin.withOffset(CGVector(dx: x, dy: visible.minY + visible.height * 0.8 - list.frame.minY))
+            let end = origin.withOffset(CGVector(dx: x, dy: visible.minY + visible.height * 0.2 - list.frame.minY))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
-        replyFailure("gmail-reply-action-popup-choice-unreachable", app)
-        XCTFail("The exact Gmail choice must be visible and hittable inside the native popup.")
+        replyFailure("gmail-reply-action-page-choice-unreachable", app)
+        XCTFail("The exact Gmail choice must be visible and explicitly tapped in the Action page.")
     }
     private func assertReplyRecipientAndBody(_ body: String, in app: XCUIApplication) {
         let recipient = replyControl("mail.reply.recipient", app)
