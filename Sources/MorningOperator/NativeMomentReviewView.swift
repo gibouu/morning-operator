@@ -28,6 +28,13 @@ struct NativeMomentReviewView: View {
                         .accessibilityIdentifier("nativeMoment.synthetic")
                 }
                 #endif
+                #if DEBUG
+                if let proof = store.exactReminderUITestDiagnostic {
+                    Text("SYNTHETIC reminder transport · no EventKit write")
+                        .font(.raleway(.caption)).accessibilityIdentifier("nativeMoment.exactProof")
+                        .accessibilityValue(proof)
+                }
+                #endif
                 Text(french ? "Dites « rappelle-moi de… », « ajoute un événement… » ou « lis mes rappels ». Vous pouvez aussi préparer la demande ici." : "Say “remind me to…”, “add an event…” or “read my reminders”. You can also prepare the request here.")
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
                 TextField(french ? "Votre demande" : "Your request", text: $request, axis: .vertical)
@@ -49,8 +56,16 @@ struct NativeMomentReviewView: View {
                 if native.draftKind != nil {
                         TextField(french ? "Titre" : "Title", text: Binding(get: { title }, set: { title = $0; stageEdits() }), axis: .vertical)
                             .textFieldStyle(.roundedBorder).focused($focusedInput, equals: .title).accessibilityIdentifier("nativeMoment.title")
-                        Toggle(french ? "Date et heure" : "Date and time", isOn: Binding(get: { hasDate }, set: { hasDate = $0; stageEdits() }))
-                        if hasDate { DatePicker(french ? "Quand" : "When", selection: Binding(get: { date }, set: { date = $0; stageEdits() })).accessibilityIdentifier("nativeMoment.date") }
+                        Toggle(french ? "Date et heure" : "Date and time", isOn: Binding(get: { hasDate }, set: {
+                            hasDate = $0
+                            if hasDate { date = NativeMomentDateInput.editedMinute(date) }
+                            stageEdits()
+                        })).accessibilityIdentifier("nativeMoment.hasDate")
+                        if hasDate {
+                            DatePicker(french ? "Quand" : "When", selection: Binding(get: { date }, set: {
+                                date = NativeMomentDateInput.editedMinute($0); stageEdits()
+                            }), displayedComponents: [.date, .hourAndMinute]).accessibilityIdentifier("nativeMoment.date")
+                        }
                         if native.draftKind == .calendar {
                             Stepper(french ? "Durée : \(duration) min" : "Duration: \(duration) min", value: Binding(get: { duration }, set: { duration = $0; stageEdits() }), in: 1...1_440)
                                 .accessibilityIdentifier("nativeMoment.duration")

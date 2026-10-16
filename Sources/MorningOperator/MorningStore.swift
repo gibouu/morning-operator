@@ -184,11 +184,21 @@ final class MorningStore {
     }()
     var nativeActionCountCache: [UUID: (routineVersionID: UUID, generation: UUID, counts: NativeMomentActionCounts)] = [:]
     @ObservationIgnored var nativeMomentTask: Task<Void, Never>?
+    #if DEBUG
+    @ObservationIgnored lazy var nativeUITestProvider = NativeMomentUITestProvider(directory: snapshot.url.deletingLastPathComponent(), context: { [weak self] in
+        guard let self, !privacyBlocksWork, sessionActive, let session, let step = currentStep else { return nil }
+        let current = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
+        return nativeMoment.context == current ? current : nil
+    })
+    #endif
     @ObservationIgnored lazy var nativeMoment: NativeMomentConversation = {
         let provider: any NativeMomentProviding
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions") {
-            provider = NativeMomentUITestProvider()
+        if ProcessInfo.processInfo.arguments.contains(NativeMomentUITestProvider.exactFlag) ||
+            (ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions")) {
+            // Even an invalid private activation stays on a refusing local
+            // provider; it must never fall back to EventKit.
+            provider = nativeUITestProvider
         } else { provider = reminders }
         #else
         provider = reminders
@@ -196,7 +206,8 @@ final class MorningStore {
         return NativeMomentConversation(provider: provider, directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
             guard let self, !self.privacyBlocksWork else { throw CancellationError() }
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions") {
+            if ProcessInfo.processInfo.arguments.contains(NativeMomentUITestProvider.exactFlag) ||
+                (ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions")) {
                 // Synthetic UI fixtures use the explicit screen-review fallback, never fake acoustic success.
                 throw CancellationError()
             }
