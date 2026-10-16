@@ -675,7 +675,7 @@ enum EvidenceRoutineGenerationSchema {
             .init(name: "steps", schema: .init(arrayOf: .init(referenceTo: "CitedRoutineStep"), minimumElements: 1, maximumElements: 4))
         ])
         let selection = DynamicGenerationSchema(name: "EvidenceSelection", description: EvidenceRoutineFieldGuidance.selection,
-            anyOf: [.init(referenceTo: "InsufficientEvidenceSelection"), .init(referenceTo: "SupportedActivitiesSelection")])
+            anyOf: [.init(referenceTo: "SupportedActivitiesSelection"), .init(referenceTo: "InsufficientEvidenceSelection")])
         let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
             .init(name: "selection", schema: .init(referenceTo: "EvidenceSelection"))
         ])

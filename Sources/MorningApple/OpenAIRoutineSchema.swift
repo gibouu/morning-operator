@@ -40,7 +40,7 @@ enum OpenAIRoutineSchema {
                 "steps": .object(["type": .string("array"), "minItems": .number(1), "maxItems": .number(4),
                     "items": object(step)])
             ])
-            return object(["selection": .object(["anyOf": .array([abstention, supported]),
+            return object(["selection": .object(["anyOf": .array([supported, abstention]),
                 "description": .string(EvidenceRoutineFieldGuidance.selection)])])
         } else {
             step["detail"] = string()

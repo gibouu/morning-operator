@@ -319,7 +319,7 @@ struct AppleIntelligenceCitationTests {
         let step = try #require(objects(object).first { ($0["citationIDs"] as? [String: Any]) != nil })
         let remoteUnion = try #require(OpenAIRoutineSchema.make(citationIDs: ["q1", "q2"])
             .objectValue?["properties"]?.objectValue?["selection"]?.objectValue?["anyOf"]?.arrayValue)
-        let remoteStep = try #require(remoteUnion[1].objectValue?["properties"]?.objectValue?["steps"]?
+        let remoteStep = try #require(remoteUnion[0].objectValue?["properties"]?.objectValue?["steps"]?
             .objectValue?["items"]?.objectValue?["properties"]?.objectValue)
         for field in ["kind", "title", "durationMinutes"] {
             let localDescription = try #require((step[field] as? [String: Any])?["description"] as? String)
@@ -330,6 +330,11 @@ struct AppleIntelligenceCitationTests {
         #expect(objects(object).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] })
         #expect(objects(object).contains { ($0["enum"] as? [String]) == ["supportedActivities"] })
         let union = try #require(objects(object).first { ($0["anyOf"] as? [[String: Any]])?.count == 2 })
+        // A pure SDK encoding check, not evidence of model preference. If the
+        // SDK canonicalizes this order, the intended contrast is not established.
+        let firstAlternative = try #require((union["anyOf"] as? [[String: Any]])?.first)
+        let firstJSON = String(decoding: try JSONSerialization.data(withJSONObject: firstAlternative), as: UTF8.self)
+        #expect(firstJSON.contains("SupportedActivitiesSelection") || firstJSON.contains("supportedActivities"))
         #expect((union["description"] as? String) == EvidenceRoutineFieldGuidance.selection)
         let stepArrays = objects(object).compactMap { $0["steps"] as? [String: Any] }
         #expect(stepArrays.contains { ($0["minItems"] as? Int) == 0 && ($0["maxItems"] as? Int) == 0 })
