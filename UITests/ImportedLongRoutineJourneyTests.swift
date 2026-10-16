@@ -799,11 +799,27 @@ import MorningCore
                     !$0.frame.isEmpty && bounds.contains($0.frame)
             }) {
                 choice.tap()
-                let selected = XCTNSPredicateExpectation(predicate: NSPredicate(
-                    format: "exists == true AND (label CONTAINS %@ OR value CONTAINS %@)", name, name),
-                    object: app.descendants(matching: .any).matching(identifier: pickerID).firstMatch)
-                XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed,
+                let form = app.collectionViews["step.editor.form"]
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let save = app.buttons["step.save"]
+                    return form.exists && save.exists && save.isHittable &&
+                        form.descendants(matching: .any).matching(identifier: pickerID).allElementsBoundByIndex.contains {
+                            [.button, .popUpButton].contains($0.elementType) && $0.exists && $0.isEnabled && $0.isHittable &&
+                                ($0.label.contains(name) || ($0.value as? String ?? "").contains(name))
+                        }
+                }, object: nil)
+                let selectedResult = XCTWaiter.wait(for: [selected], timeout: 5)
+                if selectedResult != .completed { captureFailure("long-ten-current-picker-value-not-observed-" + pickerID, app) }
+                XCTAssertEqual(selectedResult, .completed,
                                "The actual Picker must show the selected option before Save.")
+                if pickerID == "step.automation", name == "Read my mail and help me reply" {
+                    let expected = "Gmail · Read unread mail, prepare and edit a reply. Send only when you ask."
+                    let explanation = form.staticTexts.matching(NSPredicate(format: "label == %@", expected)).firstMatch
+                    let found = explanation.waitForExistence(timeout: 5)
+                    if !found { captureFailure("long-ten-selected-gmail-explanation-not-observed", app) }
+                    XCTAssertTrue(found, "The selected Gmail action must explain its exact send boundary before Save.")
+                    XCTAssertEqual(explanation.label, expected)
+                }
                 return
             }
             // The native popup's frame may extend beneath the editor. Only an
