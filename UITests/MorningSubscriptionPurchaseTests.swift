@@ -6,18 +6,21 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
-    // XCTest calls synchronous cleanup outside the suspended test actor.
-    nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
+    private var sessionForCleanup: SKTestSession?
 
     override func tearDown() {
-        let app = XCUIApplication()
-        if app.state != .notRunning { app.terminate() }
-        if let sessionForCleanup {
-            attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
+        // UI XCTest cleanup runs synchronously on the main thread, including
+        // when a failed async assertion prevents the test actor from resuming.
+        MainActor.assumeIsolated {
+            let app = XCUIApplication()
+            if app.state != .notRunning { app.terminate() }
+            if let sessionForCleanup {
+                attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
+            }
+            sessionForCleanup?.clearTransactions()
+            sessionForCleanup?.resetToDefaultState()
+            sessionForCleanup = nil
         }
-        sessionForCleanup?.clearTransactions()
-        sessionForCleanup?.resetToDefaultState()
-        sessionForCleanup = nil
         super.tearDown()
     }
 
@@ -218,22 +221,35 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         assertHome(app)
     }
 
-    func testCancelledPurchaseAllowsFreeContinueWithoutACompletedTransaction() async throws {
+    func testCancelledPurchaseLeavesTheOfferReadyAndAllowsFreeContinue() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
-        let app = launch()
+        session.disableDialogs = false
+        let app = launch(french: false)
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        let payment = XCUIApplication(bundleIdentifier: "com.apple.ServicesPaymentAngel")
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let cancellations = [app.buttons["Cancel"], app.buttons["Annuler"],
+                             payment.buttons["Cancel"], payment.buttons["Annuler"],
+                             springboard.buttons["Cancel"], springboard.buttons["Annuler"]]
+        let sheet = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            cancellations.contains { $0.exists && $0.isHittable }
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [sheet], timeout: 60), .completed,
+                       "The accepted local purchase must expose a cancel action: \(payment.debugDescription)")
+        let cancel = try XCTUnwrap(cancellations.first { $0.exists && $0.isHittable })
+        cancel.tap()
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"),
                                              object: app.buttons["paywall.subscribe"])
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
+        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForNonExistence(timeout: 5), app.debugDescription)
         let beforeFreeEntry = session.allTransactions()
         XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
         let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
-        continueFree(in: app)
+        continueFree(in: app, french: false)
         assertHome(app)
         app.terminate()
         app.launch()
