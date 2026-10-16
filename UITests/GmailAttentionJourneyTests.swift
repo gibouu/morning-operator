@@ -261,6 +261,12 @@ import MorningCore
         for down in [false, true] {
             for _ in 0..<14 {
                 let details = app.buttons["morning.closeDetails"].isHittable
+                let editor = app.collectionViews["step.editor.form"]
+                let editorForeground = editor.exists && editor.isHittable
+                let routine = app.collectionViews["routine.editor"].firstMatch
+                let approval = app.buttons["routine.approve"]
+                let routineForeground = !details && !editorForeground && routine.exists &&
+                    (approval.isHittable || app.buttons["routine.edit"].isHittable)
                 let holder: XCUIElement?
                 if details {
                     // Mail is in a non-lazy ScrollView. This ancestry selects the
@@ -268,8 +274,9 @@ import MorningCore
                     holder = app.scrollViews.containing(.any, identifier: "mail.attention.synthetic").allElementsBoundByIndex
                         .first { $0.exists && !$0.frame.isEmpty && $0.frame.intersects(app.frame) }
                 } else {
-                    let editor = app.collectionViews["step.editor.form"]
-                    holder = editor.exists && editor.isHittable ? editor
+                    // The List supplies geometry; its visible approval/edit
+                    // controls establish foreground ownership, not isHittable.
+                    holder = editorForeground ? editor : routineForeground ? routine
                         : app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
                             ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable)
                 }
@@ -279,12 +286,25 @@ import MorningCore
                     $0.exists && !$0.frame.isEmpty && $0.frame.intersects(viewport)
                 }
                 if let bar = bars.last { top = max(top, bar.frame.maxY) }
+                if routineForeground, approval.exists, approval.frame.intersects(viewport) {
+                    bottom = min(bottom, approval.frame.minY - 8)
+                }
                 let keyboard = app.keyboards.firstMatch
                 if keyboard.exists { bottom = min(bottom, keyboard.frame.minY) }
                 let safe = CGRect(x: viewport.minX, y: top, width: viewport.width, height: max(0, bottom - top))
+                if routineForeground, id.hasPrefix("routine.step.") {
+                    let row = routine.buttons[id].firstMatch
+                    let title = row.staticTexts.firstMatch
+                    // At XXXL a row can exceed the entire free viewport. Tap its
+                    // real title only when that child is wholly visible above
+                    // the footer; the subsequent Form/name assertions pin the row.
+                    if row.exists, row.isEnabled, title.exists, title.isHittable,
+                       !title.frame.isEmpty, safe.contains(title.frame) { return title }
+                }
                 if let control = matches.allElementsBoundByIndex.first(where: { candidate in
                     candidate.exists && candidate.isHittable && !candidate.frame.isEmpty && app.frame.contains(candidate.frame) &&
-                        (safe.contains(candidate.frame) || bars.contains { $0.frame.contains(candidate.frame) })
+                        (safe.contains(candidate.frame) || bars.contains { $0.frame.contains(candidate.frame) } ||
+                         (routineForeground && id == "routine.approve" && candidate.identifier == id))
                 }) { return control }
                 guard let holder, !safe.isNull, !safe.isInfinite,
                       [safe.minX, safe.minY, safe.width, safe.height].allSatisfy({ $0.isFinite }),
