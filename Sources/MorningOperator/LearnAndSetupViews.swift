@@ -185,7 +185,7 @@ struct LearnView: View {
         .navigationDestination(isPresented: $showingSavedObservations) {
             ObservationHistoryView(store: store, onLearn: { showingSavedObservations = false }, onEdit: { close() })
         }
-        .sheet(isPresented: $recording, onDismiss: { recordingStartsAtOnce = false }) {
+        .morningSheet(isPresented: $recording, onDismiss: { recordingStartsAtOnce = false }) {
             RecordMorningView(canStartRecording: store.canStartRecording, startsAtOnce: recordingStartsAtOnce) { url in
                 store.importObservation(url)
             }
@@ -196,12 +196,12 @@ struct LearnView: View {
             recordingStartsAtOnce = true; recording = true
         }
         #endif
-        .sheet(isPresented: $confirmingObservation) {
+        .morningSheet(isPresented: $confirmingObservation) {
             if let entry = store.selectedObservation {
                 ObservationDateEditor(store: store, entry: entry)
             }
         }
-        .sheet(isPresented: $showingProposal, onDismiss: {
+        .morningSheet(isPresented: $showingProposal, onDismiss: {
             if closeAfterProposal { close() }
         }) {
             RoutineEvidenceProposalView(store: store, onLearn: { showingProposal = false }, onEdit: {
@@ -545,12 +545,12 @@ struct SetupView: View {
         .accessibilityValue(testAppearance)
         .navigationDestination(isPresented: $showingPrivacy) { MorningPrivacyView(store: store) }
         .task { if store.privacyNeedsCleanup { showingPrivacy = true } }
-        .fullScreenCover(isPresented: $choosingBriefing) { MorningBriefingView(store: store) }
-        .sheet(isPresented: $choosingHealth) { MorningHealthView(store: store) }
-        .sheet(isPresented: $choosingConversation) { MorningConversationView(store: store) }
-        .sheet(isPresented: $choosingVoice) { VoicePickerView(store: store) }
-        .sheet(isPresented: $preparingVoiceAccess) { MorningVoicePreparationView(store: store) }
-        .sheet(isPresented: $choosingInvitation) { MorningInvitationView(service: store.invitation) }
+        .morningFullScreenCover(isPresented: $choosingBriefing) { MorningBriefingView(store: store) }
+        .morningSheet(isPresented: $choosingHealth) { MorningHealthView(store: store) }
+        .morningSheet(isPresented: $choosingConversation) { MorningConversationView(store: store) }
+        .morningSheet(isPresented: $choosingVoice) { VoicePickerView(store: store) }
+        .morningSheet(isPresented: $preparingVoiceAccess) { MorningVoicePreparationView(store: store) }
+        .morningSheet(isPresented: $choosingInvitation) { MorningInvitationView(service: store.invitation) }
         .sheet(isPresented: $showingMembership) { MorningSubscriptionEntryView(store: store, offerOnly: true) }
         .onAppear { store.voiceAccess.refresh(language: store.voicePreparationLanguage) }
     }
@@ -797,7 +797,7 @@ struct StepEditor: View {
             } message: {
                 Text("Removing only this draft leaves saved choices intact. Excluding also asks future suggestions to leave this activity out until you clear that choice.")
             }
-            .sheet(isPresented: $choosingSlack) {
+            .morningSheet(isPresented: $choosingSlack) {
                 NavigationStack {
                     SlackRoutineSetupView(store: store, assignmentContext: assignmentContext, onUse: { target, sourceLabel in
                         guard let assignmentContext else { return false }

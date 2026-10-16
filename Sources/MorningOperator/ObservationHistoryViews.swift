@@ -155,7 +155,7 @@ struct ObservationHistoryView: View {
             screenTimeReferenceDate = Date()
             includedScreenTimeApps = nil
         }
-        .sheet(isPresented: $showingProposal, onDismiss: {
+        .morningSheet(isPresented: $showingProposal, onDismiss: {
             if editAfterProposalDismissal {
                 editAfterProposalDismissal = false
                 choosingMornings = false
@@ -509,10 +509,10 @@ struct ObservationHistoryDetail: View {
         .accessibilityIdentifier("observation.detail")
         .onAppear { if managesEntryOccupancy { store.observationDetailPresented = true } }
         .onDisappear { if managesEntryOccupancy { store.observationDetailPresented = false } }
-        .sheet(isPresented: $assigningDate) {
+        .morningSheet(isPresented: $assigningDate) {
             if let entry { ObservationDateEditor(store: store, entry: entry) }
         }
-        .sheet(isPresented: $preparingNarration) {
+        .morningSheet(isPresented: $preparingNarration) {
             ObservationNarrationView(store: store, observationID: observationID)
         }
         .alert("Delete this observation?", isPresented: $confirmingDelete) {

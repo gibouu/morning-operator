@@ -68,6 +68,32 @@ struct MorningLiveActivityCoordinatorTests {
         #expect(provider.staleDates.last == clock.addingTimeInterval(60))
     }
 
+    @Test func foregroundSolarBoundaryUpdatesTheLogoWithoutChangingPausedProgress() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let start = calendar.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 19, minute: 1))!
+        var instant = start
+        let provider = ActivityProviderDouble()
+        let coordinator = MorningLiveActivityCoordinator(provider: provider, now: { instant })
+        let brandClock = MorningActivityBrandClock(solar: .fixed, calendar: calendar)
+        let id = UUID()
+        func paused(at date: Date) throws -> MorningActivitySnapshot {
+            .init(sessionID: id, state: try .init(category: .custom, status: .paused,
+                completedSteps: 1, totalSteps: 3, updatedAt: date, brandClock: brandClock))
+        }
+        let day = try paused(at: instant)
+        #expect(day.state.brandAppearance(at: instant) == .day)
+        try await coordinator.synchronize(snapshot: day, enabled: true, isForeground: true, allowStart: true)
+        instant = instant.addingTimeInterval(50)
+        let night = try paused(at: instant)
+        #expect(night.state.brandAppearance(at: instant) == .night && day.state.hasSameProgress(as: night.state))
+        try await coordinator.synchronize(snapshot: night, enabled: true, isForeground: true)
+        #expect(provider.requests == 1 && provider.updates == [night])
+        instant = instant.addingTimeInterval(5)
+        try await coordinator.synchronize(snapshot: paused(at: instant), enabled: true, isForeground: true)
+        #expect(provider.updates == [night])
+    }
+
     @Test(arguments: [true, false])
     func dismissalAndDeniedAuthorizationAreNotRecreatedByRepeatedPermit(dismissed: Bool) async throws {
         let provider = ActivityProviderDouble()

@@ -71,7 +71,7 @@ struct MorningRootView: View {
             && !store.captureVoicePresented && store.pendingWebTarget == nil && !store.privacyBlocksWork
     }
     private var nightAppearance: Bool {
-        MorningThemeClock.shared.celestial.moon.opacity > 0.57
+        MorningThemeClock.shared.brandAppearance == .night
     }
 
     private var presentedContent: some View {
@@ -125,7 +125,7 @@ struct MorningRootView: View {
                     }
                 }
         }
-        .preferredColorScheme(nightAppearance ? .dark : .light)
+        .morningBrandSurface(overLandscape: path.isEmpty)
         .background(MorningPaper(showsSun: false))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { dockWidth = $0 }
         .background {
@@ -152,7 +152,7 @@ struct MorningRootView: View {
                 .preferredColorScheme(nightAppearance ? .dark : .light)
                 .onAppear { store.suspendHandsFreeVoice() }
         }
-        .sheet(isPresented: $showingInvitation, onDismiss: {
+        .morningSheet(isPresented: $showingInvitation, onDismiss: {
             activeEntryPresentations.remove(.invitation)
             processPendingEntries()
         }) {
@@ -160,14 +160,14 @@ struct MorningRootView: View {
                 .interactiveDismissDisabled(store.privacyBlocksWork)
                 .onAppear { activeEntryPresentations.insert(.invitation) }
         }
-        .sheet(isPresented: $store.capturePresented, onDismiss: captureReviewDismissed) {
+        .morningSheet(isPresented: $store.capturePresented, onDismiss: captureReviewDismissed) {
             QuickCaptureView(store: store)
         }
-        .sheet(isPresented: $store.voiceCommandPresented, onDismiss: {
+        .morningSheet(isPresented: $store.voiceCommandPresented, onDismiss: {
             store.cancelVoiceCommandTurn()
             processPendingEntries()
         }) { MorningVoiceCommandView(store: store) }
-        .sheet(isPresented: $store.captureVoicePresented, onDismiss: {
+        .morningSheet(isPresented: $store.captureVoicePresented, onDismiss: {
             store.completionCaptureDismissed(allowReview: scenePhase == .active)
             processPendingEntries()
         }) { MorningCaptureVoiceView(store: store) }
@@ -349,6 +349,12 @@ struct MorningRootView: View {
             // Revealing progress is not a request to start or resume. Keep any
             // unfinished review sheet intact rather than discarding the draft.
             store.tab = .today
+        }
+        .onChange(of: MorningThemeClock.shared.brandAppearance) { _, _ in store.synchronizeMorningActivity() }
+        .onChange(of: MorningThemeClock.shared.solar) { _, _ in store.synchronizeMorningActivity() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            MorningThemeClock.shared.refresh()
+            store.synchronizeMorningActivity()
         }
         .onChange(of: store.briefing.currentWeatherLocation, initial: true) { _, location in
             synchronizeHomeWeather()
@@ -618,7 +624,7 @@ struct TodayView: View {
         .onChange(of: viewingStep != nil || showingNotice, initial: true) { _, presented in
             store.morningDetailPresented = presented
         }
-        .sheet(item: $viewingStep) { selection in
+        .morningSheet(item: $viewingStep) { selection in
             NavigationStack {
                 if let step = store.routine?.steps.first(where: { $0.id == selection.id }) {
                 ScrollView {
@@ -721,7 +727,7 @@ struct TodayView: View {
                 }
             }.presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showingNotice, onDismiss: {
+        .morningSheet(isPresented: $showingNotice, onDismiss: {
             guard learnAfterNoticeDismissal else { return }
             learnAfterNoticeDismissal = false
             reviewObservation()

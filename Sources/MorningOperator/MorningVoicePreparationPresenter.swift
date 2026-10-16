@@ -24,7 +24,7 @@ struct MorningVoicePreparationPresenter: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
-        content.sheet(item: Binding(get: { store.voiceStartRequest }, set: { request in
+        content.morningSheet(item: Binding(get: { store.voiceStartRequest }, set: { request in
             if request == nil { store.cancelVoicePreparation() }
         })) { request in
             MorningVoicePreparationView(store: store, startRequest: request)

@@ -262,11 +262,12 @@ final class MorningHomePlaybackTests: XCTestCase {
         let app = launch(["--ui-testing-short-budgets"], night: true)
         defer { app.terminate() }
         start(app)
-        assertCaption("Take a breath.", in: app)
+        assertCaption("This moment is in progress.", in: app)
         assertPureReading(app)
         attach("home-playback-only-current-text", app)
 
-        assertCaption("Your next moment.", in: app, timeout: 15)
+        MorningUITestNavigation.assertSession(state: "running", step: "Get ready", in: app)
+        assertCaption("This moment is in progress.", in: app, timeout: 15)
         assertPureReading(app)
         attach("home-playback-automatic-next-text", app)
     }
@@ -335,7 +336,7 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertEqual(next.label, "Suivant")
         next.tap()
         returnHome(app)
-        assertCaption("Your next moment.", in: app)
+        assertCaption("Ce moment est en cours.", in: app)
         assertNoHeaderOrHistory(app)
     }
 

@@ -13,7 +13,7 @@ struct MorningPermissionSetupView: View {
 
     private var setup: MorningPermissionSetup { store.permissionSetup }
     private var clock: MorningThemeClock { .shared }
-    private var night: Bool { clock.celestial.moon.opacity > 0.57 }
+    private var night: Bool { clock.brandAppearance == .night }
     private var ink: Color { MorningStyle.ink }
     private var muted: Color { contrast == .increased ? MorningStyle.ink : MorningStyle.muted }
     private var paper: Color { MorningStyle.background }
@@ -126,11 +126,8 @@ struct MorningPermissionSetupView: View {
 
     private var navigation: some View {
         HStack(spacing: 20) {
-            HStack(spacing: 7) {
-                MorningBrandMark().frame(width: 24, height: 24)
-                Text(verbatim: "MORE").font(.system(.subheadline, weight: .semibold)).tracking(1.5)
-            }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).fixedSize()
-                .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
+            MorningBrandMark().frame(width: 112, height: 30)
+                .accessibilityIdentifier("permissions.brand")
             Spacer(minLength: 12)
             if setup.isRevisiting, setup.current != nil {
                 Button(text("All access", "Tous les accès")) { setup.showOverview() }

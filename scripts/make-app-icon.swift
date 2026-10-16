@@ -1,5 +1,5 @@
 #!/usr/bin/env swift
-// Rebuild the approved dotted sunrise in all three native iOS appearances.
+// Rebuild the approved day/night branding in all three native iOS appearances.
 // Optional first argument: a different AppIcon.appiconset output directory.
 import Foundation
 
