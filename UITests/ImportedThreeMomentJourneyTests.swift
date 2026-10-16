@@ -65,7 +65,8 @@ import MorningCore
         duration.buttons["step.duration-Increment"].tap()
         XCTAssertEqual(duration.value as? String, "3")
         tap("step.save", app)
-        tap("routine.step.1", app); tap("step.remove", app); tap("step.removeDraft", app)
+        tap("routine.step.1", app); tap("step.remove", app)
+        guard confirmDraftRemoval(app) else { return }
         tap("routine.step.1", app)
         chooseAction("Keep this time, then continue", app); tap("step.save", app)
         back(app)
@@ -289,6 +290,28 @@ import MorningCore
         let choice = app.buttons[name]
         if choice.waitForExistence(timeout: 2) { scroll(choice, id: name, in: app); choice.tap() }
         else { let text = app.staticTexts[name]; scroll(text, id: name, in: app); text.tap() }
+    }
+    private func confirmDraftRemoval(_ app: XCUIApplication) -> Bool {
+        let sheet = app.sheets["Remove this moment?"]
+        let appeared = sheet.waitForExistence(timeout: 5)
+        let exact = sheet.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@",
+            "step.removeDraft", "Remove from this draft"))
+        // The native confirmation exposes nested Button nodes with the same
+        // identifier. Select only a live, enabled, hittable match in this Sheet.
+        if appeared { _ = exact.firstMatch.waitForExistence(timeout: 5) }
+        guard appeared, let remove = exact.allElementsBoundByIndex.first(where: {
+            $0.exists && $0.isEnabled && $0.isHittable
+        }) else {
+            attach("three-moments-draft-removal-confirmation-unreachable", app)
+            let state = XCTAttachment(string: app.debugDescription); state.lifetime = .keepAlways; add(state)
+            XCTFail("Expected the enabled, hittable 'Remove from this draft' button in 'Remove this moment?'.")
+            return false
+        }
+        remove.tap()
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)
+        let result = XCTWaiter.wait(for: [dismissed], timeout: 5)
+        XCTAssertEqual(result, .completed, "Draft removal must close its confirmation before editing continues.")
+        return result == .completed
     }
     private func prepareSlack(_ app: XCUIApplication, intention: String) {
         tap("slackMoment.message.0", app)
