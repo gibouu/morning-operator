@@ -23,7 +23,7 @@ import MorningCore
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
             "--ui-testing-briefing-fixture", "--ui-testing-hands-free", "--ui-testing-read-aloud",
             "--light-preview", "--theme-phase=morning", "--ui-testing-parsed-routine=" + data.base64EncodedString(),
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-more.appLanguage", "en"]
         app.launch(); defer { app.terminate() }
         try requireWorkspace(workspace, app); try requireAcceptedImport(app)
         openRoutine(app)
