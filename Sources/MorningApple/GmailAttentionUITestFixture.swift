@@ -51,13 +51,20 @@ import Synchronization
         #if DEBUG
         guard let state = replyState, state.isCurrent, let context, state.conversation?.context == context,
               state.receivedContext == nil || state.receivedContext == context else { return nil }
-        var proof = state.received
-        proof["simulatedSendAttempts"] = String(state.sendAttempts)
-        proof["inboxReads"] = String(state.inboxReads); proof["bodyReads"] = String(state.bodyReads)
-        proof["sessionID"] = context.sessionID.uuidString
-        proof["routineVersionID"] = context.routineVersionID.uuidString; proof["stepID"] = context.stepID.uuidString
-        guard let data = try? JSONSerialization.data(withJSONObject: proof, options: [.sortedKeys]) else { return nil }
-        return String(decoding: data, as: UTF8.self)
+        return encodedReplyProof(state, context: context)
+        #else
+        return nil
+        #endif
+    }
+
+    /// The actual simulated POST can outlive its dialogue while the same session advances.
+    /// Never reconstructs or persists a payload; a new fixture instance starts without one.
+    public static func lastPrivateReplyDiagnostic(sessionID: UUID, routineVersionID: UUID) -> String? {
+        #if DEBUG
+        guard let state = replyState, state.isCurrent, let received = state.receivedContext,
+              received.sessionID == sessionID, received.routineVersionID == routineVersionID,
+              state.sendAttempts > 0, !state.received.isEmpty else { return nil }
+        return encodedReplyProof(state, context: received)
         #else
         return nil
         #endif
@@ -89,6 +96,16 @@ import Synchronization
     }
 
     #if DEBUG
+    private static func encodedReplyProof(_ state: ReplyState, context: MorningExecutionID) -> String? {
+        var proof = state.received
+        proof["simulatedSendAttempts"] = String(state.sendAttempts)
+        proof["inboxReads"] = String(state.inboxReads); proof["bodyReads"] = String(state.bodyReads)
+        proof["sessionID"] = context.sessionID.uuidString
+        proof["routineVersionID"] = context.routineVersionID.uuidString; proof["stepID"] = context.stepID.uuidString
+        guard let data = try? JSONSerialization.data(withJSONObject: proof, options: [.sortedKeys]) else { return nil }
+        return String(decoding: data, as: UTF8.self)
+    }
+
     @MainActor private final class MemoryTokens: ComposioTokenStoring {
         private var value: String?
         init(_ value: String?) { self.value = value }
