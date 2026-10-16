@@ -76,6 +76,7 @@ struct AppleIntelligenceCitationTests {
                 let unit = try #require(batch.units.first { $0.id == anchor.citation.unitID })
                 #expect((8...240).contains(anchor.citation.quote.count))
                 #expect(Data(unit.text.utf8).range(of: Data(anchor.citation.quote.utf8)) != nil)
+                #expect(unit.supportsCitation(anchor.citation.quote))
                 #expect(batch.prompt.contains("[\(anchor.id)]" + anchor.citation.quote))
             }
         }
@@ -117,10 +118,20 @@ struct AppleIntelligenceCitationTests {
             videoEvidence: video, frameReviews: [.init(sampleID: frame.id, label: label, evidenceQuote: "Calendar", reviewedAt: instant)])
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
         let prepared = try ModelCitationPreparation.prepare(evidence), batch = try #require(prepared.batchesByFirstUnitID.values.first)
-        #expect(batch.prompt.contains(label) && batch.units == evidence.units)
+        let withoutMarkers = batch.anchors.reduce(batch.prompt) { $0.replacingOccurrences(of: "[\($1.id)]", with: "") }
+        #expect(batch.prompt.contains(label) && withoutMarkers.contains(text) && batch.units == evidence.units)
         #expect(!batch.anchors.contains { $0.citation.quote.contains(label) })
-        let generic = try #require(batch.anchors.first { $0.citation.quote == "Calendar\n" })
-        let unsupported = try response([generic.id]).resolvedSteps(in: batch)
+        #expect(!batch.anchors.contains { $0.citation.quote == "Calendar\n" })
+        // A source/model cannot add an ID to the application's supplied choices.
+        #expect(throws: RoutineEvidenceProposalError.invalidCitation) {
+            try response(["forged"]).resolvedSteps(in: batch)
+        }
+        // Even if an upstream bug supplied an unsupported anchor, final policy
+        // still refuses it; filtering is not a replacement for postvalidation.
+        let forged = ModelCitationPreparation.Batch(units: batch.units,
+            anchors: batch.anchors + [.init(id: "forged", citation: .init(unitID: batch.units[0].id, quote: "Calendar\n"))],
+            prompt: batch.prompt)
+        let unsupported = try response(["forged"]).resolvedSteps(in: forged)
         #expect(throws: RoutineEvidenceProposalError.invalidCitation) {
             try LearningEvidencePreparation.validateBatchResult(unsupported, units: batch.units)
         }
@@ -173,8 +184,18 @@ struct AppleIntelligenceCitationTests {
     #if canImport(FoundationModels)
     @Test func guidedSchemaHasOnlySuppliedAnchorChoicesAndAnHonestEmptyCase() throws {
         let schema = try EvidenceRoutineGenerationSchema.make(citationIDs: ["q1", "q2"])
-        let encoded = String(decoding: try JSONEncoder().encode(schema), as: UTF8.self)
+        let data = try JSONEncoder().encode(schema)
+        let encoded = String(decoding: data, as: UTF8.self)
         #expect(encoded.contains("citationIDs") && encoded.contains("q1") && !encoded.contains("unitID") && !encoded.contains("\"quote\""))
+        func objects(_ value: Any) -> [[String: Any]] {
+            if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
+            if let array = value as? [Any] { return array.flatMap(objects) }
+            return []
+        }
+        let object = try JSONSerialization.jsonObject(with: data)
+        let citationArray = try #require(objects(object)
+            .compactMap { $0["citationIDs"] as? [String: Any] }.first)
+        #expect((citationArray["minItems"] as? Int) == 1 && (citationArray["maxItems"] as? Int) == 1)
         let empty = try EvidenceRoutineGenerationSchema.make(citationIDs: [])
         #expect(try JSONEncoder().encode(empty).count > 0)
     }

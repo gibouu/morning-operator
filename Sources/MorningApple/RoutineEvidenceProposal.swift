@@ -403,6 +403,12 @@ public struct PreparedLearningEvidenceUnit: Equatable, Sendable, Identifiable {
     public let reviewedContext: PreparedLearningReviewedContext?
     fileprivate let context: String
     var kind: LearningEvidenceKind { sourceLayer == .videoFrame ? .visibleTaskContent : evidenceKind }
+    /// Offer only excerpts that already meet the same policy as final citations.
+    /// Noncitable text remains source context; this never grants action authority.
+    func supportsCitation(_ quote: String) -> Bool {
+        LearningEvidencePolicy.supports(quote: quote, source: text, context: context,
+            kind: kind, claimedKind: kind.rawValue)
+    }
     fileprivate let evidenceKind: LearningEvidenceKind
     fileprivate let browserContext: PreparedBrowserLearningContext?
     fileprivate var screenTimeContext: PreparedScreenTimeContext? = nil
