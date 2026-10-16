@@ -22,16 +22,8 @@ struct MorningActivityWidget: Widget {
         } dynamicIsland: { context in
             let presentation = MorningActivityPresentation(state: context.state, isStale: context.isStale)
             return DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    MorningWidgetLivingMark(fraction: presentation.artworkProgress)
-                        .frame(width: 36, height: 26)
-                        .foregroundStyle(MorningActivityPalette.islandAccent)
-                        .accessibilityHidden(true)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    Text(presentation.status).font(.caption.weight(.medium))
-                        .foregroundStyle(.white).lineLimit(2)
-                }
+                // Keep all text below the camera. Side regions are too narrow
+                // for localized status labels and meet the island's curved edge.
                 DynamicIslandExpandedRegion(.bottom) {
                     MorningActivityIslandDetail(presentation: presentation,
                                                 sessionID: context.attributes.sessionID)
@@ -54,6 +46,7 @@ struct MorningActivityWidget: Widget {
                         .environment(\.locale, context.state.locale)
                         .environment(\.layoutDirection, .leftToRight)
                         .font(.caption2.monospacedDigit()).foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: 52)
                 } else {
                     Text(presentation.shortProgress).font(.caption2.monospacedDigit())
@@ -69,7 +62,8 @@ struct MorningActivityWidget: Widget {
             }
             .widgetURL(MorningActivityPresentation.destination)
             .keylineTint(MorningActivityPalette.islandAccent)
-            .contentMargins(.all, 14, for: .expanded)
+            .contentMargins(.horizontal, 18, for: .expanded)
+            .contentMargins(.bottom, 14, for: .expanded)
         }
     }
 }
@@ -103,13 +97,13 @@ private struct MorningActivityLockScreen: View {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 8) {
                         timerDetails(timer)
-                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent, locale: AppLanguage.locale)
+                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent, locale: state.locale)
                     }
                 } else {
                     HStack(alignment: .center, spacing: 16) {
                         timerDetails(timer)
                         Spacer(minLength: 4)
-                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent, locale: AppLanguage.locale)
+                        StepActivityControls(sessionID: sessionID, timer: timer, ink: ink, accent: accent, locale: state.locale)
                     }
                 }
                 MorningWidgetBudgetProgress(timer: timer, state: state, tint: accent)
@@ -128,12 +122,12 @@ private struct MorningActivityLockScreen: View {
         .activitySystemActionForegroundColor(accent)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(presentation.accessibilitySummary)
-        .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: AppLanguage.locale))
+        .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: state.locale))
     }
 
     private func timerDetails(_ timer: MorningActivityStepTimer) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(timer.destination.displayName(locale: AppLanguage.locale)).font(.subheadline.weight(.medium)).foregroundStyle(ink)
+            Text(timer.destination.displayName(locale: state.locale)).font(.subheadline.weight(.medium)).foregroundStyle(ink)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             StepCountdown(timer: timer, state: state)
                 .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(ink)
@@ -148,33 +142,36 @@ private struct MorningActivityIslandDetail: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                MorningWidgetLivingMark(fraction: presentation.artworkProgress)
+                    .frame(width: 24, height: 18)
+                    .foregroundStyle(MorningActivityPalette.islandAccent)
+                Text(presentation.status).font(.caption.weight(.medium))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let timer = presentation.state.stepTimer {
-                VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(timer.destination.displayName(locale: AppLanguage.locale)).font(.caption.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.85)).lineLimit(2)
-                        StepCountdown(timer: timer, state: presentation.state)
-                            .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(.white)
-                            .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 12) {
+                        timerDetails(timer)
+                        Spacer(minLength: 4)
+                        controls(timer)
                     }
-                    Spacer(minLength: 4)
-                    StepActivityControls(sessionID: sessionID, timer: timer, ink: .white,
-                                         accent: MorningActivityPalette.islandAccent, locale: AppLanguage.locale)
+                    VStack(alignment: .leading, spacing: 5) {
+                        timerDetails(timer)
+                        controls(timer).frame(maxWidth: .infinity, alignment: .trailing)
+                    }
                 }
                 MorningWidgetBudgetProgress(timer: timer, state: presentation.state,
                                             tint: MorningActivityPalette.islandAccent).frame(height: 4)
-                }
             } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(presentation.heading)
-                        .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
-                        .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
-                    Text(presentation.isStale ? activityText("Open MORE to update.", locale: presentation.state.locale) : presentation.progress)
-                        .font(.caption).foregroundStyle(.white.opacity(0.8))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(presentation.heading)
+                    .font(dynamicTypeSize.isAccessibilitySize ? .subheadline.weight(.semibold) : .headline)
+                    .foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                Text(presentation.isStale ? activityText("Open MORE to update.", locale: presentation.state.locale) : presentation.progress)
+                    .font(.caption).foregroundStyle(.white.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         #if MORE_JURY_DEMO
@@ -182,10 +179,31 @@ private struct MorningActivityIslandDetail: View {
             JuryDemoIslandControls(sessionID: sessionID, paused: presentation.state.status == .paused)
         }
         #endif
+        // Expanded activities have a fixed system height. Keep visual type within
+        // that budget; VoiceOver still receives the complete state and labels.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(presentation.accessibilitySummary)
-        .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: AppLanguage.locale))
+        .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: presentation.state.locale))
+    }
+
+    private func timerDetails(_ timer: MorningActivityStepTimer) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(timer.destination.displayName(locale: presentation.state.locale)).font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+            StepCountdown(timer: timer, state: presentation.state)
+                .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(.white)
+                .fixedSize()
+                .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
+        }
+    }
+
+    private func controls(_ timer: MorningActivityStepTimer) -> some View {
+        StepActivityControls(sessionID: sessionID, timer: timer, ink: .white,
+                             accent: MorningActivityPalette.islandAccent, locale: presentation.state.locale)
+            .fixedSize()
     }
 }
 
@@ -240,7 +258,7 @@ private struct StepActivityControls: View {
                 VStack(spacing: 3) {
                     MorningWidgetControlGlyph(kind: .extend).frame(width: 23, height: 23)
                         .foregroundStyle(accent)
-                    Text(activityText("+2 min", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink)
+                    Text(activityText("+2 min", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink).fixedSize()
                 }.frame(minWidth: 50, minHeight: 44).contentShape(Rectangle())
             }
             .accessibilityLabel(activityText("+2 min", locale: locale))
@@ -250,8 +268,8 @@ private struct StepActivityControls: View {
                 VStack(spacing: 3) {
                     MorningWidgetControlGlyph(kind: timer.hasNextStep ? .next : .finish)
                         .frame(width: 23, height: 23).foregroundStyle(accent)
-                    if timer.hasNextStep { Text(activityText("Next", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink) }
-                    else { Text(activityText("Finish", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink) }
+                    if timer.hasNextStep { Text(activityText("Next", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink).fixedSize() }
+                    else { Text(activityText("Finish", locale: locale)).font(.caption2.weight(.medium)).foregroundStyle(ink).fixedSize() }
                 }.frame(minWidth: 50, minHeight: 44).contentShape(Rectangle())
             }
             .accessibilityLabel(timer.nextLabel(locale: locale))
