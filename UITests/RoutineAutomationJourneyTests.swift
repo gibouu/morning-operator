@@ -661,9 +661,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     func testGoogleCalendarWithoutListeningShowsButtonHelpAndCanRepeatTheReading() {
         let app = launchGoogleCalendarRuntime(["--ui-testing-voice-preparation"])
         defer { app.terminate() }
-        XCTAssertTrue(app.staticTexts["voice.access.status"].waitForExistence(timeout: 8))
-        tapVisible("voice.access.withoutListening", in: app)
-        openCurrentMoment(in: app)
+        assertNoVoicePreparation(in: app)
         let summary = app.staticTexts["googleCalendarDay.summary"]
         XCTAssertTrue(summary.waitForExistence(timeout: 15))
         let original = summary.label
@@ -671,7 +669,6 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         XCTAssertTrue(hint.label.contains("Use the buttons"))
         XCTAssertFalse(hint.label.lowercased().contains("say "))
         XCTAssertFalse(hint.label.contains("Ask a question"))
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"))
         enabledVisibleButton("googleCalendarDay.repeat", in: app).tap()
         XCTAssertEqual(summary.label, original)
         XCTAssertEqual(app.staticTexts["googleCalendarDay.synthetic"].value as? String, "HTTP event reads: 1")
@@ -686,16 +683,13 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     func testGoogleCalendarUnavailableWithoutListeningOffersButtonRecovery() {
         let app = launchGoogleCalendarRuntime(["--ui-testing-voice-preparation", "--ui-testing-google-calendar-unavailable"])
         defer { app.terminate() }
-        XCTAssertTrue(app.staticTexts["voice.access.status"].waitForExistence(timeout: 8))
-        tapVisible("voice.access.withoutListening", in: app)
-        openCurrentMoment(in: app)
+        assertNoVoicePreparation(in: app)
         XCTAssertTrue(app.staticTexts["googleCalendarDay.unavailable"].waitForExistence(timeout: 15))
         let status = app.staticTexts["moment.connectedResult"]
         XCTAssertTrue(status.label.contains("Your morning is paused"))
         XCTAssertTrue(status.label.lowercased().contains("refresh"))
         XCTAssertFalse(status.label.lowercased().contains("say "))
         XCTAssertFalse(app.staticTexts["googleCalendarDay.unavailable"].label.lowercased().contains("say "))
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"))
         _ = enabledVisibleButton("googleCalendarDay.refresh", in: app)
         attach("automation-google-calendar-without-listening-button-recovery", app)
     }
@@ -735,101 +729,70 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         attach("automation-google-calendar-unavailable-honest-recap", app)
     }
 
-    func testEachNewMorningReviewsReadingConsentButSameSessionCanResume() {
+    func testNewMorningStartsWithoutReadingConsentAndPauseResumeKeepsSession() throws {
+        #if !targetEnvironment(simulator)
+        guard ProcessInfo.processInfo.environment["MO_VOICE_TEST_ENABLED"] == "1" else {
+            throw XCTSkip("Opt in before playing speech on the selected phone.")
+        }
+        #endif
         for french in [true, false] {
             let app = launch(["--ui-testing-automation", "--ui-testing-approved", "--ui-testing-read-aloud",
                               "--ui-testing-natural-voice-consent"], french: french)
             defer { app.terminate() }
             reveal(app)
             app.buttons["morning.begin"].tap()
-            let consent = app.staticTexts["voice.readingConsent"]
-            XCTAssertTrue(consent.waitForExistence(timeout: 8))
-            XCTAssertTrue(consent.label.contains(french ? "traités en ligne" : "processed online"))
-            XCTAssertFalse(app.buttons["morning.playback"].exists)
-            XCTAssertEqual(app.alerts.count, 0, "Reading consent must not request microphone access.")
-            attach(french ? "voice-reading-consent-first-morning-fr" : "voice-reading-consent-first-morning-en", app)
-            tapVisible("voice.access.withoutOnlineVoice", in: app)
-
+            MorningUITestNavigation.assertSession(state: "running", in: app)
+            assertNoVoicePreparation(in: app)
             let captions = app.scrollViews["morning.captions"]
-            XCTAssertTrue(captions.waitForExistence(timeout: 10))
             let identity = captions.value as? String
-            let identifiers = identity?.components(separatedBy: "|") ?? []
-            XCTAssertEqual(identifiers.count, 2)
-            XCTAssertTrue(identifiers.allSatisfy { UUID(uuidString: $0) != nil })
-            func playback() -> XCUIElement {
-                let control = app.buttons["morning.playback"]
-                if !control.exists || !control.isHittable { captions.tap() }
-                XCTAssertTrue(control.waitForExistence(timeout: 5))
-                XCTAssertTrue(control.isHittable)
-                return control
-            }
-            let control = playback()
-            // The opening's Continue starts the first timed moment when needed.
-            if control.label != "Pause" { control.tap() }
-            let running = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Pause"), object: control)
-            XCTAssertEqual(XCTWaiter.wait(for: [running], timeout: 10), .completed)
-            playback().tap()
-            XCTAssertEqual(playback().label, french ? "Continuer" : "Continue")
-            playback().tap()
-            XCTAssertFalse(consent.waitForExistence(timeout: 1), "Resuming the same morning retains its reading decision.")
-            XCTAssertEqual(captions.value as? String, identity, "Resume must preserve the session and current moment.")
-
-            let settings = app.buttons["morning.settings"]
-            // Floating controls disappear after five seconds. Reveal them on
-            // the landscape rather than scrolling the current caption.
-            if !settings.exists || !settings.isHittable { captions.tap() }
-            XCTAssertTrue(settings.waitForExistence(timeout: 5))
-            XCTAssertTrue(settings.isHittable)
-            settings.tap()
-            tapVisible("morning.stop", in: app)
-            XCTAssertTrue(app.buttons["morning.stop"].waitForNonExistence(timeout: 5))
-            let back = app.navigationBars.buttons.firstMatch
-            XCTAssertTrue(back.exists); back.tap()
+            XCTAssertFalse(identity?.isEmpty ?? true)
             reveal(app)
-            XCTAssertTrue(app.buttons["morning.begin"].waitForExistence(timeout: 5))
+            XCTAssertEqual(app.buttons["morning.playback"].label, "Pause")
+            app.buttons["morning.playback"].tap()
+            MorningUITestNavigation.assertSession(state: "paused", in: app)
+            reveal(app)
+            XCTAssertEqual(app.buttons["morning.playback"].label, french ? "Continuer" : "Continue")
+            app.buttons["morning.playback"].tap()
+            MorningUITestNavigation.assertSession(state: "running", in: app)
+            XCTAssertEqual(captions.value as? String, identity)
+            assertNoVoicePreparation(in: app)
+
+            MorningUITestNavigation.tapButton("run.stop", in: app)
+            MorningUITestNavigation.assertSession(state: "stopped", in: app)
+            reveal(app)
             app.buttons["morning.begin"].tap()
-            XCTAssertTrue(consent.waitForExistence(timeout: 8),
-                          "A stopped morning's decision cannot authorize a new morning.")
-            XCTAssertTrue(app.buttons["voice.access.withoutOnlineVoice"].exists)
-            XCTAssertFalse(app.buttons["morning.playback"].exists)
-            XCTAssertEqual(app.alerts.count, 0)
-            attach(french ? "voice-reading-consent-new-after-stop-fr" : "voice-reading-consent-new-after-stop-en", app)
-            app.terminate()
+            MorningUITestNavigation.assertSession(state: "running", in: app)
+            assertNoVoicePreparation(in: app)
+            XCTAssertNotEqual(captions.value as? String, identity)
+            attach(french ? "direct-new-morning-without-consent-fr" : "direct-new-morning-without-consent-en", app)
         }
     }
 
-    func testVoicePreparationCanStartWithoutListeningAndDoesNotReopenAfterForeground() {
+    func testDirectStartWithUnpreparedListeningSurvivesForegroundAndRelaunch() {
         let app = launch(["--ui-testing-automation", "--ui-testing-approved", "--ui-testing-hands-free", "--ui-testing-voice-preparation"])
         defer { app.terminate() }
-        reveal(app); app.buttons["morning.begin"].tap()
-        XCTAssertTrue(app.staticTexts["voice.access.status"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["voice.access.synthetic"].exists)
-        XCTAssertFalse(app.buttons["morning.playback"].exists, "The first moment must not start underneath permission preparation.")
-        tapVisible("voice.access.withoutListening", in: app)
         reveal(app)
-        XCTAssertTrue(app.buttons["morning.playback"].waitForExistence(timeout: 8))
-        openCurrentMoment(in: app)
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"))
-        XCTAssertFalse(app.staticTexts["voice.access.status"].exists)
-        XCUIDevice.shared.press(.home); app.activate(); openCurrentMoment(in: app)
-        XCTAssertFalse(app.staticTexts["voice.access.status"].exists)
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"))
-        app.terminate(); app.launch(); openCurrentMoment(in: app)
-        XCTAssertFalse(app.staticTexts["voice.access.status"].exists)
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"), "The same restored session must keep the owner's choice not to listen.")
-        attach("automation-voice-preparation-explicit-without-listening", app)
-    }
-
-    func testBackgroundCancelsVoicePreparationWithoutStartingTheMorning() {
-        let app = launch(["--ui-testing-automation", "--ui-testing-approved", "--ui-testing-hands-free", "--ui-testing-voice-preparation"])
-        defer { app.terminate() }
-        reveal(app); app.buttons["morning.begin"].tap()
-        XCTAssertTrue(app.staticTexts["voice.access.status"].waitForExistence(timeout: 8))
-        attach("automation-voice-preparation-before-any-session", app)
-        XCUIDevice.shared.press(.home); app.activate(); reveal(app)
-        XCTAssertTrue(app.buttons["morning.begin"].waitForExistence(timeout: 8))
-        XCTAssertFalse(app.buttons["morning.playback"].exists)
-        XCTAssertFalse(app.staticTexts["voice.access.status"].exists)
+        app.buttons["morning.begin"].tap()
+        MorningUITestNavigation.assertSession(state: "running", in: app)
+        assertNoVoicePreparation(in: app)
+        let identity = app.scrollViews["morning.captions"].value as? String
+        XCTAssertFalse(identity?.isEmpty ?? true)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        XCTAssertFalse(app.buttons["morning.begin"].exists, "Returning must retain the started morning.")
+        assertNoVoicePreparation(in: app)
+        app.terminate()
+        app.launch()
+        MorningUITestNavigation.assertSession(state: "paused", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        assertNoVoicePreparation(in: app)
+        MorningUITestNavigation.tapButton("run.resume", in: app)
+        MorningUITestNavigation.assertSession(state: "running", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        assertNoVoicePreparation(in: app)
+        attach("direct-start-unprepared-listening-session-restored", app)
     }
 
     func testFrenchLargestSlackSetupLoadsNamedPagesAndAddsAnUnapprovedDraft() {
@@ -1070,8 +1033,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         defer { app.terminate() }
         reveal(app)
         app.buttons["morning.begin"].tap()
-        XCTAssertTrue(app.staticTexts["voice.access.status"].waitForExistence(timeout: 8))
-        tapVisible("voice.access.withoutListening", in: app)
+        assertNoVoicePreparation(in: app)
         openCurrentMoment(in: app)
         let status = app.staticTexts["moment.connectedResult"]
         XCTAssertTrue(status.waitForExistence(timeout: 20))
@@ -1079,7 +1041,6 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         XCTAssertTrue(status.label.contains("Your morning is paused"), status.label)
         XCTAssertTrue(status.label.contains("Update this recap"), status.label)
         XCTAssertFalse(status.label.lowercased().contains("say "), status.label)
-        XCTAssertTrue(app.staticTexts["morning.voiceStatus"].label.contains("Listening is off for this morning"))
         enabledVisibleButton("briefing.updateCurrent", in: app).tap()
         XCTAssertTrue(status.waitForExistence(timeout: 20))
         XCTAssertTrue(status.label.contains("Your day is not ready"), status.label)
@@ -1459,6 +1420,12 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         MorningUITestNavigation.tapButton("morning.details", in: app)
         XCTAssertTrue(app.buttons["morning.closeDetails"].waitForExistence(timeout: 5))
     }
+    private func assertNoVoicePreparation(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertFalse(app.staticTexts["voice.access.status"].exists, file: file, line: line)
+        XCTAssertFalse(app.staticTexts["voice.readingConsent"].exists, file: file, line: line)
+        XCTAssertEqual(app.sheets.count, 0, file: file, line: line)
+        XCTAssertEqual(app.alerts.count, 0, file: file, line: line)
+    }
     private func assertPaused(in app: XCUIApplication) {
         MorningUITestNavigation.assertSession(state: "paused", in: app)
         openCurrentMoment(in: app)
@@ -1702,7 +1669,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     private func launchOutlookRuntime(_ extra: [String] = []) -> XCUIApplication {
         let app = launch(["--ui-testing-outlook-inbox", "--ui-testing-outlook-runtime", "--ui-testing-approved", "--ui-testing-hands-free"] + extra)
         reveal(app); app.buttons["morning.begin"].tap()
-        if !extra.contains("--ui-testing-voice-preparation") { openCurrentMoment(in: app) }
+        openCurrentMoment(in: app)
         return app
     }
     private func outlookReads(_ app: XCUIApplication) -> String {
@@ -1723,7 +1690,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     private func launchCalendlyRuntime(_ extra: [String] = []) -> XCUIApplication {
         let app = launch(["--ui-testing-calendly-day", "--ui-testing-calendly-runtime", "--ui-testing-approved", "--ui-testing-hands-free"] + extra)
         reveal(app); app.buttons["morning.begin"].tap()
-        if !extra.contains("--ui-testing-voice-preparation") { openCurrentMoment(in: app) }
+        openCurrentMoment(in: app)
         return app
     }
     private func assertNoCalendlyTechnicalDetails(_ app: XCUIApplication) {
@@ -1740,7 +1707,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     private func launchGoogleCalendarRuntime(_ extra: [String] = []) -> XCUIApplication {
         let app = launch(["--ui-testing-google-calendar-day", "--ui-testing-google-calendar-runtime", "--ui-testing-approved", "--ui-testing-hands-free"] + extra)
         reveal(app); app.buttons["morning.begin"].tap()
-        if !extra.contains("--ui-testing-voice-preparation") { openCurrentMoment(in: app) }
+        openCurrentMoment(in: app)
         return app
     }
     private func assertNoGoogleTechnicalDetails(_ app: XCUIApplication) {

@@ -534,8 +534,8 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
         let app = try ordinaryApp()
         try enterDeveloperAccessIfRequested(app)
         try openOrdinarySettingsDestination("setup.screenTime", in: app)
-        let daily = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.daily."))
-        XCTAssertFalse(daily.firstMatch.exists, "A prior in-memory result cannot establish this read.")
+        let mornings = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.morning."))
+        XCTAssertFalse(mornings.firstMatch.exists, "A prior in-memory result cannot establish this read.")
         let start = app.buttons["learn.screenTime.start"]
         try reveal(start, in: app)
         XCTAssertTrue(start.exists && start.isHittable && start.isEnabled)
@@ -543,7 +543,7 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
         var deadline = Date().addingTimeInterval(75)
         var ownerGateReported = false
         repeat {
-            if daily.firstMatch.exists { break }
+            if mornings.firstMatch.exists { break }
             let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
             let system = springboard.alerts.firstMatch
             let alert = system.exists ? system : app.alerts.firstMatch
@@ -580,7 +580,7 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
             recordPrivateNativeStage("HUMAN_ACTION_REQUIRED_SCREEN_TIME_AUTHENTICATION")
             throw XCTSkip("A protected Screen Time authorization step remains presented for the owner.")
         }
-        XCTAssertTrue(daily.firstMatch.exists, "No fresh Screen Time app-use output was obtained; approval or an old proposal is insufficient.")
+        XCTAssertTrue(mornings.firstMatch.exists, "No fresh Screen Time morning window was obtained; all-day use, approval or an old proposal is insufficient.")
         XCTAssertTrue(["Refresh app use", "Actualiser l’usage des apps"].contains(start.label),
                       "The data-access authorization state was not confirmed.")
         recordPrivateNativeStage("SCREEN_TIME_FRESH_APP_USE_CONFIRMED")

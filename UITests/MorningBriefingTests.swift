@@ -2,8 +2,8 @@ import XCTest
 
 /// The app injects explicitly synthetic calendar/weather/search values only in a
 /// UUID-isolated DEBUG workspace. These checks establish no live Apple source,
-/// permission, network or speech audibility. Only the hands-free checks (issue #99)
-/// let the routine progress on its own, from the speech coordinator's completion.
+/// permission, network or speech audibility. Hands-free checks let the
+/// routine progress on its own, from the speech coordinator's completion.
 @MainActor
 final class MorningBriefingTests: XCTestCase {
     func testHealthIsDirectlyReachableAndDetailsStartCollapsed() {
@@ -157,8 +157,9 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
-    func testOpeningQuotesPreparedSourcesAndKeepsTheirRecapInSettings() {
+    func testStartingTheRoutineKeepsPreparedRecapInSettingsUntilRequested() {
         let app = launchFixture()
+        defer { app.terminate() }
         openBriefing(app)
         configureSources(app)
         assertPreparedSources(app)
@@ -166,94 +167,44 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.openRoutine(in: app)
         MorningUITestNavigation.tapButton("routine.approve", in: app)
         MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
         let caption = app.staticTexts["morning.caption"]
         XCTAssertTrue(caption.waitForExistence(timeout: 15), app.debugDescription)
-        // Only the current passage belongs on Home; source details stay in Settings.
-        XCTAssertTrue(caption.label.contains("Synthetic"), caption.label)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "silent")
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "choosing")
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
-        XCTAssertFalse(app.staticTexts["Synthetic weather attribution"].exists,
-                       "Provider credit belongs in the weather connection settings, outside playback.")
-        XCTAssertFalse(app.buttons["opening.routine"].exists,
-                       "The landscape must not regain the old opening choice panel.")
-        attach("synthetic-opening-with-prepared-sources", app)
+        XCTAssertFalse(caption.label.contains("Synthetic"),
+                       "A prepared preview must not become an extra moment before the approved routine.")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        XCTAssertFalse(app.staticTexts["Synthetic weather attribution"].exists)
+        XCTAssertFalse(app.buttons["opening.routine"].exists)
+        XCTAssertEqual(app.sheets.count, 0)
+        let identity = app.scrollViews["morning.captions"].value as? String
+        XCTAssertFalse(identity?.isEmpty ?? true)
+        attach("synthetic-routine-starts-without-extra-recap", app)
 
-        // The recap remains inspectable through the ordinary source settings.
-        // Opening it must neither start the waiting routine nor launch competing speech.
         openBriefing(app)
         assertPreparedSources(app)
         let hear = app.buttons["briefing.hear"]
         reveal(hear, app)
-        XCTAssertFalse(hear.isEnabled)
-        attach("synthetic-opening-recap-remains-in-settings", app)
+        XCTAssertFalse(hear.isEnabled, "The preview cannot start competing speech during the routine.")
         closeBriefingAndSettings(app)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "choosing")
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
-        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
         MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
-        MorningUITestNavigation.tapButton("run.controls", in: app)
-        MorningUITestNavigation.tapButton("run.stop", in: app)
-    }
-
-    /// Issue #99. Requests real synthesis on a simulator; the speech coordinator's own
-    /// completion, never a listener, is what moves the morning on.
-    func testHandsFreeGreetingIsSpokenThenTheRoutineStartsWithoutATapOrTheRecap() throws {
-        let app = try startHandsFreeWithPreparedSources()
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "speech requested")
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
-        attach("hands-free-opening-being-spoken", app)
-        // The first step is persisted already, but execution must wait for the greeting.
-        let early = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            MorningUITestNavigation.sessionSnapshot(in: app)["starts"] != "routine started 0"
-        }, object: nil)
-        early.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [early], timeout: 2), .completed,
-                       "The routine must wait for the greeting to end.")
-
-        // No tap from here. Observe the real opening lifecycle and handover count.
-        var recapShown = false
-        let deadline = Date().addingTimeInterval(60)
-        while MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "none", Date() < deadline {
-            if MorningUITestNavigation.sessionSnapshot(in: app)["opening"] == "brief" { recapShown = true }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-        }
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none",
-                       "A hands-free morning must not wait for a tap.\n\(app.debugDescription)")
-        XCTAssertFalse(recapShown, "Hands free never plays the recap unasked.")
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
-        attach("hands-free-routine-started-after-greeting", app)
-        waitForManualMoment(in: app)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
-        MorningUITestNavigation.tapButton("run.controls", in: app)
-        MorningUITestNavigation.tapButton("run.stop", in: app)
-    }
-
-    /// Issue #99: a tap on "Start my routine" while the hands-free greeting is read starts
-    /// the routine once; the greeting's own end then finds nothing left to start.
-    func testStartMyRoutineDuringTheHandsFreeGreetingStartsTheRoutineOnce() throws {
-        let app = try startHandsFreeWithPreparedSources()
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "speech requested")
-        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
-        MorningUITestNavigation.assertSession(state: "running", in: app)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
-        // Past the greeting's length and through the first spoken moment: still one start.
-        waitForManualMoment(in: app)
-        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
         XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
-        MorningUITestNavigation.tapButton("run.controls", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        attach("synthetic-recap-inspection-keeps-running-moment", app)
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
-    /// Sources prepared, spoken guidance and Hands free on, started; the opening is on screen.
-    private func startHandsFreeWithPreparedSources() throws -> XCUIApplication {
+    /// The first approved spoken moment completes on the real speech coordinator;
+    /// no greeting or unrequested recap delays the start or hands it over twice.
+    func testHandsFreeRoutineStartsOnceAndContinuesWithoutGreetingOrExtraRecap() throws {
         #if !targetEnvironment(simulator)
         guard ProcessInfo.processInfo.environment["MO_VOICE_TEST_ENABLED"] == "1" else {
             throw XCTSkip("Opt in before playing speech on the selected phone.")
         }
         #endif
         let app = launchFixture(["--ui-testing-hands-free", "--ui-testing-read-aloud"])
+        defer { app.terminate() }
         openBriefing(app)
         configureSources(app)
         assertPreparedSources(app)
@@ -261,12 +212,19 @@ final class MorningBriefingTests: XCTestCase {
         MorningUITestNavigation.openRoutine(in: app)
         MorningUITestNavigation.tapButton("routine.approve", in: app)
         MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
-        let spokenOpening = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let snapshot = MorningUITestNavigation.sessionSnapshot(in: app)
-            return snapshot["opening"] == "choosing" && snapshot["speech"] == "speech requested"
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [spokenOpening], timeout: 15), .completed, app.debugDescription)
-        return app
+        MorningUITestNavigation.assertSession(state: "running", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        XCTAssertFalse(app.staticTexts["voice.access.status"].exists)
+        XCTAssertFalse(app.staticTexts["voice.readingConsent"].exists)
+        XCTAssertEqual(app.sheets.count, 0)
+        attach("hands-free-routine-starts-directly", app)
+        waitForManualMoment(in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        attach("hands-free-routine-advanced-without-opening", app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
     private func waitForManualMoment(in app: XCUIApplication) {
