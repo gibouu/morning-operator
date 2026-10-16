@@ -3416,6 +3416,11 @@ extension MorningStore {
 
     func beginJuryDemo() {
         guard !privacyBlocksWork, session?.status == .running else { return }
+        guard naturalSpeechDeclined != naturalSpeechScope else {
+            pause()
+            juryDemoCaption = String(localized: "Online voice is off for this morning. Stop and start a new morning to change this choice.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return
+        }
         guard handsFreeListeningSuppressedSessionID != session?.id, automatic, readAloud else {
             juryDemoCaption = "L’écoute ou la lecture est désactivée pour ce matin. Vous pouvez les préparer dans les paramètres."
             return

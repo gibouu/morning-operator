@@ -69,6 +69,53 @@ final class JuryDemoJourneyTests: XCTestCase {
         assertNoSpecialPresentation(app)
     }
 
+    /// This checks the visible refusal and paused session, not a transport trace.
+    func testDecliningOnlineVoiceKeepsTheSameMorningPausedInBothLanguages() throws {
+        for french in [true, false] {
+            let app = try launchDemo(french: french, additionalArguments: [
+                "--ui-testing-hands-free", "--ui-testing-read-aloud", "--ui-testing-natural-voice-consent"
+            ])
+            defer { app.terminate() }
+            app.buttons["morning.actions"].tap()
+            let begin = app.buttons["morning.begin"]
+            XCTAssertTrue(begin.waitForExistence(timeout: 5)); begin.tap()
+
+            let consent = app.staticTexts["voice.readingConsent"]
+            XCTAssertTrue(consent.waitForExistence(timeout: 8))
+            XCTAssertFalse(app.staticTexts["voice.access.synthetic"].exists,
+                           "The system permission state must not be simulated.")
+            XCTAssertEqual(app.alerts.count, 0, "Reviewing consent must not request microphone access.")
+            let decline = app.buttons["voice.access.withoutOnlineVoice"]
+            reveal(decline, in: app); decline.tap()
+            XCTAssertTrue(consent.waitForNonExistence(timeout: 10))
+
+            let captions = app.scrollViews["morning.captions"]
+            XCTAssertTrue(captions.waitForExistence(timeout: 10))
+            let identity = captions.value as? String
+            let parts = identity?.components(separatedBy: "|") ?? []
+            XCTAssertEqual(parts.count, 2)
+            XCTAssertTrue(parts.allSatisfy { UUID(uuidString: $0) != nil })
+            let caption = app.staticTexts["morning.caption"]
+            let refusal = french
+                ? "La voix en ligne est désactivée pour ce matin. Arrêtez puis recommencez un matin pour changer ce choix."
+                : "Online voice is off for this morning. Stop and start a new morning to change this choice."
+            let refusalShown = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", refusal), object: caption)
+            XCTAssertEqual(XCTWaiter.wait(for: [refusalShown], timeout: 10), .completed)
+            let playback = revealLivePlayback(app)
+            XCTAssertEqual(playback.label, french ? "Continuer" : "Continue")
+            playback.tap()
+            XCTAssertFalse(consent.waitForExistence(timeout: 1), "The same morning keeps its explicit refusal.")
+            let stillPaused = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", french ? "Continuer" : "Continue"), object: playback)
+            XCTAssertEqual(XCTWaiter.wait(for: [stillPaused], timeout: 10), .completed)
+            XCTAssertEqual(caption.label, refusal)
+            XCTAssertEqual(captions.value as? String, identity,
+                           "Retrying Play must preserve the refused morning and its current moment.")
+            XCTAssertEqual(app.alerts.count, 0, "Refusing online voice must not require system permissions.")
+        }
+    }
+
     /// Evidence is deliberately narrow: decoded backend audio started, the same
     /// moment survived background/pause/resume, and normal Stop ended the session.
     /// This does not prove audible output, ASR recognition or hardware mic release.
@@ -82,7 +129,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let app = try demoApplication()
-        app.launchArguments = ["-AppleLanguages", "(fr)"]
+        app.launchArguments = ["-more.appLanguage", "fr", "-AppleLanguages", "(fr)"]
         let permissionMonitor = addUIInterruptionMonitor(withDescription: "Real MORE demo iPhone permissions") { alert in
             let explanation = alert.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
             guard explanation.localizedCaseInsensitiveContains("MORE") else { return false }
@@ -133,7 +180,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         app.buttons["morning.actions"].tap()
         let begin = app.buttons["morning.begin"]
         XCTAssertTrue(begin.waitForExistence(timeout: 5)); begin.tap()
-        handleRealSystemGrants() // Includes the genuine local-network grant, if requested.
+        acceptLiveMorningVoiceConsent(app)
         await waitForLiveSpokenPassage(app)
         attachLive("jury-live-real-audio-started", app)
 
@@ -204,7 +251,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let app = try demoApplication()
-        app.launchArguments = ["-AppleLanguages", "(fr)"]
+        app.launchArguments = ["-more.appLanguage", "fr", "-AppleLanguages", "(fr)"]
         defer { app.terminate() }
         app.launch()
         if app.buttons["permissions.allow"].waitForExistence(timeout: 3) {
@@ -244,7 +291,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         app.buttons["morning.actions"].tap()
         let begin = app.buttons["morning.begin"]
         XCTAssertTrue(begin.waitForExistence(timeout: 5)); begin.tap()
-        handleRealSystemGrants()
+        acceptLiveMorningVoiceConsent(app)
         await waitForLiveSpokenPassage(app)
         attachLive("jury-acoustic-before-external-answer", app)
         print("JURY_ACOUSTIC_READY_FOR_YES")
@@ -301,7 +348,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         #else
         continueAfterFailure = false
         let app = try demoApplication()
-        app.launchArguments = ["-AppleLanguages", "(fr)"]
+        app.launchArguments = ["-more.appLanguage", "fr", "-AppleLanguages", "(fr)"]
         app.launch()
         XCTAssertFalse(app.staticTexts["qa.testWorkspace"].exists)
         if app.scrollViews["morning.captions"].waitForExistence(timeout: 5) {
@@ -331,7 +378,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let app = try demoApplication()
-        app.launchArguments = ["-AppleLanguages", "(fr)", "--jury-raw-microphone-diagnostic"]
+        app.launchArguments = ["-more.appLanguage", "fr", "-AppleLanguages", "(fr)", "--jury-raw-microphone-diagnostic"]
         defer { app.terminate() }
         app.launch()
         if app.buttons["permissions.allow"].waitForExistence(timeout: 3) {
@@ -355,7 +402,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         app.buttons["morning.actions"].tap()
         let begin = app.buttons["morning.begin"]
         XCTAssertTrue(begin.waitForExistence(timeout: 5)); begin.tap()
-        handleRealSystemGrants()
+        acceptLiveMorningVoiceConsent(app)
         await waitForLiveSpokenPassage(app)
         attachLive("jury-raw-mic-diagnostic-real-audio-started", app)
         print("JURY_RAW_MIC_READY")
@@ -383,7 +430,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let app = try demoApplication()
-        app.launchArguments = ["-AppleLanguages", "(fr)"]
+        app.launchArguments = ["-more.appLanguage", "fr", "-AppleLanguages", "(fr)"]
         defer { app.terminate() }
         app.launch()
         if app.buttons["permissions.allow"].waitForExistence(timeout: 3) {
@@ -421,7 +468,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         app.buttons["morning.actions"].tap()
         let begin = app.buttons["morning.begin"]
         XCTAssertTrue(begin.waitForExistence(timeout: 5)); begin.tap()
-        handleRealSystemGrants()
+        acceptLiveMorningVoiceConsent(app)
         await waitForLiveSpokenPassage(app)
         let captionBeforePause = app.staticTexts["morning.caption"].label
         attachLive("jury-island-real-audio-started", app)
@@ -493,14 +540,15 @@ final class JuryDemoJourneyTests: XCTestCase {
         return control
     }
 
-    private func launchDemo() throws -> XCUIApplication {
+    private func launchDemo(french: Bool = true, additionalArguments: [String] = []) throws -> XCUIApplication {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let workspace = UUID().uuidString
         let app = try demoApplication()
         app.launchArguments = ["--ui-testing", "--ui-testing-empty-workspace",
             "--ui-testing-workspace=\(workspace)", "--ui-testing-reduce-motion", "--theme-phase=day",
-            "-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"]
+            "-more.appLanguage", french ? "fr" : "en", "-AppleLanguages", french ? "(fr)" : "(en)",
+            "-AppleLocale", french ? "fr_FR" : "en_US"] + additionalArguments
         app.launch()
         let isolation = app.staticTexts["qa.testWorkspace"]
         XCTAssertTrue(isolation.waitForExistence(timeout: 10), "The launch must use a disposable test workspace.")
@@ -563,6 +611,24 @@ final class JuryDemoJourneyTests: XCTestCase {
         }
     }
 
+    /// Accepts the ordinary reading consent. It never supplies a spoken command.
+    private func acceptLiveMorningVoiceConsent(_ app: XCUIApplication) {
+        let consent = app.staticTexts["voice.readingConsent"]
+        XCTAssertTrue(consent.waitForExistence(timeout: 8), "Each new live morning must review online voice consent.")
+        let begin = app.buttons["voice.access.begin"]
+        if begin.waitForExistence(timeout: 1) {
+            reveal(begin, in: app); begin.tap()
+        } else {
+            let prepare = app.buttons["voice.access.prepare"]
+            XCTAssertTrue(prepare.waitForExistence(timeout: 5), "Real grants must be prepared before this morning can begin.")
+            reveal(prepare, in: app); prepare.tap()
+        }
+        handleRealSystemGrants()
+        XCTAssertTrue(consent.waitForNonExistence(timeout: 20),
+                      "The real preparation must finish and dismiss before accepting audio as evidence.")
+        handleRealSystemGrants() // Includes the genuine local-network grant, if requested.
+    }
+
     private func waitForLiveSpokenPassage(_ app: XCUIApplication, replacing previous: String? = nil) async {
         let caption = app.staticTexts["morning.caption"]
         XCTAssertTrue(caption.waitForExistence(timeout: 10))
@@ -579,11 +645,12 @@ final class JuryDemoJourneyTests: XCTestCase {
 
     private func revealLivePlayback(_ app: XCUIApplication) -> XCUIElement {
         let control = app.buttons["morning.playback"]
-        if !control.exists {
+        if !control.exists || !control.isHittable {
             let captions = app.scrollViews["morning.captions"]
             XCTAssertTrue(captions.waitForExistence(timeout: 10)); captions.tap()
         }
         XCTAssertTrue(control.waitForExistence(timeout: 5))
+        XCTAssertTrue(control.isHittable)
         return control
     }
 

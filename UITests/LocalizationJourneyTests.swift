@@ -1,3 +1,4 @@
+import AVFAudio
 import XCTest
 
 /// Synthetic data in a unique workspace. Never installs on or controls a physical phone.
@@ -397,6 +398,7 @@ final class PhysicalLocalizationAcceptanceTests: XCTestCase {
         #else
         // Swift errors let the best-effort preference restoration run on failures too.
         continueAfterFailure = true
+        captureInstalledAppleVoiceQuality()
         let requirePrimary = ProcessInfo.processInfo.environment["MORE_REQUIRE_PRIMARY_PREVIEW"] == "1"
         let app = XCUIApplication(bundleIdentifier: "com.gibouu.morningoperator")
         app.launchArguments = []
@@ -501,6 +503,31 @@ final class PhysicalLocalizationAcceptanceTests: XCTestCase {
         XCTAssertEqual(try selectedGender(in: app), gender)
         app.buttons["voice.done"].tap()
         app.navigationBars.buttons.firstMatch.tap()
+    }
+
+    private func captureInstalledAppleVoiceQuality() {
+        // Read public inventory only. Never authorize/export Personal Voice or
+        // report voice names/identifiers; keep just the best eligible quality.
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter {
+            $0.identifier.hasPrefix("com.apple.")
+                && !$0.voiceTraits.contains(.isPersonalVoice)
+                && !$0.voiceTraits.contains(.isNoveltyVoice)
+        }
+        var rows: [String] = []
+        for language in ["fr", "en"] {
+            for gender in ["male", "female"] {
+                let best = voices.filter {
+                    $0.language.replacingOccurrences(of: "_", with: "-").lowercased().split(separator: "-").first.map { String($0) } == language
+                        && (gender == "male" ? $0.gender == .male : $0.gender == .female)
+                }.map { $0.quality.rawValue }.max()
+                let quality = best.map { $0 >= 3 ? "Premium" : $0 == 2 ? "Enhanced" : "Standard" } ?? "none"
+                rows.append("language=\(language); gender=\(gender); bestInstalledAppleQuality=\(quality)")
+            }
+        }
+        let report = XCTAttachment(string: rows.joined(separator: "\n"))
+        report.name = "physical-apple-voice-quality"
+        report.lifetime = .keepAlways
+        add(report)
     }
 
     private func relaunchAndOpenSettings(_ app: XCUIApplication) throws {

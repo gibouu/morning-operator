@@ -602,6 +602,7 @@ public final class JuryDemoVoiceSession {
         }
         if transcript.isEmpty { interruptSpeech(); recognitionFailures = 0 }
         transcript = text
+        onText?(SpeechCoordinator.inputCaption(text))
         if final {
             let utterance = transcript
             beginRecognition(run: id)
@@ -720,7 +721,8 @@ private final class JuryDemoRecorderMicrophoneDiagnostic: NSObject, AVAudioRecor
         var startedAt = Date().timeIntervalSince1970
         var duration = 0.0
         var recordedDuration = 0.0
-        var recordedFrames: Int64 = 0
+        var recordedFrames: Int64?
+        var recordedFilePresent: Bool?
         var meterCount = 0
         var maxPeakDB = -160.0
         var audioCleanup = false
@@ -862,10 +864,16 @@ private final class JuryDemoRecorderMicrophoneDiagnostic: NSObject, AVAudioRecor
             if let recordingStartedAt { report.duration = Date().timeIntervalSince(recordingStartedAt) }
         }
         recorder?.stop(); recorder = nil
-        let audioURL = directory.appendingPathComponent("capture.caf")
-        if FileManager.default.fileExists(atPath: audioURL.path) {
-            do { report.recordedFrames = try AVAudioFile(forReading: audioURL).length }
-            catch { report.state = 4; report.errorCode = (error as NSError).code }
+        if !restored {
+            let audioURL = directory.appendingPathComponent("capture.caf")
+            let filePresent = FileManager.default.fileExists(atPath: audioURL.path)
+            report.recordedFilePresent = filePresent
+            if filePresent {
+                do { report.recordedFrames = try AVAudioFile(forReading: audioURL).length }
+                catch { report.state = 4; report.errorCode = report.errorCode ?? (error as NSError).code }
+            } else if recordingStartedAt != nil {
+                report.state = 4; report.errorCode = report.errorCode ?? -4
+            }
         }
         var fileRemoved = false
         do {
@@ -873,7 +881,7 @@ private final class JuryDemoRecorderMicrophoneDiagnostic: NSObject, AVAudioRecor
             fileRemoved = true
         } catch {
             let failure = error as NSError
-            report.errorCode = failure.code
+            report.errorCode = report.errorCode ?? failure.code
             JuryDemoAudioDiagnostic.log.error("recorder_cleanup_failed domain=\(failure.domain, privacy: .public) code=\(failure.code, privacy: .public)")
         }
         report.audioCleanup = fileRemoved
@@ -887,7 +895,7 @@ private final class JuryDemoRecorderMicrophoneDiagnostic: NSObject, AVAudioRecor
             JuryDemoAudioDiagnostic.log.info("recorder_restored fileRemoved=\(fileRemoved, privacy: .public)")
         } catch {
             let failure = error as NSError
-            report.errorCode = failure.code
+            report.errorCode = report.errorCode ?? failure.code
             JuryDemoAudioDiagnostic.log.error("recorder_restore_failed domain=\(failure.domain, privacy: .public) code=\(failure.code, privacy: .public)")
         }
         Self.write(report)

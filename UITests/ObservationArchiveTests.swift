@@ -27,7 +27,7 @@ final class ObservationArchiveTests: XCTestCase {
         editor.typeText(" A small correction.")
         let edited = try XCTUnwrap(editor.value as? String)
         XCTAssertTrue(edited.contains("A small correction."))
-        app.navigationBars["Learn my morning"].buttons["Done"].tap()
+        closeLearn(in: app)
         XCTAssertTrue(app.navigationBars["Observation"].waitForExistence(timeout: 5))
 
         // Removing the seed flag ensures restoration is from the durable workspace.
@@ -191,10 +191,10 @@ final class ObservationArchiveTests: XCTestCase {
         assertDetailValue("observation.importedDate", equals: "Import date unknown", in: app)
         assertDetailValue("observation.observedDate", equals: "Date needed", in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        MorningUITestNavigation.revealMorningAction("morning.learn", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].exists || app.buttons["run.start"].exists,
+        MorningUITestNavigation.openRoutine(in: app)
+        XCTAssertTrue(app.buttons["routine.step.0"].waitForExistence(timeout: 5),
                       "Legacy routine must survive migration.")
-        MorningUITestNavigation.closeMorningActions(in: app)
+        MorningUITestNavigation.closeRoutine(in: app)
         attach("archive-legacy-migration-keeps-unknown-dates", app)
     }
 
@@ -408,7 +408,10 @@ final class ObservationArchiveTests: XCTestCase {
     private func closeLearn(in app: XCUIApplication) {
         let navigation = app.navigationBars["Learn my morning"]
         XCTAssertTrue(navigation.waitForExistence(timeout: 5))
-        navigation.buttons["Done"].tap()
+        if app.buttons["input.done"].isHittable { app.buttons["input.done"].tap() }
+        let back = navigation.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.isHittable)
+        back.tap()
         let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: navigation)
         XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
     }

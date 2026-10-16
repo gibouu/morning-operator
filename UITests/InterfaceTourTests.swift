@@ -27,10 +27,10 @@ final class InterfaceTourTests: XCTestCase {
         var app = launch(arguments, workspace: workspace)
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 15), app.debugDescription)
         attach("\(prefix)-home", app)
-        MorningUITestNavigation.revealMorningAction("morning.learn", in: app)
+        MorningUITestNavigation.revealControls(in: app)
         attach("\(prefix)-home-actions", app)
-        app.buttons["morning.learn"].tap()
-        XCTAssertTrue(app.buttons["learn.import"].waitForExistence(timeout: 10), app.debugDescription)
+        MorningUITestNavigation.reviewAction("review.learn", in: app)
+        XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
         attach("\(prefix)-learn", app)
         app.terminate()
 
@@ -38,7 +38,7 @@ final class InterfaceTourTests: XCTestCase {
         app = launch(arguments, workspace: workspace)
         MorningUITestNavigation.selectTab("Review", in: app)
         attach("\(prefix)-review", app)
-        tapAfterScrolling(app.buttons["navigation.setup"], in: app)
+        MorningUITestNavigation.openSettings(in: app)
         XCTAssertTrue(app.buttons["setup.briefing"].waitForExistence(timeout: 10), app.debugDescription)
         attach("\(prefix)-settings", app)
         tapAfterScrolling(app.buttons["setup.briefing"], in: app)
@@ -72,33 +72,31 @@ final class InterfaceTourTests: XCTestCase {
         // sentence, never an error code (issue #89).
         app = launch(arguments + ["--ui-testing-model-not-ready"], workspace: UUID())
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 15), app.debugDescription)
-        MorningUITestNavigation.revealMorningAction("morning.learn", in: app)
-        app.buttons["morning.learn"].tap()
+        MorningUITestNavigation.reviewAction("review.learn", in: app)
         let message = app.descendants(matching: .any)["app.notice"].firstMatch
         XCTAssertTrue(message.waitForExistence(timeout: 10), app.debugDescription)
         for _ in 0..<12 where !message.isHittable { app.swipeUp() }
         attach("\(prefix)-learn-model-not-ready", app)
         app.terminate()
 
-        // Last, because it starts a morning in this workspace: the opening (issue #28).
+        // Last, because it starts this workspace's morning: the greeting and
+        // current passage stay on the landscape; provenance stays in the editor.
         app = launch(arguments, workspace: workspace)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        let scroll = app.scrollViews["morning.accessibleScroll"]
-        for _ in 0..<8 where !app.buttons["run.start"].isHittable && scroll.exists { scroll.swipeUp() }
         MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
-        XCTAssertTrue(app.staticTexts["opening.text"].waitForExistence(timeout: 15), app.debugDescription)
-        for _ in 0..<4 where scroll.exists { scroll.swipeDown() }
-        // Issue #99: while the opening waits, the first moment's Now card is not shown.
-        XCTAssertFalse(app.staticTexts["run.step"].exists, app.debugDescription)
-        // The sample stays labelled while the Now card, which can carry the label, is hidden.
-        XCTAssertTrue(app.staticTexts["routine.source"].exists, app.debugDescription)
+        let caption = app.staticTexts["morning.caption"]
+        XCTAssertTrue(caption.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertFalse(caption.label.isEmpty)
+        XCTAssertFalse(app.staticTexts["run.step"].exists)
+        XCTAssertFalse(app.buttons["morning.next"].exists)
         attach("\(prefix)-opening", app)
-        // After "Start my routine" the Now card appears in its place.
         MorningUITestNavigation.chooseRoutineAtOpening(in: app)
-        XCTAssertTrue(app.staticTexts["run.step"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(app.staticTexts["routine.source"].exists, app.debugDescription)
-        for _ in 0..<4 where scroll.exists { scroll.swipeDown() }
+        MorningUITestNavigation.assertSession(state: "running", in: app)
         attach("\(prefix)-opening-routine-started", app)
+        MorningUITestNavigation.openRoutine(in: app)
+        let source = app.descendants(matching: .any).matching(identifier: "routine.source").firstMatch
+        for _ in 0..<12 where !source.exists || !source.isHittable { app.swipeUp() }
+        XCTAssertTrue(source.exists && source.isHittable)
+        attach("\(prefix)-running-routine-provenance", app)
         app.terminate()
     }
 
@@ -109,7 +107,7 @@ final class InterfaceTourTests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved", "--ui-testing-briefing-fixture",
                                "--ui-testing-workspace=\(workspace.uuidString)"] + arguments
         if !arguments.contains("-more.appLanguage") { app.launchArguments += ["-more.appLanguage", "en"] }
-        app.launch()
+        MorningUITestNavigation.launch(app)
         return app
     }
 

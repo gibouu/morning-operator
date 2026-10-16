@@ -40,6 +40,10 @@ Remaining real-device and browser acceptance is tracked in [#200](https://github
 
 ## Verification
 
+Ordinary voice follow-up on 16 October 2026: a weather question after the opening could lose the already prepared weather during a note or timer. The conversation now reuses only fresh, still-authorized weather, without another provider read, duplicate briefing or Health context. **54 targeted tests in 4 suites passed** (`more-conversation-weather-tests-retry.log`), covering admission, expiry, changed sources, privacy invalidation, personal memory and continuation. Physical microphone/correction/relaunch acceptance remains pending; these package tests do not establish it.
+
+After integrating the current voice changes, **96 tests in 9 suites passed** in 8.179 seconds (`more-voice-weather-integrated-tests.log`); signed build-for-testing 2026101627 succeeded. Two read-only physical inspections passed on the existing ordinary build 2026101622, without fixture arguments or reinstalling MORE. Removing local `DependentProductPaths` from the private destination-only XCTest plan fixed its initial launch failure. Home showed no active morning and the app language was English. No speech was played, no fact or preference was changed, and no correction/relaunch acceptance is claimed. The owner subsequently stopped further testing in favor of a single final delivery/install; that install belongs to the delivery coordinator. The complete acoustic weather/correction/persistence journey remains tracked in [#200](https://github.com/gibouu/morning-operator/issues/200).
+
 The opt-in live test uses harmless synthetic routine text, weather and personal statements. It creates a private temporary workspace and never reads connected accounts, recordings or real inboxes. Run it only with an explicitly supplied credential-file path:
 
 ```sh

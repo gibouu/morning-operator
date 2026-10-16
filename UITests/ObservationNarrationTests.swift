@@ -30,15 +30,11 @@ final class ObservationNarrationTests: XCTestCase {
         enableReadAloud(in: app)
         startAndEnableHandsFree(in: app)
 
-        let current = app.staticTexts["run.step"]
-        wait(current, predicate: "label == %@", argument: "People and messages", timeout: 60,
-             message: "Without Next, native speech must finish the saved excerpt and Your morning before reaching the manual moment.", in: app)
-        for index in [0, 1] {
-            let completed = app.descendants(matching: .any).matching(identifier: "morning.step.\(index)").firstMatch
-            XCTAssertTrue(completed.waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertTrue(completed.label.contains("completed"), completed.debugDescription)
-        }
-        XCTAssertTrue(app.buttons["run.next"].waitForExistence(timeout: 5),
+        waitForSession(step: "People and messages", timeout: 60, in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["completed"], "2",
+                       "Native speech must complete both the saved excerpt and Your morning without Next.")
+        MorningUITestNavigation.openSettings(in: app)
+        XCTAssertTrue(app.buttons["morning.next"].waitForExistence(timeout: 5),
                       "The next manual moment still needs the person's explicit continuation.")
         attach("saved-excerpt-and-calm-start-completed-by-native-speech", app)
         stopMorning(in: app)
@@ -64,18 +60,27 @@ final class ObservationNarrationTests: XCTestCase {
         // Persisted deletion, not a stale in-memory projection, must invalidate playback.
         relaunchWithoutSeed(app)
         startAndEnableHandsFree(in: app)
-        let unavailable = app.staticTexts.matching(NSPredicate(format: "label == %@",
-            "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next.")).firstMatch
+        let refusal = "This saved excerpt has changed or was removed. Choose it again in Review, or tap Next."
+        let caption = app.staticTexts["morning.caption"]
+        wait(caption, predicate: "label == %@", argument: refusal, timeout: 10,
+             message: "The executor must refuse the deleted source before any pause or manual action.", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["completed"], "0")
+        MorningUITestNavigation.openSettings(in: app)
+        XCTAssertTrue(app.buttons["morning.next"].isEnabled, "Refusal must leave a manual way to continue.")
+        tap("morning.details", in: app)
+        let unavailable = app.staticTexts.matching(NSPredicate(format: "label == %@", refusal)).firstMatch
         XCTAssertTrue(unavailable.waitForExistence(timeout: 10), app.debugDescription)
-        let current = app.staticTexts["run.step"]
-        XCTAssertEqual(current.label, "A saved moment")
-        XCTAssertTrue(app.buttons["run.next"].isEnabled, "Refusal must leave a manual way to continue.")
-        let advanced = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", "A saved moment"), object: current)
+        tap("morning.closeDetails", in: app)
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.assertSession(state: "paused", step: "A saved moment", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["completed"], "0",
+                       "An unavailable source must not report successful completion.")
+        let advanced = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.sessionSnapshot(in: app)["step"] != "A saved moment"
+        }, object: nil)
         advanced.isInverted = true
         XCTAssertEqual(XCTWaiter.wait(for: [advanced], timeout: 3), .completed,
-                       "An unavailable source must not report successful completion.")
-        let first = app.descendants(matching: .any).matching(identifier: "morning.step.0").firstMatch
-        XCTAssertFalse(first.label.contains("completed"), first.debugDescription)
+                       "An unavailable source must not advance while its details are read.")
         attach("deleted-excerpt-source-refused-without-advancement", app)
         stopMorning(in: app)
     }
@@ -162,27 +167,37 @@ final class ObservationNarrationTests: XCTestCase {
              message: "Spoken guidance must be explicitly enabled through the production setting.", in: app)
         let settings = app.navigationBars["Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5), app.debugDescription)
-        settings.buttons["Done"].tap()
-        waitForAbsence(settings, in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
+        waitForAbsence(settings, in: app)
     }
 
     private func startAndEnableHandsFree(in app: XCUIApplication) {
         MorningUITestNavigation.selectTab("Morning", in: app)
         tap("run.start", in: app)
-        let current = app.staticTexts["run.step"]
-        XCTAssertTrue(current.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertEqual(current.label, "A saved moment")
-        tap("run.controls", in: app)
-        let handsFree = app.switches["Hands free"].exists ? app.switches["Hands free"] : app.buttons["Hands free"]
-        XCTAssertTrue(handsFree.waitForExistence(timeout: 5), app.debugDescription)
-        handsFree.tap()
-        // No Next/Skip/Read-aloud action is used: the production automatic executor owns completion.
+        MorningUITestNavigation.assertSession(state: "running", step: "A saved moment", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        let handsFree = app.switches["setup.handsFree"]
+        reveal(handsFree, in: app)
+        XCTAssertEqual(handsFree.value as? String, "0")
+        let control = handsFree.switches.firstMatch.exists ? handsFree.switches.firstMatch : handsFree
+        control.tap()
+        XCTAssertEqual(handsFree.value as? String, "1")
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        // No Next/Skip action is used: the production automatic executor owns completion.
     }
 
     private func stopMorning(in app: XCUIApplication) {
         tap("run.controls", in: app)
         tap("run.stop", in: app)
+    }
+
+    private func waitForSession(step: String, timeout: TimeInterval, in app: XCUIApplication) {
+        let reached = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.sessionSnapshot(in: app)["step"] == step
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [reached], timeout: timeout), .completed,
+                       "Native speech must finish the saved excerpt and Your morning before reaching the manual moment.\n\(app.debugDescription)")
+        MorningUITestNavigation.assertSession(state: "running", step: step, in: app)
     }
 
     private func relaunchWithoutSeed(_ app: XCUIApplication) {
@@ -192,7 +207,7 @@ final class ObservationNarrationTests: XCTestCase {
     }
 
     private func tap(_ identifier: String, in app: XCUIApplication) {
-        if identifier == "run.start" {
+        if identifier.hasPrefix("run.") {
             MorningUITestNavigation.tapButton(identifier, in: app)
             return
         }

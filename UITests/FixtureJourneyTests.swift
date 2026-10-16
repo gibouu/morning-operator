@@ -19,31 +19,29 @@ final class VoicePlaybackTests: XCTestCase {
         XCTAssertTrue(readAloud.isHittable)
         readAloud.tap()
         XCTAssertEqual(readAloud.value as? String, "1")
-        app.navigationBars["Settings"].buttons["Done"].tap()
+        MorningUITestNavigation.selectTab("Morning", in: app)
         MorningUITestNavigation.openRoutine(in: app)
         app.buttons["routine.approve"].tap()
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
         MorningUITestNavigation.tapButton("run.start", in: app)
-        let step = app.staticTexts["run.step"]
-        XCTAssertTrue(step.waitForExistence(timeout: 5))
-        XCTAssertEqual(step.label, "Your morning")
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
         // The first fixture step is a real spokenNote operation; the next is manual.
         // Enabling automatic progression dispatches the production speech executor.
-        app.buttons["run.controls"].tap()
-        // SwiftUI exposes a menu Toggle as a menu button on iOS and as a switch
-        // on some test runtimes. Both represent the same visible Hands free action.
-        let handsFree = app.switches["Hands free"].exists ? app.switches["Hands free"] : app.buttons["Hands free"]
+        MorningUITestNavigation.openSettings(in: app)
+        let handsFree = app.switches["setup.handsFree"]
         XCTAssertTrue(handsFree.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !handsFree.isHittable { app.swipeUp() }
+        XCTAssertTrue(handsFree.isHittable)
         handsFree.tap()
-        let advanced = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "People and messages"), object: step)
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        let advanced = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.stepTitle(in: app) == "People and messages"
+        }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [advanced], timeout: 30), .completed)
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "synthetic-routine-spoken-step-completed-manual-step-waiting"
         shot.lifetime = .keepAlways
         add(shot)
-        app.buttons["run.controls"].tap()
-        app.buttons["run.stop"].tap()
+        MorningUITestNavigation.tapButton("run.stop", in: app)
         // Does not establish listener audibility, calendar access or cross-app narration.
     }
 
@@ -84,7 +82,8 @@ final class FixtureJourneyTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--ui-testing-empty-workspace", "--ui-testing-workspace=\(UUID().uuidString)"]
         MorningUITestNavigation.launch(app)
-        let begin = app.buttons["learn.begin"]
+        MorningUITestNavigation.revealControls(in: app)
+        let begin = app.buttons["morning.begin"]
         XCTAssertTrue(begin.waitForExistence(timeout: 10))
         XCTAssertTrue(begin.isHittable, "The first-use learning action must be available before any scroll.")
         attachScreenshot("first-use-learning-above-fold", from: app)
@@ -118,8 +117,8 @@ final class FixtureJourneyTests: XCTestCase {
         tapButton("run.controls", in: app)
         tapButton("run.stop", in: app)
         assertState("stopped", in: app)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].exists, "A stopped routine should offer an explicit restart.")
+        let restart = MorningUITestNavigation.revealMorningAction("run.start", in: app)
+        XCTAssertTrue(restart.isHittable, "A stopped routine should offer an explicit restart.")
         attachScreenshot("fixture-stopped", from: app)
     }
 
@@ -197,11 +196,10 @@ final class FixtureJourneyTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Active routine time"].exists)
         attachScreenshot("fixture-review-empty-history-day", from: app)
         selectTab("Morning", in: app)
-        MorningUITestNavigation.revealMorningAction("morning.reviewDraft", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), "The current draft must remain intact outside history.")
-        app.buttons["morning.closeActions"].tap()
-        tapButton("morning.date", in: app)
-        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), "The date must reopen the period, not a previously pushed day detail.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+                                                    "The current draft must remain intact outside history.")
+        selectTab("Review", in: app)
+        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), "History must reopen the period, not a previously pushed day detail.")
         XCTAssertFalse(app.staticTexts["No routine saved for this day."].exists)
     }
 
@@ -209,8 +207,7 @@ final class FixtureJourneyTests: XCTestCase {
         let app = launchFixture(workspaceID: UUID())
         MorningUITestNavigation.openRoutine(in: app)
         tapButton("routine.approve", in: app)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
         MorningUITestNavigation.openRoutine(in: app)
         tapButton("routine.step.0", in: app)
 
@@ -231,9 +228,8 @@ final class FixtureJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["routine.step.0"].label.contains(editedName))
         MorningUITestNavigation.closeRoutine(in: app)
         selectTab("Morning", in: app)
-        MorningUITestNavigation.revealMorningAction("morning.reviewDraft", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["run.start"].exists, "An edited draft must not start from Morning.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+                                                    "An edited draft must open its editor without starting from Morning.")
 
         // Reuse only this test's UUID under the application's temporary fixture directory.
         // Relaunch must load the existing draft and retained approved version rather than reseed.
@@ -250,8 +246,7 @@ final class FixtureJourneyTests: XCTestCase {
         XCTAssertFalse(app.buttons["routine.approve"].exists)
         MorningUITestNavigation.closeRoutine(in: app)
         selectTab("Morning", in: app)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
 
         tapButton("run.start", in: app)
         tapButton("run.next", in: app)
@@ -262,7 +257,9 @@ final class FixtureJourneyTests: XCTestCase {
         MorningUITestNavigation.launch(app)
         assertState("paused", in: app)
         XCTAssertEqual(stepTitle(in: app), interruptedStep, "Reopening must preserve the current step and require explicit continuation.")
-        XCTAssertTrue(app.buttons["run.resume"].exists)
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertTrue(app.buttons["morning.playback"].isHittable)
+        XCTAssertEqual(app.buttons["morning.playback"].label, "Continue")
         attachScreenshot("fixture-recovered-paused-session", from: app)
         tapButton("run.resume", in: app)
         assertState("running", in: app)
@@ -346,7 +343,7 @@ final class FixtureJourneyTests: XCTestCase {
     }
 
     private func closeLearn(in app: XCUIApplication) {
-        let done = app.navigationBars["Learn my morning"].buttons["Done"]
+        let done = app.navigationBars.buttons.element(boundBy: 0)
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
         waitFor(app.textViews["learn.notes"], exists: false)
@@ -383,27 +380,11 @@ final class FixtureJourneyTests: XCTestCase {
     }
 
     private func assertState(_ expected: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        if expected == "stopped" {
-            MorningUITestNavigation.revealMorningAction("run.start", in: app, file: file, line: line)
-            XCTAssertTrue(app.buttons["run.start"].isHittable, file: file, line: line)
-            XCTAssertFalse(app.buttons["run.pause"].exists, file: file, line: line)
-            return
-        }
-        let state = app.staticTexts["run.state"]
-        XCTAssertTrue(state.waitForExistence(timeout: 5), file: file, line: line)
-        let deadline = Date().addingTimeInterval(5)
-        while !MorningUITestState.labels(for: expected).contains(accessibleText(state)), Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        XCTAssertTrue(MorningUITestState.labels(for: expected).contains(accessibleText(state)), accessibleText(state), file: file, line: line)
+        MorningUITestNavigation.assertSession(state: expected, in: app, file: file, line: line)
     }
 
     private func stepTitle(in app: XCUIApplication) -> String {
-        let step = app.staticTexts["run.step"]
-        XCTAssertTrue(step.waitForExistence(timeout: 5))
-        // A SwiftUI Text uses its accessibility label; its value can be an empty
-        // string even when the title is visible. Values belong to the state/editor.
-        return step.label
+        MorningUITestNavigation.stepTitle(in: app)
     }
 
     private func accessibleText(_ element: XCUIElement) -> String {
@@ -411,15 +392,18 @@ final class FixtureJourneyTests: XCTestCase {
     }
 }
 
-/// Shared navigation for Morning's sunrise actions and the Review home control.
+/// Shared navigation for Home playback and the destinations inside Settings.
 /// The historical method name keeps callers consistent without relying on a tab bar.
 @MainActor
 enum MorningUITestNavigation {
     /// Fixture tests choose their interface language independently of earlier tests.
     /// Ordinary app launches and tests that explicitly set a language keep their choice.
-    static func launch(_ app: XCUIApplication) {
+    static func launch(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         if app.launchArguments.contains("--ui-testing") {
             var arguments = app.launchArguments
+            if !arguments.contains(where: { $0.hasPrefix("--ui-testing-workspace=") }) {
+                arguments.append("--ui-testing-workspace=\(UUID().uuidString)")
+            }
             if !arguments.contains("-more.appLanguage") {
                 let french = arguments.firstIndex(of: "-AppleLanguages").map { index in
                     arguments.indices.contains(index + 1) && arguments[index + 1].contains("fr")
@@ -432,6 +416,18 @@ enum MorningUITestNavigation {
             app.launchArguments = arguments
         }
         app.launch()
+        if let argument = app.launchArguments.first(where: { $0.hasPrefix("--ui-testing-workspace=") }) {
+            let workspace = String(argument.dropFirst("--ui-testing-workspace=".count))
+            let marker = app.staticTexts["qa.testWorkspace"]
+            // Xcode can prelaunch the first target without its test arguments.
+            // Confirm isolation before touching any state, then relaunch once if needed.
+            if !marker.waitForExistence(timeout: 5) || marker.value as? String != workspace {
+                app.terminate()
+                app.launch()
+            }
+            XCTAssertTrue(marker.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            XCTAssertEqual(marker.value as? String, workspace, app.debugDescription, file: file, line: line)
+        }
     }
 
     /// Weather starts from the authorized current position. City-search journeys
@@ -449,210 +445,256 @@ enum MorningUITestNavigation {
         choice.tap()
     }
 
+    static func isHome(_ app: XCUIApplication) -> Bool {
+        app.buttons["morning.actions"].exists || app.scrollViews["morning.captions"].exists
+    }
+
     static func selectTab(_ title: String, in app: XCUIApplication,
                           file: StaticString = #filePath, line: UInt = #line) {
         switch title {
         case "Morning":
-            let home = app.buttons["morning.home"]
-            // Only the first Review screen carries the way home. From a screen
-            // pushed on top of it, go back the way a person would.
-            let back = app.navigationBars.buttons["BackButton"]
-            for _ in 0..<4 where !home.exists && !app.buttons["morning.actions"].exists && back.exists && back.isHittable {
-                back.tap()
-                _ = home.waitForExistence(timeout: 2)
+            for _ in 0..<10 {
+                if isHome(app) { return }
+                let closeDetails = app.buttons["morning.closeDetails"]
+                let closeDestination = app.buttons["destination.close"]
+                let back = app.navigationBars.buttons.element(boundBy: 0)
+                if closeDetails.exists { closeDetails.tap() }
+                else if closeDestination.exists { closeDestination.tap() }
+                else if back.waitForExistence(timeout: 2) { back.tap() }
+                else { break }
             }
-            if home.exists {
-                XCTAssertTrue(home.isHittable, app.debugDescription, file: file, line: line)
-                home.tap()
-            }
-            let closeActions = app.buttons["morning.closeActions"]
-            if closeActions.exists, closeActions.isHittable { closeActions.tap() }
-            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5),
-                          "Morning must expose its sunrise control.\n\(app.debugDescription)", file: file, line: line)
+            XCTAssertTrue(isHome(app), "Expected the actual Home landscape or reading surface.\n\(app.debugDescription)", file: file, line: line)
         case "Review":
-            if app.buttons["morning.home"].exists { return }
-            let destinationClose = app.buttons["destination.close"]
-            if destinationClose.exists, destinationClose.isHittable { destinationClose.tap() }
-            let closeActions = app.buttons["morning.closeActions"]
-            if closeActions.exists, closeActions.isHittable { closeActions.tap() }
-            let date = app.buttons["morning.date"]
-            let expandedReview = app.buttons["morning.review"]
-            if expandedReview.exists, expandedReview.isHittable {
-                expandedReview.tap()
-            } else if date.waitForExistence(timeout: 5), becomesHittable(date) {
-                date.tap()
-            } else {
-                XCTFail("Morning history must open from its date control.", file: file, line: line)
-            }
-            XCTAssertTrue(app.buttons["morning.home"].waitForExistence(timeout: 5),
-                          "Review must expose its return to Morning.\n\(app.debugDescription)", file: file, line: line)
+            if app.scrollViews["review.week"].exists { return }
+            openSettings(in: app, file: file, line: line)
+            tapVisible("setup.history", in: app, file: file, line: line)
+            XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
         default:
             XCTFail("Unsupported destination: \(title)", file: file, line: line)
         }
     }
 
-    /// Right after launch the home screen can still be settling, so an element on screen
-    /// can read as not hittable for a moment. Waits briefly instead of judging once.
+    static func revealControls(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        selectTab("Morning", in: app, file: file, line: line)
+        let settings = app.buttons["morning.settings"]
+        for _ in 0..<3 {
+            if settings.exists && settings.isHittable { return }
+            let captions = app.scrollViews["morning.captions"]
+            let surface = captions.exists ? captions : app.buttons["morning.actions"]
+            XCTAssertTrue(surface.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            surface.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.65)).tap()
+            if settings.waitForExistence(timeout: 2), settings.isHittable { return }
+        }
+        XCTAssertTrue(settings.isHittable, "Home must reveal playback and Settings.", file: file, line: line)
+    }
+
+    static func openSettings(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        if app.descendants(matching: .any).matching(identifier: "settings.appearance").firstMatch.exists { return }
+        revealControls(in: app, file: file, line: line)
+        app.buttons["morning.settings"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.appearance").firstMatch
+            .waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
     static func becomesHittable(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         if element.isHittable { return true }
-        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"),
-                                                 object: element)
-        return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+        let expected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: element)
+        return XCTWaiter.wait(for: [expected], timeout: timeout) == .completed
     }
 
-    /// Opens the visible sunrise menu only when the requested action is hidden.
+    @discardableResult
     static func revealMorningAction(_ identifier: String, in app: XCUIApplication,
-                                    file: StaticString = #filePath, line: UInt = #line) {
-        let action = app.buttons[identifier]
-        if action.exists, action.isHittable { return }
-        let sunrise = app.buttons["morning.actions"]
-        if sunrise.exists {
-            XCTAssertTrue(becomesHittable(sunrise), app.debugDescription, file: file, line: line)
-            sunrise.tap()
-        } else if !app.buttons["morning.closeActions"].exists {
-            XCTAssertTrue(sunrise.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
-            XCTAssertTrue(sunrise.isHittable, app.debugDescription, file: file, line: line)
-            sunrise.tap()
+                                    file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        switch identifier {
+        case "run.start", "morning.begin":
+            revealControls(in: app, file: file, line: line)
+            return app.buttons["morning.begin"]
+        case "morning.review", "morning.reviewDraft":
+            openSettings(in: app, file: file, line: line)
+            return app.buttons["setup.routine"]
+        case "morning.learn":
+            selectTab("Review", in: app, file: file, line: line)
+            return app.buttons["review.learn"]
+        case "morning.settings":
+            revealControls(in: app, file: file, line: line)
+            return app.buttons[identifier]
+        default:
+            openSettings(in: app, file: file, line: line)
+            return app.buttons[identifier]
         }
-        XCTAssertTrue(action.waitForExistence(timeout: 5), "Missing morning action: \(identifier)\n\(app.debugDescription)", file: file, line: line)
-        let horizontal = app.scrollViews["morning.actionsScroll"]
-        for _ in 0..<4 where !action.isHittable && horizontal.exists {
-            if action.frame.midX < horizontal.frame.midX { horizontal.swipeRight() }
-            else { horizontal.swipeLeft() }
-        }
-        XCTAssertTrue(action.isHittable, app.debugDescription, file: file, line: line)
     }
 
-    /// The dock's actions do not exist until the sunrise is opened. This opens
-    /// it when needed, checks that `identifier` is offered and `absent` is not,
-    /// then closes it again so the screen is left as it was found.
     static func assertMorningAction(_ identifier: String, without absent: String? = nil, in app: XCUIApplication,
                                     timeout: TimeInterval = 10, _ message: String = "",
                                     file: StaticString = #filePath, line: UInt = #line) {
-        let action = app.buttons[identifier]
-        let sunrise = app.buttons["morning.actions"]
-        let close = app.buttons["morning.closeActions"]
-        let opened = !close.exists
-        if opened {
-            XCTAssertTrue(sunrise.waitForExistence(timeout: timeout),
-                          "Morning must expose its sunrise control. \(message)\n\(app.debugDescription)", file: file, line: line)
-            sunrise.tap()
+        if identifier == "morning.reviewDraft" || absent == "run.start" {
+            // Play opens an unapproved editor, rather than creating a session.
+            revealControls(in: app, file: file, line: line)
+            app.buttons["morning.begin"].tap()
+            XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
+                .waitForExistence(timeout: timeout), message, file: file, line: line)
+            XCTAssertTrue(app.buttons["routine.approve"].exists, message, file: file, line: line)
+            closeRoutine(in: app, file: file, line: line)
+            selectTab("Morning", in: app, file: file, line: line)
+            XCTAssertFalse(app.scrollViews["morning.captions"].exists, "A draft must not start. \(message)", file: file, line: line)
+            return
         }
-        XCTAssertTrue(action.waitForExistence(timeout: 5),
-                      "Missing morning action: \(identifier). \(message)\n\(app.debugDescription)", file: file, line: line)
-        if let absent {
-            XCTAssertFalse(app.buttons[absent].exists,
-                           "Unexpected morning action: \(absent). \(message)\n\(app.debugDescription)", file: file, line: line)
+        if identifier == "run.start" {
+            // Play is also offered for drafts; verify approval before claiming readiness.
+            openRoutine(in: app, file: file, line: line)
+            XCTAssertTrue(app.buttons["routine.step.0"].waitForExistence(timeout: timeout), message, file: file, line: line)
+            XCTAssertFalse(app.buttons["routine.approve"].exists, "Starting requires an approved routine. \(message)", file: file, line: line)
+            closeRoutine(in: app, file: file, line: line)
         }
-        if opened {
-            closeMorningActions(in: app, file: file, line: line)
-        }
+        let action = revealMorningAction(identifier, in: app, file: file, line: line)
+        XCTAssertTrue(action.waitForExistence(timeout: timeout) && becomesHittable(action), message, file: file, line: line)
+        closeMorningActions(in: app, file: file, line: line)
     }
 
     static func closeMorningActions(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let close = app.buttons["morning.closeActions"]
-        XCTAssertTrue(close.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
-        close.tap()
-        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        selectTab("Morning", in: app, file: file, line: line)
+        if app.buttons["morning.settings"].exists {
+            let captions = app.scrollViews["morning.captions"]
+            let surface = captions.exists ? captions : app.buttons["morning.actions"]
+            surface.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.65)).tap()
+        }
     }
 
     static func reviewAction(_ identifier: String, in app: XCUIApplication,
                              file: StaticString = #filePath, line: UInt = #line) {
+        if identifier == "navigation.setup" { openSettings(in: app, file: file, line: line); return }
         selectTab("Review", in: app, file: file, line: line)
-        tapButton(identifier, in: app, file: file, line: line)
+        tapVisible(identifier, in: app, file: file, line: line)
     }
 
     static func openRoutine(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        if app.buttons["morning.review"].exists {
-            tapButton("morning.review", in: app, file: file, line: line)
-        } else {
-            reviewAction("review.routine", in: app, file: file, line: line)
-        }
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch.waitForExistence(timeout: 5), file: file, line: line)
+        if app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch.exists { return }
+        openSettings(in: app, file: file, line: line)
+        tapVisible("setup.routine", in: app, file: file, line: line)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
+            .waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
     }
 
     static func closeRoutine(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let editor = app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 5), file: file, line: line)
         let done = app.buttons["destination.close"]
-        XCTAssertTrue(done.isHittable, file: file, line: line)
-        done.tap()
-        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: editor)
-        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed, file: file, line: line)
+        if done.exists { done.tap() }
+        else {
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            XCTAssertTrue(back.waitForExistence(timeout: 5), file: file, line: line)
+            back.tap()
+        }
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5), file: file, line: line)
     }
 
-    /// Starting a morning answers its opening with "start my routine", so a journey about
-    /// the routine continues from the first moment. Pass `keepingOpening` to stay on it.
     static func tapButton(_ identifier: String, in app: XCUIApplication, keepingOpening: Bool = false,
                           file: StaticString = #filePath, line: UInt = #line) {
-        if ["run.start", "run.resume", "morning.reviewDraft", "morning.review", "morning.learn", "morning.settings"].contains(identifier) {
-            revealMorningAction(identifier, in: app, file: file, line: line)
-        }
-        let button = app.buttons[identifier]
-        if !button.waitForExistence(timeout: 5) {
-            // A native list creates its rows as they scroll into view, so a row
-            // below the fold does not exist yet. Scroll the list to reach it.
-            let list = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
-            for _ in 0..<8 where !button.exists && list.exists { list.swipeUp() }
-        }
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)", file: file, line: line)
-        // A control on a sheet that is still sliding in exists before it can be
-        // touched. Give it a moment before deciding it has to be scrolled to.
-        // Known and left as it is: on the iOS 27.0 simulator XCTest sometimes
-        // cannot compute a control's hit point and records "Failed to determine
-        // hittability … Activation point invalid" as a failure of the test,
-        // instead of answering no. Tolerating it with an expected failure was
-        // tried and removed: a matched expected failure ends the test on the
-        // spot without a failure, so its remaining checks never run.
-        func canBeTouched() -> Bool { button.exists && button.isHittable }
-        let touchable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in canBeTouched() }, object: nil)
-        _ = XCTWaiter.wait(for: [touchable], timeout: 2)
-        for _ in 0..<4 where !canBeTouched() {
-            let collection = app.collectionViews.containing(.button, identifier: identifier).firstMatch
-            let table = app.tables.containing(.button, identifier: identifier).firstMatch
-            let scroll = app.scrollViews.containing(.button, identifier: identifier).firstMatch
-            let container: XCUIElement
-            if collection.exists { container = collection }
-            else if table.exists { container = table }
-            else {
-                XCTAssertTrue(scroll.exists, "No visible scroll container for \(identifier)", file: file, line: line)
-                container = scroll
-            }
-            // Review preserves its scroll position after Settings/Learn closes. A row
-            // above that position needs the opposite gesture from a row below it.
-            if button.frame.height > 0, button.frame.midY < container.frame.midY { container.swipeDown() }
-            else { container.swipeUp() }
-        }
-        XCTAssertTrue(button.isHittable, "Control is not hittable: \(identifier)", file: file, line: line)
-        button.tap()
-        if identifier == "run.start" {
-            let confirm = app.buttons["morning.confirmStart"]
-            XCTAssertTrue(confirm.waitForExistence(timeout: 5),
-                          "Play must open the explicit ready state.\n\(app.debugDescription)", file: file, line: line)
-            XCTAssertTrue(confirm.isHittable && confirm.isEnabled, app.debugDescription, file: file, line: line)
-            confirm.tap()
-            XCTAssertTrue(confirm.waitForNonExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        switch identifier {
+        case "run.start":
+            revealControls(in: app, file: file, line: line)
+            tapVisible("morning.begin", in: app, file: file, line: line)
             if !keepingOpening { chooseRoutineAtOpening(in: app, file: file, line: line) }
+            return
+        case "run.controls": openSettings(in: app, file: file, line: line); return
+        case "run.pause", "run.resume", "run.next", "run.stop":
+            openSettings(in: app, file: file, line: line)
+            let actual = ["run.pause": "morning.playback", "run.resume": "morning.playback",
+                          "run.next": "morning.next", "run.stop": "morning.stop"][identifier]!
+            tapVisible(actual, in: app, file: file, line: line)
+            selectTab("Morning", in: app, file: file, line: line)
+            return
+        case "morning.date", "morning.review": selectTab("Review", in: app, file: file, line: line); return
+        case "morning.reviewDraft": openRoutine(in: app, file: file, line: line); return
+        case "morning.learn": reviewAction("review.learn", in: app, file: file, line: line); return
+        case "morning.settings", "navigation.setup": openSettings(in: app, file: file, line: line); return
+        case "morning.begin": revealControls(in: app, file: file, line: line)
+        case "morning.next", "morning.extend", "morning.details", "morning.stop":
+            if !app.buttons[identifier].exists { openSettings(in: app, file: file, line: line) }
+        default: break
         }
+        tapVisible(identifier, in: app, file: file, line: line)
     }
 
-    /// Every started morning opens with a greeting and a choice (issue #28).
-    static func chooseRoutineAtOpening(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let close = app.buttons["morning.closeActions"]
-        if close.exists && close.isHittable { close.tap() }
-        let routine = app.buttons["opening.routine"]
-        XCTAssertTrue(routine.waitForExistence(timeout: 15),
-                      "A started morning must show its opening.\n\(app.debugDescription)", file: file, line: line)
-        // Larger text scrolls the page: the opening may be above or below what is visible.
-        let scroll = app.scrollViews.containing(.button, identifier: "opening.routine").firstMatch
-        for _ in 0..<6 where !routine.isHittable && scroll.exists {
-            if routine.frame.height > 0, routine.frame.midY < scroll.frame.midY { scroll.swipeDown() }
-            else { scroll.swipeUp() }
+    private static func tapVisible(_ identifier: String, in app: XCUIApplication,
+                                   file: StaticString, line: UInt) {
+        let button = app.buttons[identifier]
+        for _ in 0..<10 {
+            if button.exists {
+                let frame = button.frame
+                let collection = app.collectionViews.containing(.button, identifier: identifier).firstMatch
+                let table = app.tables.containing(.button, identifier: identifier).firstMatch
+                let scroll = app.scrollViews.containing(.button, identifier: identifier).firstMatch
+                let container: XCUIElement = collection.exists ? collection : (table.exists ? table : scroll)
+                var viewport = (container.exists ? container.frame : app.frame).intersection(app.frame)
+                if container.exists {
+                    let navigation = app.navigationBars.firstMatch
+                    let top = navigation.exists ? max(viewport.minY, navigation.frame.maxY) : viewport.minY
+                    let selectionSummary = app.staticTexts["observations.selectionSummary"]
+                    // List AX frames include the pinned selection footer. Its covered rows
+                    // can report hittable even though a tap reaches the footer instead.
+                    let bottom = selectionSummary.exists
+                        ? min(viewport.maxY, selectionSummary.frame.minY - 20) : viewport.maxY
+                    viewport = CGRect(x: viewport.minX, y: top, width: viewport.width, height: max(0, bottom - top))
+                }
+                if !frame.isEmpty, viewport.contains(CGPoint(x: frame.midX, y: frame.midY)), button.isHittable { break }
+                if container.exists {
+                    let distance = viewport.midY - frame.midY
+                    let start = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: distance > 0 ? 0.2 : 0.8))
+                    let step = min(viewport.height * 0.6, max(-viewport.height * 0.6, distance))
+                    start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: step)),
+                                withVelocity: .slow, thenHoldForDuration: 0.2)
+                }
+            } else {
+                let container = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
+                if container.exists { container.swipeUp() }
+                else if button.waitForExistence(timeout: 2) { continue }
+            }
         }
-        XCTAssertTrue(routine.isHittable, app.debugDescription, file: file, line: line)
-        routine.tap()
-        XCTAssertTrue(routine.waitForNonExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing control: \(identifier)\n\(app.debugDescription)", file: file, line: line)
+        XCTAssertTrue(button.isHittable, "Control is not touchable: \(identifier)", file: file, line: line)
+        button.tap()
     }
+
+    static func sessionSnapshot(in app: XCUIApplication) -> [String: String] {
+        let caption = app.staticTexts["morning.caption"]
+        let value = (caption.exists ? caption.value : app.buttons["morning.actions"].value) as? String ?? ""
+        guard let json = value.components(separatedBy: "\n").last?.data(using: .utf8),
+              let fields = try? JSONSerialization.jsonObject(with: json) as? [String: String] else { return [:] }
+        return fields
+    }
+
+    static func stepTitle(in app: XCUIApplication) -> String { sessionSnapshot(in: app)["step"] ?? "" }
+
+    static func assertSession(state: String, step: String? = nil, in app: XCUIApplication,
+                              file: StaticString = #filePath, line: UInt = #line) {
+        selectTab("Morning", in: app, file: file, line: line)
+        let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let snapshot = sessionSnapshot(in: app)
+            return snapshot["state"] == state && (step == nil || snapshot["step"] == step)
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 10), .completed,
+                       "Expected \(state), step \(step ?? "any"); actual \(sessionSnapshot(in: app))", file: file, line: line)
+    }
+
+    static func chooseRoutineAtOpening(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        selectTab("Morning", in: app, file: file, line: line)
+        let captions = app.scrollViews["morning.captions"]
+        XCTAssertTrue(captions.waitForExistence(timeout: 15), app.debugDescription, file: file, line: line)
+        let prepared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            sessionSnapshot(in: app)["opening"] != "preparing"
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [prepared], timeout: 15), .completed, file: file, line: line)
+        if sessionSnapshot(in: app)["opening"] != "none" {
+            revealControls(in: app, file: file, line: line)
+            tapVisible("morning.playback", in: app, file: file, line: line)
+        }
+        let started = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            sessionSnapshot(in: app)["opening"] == "none"
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [started], timeout: 10), .completed, file: file, line: line)
+    }
+
 }
 
 /// Lifecycle tests accept the human state in either supported app language.

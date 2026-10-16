@@ -12,7 +12,7 @@ final class SunriseDockTests: XCTestCase {
         attach("quiet-solar-day-arrival", app)
 
         reveal(in: app)
-        for identifier in ["morning.settings", "morning.review", "morning.begin", "morning.closeActions"] {
+        for identifier in ["morning.settings", "morning.begin"] {
             assertReachable(identifier, in: app)
         }
         XCTAssertFalse(app.buttons["morning.playback"].exists,
@@ -20,9 +20,9 @@ final class SunriseDockTests: XCTestCase {
         XCTAssertEqual(app.tabBars.count, 0)
         attach("quiet-solar-day-controls", app)
 
-        app.buttons["morning.closeActions"].tap()
+        hideControls(in: app)
         assertQuietArrival(in: app)
-        app.buttons["morning.actions"].tap()
+        app.buttons["morning.actions"].coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.17)).tap()
         assertReachable("morning.begin", in: app)
         app.buttons["morning.actions"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.17)).tap()
         assertQuietArrival(in: app)
@@ -39,7 +39,8 @@ final class SunriseDockTests: XCTestCase {
 
         app = launch()
         reveal(in: app)
-        app.buttons["morning.review"].tap()
+        app.buttons["morning.settings"].tap()
+        MorningUITestNavigation.tapButton("setup.routine", in: app)
         let editor = app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.buttons["morning.playback"].exists)
@@ -47,12 +48,16 @@ final class SunriseDockTests: XCTestCase {
     }
 
     func testEmptyWorkspaceRemainsQuietAndBothEntryActionsOpenLearning() {
-        for identifier in ["morning.review", "morning.begin"] {
+        for throughSettings in [false, true] {
             let app = launch(empty: true)
             assertQuietArrival(in: app)
             reveal(in: app)
-            assertReachable(identifier, in: app)
-            app.buttons[identifier].tap()
+            if throughSettings {
+                app.buttons["morning.settings"].tap()
+                MorningUITestNavigation.tapButton("setup.routine", in: app)
+            } else {
+                app.buttons["morning.begin"].tap()
+            }
             XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 5), app.debugDescription)
             XCTAssertFalse(app.buttons["morning.playback"].exists)
             XCTAssertEqual(app.alerts.count, 0)
@@ -64,21 +69,23 @@ final class SunriseDockTests: XCTestCase {
         let app = launch()
         reveal(in: app)
         app.buttons["morning.begin"].tap()
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+        MorningUITestNavigation.revealControls(in: app)
         let playback = app.buttons["morning.playback"]
-        XCTAssertTrue(playback.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(app.staticTexts["morning.currentStep"].exists, app.debugDescription)
-        assertReachable("morning.next", in: app)
         XCTAssertEqual(playback.label, "Pause")
+        XCTAssertFalse(app.buttons["morning.next"].exists, "Additional commands belong in Settings.")
         playback.tap()
         XCTAssertEqual(playback.label, "Continue")
         playback.tap()
         XCTAssertEqual(playback.label, "Pause")
         attach("quiet-solar-running-controls", app)
-
-        app.buttons["morning.closeActions"].tap()
-        assertQuietArrival(in: app)
-        reveal(in: app)
+        app.scrollViews["morning.captions"].coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.2)).tap()
+        XCTAssertTrue(playback.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["morning.settings"].exists)
+        MorningUITestNavigation.revealControls(in: app)
         assertReachable("morning.playback", in: app)
+        app.buttons["morning.settings"].tap()
         assertReachable("morning.next", in: app)
         XCTAssertEqual(app.alerts.count, 0)
     }
@@ -89,7 +96,7 @@ final class SunriseDockTests: XCTestCase {
             assertQuietArrival(in: app)
             attach("quiet-solar-\(phase)-arrival", app)
             reveal(in: app)
-            for identifier in ["morning.settings", "morning.review", "morning.begin"] {
+            for identifier in ["morning.settings", "morning.begin"] {
                 assertReachable(identifier, in: app)
             }
             attach("quiet-solar-\(phase)-controls", app)
@@ -105,11 +112,11 @@ final class SunriseDockTests: XCTestCase {
         XCTAssertGreaterThan(app.frame.width, app.frame.height, app.debugDescription)
         attach("weather-partlyCloudy-day-landscape", app)
         reveal(in: app)
-        for identifier in ["morning.settings", "morning.review", "morning.begin", "morning.closeActions"] {
+        for identifier in ["morning.settings", "morning.begin"] {
             assertReachable(identifier, in: app)
         }
         attach("weather-partlyCloudy-day-landscape-controls", app)
-        app.buttons["morning.closeActions"].tap()
+        hideControls(in: app)
         assertQuietArrival(in: app)
     }
 
@@ -150,8 +157,8 @@ final class SunriseDockTests: XCTestCase {
             attach("weather-\(weather)-\(phase)-interactive", app)
             reveal(in: app)
             assertReachable("morning.begin", in: app)
-            assertReachable("morning.closeActions", in: app)
-            app.buttons["morning.closeActions"].tap()
+            assertReachable("morning.settings", in: app)
+            hideControls(in: app)
             assertQuietArrival(in: app)
             app.terminate()
         }
@@ -177,9 +184,13 @@ final class SunriseDockTests: XCTestCase {
         assertQuietArrival(in: app)
         attach("weather-not-selected", app)
         reveal(in: app)
-        assertReachable("morning.solarCity", in: app)
-        app.buttons["morning.solarCity"].tap()
-        XCTAssertTrue(app.buttons["setup.briefing"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["morning.settings"].tap()
+        MorningUITestNavigation.tapButton("setup.briefing", in: app)
+        XCTAssertTrue(app.navigationBars["Your day"].waitForExistence(timeout: 5), app.debugDescription)
+        MorningUITestNavigation.chooseManualWeatherCity(in: app)
+        let city = app.textFields["briefing.citySearch"]
+        for _ in 0..<8 where !city.exists || !city.isHittable { app.swipeUp() }
+        XCTAssertTrue(city.exists && city.isHittable)
         XCTAssertEqual(app.alerts.count, 0)
     }
 
@@ -188,8 +199,8 @@ final class SunriseDockTests: XCTestCase {
         for point in [CGVector(dx: 0.1, dy: 0.17), CGVector(dx: 0.9, dy: 0.85)] {
             assertQuietArrival(in: app)
             app.buttons["morning.actions"].coordinate(withNormalizedOffset: point).tap()
-            XCTAssertTrue(app.buttons["morning.closeActions"].waitForExistence(timeout: 5), app.debugDescription)
-            app.buttons["morning.closeActions"].tap()
+            XCTAssertTrue(app.buttons["morning.settings"].waitForExistence(timeout: 5), app.debugDescription)
+            hideControls(in: app)
         }
         assertQuietArrival(in: app)
     }
@@ -203,16 +214,22 @@ final class SunriseDockTests: XCTestCase {
         assertQuietArrival(in: app)
         attach("quiet-solar-night-fr-largest-reduced-motion", app)
         reveal(in: app)
-        for identifier in ["morning.settings", "morning.review", "morning.begin", "morning.closeActions"] {
+        for identifier in ["morning.settings", "morning.begin"] {
             assertReachable(identifier, in: app)
         }
-        assertReachable("morning.review", in: app)
-        attach("quiet-solar-night-fr-largest-footer", app)
-        assertReachable("morning.solarCity", in: app)
-        attach("quiet-solar-night-fr-largest-city", app)
-        assertReachable("morning.begin", in: app)
-        attach("quiet-solar-night-fr-largest-begin", app)
         attach("quiet-solar-night-fr-largest-controls", app)
+        app.buttons["morning.settings"].tap()
+        MorningUITestNavigation.tapButton("setup.routine", in: app)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch.waitForExistence(timeout: 5))
+        attach("quiet-solar-night-fr-largest-routine", app)
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        MorningUITestNavigation.tapButton("setup.briefing", in: app)
+        MorningUITestNavigation.chooseManualWeatherCity(in: app)
+        let city = app.textFields["briefing.citySearch"]
+        for _ in 0..<12 where !city.exists || !city.isHittable { app.swipeUp() }
+        XCTAssertTrue(city.exists && city.isHittable)
+        attach("quiet-solar-night-fr-largest-city", app)
     }
 
     func testNightTwinklesAndReducedMotionLeavesTheLandscapeStill() {
@@ -262,7 +279,7 @@ final class SunriseDockTests: XCTestCase {
             attach("measured-weather-\(weather)-t3.2", screenshot)
             reveal(in: app)
             assertReachable("morning.settings", in: app)
-            assertReachable("morning.closeActions", in: app)
+            assertReachable("morning.settings", in: app)
             app.terminate()
         }
         for (first, second) in [("calm", "breeze"), ("calm", "gustOnly"), ("breeze", "strongWind"), ("westWind", "eastWind"), ("calm", "humid")] {
@@ -318,8 +335,8 @@ final class SunriseDockTests: XCTestCase {
             attach("motion-cloudy-day-t\(seconds)", before)
 
             reveal(in: app)
-            assertReachable("morning.closeActions", in: app)
-            app.buttons["morning.closeActions"].tap()
+            assertReachable("morning.settings", in: app)
+            hideControls(in: app)
             assertQuietArrival(in: app)
             let after = app.buttons["morning.actions"].screenshot()
             XCTAssertEqual(pixels, scenePixels(after),
@@ -417,7 +434,7 @@ final class SunriseDockTests: XCTestCase {
         if !extra.contains("-AppleLanguages") {
             app.launchArguments += ["-more.appLanguage", "en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         }
-        app.launch()
+        MorningUITestNavigation.launch(app)
         return app
     }
 
@@ -446,8 +463,13 @@ final class SunriseDockTests: XCTestCase {
         let landscape = app.buttons["morning.actions"]
         XCTAssertTrue(landscape.waitForExistence(timeout: 10), file: file, line: line)
         landscape.tap()
-        XCTAssertTrue(app.buttons["morning.closeActions"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.buttons["morning.settings"].waitForExistence(timeout: 5),
                       app.debugDescription, file: file, line: line)
+    }
+
+    private func hideControls(in app: XCUIApplication) {
+        app.buttons["morning.actions"].coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.17)).tap()
+        XCTAssertTrue(app.buttons["morning.settings"].waitForNonExistence(timeout: 5), app.debugDescription)
     }
 
     private func assertReachable(_ identifier: String, in app: XCUIApplication,

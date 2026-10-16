@@ -4,6 +4,23 @@ import Testing
 
 @Suite("Spoken passage captions")
 struct SpeechCaptionProgressTests {
+    @Test("Live input replaces hypotheses and keeps the latest words, including corrections")
+    @MainActor func liveInputCaptions() {
+        for text in ["", "Je", "Je voudrais", "Je voudrais connaître mon prochain rendez-vous.",
+                     "Je voudrais connaître mes prochains rendez-vous.", "  🌅 À demain !  "] {
+            #expect(SpeechCoordinator.inputCaption(text) == text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        let text = String(repeating: "Je voudrais revoir les messages de ce matin, ", count: 8)
+            + "puis prépare une réponse pour demain matin."
+        let caption = SpeechCoordinator.inputCaption(text)
+        #expect(caption.count <= 111)
+        #expect(caption.hasPrefix("…"))
+        #expect(caption.hasSuffix("puis prépare une réponse pour demain matin."))
+        #expect(!caption.contains("…voudrais"), "A rolling passage starts at a word boundary.")
+        let emoji = String(repeating: "👨‍👩‍👧‍👦", count: 150)
+        #expect(SpeechCoordinator.inputCaption(emoji) == "…" + String(emoji.suffix(110)))
+    }
+
     @Test("Captions follow actual UTF-16 speech ranges and remain bounded")
     func followsSpokenRange() throws {
         let text = String(repeating: "🌅 À neuf heures, votre matin continue. ", count: 15)

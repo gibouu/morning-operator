@@ -135,9 +135,9 @@ final class OnDeviceLearningTests: XCTestCase {
     }
 
     private func closeLearn(in app: XCUIApplication) {
-        let done = app.navigationBars["Learn my morning"].buttons["Done"]
-        XCTAssertTrue(done.isHittable)
-        done.tap()
+        let back = app.navigationBars["Learn my morning"].buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5) && back.isHittable)
+        back.tap()
         waitAbsent(app.textViews["learn.notes"])
     }
 

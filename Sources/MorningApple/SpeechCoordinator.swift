@@ -75,6 +75,15 @@ struct SpeechCaptionProgress {
 @MainActor
 @Observable
 public final class SpeechCoordinator: NSObject {
+    /// Keep the newest recognized words in Home's single short passage.
+    public static func inputCaption(_ transcript: String) -> String {
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count > 110 else { return text }
+        let tail = text.suffix(110)
+        let start = tail.firstIndex(where: \.isWhitespace).map { tail.index(after: $0) } ?? tail.startIndex
+        return "…" + tail[start...]
+    }
+
     public private(set) var state: SpeechPlaybackState = .idle
     public private(set) var lastError: String?
     /// Identifies the current utterance so a preview cannot stop later routine speech.

@@ -70,6 +70,27 @@ struct MorningDottedDisc: Shape {
     }
 }
 
+/// Short, separated impressions echo the rays of the app icon.
+private struct MorningDottedSunRays: Shape {
+    func path(in rect: CGRect) -> Path {
+        let side = min(rect.width, rect.height)
+        var path = Path()
+        for ray in 0..<16 {
+            let angle = Double(ray) * .pi / 8
+            let count = ray.isMultiple(of: 2) ? 3 : 2
+            for impression in 0..<count {
+                let reach = side * (0.35 + CGFloat(impression) * 0.04)
+                let radius = side * 0.01
+                let x = rect.midX + cos(angle) * reach
+                let y = rect.midY + sin(angle) * reach
+                path.addEllipse(in: CGRect(x: x - radius, y: y - radius,
+                                          width: radius * 2, height: radius * 2))
+            }
+        }
+        return path
+    }
+}
+
 /// The scene is driven by local time, independently of routine completion.
 /// It is decorative: cards and controls remain opaque reading surfaces above it.
 struct MorningCelestialArtwork: View {
@@ -487,21 +508,25 @@ struct MorningQuietLandscape: View {
             let visibility = weather?.celestialVisibility ?? 1
             let altitude = min(1, max(0, (0.76 - scene.sun.centerY) / 0.58))
             let diameter = min(size.width * 0.30, min(size.height * 0.25, 142))
+            let sunlight = LinearGradient(colors: [Color(red: 1, green: 0.85, blue: 0.43),
+                Color(red: 0.96, green: 0.38 + 0.34 * altitude, blue: 0.12 + 0.13 * altitude)],
+                startPoint: .top, endPoint: .bottom)
             ZStack {
                 MorningQuietSky(night: night, weather: weather, strongInk: strongInk)
                 MorningWallpaperStars(night: night * (weather?.starVisibility ?? 1), animated: animated,
                                       active: active, pausedAt: pausedAt, suspendedInterval: suspendedInterval)
-                MorningDottedDisc(cells: 37)
-                    .fill(LinearGradient(colors: [Color(red: 1, green: 0.85, blue: 0.43),
-                        Color(red: 0.96, green: 0.38 + 0.34 * altitude, blue: 0.12 + 0.13 * altitude)],
-                        startPoint: .top, endPoint: .bottom))
-                    .frame(width: diameter, height: diameter)
-                    .position(position(scene.sun, in: size))
-                    .opacity(scene.sun.opacity * visibility)
+                ZStack {
+                    MorningDottedSunRays().fill(sunlight)
+                        .frame(width: diameter * 1.6, height: diameter * 1.6)
+                    MorningDottedDisc(cells: 37).fill(sunlight)
+                        .frame(width: diameter, height: diameter)
+                }
+                .position(position(scene.sun, in: size, radius: diameter * 0.72))
+                .opacity(scene.sun.opacity * visibility)
                 MorningDottedDisc(kind: .moon, cells: 37)
                     .fill(Color(red: 0.92, green: 0.91, blue: 0.81))
                     .frame(width: diameter * 0.88, height: diameter * 0.88)
-                    .position(position(scene.moon, in: size))
+                    .position(position(scene.moon, in: size, radius: diameter * 0.44))
                     .opacity(night * visibility)
                 if let weather {
                     // The expensive dot grids are traced once, outside the timeline.
@@ -541,10 +566,11 @@ struct MorningQuietLandscape: View {
         }
     }
 
-    private func position(_ body: MorningCelestialPosition, in size: CGSize) -> CGPoint {
+    private func position(_ body: MorningCelestialPosition, in size: CGSize, radius: CGFloat) -> CGPoint {
         let progress = min(1, max(0, (body.centerX - 0.12) / 0.76))
         let height = min(1, max(0, (0.76 - body.centerY) / 0.58))
-        return CGPoint(x: size.width * (0.16 + 0.68 * progress), y: size.height * (0.61 - 0.23 * height))
+        let inset = max(size.width * 0.16, radius)
+        return CGPoint(x: inset + (size.width - 2 * inset) * progress, y: size.height * (0.61 - 0.23 * height))
     }
 
     private func dot(_ path: inout Path, x: Double, y: Double, radius: Double) {

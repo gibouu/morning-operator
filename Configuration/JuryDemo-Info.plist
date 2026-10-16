@@ -92,7 +92,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MORE listens during your hands-free morning so you can interrupt, pause or request an action, including while you use another app. Listening stops when you end your morning.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>MORE transcribes your requested voice commands and drafts.</string>
+	<string>MORE transcribes your words on this iPhone to show live captions and understand your voice commands and drafts.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>MORE reads your schedule for spoken briefings and saves calendar events only when you confirm them.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>

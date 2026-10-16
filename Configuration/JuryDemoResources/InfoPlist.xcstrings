@@ -116,13 +116,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE transcribes your requested voice commands and drafts."
+            "value": "MORE transcribes your words on this iPhone to show live captions and understand your voice commands and drafts."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE transcrit les commandes vocales et les notes que vous dictez."
+            "value": "MORE transcrit vos paroles sur cet iPhone pour les afficher en direct et comprendre vos commandes et vos notes dictées."
           }
         }
       }

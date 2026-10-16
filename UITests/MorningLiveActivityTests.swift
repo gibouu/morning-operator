@@ -7,15 +7,20 @@ import XCTest
 final class MorningLiveActivityTests: XCTestCase {
     private var runningApp: XCUIApplication?
 
-    override func tearDown() {
-        if let app = runningApp {
-            // A relaunch reconciles only this test's process-era activities.
-            app.terminate(); MorningUITestNavigation.launch(app)
-            _ = app.buttons["morning.actions"].waitForExistence(timeout: 10)
-            app.terminate()
+    override func tearDown() async throws {
+        await MainActor.run {
+            if let app = runningApp {
+                // A relaunch reconciles only this test's process-era activities.
+                app.terminate(); MorningUITestNavigation.launch(app)
+                let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    app.buttons["morning.actions"].exists || app.staticTexts["morning.caption"].exists
+                }, object: nil)
+                _ = XCTWaiter.wait(for: [restored], timeout: 10)
+                app.terminate()
+            }
+            runningApp = nil
         }
-        runningApp = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testNativeProgressTracksPauseAdvanceAndEndsWhenDisabled() throws {
@@ -56,7 +61,7 @@ final class MorningLiveActivityTests: XCTestCase {
         assertNative("count:1|status:needsAttention|complete:0|total:4|category:briefing", in: app)
         closeSettings(app)
         app.terminate(); MorningUITestNavigation.launch(app)
-        XCTAssertTrue(app.buttons["run.resume"].waitForExistence(timeout: 10))
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
         openSettings(app)
         XCTAssertEqual(app.switches["activity.enabled"].firstMatch.value as? String, "1")
         assertNative("count:0", in: app)
@@ -82,7 +87,7 @@ final class MorningLiveActivityTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [background], timeout: 10), .completed)
         attach("native-activity-springboard-after-background", springboard)
         app.activate()
-        XCTAssertTrue(app.buttons["run.resume"].waitForExistence(timeout: 10))
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
         openSettings(app)
         assertNative("count:1|status:paused|complete:0|total:4|category:briefing", in: app)
         setEnabled(false, in: app)
@@ -107,9 +112,9 @@ final class MorningLiveActivityTests: XCTestCase {
         forget.tap()
         XCTAssertTrue(app.buttons["privacy.confirmForget"].waitForExistence(timeout: 5))
         app.buttons["privacy.confirmForget"].tap()
-        XCTAssertTrue(app.buttons["learn.begin"].waitForExistence(timeout: 20))
+        assertEmptyMorning(app, timeout: 20)
         app.terminate(); MorningUITestNavigation.launch(app)
-        XCTAssertTrue(app.buttons["learn.begin"].waitForExistence(timeout: 10))
+        assertEmptyMorning(app, timeout: 10)
         openSettings(app)
         XCTAssertEqual(app.switches["activity.enabled"].firstMatch.value as? String, "0")
         assertNative("count:0", in: app)
@@ -152,10 +157,13 @@ final class MorningLiveActivityTests: XCTestCase {
         stale.press(forDuration: 1)
         attachExpandedPresentation("native-island-stale-progress", springboard)
         stale.tap()
-        XCTAssertTrue(app.buttons["run.resume"].waitForExistence(timeout: 10))
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
         XCTAssertEqual(app.state, .runningForeground)
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
-        XCTAssertFalse(app.buttons["run.pause"].exists, "A reveal-only tap must not resume the run.")
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertEqual(app.buttons["morning.playback"].label, "Continue")
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none",
+                       "Opening or revealing the existing morning must not restart it.")
         openSettings(app); setEnabled(false, in: app); assertNative("count:0", in: app)
     }
 
@@ -173,7 +181,9 @@ final class MorningLiveActivityTests: XCTestCase {
     }
 
     private func openSettings(_ app: XCUIApplication) {
-        MorningUITestNavigation.reviewAction("navigation.setup", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        // Keep the explicit opt-in honest: this control currently has no
+        // Settings entry, so this native suite must fail if explicitly enabled.
         tap("setup.activity", app)
         XCTAssertTrue(app.navigationBars["Lock Screen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["activity.nativeDiagnostic"].waitForExistence(timeout: 5))
@@ -181,7 +191,15 @@ final class MorningLiveActivityTests: XCTestCase {
 
     private func closeSettings(_ app: XCUIApplication) {
         app.navigationBars["Lock Screen"].buttons["Done"].tap()
-        app.navigationBars["Settings"].buttons["Done"].tap()
+        MorningUITestNavigation.selectTab("Morning", in: app)
+    }
+
+    private func assertEmptyMorning(_ app: XCUIApplication, timeout: TimeInterval) {
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: timeout))
+        MorningUITestNavigation.assertSession(state: "none", in: app)
+        MorningUITestNavigation.tapButton("morning.begin", in: app)
+        XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["routine.approve"].exists)
         MorningUITestNavigation.selectTab("Morning", in: app)
     }
 

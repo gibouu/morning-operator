@@ -20,8 +20,9 @@ public final class MorningHandsFreeVoiceCoordinator {
     public private(set) var message = AppLanguage.localized("Voice is off.", bundle: .module)
     public private(set) var needsAudioRelease = false
     public var isActive: Bool { state == .preparing || state == .listening || state == .understanding }
-    /// Kept in memory only; a new utterance, stop or scene suspension clears it.
+    /// Latest hypothesis, kept only until replacement/stop so final words remain readable.
     public private(set) var transcript = ""
+    public private(set) var transcriptRevision: UInt = 0
     public let conversation = MorningVoiceConversation()
     public var interruptedRunningSession = false
     public var momentContext = ""
@@ -128,6 +129,7 @@ public final class MorningHandsFreeVoiceCoordinator {
 
     private func stop(finalState: MorningHandsFreeVoiceState, finalMessage: String) {
         transcript = ""; interruptedRunningSession = false; momentContext = ""; continuation.invalidate()
+        transcriptRevision &+= 1
         #if os(iOS)
         runID = nil; recognitionID = nil; turn.cancel()
         startup?.cancel(); processing?.cancel(); processing = nil
@@ -207,7 +209,7 @@ public final class MorningHandsFreeVoiceCoordinator {
             return
         }
         recognitionTask?.cancel()
-        turn = MorningHandsFreeVoiceTurn(languageGeneration: languageGeneration); isFinishing = false; transcript = ""
+        turn = MorningHandsFreeVoiceTurn(languageGeneration: languageGeneration); isFinishing = false
         let recognitionID = UUID()
         self.recognitionID = recognitionID
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -268,6 +270,7 @@ public final class MorningHandsFreeVoiceCoordinator {
             onSpeech?()
         }
         transcript = String(text.prefix(4_000))
+        transcriptRevision &+= 1
         if isFinal {
             finishTurn(turn.accept(text, isFinal: true), id: id, recognitionID: recognitionID)
         } else if !isFinishing {
@@ -297,7 +300,6 @@ public final class MorningHandsFreeVoiceCoordinator {
         self.recognitionID = nil; turn.cancel()
         sink.endAudio(); recognitionTask?.cancel(); recognitionTask = nil
         silenceDeadline?.cancel(); turnDeadline?.cancel(); finalDeadline?.cancel()
-        transcript = ""
         // Start listening again before interpretation/speech, so the next utterance
         // can interrupt an answer without tapping or opening a sheet.
         beginRecognition(id: id)

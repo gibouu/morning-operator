@@ -7,6 +7,7 @@ struct MorningHomePlaybackView: View {
     @Bindable var store: MorningStore
     let openSettings: () -> Void
     @State private var displayedCaption: String?
+    @State private var isUserCaption = false
     @State private var controlsVisible = false
     @State private var controlsInteraction = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -28,13 +29,16 @@ struct MorningHomePlaybackView: View {
         return store.connectedActionStatus ?? store.currentStep?.detail ?? ""
     }
     private var caption: String {
+        guard scenePhase != .background, !store.privacyBlocksWork else { return "" }
         #if MORE_JURY_DEMO
         if store.juryDemoVoice.state == .failed { return store.juryDemoVoice.message }
         if !store.juryDemoCaption.isEmpty { return store.juryDemoCaption }
         if store.juryDemoVoice.isActive { return store.juryDemoVoice.message }
         #else
+        if store.cloudVoice.isActive, let text = store.cloudVoice.userCaption { return SpeechCoordinator.inputCaption(text) }
         if store.cloudVoice.isActive, let text = store.cloudVoice.caption, !text.isEmpty { return text }
         #endif
+        if isUserCaption, let displayedCaption { return displayedCaption }
         if let notice = store.notice, !notice.isEmpty { return notice }
         if let displayedCaption { return displayedCaption }
         let text = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -42,6 +46,13 @@ struct MorningHomePlaybackView: View {
         let preview = text.prefix(110)
         let end = preview.lastIndex(where: { $0.isWhitespace }) ?? preview.endIndex
         return String(preview[..<end]) + "…"
+    }
+    private var showingInput: Bool {
+        #if MORE_JURY_DEMO
+        return isUserCaption || !store.juryDemoVoice.transcript.isEmpty
+        #else
+        return isUserCaption || (store.cloudVoice.isActive && store.cloudVoice.userCaption != nil)
+        #endif
     }
     private var controlsLabel: String {
         controlsVisible ? (french ? "Masquer les commandes" : "Hide controls")
@@ -59,12 +70,16 @@ struct MorningHomePlaybackView: View {
                         .padding(.horizontal, 28).padding(.vertical, 80)
                         .frame(maxWidth: .infinity)
                         .contentTransition(.opacity)
-                        .animation(.easeOut(duration: still ? 0.12 : 0.22), value: caption)
+                        .animation(showingInput ? nil : .easeOut(duration: still ? 0.12 : 0.22), value: caption)
                         .textSelection(.enabled)
                         .accessibilityIdentifier("morning.caption")
+                        #if DEBUG
+                        .accessibilityValue(store.uiTestSessionSnapshot)
+                        #endif
                         .accessibilityAction(named: Text(controlsLabel), toggleControls)
                 }
                 .scrollIndicators(.hidden)
+                .defaultScrollAnchor(.bottom, for: .sizeChanges)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: toggleControls)
                 .accessibilityIdentifier("morning.captions")
@@ -82,19 +97,29 @@ struct MorningHomePlaybackView: View {
         }
         .onChange(of: store.speech.captionRevision, initial: true) { _, _ in
             guard let text = store.speech.currentCaption, !text.isEmpty else { return }
+            isUserCaption = false
             // The spoken step label is metadata; Home shows only its content.
             let prefix = (store.currentStep?.title ?? "") + "."
             displayedCaption = text.hasPrefix(prefix)
                 ? String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines) : text
         }
-        .onChange(of: AppLanguage.code) { _, _ in displayedCaption = nil; controlsVisible = false }
+        .onChange(of: store.handsFreeVoice.transcriptRevision) { _, _ in
+            let text = store.handsFreeVoice.transcript
+            if !text.isEmpty { showInput(text) }
+            else if isUserCaption { clearCaption() }
+        }
+        .onChange(of: AppLanguage.code) { _, _ in clearCaption(); controlsVisible = false }
+        .onChange(of: store.dataGeneration) { _, _ in clearCaption() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { displayedCaption = nil; controlsVisible = false }
+            if phase == .background { clearCaption(); controlsVisible = false }
         }
         .onChange(of: store.briefing.settings.includesHealth) { wasIncluded, included in
-            if wasIncluded && !included { displayedCaption = nil }
+            if wasIncluded && !included { clearCaption() }
         }
-        .onDisappear { controlsVisible = false }
+        .onDisappear { clearCaption(); controlsVisible = false }
+        #if DEBUG
+        .task { await playCaptionFixtureIfRequested() }
+        #endif
         .onChange(of: voiceOverEnabled) { _, _ in if controlsVisible { controlsInteraction = UUID() } }
         .task(id: controlsInteraction) {
             guard controlsVisible, !voiceOverEnabled else { return }
@@ -103,6 +128,36 @@ struct MorningHomePlaybackView: View {
             withAnimation(.easeOut(duration: 0.15)) { controlsVisible = false }
         }
     }
+
+    private func showInput(_ text: String) {
+        displayedCaption = SpeechCoordinator.inputCaption(text)
+        isUserCaption = true
+    }
+
+    private func clearCaption() { displayedCaption = nil; isUserCaption = false }
+
+    #if DEBUG
+    /// Presentation-only hypotheses; this fixture does not exercise a microphone.
+    private func playCaptionFixtureIfRequested() async {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+              ProcessInfo.processInfo.arguments.contains("--ui-testing-live-captions") else { return }
+        let hypotheses = ["Je", "Je voudrais", "Je voudrais connaître mon prochain rendez-vous.",
+            "Je voudrais connaître mes prochains rendez-vous.",
+            String(repeating: "Je voudrais revoir les messages de ce matin, ", count: 8)
+                + "puis prépare une réponse pour demain matin."]
+        do {
+            for text in hypotheses {
+                try await Task.sleep(for: .seconds(2))
+                try Task.checkCancellation()
+                showInput(text)
+            }
+            try await Task.sleep(for: .seconds(4))
+            try Task.checkCancellation()
+            isUserCaption = false
+            displayedCaption = "Votre prochain rendez-vous est à neuf heures."
+        } catch { }
+    }
+    #endif
 
     private func toggleControls() {
         withAnimation(.easeOut(duration: 0.15)) { controlsVisible.toggle() }

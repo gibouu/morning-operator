@@ -7,6 +7,66 @@ import MorningCore
 @Suite("Prepared briefing ownership and settings", .timeLimit(.minutes(1)), .endsControllerWorkOnCancellation)
 @MainActor
 struct MorningBriefingControllerTests {
+    @Test func conversationReusesAdmittedWeatherAfterOpeningAndOutsideABriefingMoment() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let calendar = BriefingCalendarFixture(), calls = BriefingCallCounter()
+        let location = try syntheticLocation(), weather = try syntheticWeather(location: location)
+        let controller = makeController(directory: directory, calendar: calendar, weather: { _ in
+            calls.count += 1
+            return weather
+        })
+        try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: location))
+        let document = try #require(await controller.refresh())
+        // No current step/opening document is supplied after their handover.
+        let context = try #require(controller.conversationWeatherText())
+        #expect(context == document.weather.text && context.contains("SYNTHETIC_CONDITIONS"))
+        #expect(!context.contains("SYNTHETIC_PRIVATE_EVENT_TITLE"))
+        #expect(controller.conversationWeatherText(excluding: [document]) == nil)
+        #expect(calls.count == 1 && calendar.reads == 1 && calendar.permissionRequests == 0,
+            "Conversation admission must not fetch data or request access.")
+    }
+
+    @Test func conversationWeatherRejectsRevokedOrRemovedSourcesAndPrivacyChanges() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let calendar = BriefingCalendarFixture()
+        let location = try syntheticLocation(), weather = try syntheticWeather(location: location)
+        let controller = makeController(directory: directory, calendar: calendar, weather: { _ in weather })
+        try controller.updateSettings(.init(calendarIDs: [calendar.choice.id], weatherLocation: location))
+        _ = try #require(await controller.refresh())
+        #expect(controller.conversationWeatherText() != nil)
+        calendar.authorized = false
+        #expect(controller.conversationWeatherText() == nil)
+        calendar.authorized = true
+        #expect(controller.conversationWeatherText() != nil)
+        let privacy = LocalDataControl(directory: directory)
+        let removal = try privacy.beginForget()
+        #expect(controller.conversationWeatherText() == nil)
+        try privacy.finishForget(expectedGeneration: #require(removal.generation))
+        #expect(controller.conversationWeatherText() == nil)
+    }
+
+    @Test func conversationWeatherRejectsExpiredObservationsAndAChangedCity() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let location = try syntheticLocation(), fresh = try syntheticWeather(location: location)
+        let expired = try WeatherObservationSnapshot(location: location,
+            retrievedAt: referenceDate.addingTimeInterval(-1_800), observationAt: referenceDate.addingTimeInterval(-1_800),
+            temperatureCelsius: 18, conditionDescription: "SYNTHETIC_OLD_WEATHER", symbolName: "sun.max",
+            attribution: fresh.attribution)
+        let staleController = makeController(directory: directory, calendar: BriefingCalendarFixture(), weather: { _ in expired })
+        try staleController.updateSettings(.init(weatherLocation: location))
+        _ = try #require(await staleController.refresh())
+        #expect(staleController.conversationWeatherText() == nil)
+        let controller = makeController(directory: directory, calendar: BriefingCalendarFixture(), weather: { _ in fresh })
+        _ = try #require(await controller.refresh())
+        #expect(controller.conversationWeatherText() != nil)
+        try controller.updateSettings(.init(weatherLocation: try WeatherLocation(latitude: 45, longitude: 5,
+            displayName: "Another synthetic town")))
+        #expect(controller.conversationWeatherText() == nil)
+    }
+
     @Test func languagePresentationInvalidatesPreparedProseWithoutReadingOrChangingSources() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

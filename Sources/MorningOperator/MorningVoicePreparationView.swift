@@ -133,6 +133,9 @@ struct MorningVoicePreparationView: View {
                     store.speech.externalSpeech = nil; store.speech.cancelExternalSpeech = nil
                     store.cloudVoiceReleasing = false
                 }
+                #if MORE_JURY_DEMO
+                if !listen || !onlineSpeech { try await store.juryDemoVoice.pauseAndRelease() }
+                #endif
                 if !listen { try await store.handsFreeVoice.stopAndRelease() }
                 try Task.checkCancellation()
                 guard visible, scenePhase == .active, store.voicePreparationIsCurrent(request) else { return }

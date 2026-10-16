@@ -81,6 +81,50 @@ struct MorningCloudVoiceSessionTests {
         #expect(session.state == .off && transport.connections == 0)
     }
 
+    @Test func livePreviewNeverBecomesAFinalTurnOrAuthorizesATool() async throws {
+        let transport = CloudVoiceFixture()
+        var ownerTexts: [String?] = [], effects = 0
+        let session = makeSession(transport, control: { _, _ in effects += 1; return "SYNTHETIC_RECEIPT" })
+        session.onUserText = { text, _ in ownerTexts.append(text) }
+        await session.start(context: .init(binding: binding), language: "fr", consented: true)
+        for text in ["Je", "Je vais", "Je vais à pied", "Je vais à vélo"] {
+            transport.emit(.userTranscriptPreview(text))
+            #expect(session.userCaption == text)
+            #expect(session.transcript == nil && session.userTurnID == nil && ownerTexts.isEmpty)
+        }
+        transport.emit(.tool(call("next")))
+        await transport.waitForReplies(1)
+        #expect(effects == 0 && transport.replies[0].2)
+        transport.emit(.userText("Je vais à vélo.", eventID: 12))
+        #expect(session.userCaption == "Je vais à vélo." && session.transcript == "Je vais à vélo.")
+        #expect(ownerTexts == ["Je vais à vélo."])
+        transport.emit(.userTranscriptPreview("Une autre"))
+        #expect(session.transcript == "Je vais à vélo." && ownerTexts.count == 1)
+        transport.emit(.agentText("SYNTHETIC_ANSWER"))
+        #expect(session.userCaption == nil && session.transcript == "Je vais à vélo.")
+        await session.stopAndRelease()
+    }
+
+    @Test func previewIsBoundedAndClearedByPlaybackInterruptionAndStop() async {
+        let transport = CloudVoiceFixture(), session = makeSession(transport)
+        await session.start(context: .init(binding: binding), language: "en", consented: true)
+        transport.emit(.userTranscriptPreview("SYNTHETIC_WORDS"))
+        transport.emit(.userTranscriptPreview(String(repeating: "x", count: 4_001)))
+        #expect(session.userCaption == nil)
+        transport.emit(.userTranscriptPreview(" \n "))
+        #expect(session.userCaption == nil)
+        for boundary in [MorningCloudVoiceEvent.speaking, .interruption] {
+            transport.emit(.userTranscriptPreview("SYNTHETIC_WORDS"))
+            transport.emit(boundary)
+            #expect(session.userCaption == nil)
+        }
+        transport.emit(.userTranscriptPreview("SYNTHETIC_LAST_WORDS"))
+        let late = transport.onEvent
+        await session.stopAndRelease()
+        late?(.userTranscriptPreview("SYNTHETIC_LATE_WORDS"))
+        #expect(session.userCaption == nil && session.transcript == nil)
+    }
+
     @Test func conversationWithoutAMorningConnectsButCannotApplyTools() async throws {
         let transport = CloudVoiceFixture()
         var effects = 0

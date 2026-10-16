@@ -44,6 +44,8 @@ public struct MorningCloudVoiceToolCall: Sendable, Equatable {
 
 public enum MorningCloudVoiceEvent: Sendable {
     case listening, speaking, agentText(String), userText(String, eventID: Int = 0), interruption
+    /// Display-only local recognition; never authorizes tools or personal-memory writes.
+    case userTranscriptPreview(String)
     case tool(MorningCloudVoiceToolCall)
     case ended, failed
 }
@@ -67,6 +69,8 @@ public enum MorningCloudVoiceError: Error, Sendable { case consentRequired, inva
 public final class MorningCloudVoiceSession {
     public private(set) var state: MorningCloudVoiceState = .off
     public private(set) var caption: String?
+    /// Temporary display text. Only `transcript` contains the provider's final turn.
+    public private(set) var userCaption: String?
     public private(set) var transcript: String?
     public private(set) var userTurnID: UUID?
     public private(set) var errorMessage: String?
@@ -167,6 +171,7 @@ public final class MorningCloudVoiceSession {
         if let expectedTurn, !isCurrentUserTurn(expectedTurn) { throw CancellationError() }
         guard isActive, state != .connecting, let transport, !text.isEmpty,
               text.utf8.count <= 32_768 else { throw MorningCloudVoiceError.unavailable }
+        userCaption = nil
         awaitingAppResponse = false
         cancelNarration()
         let id = UUID(), session = attempt
@@ -224,7 +229,7 @@ public final class MorningCloudVoiceSession {
         let client = transport; transport = nil; client?.onEvent = nil
         let previous = cleanupTask
         cleanupTask = Task { await previous?.value; await client?.stop(); await connecting?.value }
-        caption = nil; transcript = nil; errorMessage = nil; state = .off
+        caption = nil; userCaption = nil; transcript = nil; errorMessage = nil; state = .off
         lastUserEventID = nil
         userTurnID = nil
         userEventReceipts = [:]
@@ -250,23 +255,34 @@ public final class MorningCloudVoiceSession {
             if narrationSpoke { narrationStopped = true; finishNarrationIfReady() }
         case .speaking:
             state = .speaking
+            userCaption = nil
             if narrationID != nil { narrationSpoke = true; narrationStopped = false }
         case .agentText(let text):
-            if !awaitingAppResponse { caption = Self.captionText(String(text.prefix(2_000))) }
+            if !awaitingAppResponse {
+                userCaption = nil
+                caption = Self.captionText(String(text.prefix(2_000)))
+            }
+        case .userTranscriptPreview(let text):
+            userCaption = Self.boundedUserText(text)
         case .userText(let text, let eventID):
-            let bounded = text.count <= 4_000 && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? text : nil
+            let bounded = Self.boundedUserText(text)
             guard lastUserEventID != eventID || transcript != bounded else { return }
             if narrationID != nil { cancelNarration() }
             awaitingAppResponse = false
             transcript = bounded
+            userCaption = bounded
             lastUserEventID = eventID
             let turn = UUID(); userTurnID = turn
             onUserText?(bounded, turn)
-        case .interruption: caption = nil; cancelNarration(); onInterruption?()
+        case .interruption: caption = nil; userCaption = nil; cancelNarration(); onInterruption?()
         case .tool(let call): handle(call, attempt: id)
         case .ended: fail(.unavailable)
         case .failed: fail(.unavailable)
         }
+    }
+
+    private static func boundedUserText(_ text: String) -> String? {
+        text.count <= 4_000 && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? text : nil
     }
 
     private func handle(_ call: MorningCloudVoiceToolCall, attempt id: UUID) {

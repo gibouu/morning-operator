@@ -7,6 +7,7 @@ configFiles:
   Release: Configuration/JuryDemo.xcconfig
 settings:
   base:
+    CURRENT_PROJECT_VERSION: 2
     MORNING_API_BASE_URL: $(MORE_DEMO_API_BASE_URL)
 targets:
   MorningOperator:

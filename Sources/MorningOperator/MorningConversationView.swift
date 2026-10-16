@@ -13,7 +13,10 @@ struct MorningConversationView: View {
             MorningForm {
                 Section {
                     Text("Talk to MORE and interrupt at any time.")
-                    if let caption = store.cloudVoice.caption { Text(caption).accessibilityIdentifier("cloudVoice.caption") }
+                    if let caption = store.cloudVoice.userCaption ?? store.cloudVoice.caption {
+                        Text(store.cloudVoice.userCaption == nil ? caption : SpeechCoordinator.inputCaption(caption))
+                            .accessibilityIdentifier("cloudVoice.caption")
+                    }
                     if let fallback = store.voiceFallbackMessage {
                         Label(fallback, systemImage: "speaker.wave.2")
                             .accessibilityIdentifier("voice.fallback")

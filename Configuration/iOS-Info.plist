@@ -92,7 +92,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voice listening is local by default so you can interrupt MORE or ask a question during your morning. If you choose ElevenLabs conversation, your microphone audio is sent to ElevenLabs. Listening stops when you end the morning or leave the app.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>MORE transcribes your requested voice commands and drafts.</string>
+	<string>MORE transcribes your words on this iPhone to show live captions and understand your voice commands and drafts.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>MORE reads your schedule for spoken briefings and saves calendar events only when you confirm them.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>

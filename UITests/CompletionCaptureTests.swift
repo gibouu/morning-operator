@@ -70,7 +70,8 @@ final class CompletionCaptureTests: XCTestCase {
         app.buttons["captureVoice.cancel"].tap()
         waitAbsent(app.buttons["captureVoice.cancel"])
         assertNoReviewAppears(for: lateCallbackWait, in: app)
-        XCTAssertTrue(MorningUITestState.labels(for: "completed").contains(app.staticTexts["run.state"].value as? String ?? ""))
+        MorningUITestNavigation.assertSession(state: "completed", in: app)
+        MorningUITestNavigation.openSettings(in: app)
         XCTAssertTrue(app.buttons["morning.speakReflection"].isHittable)
         openThoughts(in: app)
         assertNoSavedReflection(in: app)
@@ -105,7 +106,7 @@ final class CompletionCaptureTests: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
         assertNoReviewAppears(for: 2, in: app)
         XCTAssertFalse(app.buttons["captureVoice.cancel"].exists)
-        XCTAssertTrue(MorningUITestState.labels(for: "completed").contains(app.staticTexts["run.state"].value as? String ?? ""))
+        MorningUITestNavigation.assertSession(state: "completed", in: app)
         openThoughts(in: app)
         assertNoSavedReflection(in: app)
         attach("synthetic-backgrounded-late-turn-cannot-reopen-capture", app)
@@ -118,8 +119,7 @@ final class CompletionCaptureTests: XCTestCase {
     func testClosingQuestionsSkipOnNoAndReviewAReminderBeforeAnySave() {
         let app = launch(sample: "--ui-testing-closing-answers")
         completeMorning(in: app)
-        let question = app.staticTexts["run.step"]
-        XCTAssertEqual(question.value as? String, "dream")
+        let question = app.staticTexts["morning.closingQuestion"]
         XCTAssertEqual(question.label, "Did you have a dream you want to note?")
         XCTAssertTrue(app.buttons["morning.skipQuestion"].exists)
 
@@ -143,11 +143,11 @@ final class CompletionCaptureTests: XCTestCase {
         waitAbsent(editor)
 
         // Dream skipped, reminder answered: the note question is next.
-        let note = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "note"), object: question)
+        let note = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Any note to take?"), object: question)
         XCTAssertEqual(XCTWaiter.wait(for: [note], timeout: 5), .completed)
         XCTAssertEqual(question.label, "Any note to take?")
         tap("morning.skipQuestion", in: app)
-        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Morning complete."), object: question)
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: question)
         XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: 5), .completed)
         XCTAssertFalse(app.buttons["morning.speakReflection"].exists)
         openThoughts(in: app)
@@ -169,15 +169,12 @@ final class CompletionCaptureTests: XCTestCase {
         MorningUITestNavigation.selectTab("Morning", in: app)
         tap("run.start", in: app)
         for title in ["Your morning", "People and messages", "Make room for the day", "A little time to play"] {
-            let step = app.staticTexts["run.step"]
-            let current = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", title), object: step)
-            XCTAssertEqual(XCTWaiter.wait(for: [current], timeout: 5), .completed)
-            XCTAssertTrue(MorningUITestState.labels(for: "running").contains(app.staticTexts["run.state"].value as? String ?? ""))
+            MorningUITestNavigation.assertSession(state: "running", step: title, in: app)
             tap("run.next", in: app)
+            MorningUITestNavigation.selectTab("Morning", in: app)
         }
-        let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value IN %@", MorningUITestState.labels(for: "completed")),
-                                                object: app.staticTexts["run.state"])
-        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
+        MorningUITestNavigation.assertSession(state: "completed", in: app)
+        MorningUITestNavigation.openSettings(in: app)
         XCTAssertTrue(app.buttons["morning.speakReflection"].exists)
         XCTAssertTrue(app.buttons["morning.reflect"].exists, "Typed reflection must remain available.")
         XCTAssertFalse(app.textViews["capture.text"].exists,
@@ -185,6 +182,7 @@ final class CompletionCaptureTests: XCTestCase {
     }
 
     private func receiveDreamReview(in app: XCUIApplication) {
+        MorningUITestNavigation.openSettings(in: app)
         tap("morning.speakReflection", in: app)
         let editor = app.textViews["capture.text"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10))
@@ -201,6 +199,7 @@ final class CompletionCaptureTests: XCTestCase {
     }
 
     private func openLateTurn(in app: XCUIApplication) {
+        MorningUITestNavigation.openSettings(in: app)
         tap("morning.speakReflection", in: app)
         let sample = app.staticTexts["captureVoice.sample"]
         XCTAssertTrue(sample.waitForExistence(timeout: 2))

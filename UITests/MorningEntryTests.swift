@@ -8,11 +8,8 @@ final class MorningEntryUITests: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["MO_NOTIFICATION_TEST_ENABLED"] == "1",
                           "Opt in on the dedicated simulator; this schedules a real local notification.")
         let app = launch(["--ui-testing-approved", "--ui-testing-near-invitation"])
-        MorningUITestNavigation.selectTab("Review", in: app)
-        let settings = app.buttons["navigation.setup"]
-        for _ in 0..<5 where !settings.isHittable { app.swipeUp() }
-        settings.tap()
-        app.buttons["setup.invitation"].tap()
+        MorningUITestNavigation.openSettings(in: app)
+        MorningUITestNavigation.tapButton("setup.invitation", in: app)
         XCTAssertTrue(app.buttons["invitation.schedule"].waitForExistence(timeout: 5))
         app.buttons["invitation.schedule"].tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
@@ -23,7 +20,6 @@ final class MorningEntryUITests: XCTestCase {
         expectation(for: registered, evaluatedWith: scheduled)
         waitForExpectations(timeout: 10)
         app.navigationBars["Your next morning"].buttons["Done"].tap()
-        app.navigationBars["Settings"].buttons["Done"].tap()
         MorningUITestNavigation.selectTab("Morning", in: app)
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5))
         XCUIDevice.shared.press(.home)
@@ -34,47 +30,44 @@ final class MorningEntryUITests: XCTestCase {
         delivered.lifetime = .keepAlways
         add(delivered)
         notification.tap()
-        XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["morning.caption"].waitForExistence(timeout: 15))
         XCTAssertEqual(app.state, .runningForeground)
-        // The invitation opens the morning like the Start button; its first moment follows the choice.
         MorningUITestNavigation.chooseRoutineAtOpening(in: app)
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
     }
 
     func testApprovedEntryStartsOnceWithoutAnotherTap() {
         let app = launch(["--ui-testing-approved", "--ui-testing-start-entry"])
-        XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))
-        // The entry starts the morning at its opening (issue #99): no Now card until the choice.
-        XCTAssertTrue(app.buttons["opening.routine"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertFalse(app.staticTexts["run.step"].exists)
+        XCTAssertTrue(app.staticTexts["morning.caption"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["morning.begin"].exists)
         MorningUITestNavigation.chooseRoutineAtOpening(in: app)
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
         XCTAssertFalse(app.buttons["routine.approve"].exists)
-        app.buttons["run.next"].tap()
-        XCTAssertEqual(app.staticTexts["run.step"].label, "People and messages")
+        MorningUITestNavigation.tapButton("morning.next", in: app)
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.assertSession(state: "running", step: "People and messages", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
     }
 
     func testDraftEntryOpensReviewWithoutStartingOrApproving() {
         let app = launch(["--ui-testing-start-entry"])
         XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.navigationBars["Your routine"].exists)
-        XCTAssertFalse(app.buttons["run.pause"].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "routine.editor").firstMatch.exists)
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
     }
 
     func testMissingRoutineEntryOpensLearning() {
         let app = launch(["--ui-testing-empty-workspace", "--ui-testing-start-entry"])
-        XCTAssertTrue(app.navigationBars["Learn my morning"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["run.pause"].exists)
+        XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
         XCTAssertEqual(app.alerts.count, 0, "Opening learning must not start recording or request its permission.")
     }
 
     func testInvitationSettingsExplainOneTimeEntryBeforePermission() {
         let app = launch([])
-        MorningUITestNavigation.selectTab("Review", in: app)
-        let settings = app.buttons["navigation.setup"]
-        for _ in 0..<5 where !settings.isHittable { app.swipeUp() }
-        settings.tap()
-        app.buttons["setup.invitation"].tap()
+        MorningUITestNavigation.openSettings(in: app)
+        MorningUITestNavigation.tapButton("setup.invitation", in: app)
         XCTAssertTrue(app.buttons["invitation.schedule"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["invitation.schedule"].isHittable)
         XCTAssertTrue(app.staticTexts["invitation.status"].exists)
@@ -87,29 +80,26 @@ final class MorningEntryUITests: XCTestCase {
 
     func testDeferredEntryWaitsForMorningDetailsToClose() {
         let app = launch(["--ui-testing-approved", "--ui-testing-start-entry-on-return"])
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 10))
         MorningUITestNavigation.tapButton("run.start", in: app)
-        app.buttons["run.controls"].tap()
-        app.buttons["run.about"].tap()
-        XCTAssertTrue(app.navigationBars["This moment"].waitForExistence(timeout: 5))
+        MorningUITestNavigation.openSettings(in: app)
+        MorningUITestNavigation.tapButton("morning.details", in: app)
+        XCTAssertTrue(app.staticTexts["moment.instructions"].waitForExistence(timeout: 5))
         XCUIDevice.shared.press(.home)
         app.activate()
-        XCTAssertTrue(app.navigationBars["This moment"].waitForExistence(timeout: 5))
-        // Backgrounding pauses the run. A fresh injected entry must remain queued
-        // behind these details, rather than resuming behind the presentation.
-        XCTAssertTrue(app.staticTexts["run.detailPaused"].waitForExistence(timeout: 5))
-        let done = app.navigationBars["This moment"].buttons["Done"]
-        XCTAssertTrue(done.isHittable)
-        done.tap()
-        XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 5), "The deferred entry resumes once the sheet closes.")
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        // Current interaction sheets close when the app backgrounds. Settings
+        // still owns navigation and keeps the injected entry from resuming.
+        XCTAssertTrue(app.buttons["morning.closeDetails"].waitForNonExistence(timeout: 5))
+        let playback = app.buttons["morning.playback"]
+        XCTAssertTrue(playback.waitForExistence(timeout: 5))
+        XCTAssertEqual(playback.label, "Continue")
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
     }
 
     private func launch(_ arguments: [String]) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--light-preview", "--fixture-mode"] + arguments
+        app.launchArguments = ["--ui-testing", "--light-preview", "--fixture-mode", "--ui-testing-workspace=\(UUID().uuidString)"] + arguments
         MorningUITestNavigation.launch(app)
         return app
     }

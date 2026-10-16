@@ -26659,6 +26659,22 @@
           }
         }
       }
+    },
+    "Online voice is off for this morning. Stop and start a new morning to change this choice.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Online voice is off for this morning. Stop and start a new morning to change this choice."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La voix en ligne est désactivée pour ce matin. Arrêtez puis recommencez un matin pour changer ce choix."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

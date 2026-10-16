@@ -72,7 +72,11 @@ final class ObservationReviewJourneyTests: XCTestCase {
         editor.tap()
         editor.typeText(" A synthetic correction for review testing.")
         if app.buttons["input.done"].isHittable { app.buttons["input.done"].tap() }
-        app.navigationBars["Learn my morning"].buttons["Done"].tap()
+        let back = app.navigationBars.buttons["BackButton"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        XCTAssertTrue(back.isHittable)
+        back.tap()
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
         app.terminate()
         app.launchArguments.removeAll { $0 == "--ui-testing-observation-review" }
         MorningUITestNavigation.launch(app)

@@ -127,6 +127,15 @@ public final class MorningBriefingController {
     /// Pin beside a document; settings/reset/cancellation changes invalidate it.
     public var playbackRevision: UUID { revision }
 
+    /// Questions in other moments can reuse admitted weather without another read
+    /// or adding Health data. A pinned/opening weather passage takes precedence.
+    public func conversationWeatherText(excluding documents: [PreparedMorningBriefing] = []) -> String? {
+        guard !documents.contains(where: { $0.weather.status == .fresh }),
+              let document = prepared, document.weather.status == .fresh,
+              permitsPlayback(of: document), !document.weather.text.isEmpty else { return nil }
+        return document.weather.text
+    }
+
     /// A read-only admission check for an already pinned document. It never
     /// prompts, fetches weather, rewrites text or changes the selected calendars.
     public func permitsPlayback(of document: PreparedMorningBriefing) -> Bool {

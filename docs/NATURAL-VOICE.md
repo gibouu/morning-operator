@@ -24,7 +24,11 @@ Provider references: [TTS parameters and logging](https://elevenlabs.io/docs/api
 
 ## Conversation and execution
 
-The official Swift SDK 3.4.0 owns continuous audio, streamed responses and interruptions. One conversation retains context across turns. Routine metadata is updated when the current moment changes. Source text enters through an approved narration message, with a fresh narration ID; it is data, never an instruction to perform an action.
+The official Swift SDK 3.4.0 owns continuous audio, streamed responses and interruptions.
+
+Home and the conversation screen show the person’s words as they are recognized, in the same caption area as MORE’s response. Long input keeps the newest short passage visible; corrections replace the current hypothesis without accumulating a history. Local morning speech uses its existing partial results. In online conversation, an on-device recognizer observes the SDK’s existing microphone track for display only, without taking another audio session or sending audio to Apple. Speech permission and local recognition support are required for this live preview; otherwise the final provider transcript remains available. Provisional captions never authorize actions or write personal memory; only the existing final transcript path can do so.
+
+One conversation retains context across turns. Routine metadata is updated when the current moment changes. Source text enters through an approved narration message, with a fresh narration ID; it is data, never an instruction to perform an action.
 
 The model has three client tools, with no provider action tools:
 
@@ -43,6 +47,8 @@ Consent is memory-only and bound to the current session identity, pinned routine
 The SDK's interruption method has no public cancellation acknowledgement or rendered-audio drain signal. Its speaking state uses LiveKit audio activity. A narration marker plus that state is stronger than a model-text callback, but actual audio cutoff and completion still need iPhone acceptance. LiveKit logging is disabled; ElevenLabs uses error-only logging with debug mode off. Its SDK has no public logging-off option, so do not claim an absolute absence of sensitive OS logs.
 
 ## Evidence and remaining checks
+
+Live user captions (16 October 2026): **84 shared Swift tests in seven suites passed**, including provisional/final isolation, corrections, bounded input, stop/stale callbacks and current voice fallback/briefing compatibility. **Four iOS simulator UI tests passed**: progressive words and correction, long French input at the largest text size in night mode, automatic passage progression, and actual local speech output replacing the passage. The input UI checks inject presentation-only hypotheses; they do not exercise a microphone or a provider. App, widget and UI-test targets compile for the simulator. [Physical microphone and online-track acceptance remains #216](https://github.com/gibouu/morning-operator/issues/216); acoustic latency, echo and live PCM delivery are unverified on an iPhone.
 
 - Gender/TTS backend, 16 October: **51 Node/Workerd tests passed**. The deployed endpoint returned `200 audio/mpeg` for all four synthetic French/English × male/female requests with `no-store`; unauthenticated, inactive and malformed requests retained their rejection gates. The production catalog, database, business journal and existing activation remained unchanged. The owner phone was not activated by these synthetic checks.
 - Direct provider checks accepted the same four bounded synthetic requests with logging disabled; two SDK conversation checks confirmed the voice override without opening a phone microphone. These prove accepted requests and returned audio, not audible iPhone playback or personal Health sharing.

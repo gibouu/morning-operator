@@ -31,6 +31,26 @@ struct MorningOpeningPresentation: Equatable {
 }
 
 extension MorningStore {
+    /// UI journeys inspect the real session without adding metadata to the reading surface.
+    var uiTestSessionSnapshot: String {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return "" }
+        let fields = [
+            "state": session?.status.rawValue ?? "none",
+            "step": currentStep?.title ?? "",
+            "speech": openingSpeechObservation,
+            "starts": openingRoutineStartObservation,
+            "opening": currentOpening.map { String(describing: $0.phase) } ?? "none",
+            "completed": String(session?.completedStepIDs.count ?? 0),
+            "remaining": activeStepTimer.map { String(Int($0.remaining(at: Date()).rounded(.up))) } ?? ""
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
+        #else
+        return ""
+        #endif
+    }
+
     /// The opening of the current morning, or nil once the person has chosen.
     var currentOpening: MorningOpeningPresentation? {
         guard let openingPresentation, sessionActive, openingPresentation.sessionID == session?.id else { return nil }

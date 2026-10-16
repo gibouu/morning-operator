@@ -269,6 +269,39 @@ final class MorningHomePlaybackTests: XCTestCase {
         attach("home-playback-automatic-next-text", app)
     }
 
+    func testLiveUserTranscriptionReplacesTheSingleCaptionAsWordsAndCorrectionsArrive() {
+        let app = launch(["--ui-testing-live-captions"], french: true)
+        defer { app.terminate() }
+        start(app)
+        assertCaption("Je", in: app, timeout: 10)
+        assertCaption("Je voudrais", in: app)
+        assertCaption("Je voudrais connaître mon prochain rendez-vous.", in: app)
+        assertCaption("Je voudrais connaître mes prochains rendez-vous.", in: app)
+
+        assertCaption("Votre prochain rendez-vous est à neuf heures.", in: app, timeout: 12)
+        assertPureReading(app)
+        attach("home-synthetic-live-transcription-answer", app)
+    }
+
+    func testFrenchLargestNightLiveTranscriptionKeepsNewestWordsInTheSingleCaption() {
+        let app = launch(["--ui-testing-live-captions", "--ui-testing-reduce-motion",
+                          "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"],
+                         french: true, night: true)
+        defer { app.terminate() }
+        start(app)
+        let caption = app.staticTexts["morning.caption"]
+        let newestWords = XCTNSPredicateExpectation(predicate: NSPredicate(
+            format: "label ENDSWITH %@", "puis prépare une réponse pour demain matin."), object: caption)
+        XCTAssertEqual(XCTWaiter.wait(for: [newestWords], timeout: 20), .completed)
+        XCTAssertLessThanOrEqual(caption.label.count, 111)
+        XCTAssertGreaterThanOrEqual(caption.frame.minX, app.frame.minX)
+        XCTAssertLessThanOrEqual(caption.frame.maxX, app.frame.maxX)
+        attach("home-synthetic-live-transcription-french-largest-night", app)
+
+        assertCaption("Votre prochain rendez-vous est à neuf heures.", in: app, timeout: 10)
+        assertPureReading(app)
+    }
+
     func testFrenchLargestTextRevealsPauseAndKeepsNextInSettings() {
         let app = launch(["--ui-testing-reduce-motion", "-UIPreferredContentSizeCategoryName",
                           "UICTContentSizeCategoryAccessibilityXXXL"], french: true, night: true)
