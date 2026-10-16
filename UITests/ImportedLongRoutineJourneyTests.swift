@@ -465,9 +465,7 @@ import MorningCore
         XCTAssertLessThanOrEqual(actual, end + 0.001)
     }
     private func requireWorkspace(_ workspace: String, _ app: XCUIApplication) throws {
-        let marker = app.staticTexts["qa.testWorkspace"]
-        if !marker.waitForExistence(timeout: 5) { app.terminate(); app.launch() }
-        XCTAssertTrue(marker.waitForExistence(timeout: 8)); XCTAssertEqual(marker.value as? String, workspace)
+        try MorningUITestNavigation.requireIsolatedWorkspace(workspace, in: app)
     }
     private func chooseAction(_ name: String, _ app: XCUIApplication) {
         // The same exact Picker ID may be represented as a Button or another

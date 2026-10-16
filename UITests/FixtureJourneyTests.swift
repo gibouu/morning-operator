@@ -433,6 +433,55 @@ enum MorningUITestNavigation {
         app.launch()
     }
 
+    private enum IsolatedLaunchError: Error { case invalidArguments, missingWorkspace, wrongWorkspace }
+
+    /// Only explicitly isolated journeys may retry a missing launch marker.
+    /// A present, incorrect workspace is never repaired or retried.
+    static func requireIsolatedWorkspace(_ expected: String, in app: XCUIApplication,
+                                         file: StaticString = #filePath, line: UInt = #line) throws {
+        let arguments = app.launchArguments
+        let workspaces = arguments.filter { $0.hasPrefix("--ui-testing-workspace=") }
+        guard arguments.contains("--ui-testing"), arguments.contains("--fixture-mode"),
+              UUID(uuidString: expected) != nil, workspaces == ["--ui-testing-workspace=" + expected] else {
+            XCTFail("The private journey must request its one exact isolated workspace.", file: file, line: line)
+            throw IsolatedLaunchError.invalidArguments
+        }
+        func record(_ name: String) {
+            XCTContext.runActivity(named: name) { activity in
+                let screenshot = XCTAttachment(screenshot: app.screenshot())
+                screenshot.name = name + "-screenshot"; screenshot.lifetime = .keepAlways; activity.add(screenshot)
+                let hierarchy = XCTAttachment(string: app.debugDescription)
+                hierarchy.name = name + "-accessibility"; hierarchy.lifetime = .keepAlways; activity.add(hierarchy)
+            }
+        }
+        let marker = app.staticTexts["qa.testWorkspace"]
+        if !marker.waitForExistence(timeout: 10) {
+            record("Invalid isolated launch - workspace absent after ten seconds")
+            // Capturing diagnostics can take time. A marker that appeared in
+            // that interval must be checked, never hidden by another launch.
+            if !marker.exists {
+                try XCTContext.runActivity(named: "Isolated launch retry 1 of 1 - exact original arguments") { _ in
+                    app.terminate()
+                    guard app.launchArguments == arguments else {
+                        XCTFail("A launch retry must retain the exact original arguments.", file: file, line: line)
+                        throw IsolatedLaunchError.invalidArguments
+                    }
+                    app.launch()
+                }
+            }
+        }
+        guard marker.waitForExistence(timeout: 10) else {
+            record("Isolated launch refused - workspace still absent after one retry")
+            XCTFail("The expected workspace marker must exist before any gesture.", file: file, line: line)
+            throw IsolatedLaunchError.missingWorkspace
+        }
+        guard marker.value as? String == expected else {
+            record("Isolated launch refused - wrong workspace - no retry")
+            XCTFail("The present workspace must equal the requested UUID; no retry is allowed.", file: file, line: line)
+            throw IsolatedLaunchError.wrongWorkspace
+        }
+    }
+
     /// Weather starts from the authorized current position. City-search journeys
     /// choose the manual source explicitly, in either shipped interface language.
     static func chooseManualWeatherCity(in app: XCUIApplication,

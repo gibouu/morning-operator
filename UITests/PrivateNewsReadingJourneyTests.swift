@@ -30,8 +30,7 @@ import MorningCore
             "--ui-testing-parsed-routine=" + data.base64EncodedString(),
             "-more.appLanguage", language, "-AppleLanguages", "(\(language))", "-AppleLocale", french ? "fr_FR" : "en_US"]
         app.launch(); defer { app.terminate() }
-        let marker = app.staticTexts["qa.testWorkspace"]
-        XCTAssertTrue(marker.waitForExistence(timeout: 10)); XCTAssertEqual(marker.value as? String, workspace)
+        try requireWorkspace(workspace, app)
         let notice = app.staticTexts["app.notice"]
         if notice.exists { XCTAssertFalse(notice.label.contains("SYNTHETIC QA input refused")) }
         reveal(app); tap("morning.settings", app); tap("setup.routine", app)
@@ -46,7 +45,7 @@ import MorningCore
         home(app)
         // Approval, selected target and behavior must survive without the import payload.
         app.terminate(); app.launchArguments.removeAll { $0.hasPrefix("--ui-testing-parsed-routine=") }; app.launch()
-        XCTAssertTrue(marker.waitForExistence(timeout: 10)); XCTAssertEqual(marker.value as? String, workspace)
+        try requireWorkspace(workspace, app)
         reveal(app); tap("morning.settings", app); tap("setup.routine", app)
         XCTAssertFalse(app.buttons["routine.approve"].exists)
         home(app); reveal(app); tap("morning.begin", app)
@@ -120,6 +119,9 @@ import MorningCore
         attach("private-news-explicit-resume-same-session-\(language)", app)
     }
 
+    private func requireWorkspace(_ workspace: String, _ app: XCUIApplication) throws {
+        try MorningUITestNavigation.requireIsolatedWorkspace(workspace, in: app)
+    }
     private func diagnostic(_ app: XCUIApplication) throws -> [String: String] {
         let result = app.staticTexts["web.result"]
         XCTAssertTrue(result.waitForExistence(timeout: 5))

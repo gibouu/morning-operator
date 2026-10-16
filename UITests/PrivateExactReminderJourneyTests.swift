@@ -197,8 +197,7 @@ import MorningCore
         else { let text = app.staticTexts[name].firstMatch; visible(text, id: name, in: app); text.tap() }
     }
     private func requireWorkspace(_ workspace: String, in app: XCUIApplication) throws {
-        let marker = app.staticTexts["qa.testWorkspace"]
-        XCTAssertTrue(marker.waitForExistence(timeout: 10)); XCTAssertEqual(marker.value as? String, workspace)
+        try MorningUITestNavigation.requireIsolatedWorkspace(workspace, in: app)
     }
     private func reveal(_ app: XCUIApplication) {
         if app.buttons["morning.settings"].isHittable { return }
