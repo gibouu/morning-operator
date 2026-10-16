@@ -1141,11 +1141,13 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         guard first.waitForExistence(timeout: 35) else {
             let state = browserDiagnosticValue(app.staticTexts["web.result"], key: "pageState")
             let refusal = browserDiagnosticValue(app.staticTexts["web.result"], key: "articleRefusal")
+            let pageRefusal = browserDiagnosticValue(app.staticTexts["web.result"], key: "pageAccessRefusal")
             captureFailure("automation-live-news-no-observed-public-link", app)
-            if state == "needsSignIn" || refusal == "signInRequired" || refusal == "consentRequired" {
-                throw XCTSkip("The live worker observed a verified access block (pageState=\(state ?? "missing"), articleRefusal=\(refusal ?? "missing")). No article reading is claimed.")
+            let observedConsentWall = state == "needsChoice" && pageRefusal == "consentRequired"
+            if state == "needsSignIn" || observedConsentWall || refusal == "signInRequired" || refusal == "consentRequired" {
+                throw XCTSkip("The live worker observed a verified access block (pageState=\(state ?? "missing"), pageAccessRefusal=\(pageRefusal ?? "missing"), articleRefusal=\(refusal ?? "missing")). The wall is observed; no article was read and no reading or return journey is claimed.")
             }
-            XCTFail("No observed article choice was exposed without a verified access block. pageState=\(state ?? "missing"), articleRefusal=\(refusal ?? "missing"). Unclassified choices, loading, HTTP, layout or extraction errors must not become an access skip.")
+            XCTFail("No observed article choice was exposed without a verified access block. pageState=\(state ?? "missing"), pageAccessRefusal=\(pageRefusal ?? "missing"), articleRefusal=\(refusal ?? "missing"). Unclassified choices, loading, HTTP, layout or extraction errors must not become an access skip.")
             return
         }
         XCTAssertTrue(first.label.hasPrefix("1. "))
