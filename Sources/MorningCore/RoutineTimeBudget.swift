@@ -6,8 +6,8 @@ public enum RoutineTimeBudgetChoice: String, Codable, CaseIterable, Sendable {
     case editRoutine, acceptLongerPlan
     public var displayName: String {
         switch self {
-        case .editRoutine: String(localized: "Edit the routine", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .acceptLongerPlan: String(localized: "Keep the longer plan", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .editRoutine: AppLanguage.localized("Edit the routine", bundle: .module)
+        case .acceptLongerPlan: AppLanguage.localized("Keep the longer plan", bundle: .module)
         }
     }
 }

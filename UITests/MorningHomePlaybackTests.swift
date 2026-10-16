@@ -310,7 +310,10 @@ final class MorningHomePlaybackTests: XCTestCase {
         assertPureReading(app)
         assertFitsOnScreen(app.staticTexts["morning.caption"], in: app)
         attach("home-playback-french-largest-pure-text", app)
+        let readingFrame = app.scrollViews["morning.captions"].frame
         revealControls(app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].frame, readingFrame, "Revealing controls must not move the passage.")
+        assertPassageClearOfPlayback(in: app)
         for identifier in ["morning.playback", "morning.settings"] {
             let button = app.buttons[identifier]
             XCTAssertTrue(button.isHittable)
@@ -338,7 +341,10 @@ final class MorningHomePlaybackTests: XCTestCase {
         let app = launch()
         defer { app.terminate() }
         start(app)
+        let readingFrame = app.scrollViews["morning.captions"].frame
         revealControls(app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].frame, readingFrame)
+        assertPassageClearOfPlayback(in: app)
         let playback = app.buttons["morning.playback"]
         assertRemainsVisible(playback, for: 3)
         playback.tap()
@@ -349,6 +355,30 @@ final class MorningHomePlaybackTests: XCTestCase {
         attach("home-playback-controls-hidden-after-inactivity", app)
         revealControls(app)
         assertPlaybackLabel("Continue", in: app)
+    }
+
+    func testCaptionDragRestartsControlsLifetime() {
+        let app = launch(["--ui-testing-reduce-motion", "-UIPreferredContentSizeCategoryName",
+                          "UICTContentSizeCategoryAccessibilityXXXL"])
+        defer { app.terminate() }
+        _ = setFirstMomentDetails(longPassage, in: app)
+        start(app)
+        revealControls(app)
+        let playback = app.buttons["morning.playback"]
+        assertRemainsVisible(playback, for: 3)
+        let captions = app.scrollViews["morning.captions"]
+        // The central floating Play/Pause symbol must not receive this drag.
+        captions.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.65))
+            .press(forDuration: 0.1, thenDragTo: captions.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.2)))
+        assertRemainsVisible(playback, for: 3)
+        XCTAssertTrue(playback.waitForNonExistence(timeout: 7), "Five seconds restart after the real caption drag ends.")
+        attach("home-playback-caption-drag-controls-hidden-after-inactivity", app)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        revealControls(app)
+        XCTAssertGreaterThan(app.frame.width, app.frame.height)
+        assertPassageClearOfPlayback(in: app)
+        attach("home-playback-largest-landscape-passage-clear-of-pause", app)
     }
 
     func testRealLocalSpeechReplacesTheSingleCaptionWithoutHistory() {
@@ -408,6 +438,17 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertTrue(reveal.waitForExistence(timeout: 5))
         reveal.tap()
         XCTAssertTrue(app.buttons["morning.playback"].waitForExistence(timeout: 5))
+    }
+
+    private func assertPassageClearOfPlayback(in app: XCUIApplication,
+                                             file: StaticString = #filePath, line: UInt = #line) {
+        let reading = app.scrollViews["morning.captions"], passage = app.staticTexts["morning.caption"]
+        let playback = app.buttons["morning.playback"]
+        XCTAssertTrue(reading.exists && passage.exists && playback.isHittable, file: file, line: line)
+        let visiblePassage = passage.frame.intersection(reading.frame)
+        XCTAssertFalse(visiblePassage.isNull || visiblePassage.isEmpty, file: file, line: line)
+        XCTAssertFalse(reading.frame.intersects(playback.frame), "The real reading viewport must exclude the central control.", file: file, line: line)
+        XCTAssertFalse(visiblePassage.intersects(playback.frame), "The visible spoken passage must remain readable.", file: file, line: line)
     }
 
     private func openIdleSettings(_ app: XCUIApplication) {

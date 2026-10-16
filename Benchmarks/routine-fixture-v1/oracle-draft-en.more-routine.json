@@ -1,0 +1,93 @@
+{
+  "format": "morning-operator.routine",
+  "formatVersion": 1,
+  "detail": "includeDetails",
+  "sourceRoutineID": "90000000-0000-4000-8000-000000000100",
+  "sourceRoutineVersion": 1,
+  "sourceCreatedAt": 1792129500.0,
+  "approvalAtExport": false,
+  "sourceIsSynthetic": true,
+  "sourceLabel": "Demo fixture — SYNTHETIC manual oracle; no OCR or model execution",
+  "steps": [
+    {
+      "id": "90000000-0000-4000-8000-000000000001",
+      "title": "My agenda",
+      "kind": "calendar",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Read the invented primary calendar without confusing namesakes."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000002",
+      "title": "My mail and reply",
+      "kind": "messages",
+      "durationMinutes": 5,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Choose the third mail, correct six blue cards to eight green cards, review, then simulate exactly one send."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000003",
+      "title": "My team",
+      "kind": "messages",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": "SYNTHETIC — An uncertain simulated reply must never be retried automatically."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000004",
+      "title": "Second article and return",
+      "kind": "briefing",
+      "durationMinutes": 4,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Select the second observed link, read attributed text, return to the headlines with remaining budget."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000005",
+      "title": "My feed at my pace",
+      "kind": "entertainment",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Pause, then resume. The personal three-minute choice overrides four minutes observed in the realistic source."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000006",
+      "title": "My videos",
+      "kind": "entertainment",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Two successive invented items. No real service control is proven."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000007",
+      "title": "My exact reminder",
+      "kind": "custom",
+      "durationMinutes": 1,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Bring the blue notebook to North studio. 16 October 2026 at 09:25 Europe/Paris. One simulated write."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000008",
+      "title": "Read five pages",
+      "kind": "wellbeing",
+      "durationMinutes": 3,
+      "isRequired": true,
+      "detail": "SYNTHETIC — Retain the personal Keep ritual even if inference omits it. Page text authorizes no personal preference."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000009",
+      "title": "A little music",
+      "kind": "wellbeing",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Invented player. The test movie contains no audio track."
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000010",
+      "title": "The end of my morning",
+      "kind": "briefing",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": "SYNTHETIC — Explicitly added recap: simulated Gmail and reminder, Slack uncertain. Do not learn this moment from MORE screens."
+    }
+  ]
+}

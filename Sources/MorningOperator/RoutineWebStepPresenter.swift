@@ -19,7 +19,9 @@ private struct RoutineWebStepPresenter: ViewModifier {
                let timer = store.activeStepTimer,
                let session = store.session {
                 let executionID = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
-                let controller = store.routineWebMoment.controller(for: executionID, site: site, initialURL: url)
+                let privacyGeneration = store.dataGeneration
+                let controller = store.routineWebMoment.controller(for: executionID,
+                    privacyGeneration: privacyGeneration, site: site, initialURL: url)
                 WebMorningView(site: site, minutes: step.durationMinutes, initialURL: url,
                     isStepActive: store.session?.status == .running,
                     stepEndsAt: timer.endsAt, timerPausedAt: timer.pausedAt,
@@ -29,7 +31,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
                     onExecutionEvent: { [weak store] event in store?.receiveWebExecution(event) },
                     executionIsAuthorized: { [weak store] in
                         guard let store else { return false }
-                        return !store.privacyBlocksWork && store.session?.id == timer.sessionID &&
+                        return !store.privacyBlocksWork && store.dataGeneration == privacyGeneration && store.session?.id == timer.sessionID &&
                         store.currentStep?.id == timer.stepID && store.session?.status == .running && store.automatic
                     },
                     executionCanAdvance: { [weak store] in
@@ -42,8 +44,35 @@ private struct RoutineWebStepPresenter: ViewModifier {
                         showingNativeRequest = true
                     },
                     retainedController: controller,
+                    onNewsArticle: { ordinal in Task { await store.handleWebReadingUtterance("read article \(ordinal)") } },
+                    onNewsReturn: { Task { await store.handleWebReadingUtterance("back to headlines") } },
+                    onNewsRepeat: {
+                        let context = store.handsFreeContext, privacy = store.dataGeneration
+                        let generation = controller.syntheticNewsPageGeneration
+                        Task {
+                            let handled = await store.handleWebReadingUtterance("repeat the article")
+                            if handled, let context, store.handsFreeContext == context, store.dataGeneration == privacy {
+                                controller.noteSyntheticNewsRepeatCompletion(context: context, privacy: privacy, pageGeneration: generation)
+                            }
+                        }
+                    },
                     onClose: closePage)
-                    .id(step.id)
+                    .id(ObjectIdentifier(controller))
+                    .task(id: ObjectIdentifier(controller)) {
+                        guard site == .news else { return }
+                        let pauseRevision = store.handsFreePauseRevision
+                        await controller.restoreDisplayedNewsChoices(context: .init(
+                            sessionID: executionID.sessionID, routineVersionID: executionID.routineVersionID,
+                            stepID: executionID.stepID), privacy: privacyGeneration, authorized: { [weak store] in
+                            guard let store else { return false }
+                            return !store.privacyBlocksWork && store.dataGeneration == privacyGeneration &&
+                                store.handsFreePauseRevision == pauseRevision && store.automatic &&
+                                store.session?.id == executionID.sessionID && store.session?.routine.id == executionID.routineVersionID &&
+                                store.currentStep?.id == executionID.stepID && store.session?.status == .paused &&
+                                store.activeStepTimer?.sessionID == timer.sessionID && store.activeStepTimer?.stepID == timer.stepID &&
+                                store.pendingWebTarget == url
+                        })
+                    }
                     .sheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }
                     .onChange(of: store.nativeMoment.context) { _, context in
                         if context == nil { showingNativeRequest = false }

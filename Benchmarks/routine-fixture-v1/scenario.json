@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": 1,
+  "fixtureID": "more.synthetic.routine.v1",
+  "origin": "synthetic",
+  "revision": "2026-10-16-v1",
+  "sourceType": "offline-rendered-screen-storyboard-not-native-capture",
+  "languages": [
+    "fr",
+    "en"
+  ],
+  "fictionalObservedDate": "2026-10-16",
+  "fictionalStartTime": "07:45:00",
+  "timeZoneIdentifier": "Europe/Paris",
+  "privacy": {
+    "containsPersonalData": false,
+    "networkAllowed": false,
+    "realEffectsAllowed": false,
+    "audioIncluded": false
+  },
+  "profiles": {
+    "realistic": {
+      "description": "Intended viewing pace. Actual movie seconds are the source clock."
+    },
+    "accelerated": {
+      "description": "QA-only alternate pacing. Short movie seconds are not realistic use minutes."
+    }
+  },
+  "pages": {
+    "origin": "https://journal.morning-fixture.invalid",
+    "listPath": "/index.html",
+    "articlePath": "/articles/reading-corner",
+    "articleTitle": {
+      "fr": "Un coin lecture au jardin Cèdre",
+      "en": "A reading corner at Cedar garden"
+    },
+    "articleBody": {
+      "fr": "Le jardin Cèdre ouvre un coin lecture samedi. Des bénévoles ont placé six bancs près des érables. Les inscriptions sont gratuites et se font sur place. Le chantier a utilisé du bois récupéré dans l’atelier voisin. La bibliothèque prêtera des livres aux visiteurs. Ce récit est entièrement inventé pour le test SYNTHETIC.",
+      "en": "Cedar garden opens a reading corner on Saturday. Volunteers placed six benches beside the maples. Registration is free and takes place on site. The project used wood recovered from the nearby workshop. The library will lend books to visitors. This story is entirely invented for the SYNTHETIC test."
+    },
+    "author": "Camille Vernet"
+  },
+  "scenes": [
+    {
+      "id": "more-front",
+      "app": "MORE",
+      "moment": null,
+      "seconds": {
+        "realistic": 6,
+        "accelerated": 3
+      },
+      "title": {
+        "fr": "Observations",
+        "en": "Observations"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Choisir des matinées",
+            "en": "Choose mornings"
+          },
+          "body": {
+            "fr": "Votre routine actuelle reste en place jusqu’à ce que vous approuviez la mise à jour.",
+            "en": "Your current routine stays in place until you approve the update."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Choisissez entre une et cinq observations.",
+            "en": "Choose one to five observations."
+          },
+          "body": {
+            "fr": "SYNTHETIC — exemples séparés des matinées personnelles.",
+            "en": "SYNTHETIC — samples separate from personal mornings."
+          }
+        }
+      ],
+      "negative": "own-interface"
+    },
+    {
+      "id": "agenda-list",
+      "app": "Lumen Calendar",
+      "moment": "agenda",
+      "seconds": {
+        "realistic": 90,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Agenda — vendredi 16 octobre 2026",
+        "en": "Agenda — Friday 16 October 2026"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Atelier du matin · principal",
+            "en": "Morning workshop · primary"
+          },
+          "body": {
+            "fr": "Calendrier sélectionné : SYNTHETIC Atelier du matin.",
+            "en": "Selected calendar: SYNTHETIC Morning workshop."
+          }
+        },
+        {
+          "heading": {
+            "fr": "09:15 · Préparer les cartes",
+            "en": "09:15 · Prepare the cards"
+          },
+          "body": {
+            "fr": "Salle Cèdre · 30 minutes.",
+            "en": "Cedar room · 30 minutes."
+          }
+        },
+        {
+          "heading": {
+            "fr": "11:00 · Lecture au jardin",
+            "en": "11:00 · Garden reading"
+          },
+          "body": {
+            "fr": "Jardin Nord · 45 minutes.",
+            "en": "North garden · 45 minutes."
+          }
+        }
+      ]
+    },
+    {
+      "id": "agenda-detail",
+      "app": "Lumen Calendar",
+      "moment": "agenda",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 5
+      },
+      "title": {
+        "fr": "Préparer les cartes",
+        "en": "Prepare the cards"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "09:15–09:45 · aujourd’hui",
+            "en": "09:15–09:45 · today"
+          },
+          "body": {
+            "fr": "Salle Cèdre. Apporter le carnet bleu.",
+            "en": "Cedar room. Bring the blue notebook."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Choix de calendrier",
+            "en": "Calendar choice"
+          },
+          "body": {
+            "fr": "Deux calendriers nommés Atelier du matin. Celui-ci porte le repère principal.",
+            "en": "Two calendars are named Morning workshop. This one is marked primary."
+          }
+        }
+      ]
+    },
+    {
+      "id": "gmail-list",
+      "app": "Cedar Mail · Gmail SIMULATED",
+      "moment": "gmail",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 7
+      },
+      "title": {
+        "fr": "Boîte de réception · 5 messages fictifs",
+        "en": "Inbox · 5 invented messages"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "1 · Bulletin de la serre",
+            "en": "1 · Greenhouse bulletin"
+          },
+          "body": {
+            "fr": "SYNTHETIC infos de la semaine. Aucune action demandée.",
+            "en": "SYNTHETIC weekly news. No action requested."
+          }
+        },
+        {
+          "heading": {
+            "fr": "2 · Changement de salle",
+            "en": "2 · Room change"
+          },
+          "body": {
+            "fr": "L’atelier reste en salle Cèdre à 09:15.",
+            "en": "The workshop stays in Cedar room at 09:15."
+          }
+        },
+        {
+          "heading": {
+            "fr": "3 · Cartes pour l’atelier",
+            "en": "3 · Workshop cards"
+          },
+          "body": {
+            "fr": "Maïa : peux-tu apporter six cartes bleues ?",
+            "en": "Maia: can you bring six blue cards?"
+          }
+        },
+        {
+          "heading": {
+            "fr": "4 et 5 · autres messages lus",
+            "en": "4 and 5 · other read messages"
+          },
+          "body": {
+            "fr": "Bibliothèque samedi ; planning des semis.",
+            "en": "Saturday library; seedling schedule."
+          }
+        }
+      ]
+    },
+    {
+      "id": "gmail-choice",
+      "app": "Cedar Mail · Gmail SIMULATED",
+      "moment": "gmail",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "3 · Cartes pour l’atelier",
+        "en": "3 · Workshop cards"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Maïa · maia@morning-fixture.invalid",
+            "en": "Maia · maia@morning-fixture.invalid"
+          },
+          "body": {
+            "fr": "Peux-tu apporter six cartes bleues à 09:15 en salle Cèdre ?",
+            "en": "Can you bring six blue cards at 09:15 to Cedar room?"
+          }
+        },
+        {
+          "heading": {
+            "fr": "Message choisi",
+            "en": "Selected message"
+          },
+          "body": {
+            "fr": "La personne a choisi le troisième message consulté.",
+            "en": "The person selected the third read message."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Lis le troisième mail.",
+        "en": "Read the third email."
+      }
+    },
+    {
+      "id": "gmail-draft",
+      "app": "Cedar Mail · Gmail SIMULATED",
+      "moment": "gmail",
+      "seconds": {
+        "realistic": 90,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Brouillon · aucun envoi",
+        "en": "Draft · nothing sent"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "À Maïa",
+            "en": "To Maia"
+          },
+          "body": {
+            "fr": "Je viendrai avec six cartes bleues à 09:15.",
+            "en": "I will bring six blue cards at 09:15."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Relire avant envoi",
+            "en": "Review before sending"
+          },
+          "body": {
+            "fr": "Destinataire exact : maia@morning-fixture.invalid",
+            "en": "Exact recipient: maia@morning-fixture.invalid"
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Réponds que j’apporterai six cartes bleues à neuf heures quinze.",
+        "en": "Reply that I will bring six blue cards at nine fifteen."
+      }
+    },
+    {
+      "id": "gmail-correction",
+      "app": "Cedar Mail · Gmail SIMULATED",
+      "moment": "gmail",
+      "seconds": {
+        "realistic": 90,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Brouillon corrigé · aucun envoi",
+        "en": "Corrected draft · nothing sent"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "À Maïa",
+            "en": "To Maia"
+          },
+          "body": {
+            "fr": "Je viendrai avec huit cartes vertes à 09:15.",
+            "en": "I will bring eight green cards at 09:15."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Brouillon enregistré",
+            "en": "Draft saved"
+          },
+          "body": {
+            "fr": "Aucun envoi. maia@morning-fixture.invalid",
+            "en": "Nothing sent. maia@morning-fixture.invalid"
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Corrige : huit cartes vertes, pas six bleues.",
+        "en": "Correct it: eight green cards, not six blue ones."
+      }
+    },
+    {
+      "id": "gmail-sent",
+      "app": "Cedar Mail · Gmail SIMULATED",
+      "moment": "gmail",
+      "seconds": {
+        "realistic": 60,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "Envoi SIMULÉ confirmé",
+        "en": "SIMULATED send confirmed"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Accusé de test · aucun réseau",
+            "en": "Test receipt · no network"
+          },
+          "body": {
+            "fr": "À maia@morning-fixture.invalid : huit cartes vertes à 09:15.",
+            "en": "To maia@morning-fixture.invalid: eight green cards at 09:15."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Une seule tentative",
+            "en": "One attempt only"
+          },
+          "body": {
+            "fr": "Identité locale : qa.gmail.corrected-reply. Aucun vrai mail envoyé.",
+            "en": "Local identity: qa.gmail.corrected-reply. No real email was sent."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Envoie cette version.",
+        "en": "Send this version."
+      }
+    },
+    {
+      "id": "slack-thread",
+      "app": "Cedar Team · Slack SIMULATED",
+      "moment": "slack",
+      "seconds": {
+        "realistic": 40,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "Atelier · fil des cartes",
+        "en": "Workshop · card thread"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Noé · équipe fictive",
+            "en": "Noah · invented team"
+          },
+          "body": {
+            "fr": "La table est prête. Combien de cartes apportes-tu ?",
+            "en": "The table is ready. How many cards will you bring?"
+          }
+        },
+        {
+          "heading": {
+            "fr": "Canal choisi",
+            "en": "Selected channel"
+          },
+          "body": {
+            "fr": "SYNTHETIC atelier · aucun compte connecté.",
+            "en": "SYNTHETIC workshop · no connected account."
+          }
+        }
+      ]
+    },
+    {
+      "id": "slack-review",
+      "app": "Cedar Team · Slack SIMULATED",
+      "moment": "slack",
+      "seconds": {
+        "realistic": 60,
+        "accelerated": 7
+      },
+      "title": {
+        "fr": "Réponse à relire",
+        "en": "Reply to review"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Brouillon local",
+            "en": "Local draft"
+          },
+          "body": {
+            "fr": "J’apporte huit cartes vertes à 09:15.",
+            "en": "I am bringing eight green cards at 09:15."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Aucun effet pendant la relecture",
+            "en": "No effect while reviewing"
+          },
+          "body": {
+            "fr": "Seul le fil choisi est concerné.",
+            "en": "Only the selected thread is concerned."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Réponds que j’apporte huit cartes vertes à neuf heures quinze.",
+        "en": "Reply that I am bringing eight green cards at nine fifteen."
+      }
+    },
+    {
+      "id": "slack-uncertain",
+      "app": "Cedar Team · Slack SIMULATED",
+      "moment": "slack",
+      "seconds": {
+        "realistic": 80,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Publication SIMULÉE non confirmée",
+        "en": "SIMULATED post unconfirmed"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Résultat inconnu",
+            "en": "Unknown outcome"
+          },
+          "body": {
+            "fr": "La réponse du service simulé a été interrompue. Vérifier le fil avant une autre tentative.",
+            "en": "The simulated service response was interrupted. Check the thread before another attempt."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Aucune relance automatique",
+            "en": "No automatic retry"
+          },
+          "body": {
+            "fr": "Tentatives : 1. Résultat : incertain. Continuer garde cet état.",
+            "en": "Attempts: 1. Outcome: uncertain. Continuing retains this state."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Continue mon matin sans renvoyer.",
+        "en": "Continue my morning without sending again."
+      }
+    },
+    {
+      "id": "news-list",
+      "app": "Cedar News · Browser SIMULATED",
+      "moment": "news",
+      "seconds": {
+        "realistic": 50,
+        "accelerated": 7
+      },
+      "title": {
+        "fr": "Les titres du journal",
+        "en": "News headlines"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "1 · La serre accueille des semis",
+            "en": "1 · Greenhouse welcomes seedlings"
+          },
+          "body": {
+            "fr": "Article fictif · rubrique jardin.",
+            "en": "Invented article · garden section."
+          }
+        },
+        {
+          "heading": {
+            "fr": "2 · Un coin lecture au jardin Cèdre",
+            "en": "2 · A reading corner at Cedar garden"
+          },
+          "body": {
+            "fr": "journal.morning-fixture.invalid/articles/reading-corner",
+            "en": "journal.morning-fixture.invalid/articles/reading-corner"
+          }
+        },
+        {
+          "heading": {
+            "fr": "3 · Le club dessine des cartes",
+            "en": "3 · The club draws maps"
+          },
+          "body": {
+            "fr": "Article fictif · rubrique atelier.",
+            "en": "Invented article · workshop section."
+          }
+        }
+      ],
+      "page": "news-list"
+    },
+    {
+      "id": "news-article",
+      "app": "Cedar News · Browser SIMULATED",
+      "moment": "news",
+      "seconds": {
+        "realistic": 140,
+        "accelerated": 12
+      },
+      "title": {
+        "fr": "Un coin lecture au jardin Cèdre",
+        "en": "A reading corner at Cedar garden"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Cedar News · Camille Vernet",
+            "en": "Cedar News · Camille Vernet"
+          },
+          "body": {
+            "fr": "Le jardin Cèdre ouvre un coin lecture samedi. Des bénévoles ont placé six bancs près des érables. Les inscriptions sont gratuites et se font sur place. Le chantier a utilisé du bois récupéré dans l’atelier voisin. La bibliothèque prêtera des livres aux visiteurs. Ce récit est entièrement inventé pour le test SYNTHETIC.",
+            "en": "Cedar garden opens a reading corner on Saturday. Volunteers placed six benches beside the maples. Registration is free and takes place on site. The project used wood recovered from the nearby workshop. The library will lend books to visitors. This story is entirely invented for the SYNTHETIC test."
+          }
+        }
+      ],
+      "page": "news-article",
+      "cue": {
+        "fr": "Lis le deuxième article.",
+        "en": "Read the second article."
+      }
+    },
+    {
+      "id": "news-return",
+      "app": "Cedar News · Browser SIMULATED",
+      "moment": "news",
+      "seconds": {
+        "realistic": 50,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "Les titres du journal",
+        "en": "News headlines"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "2 · Un coin lecture au jardin Cèdre",
+            "en": "2 · A reading corner at Cedar garden"
+          },
+          "body": {
+            "fr": "Article fictif · rubrique jardin.",
+            "en": "Invented article · garden section."
+          }
+        }
+      ],
+      "page": "news-list",
+      "cue": {
+        "fr": "Reviens aux titres et reprends.",
+        "en": "Return to the headlines and resume."
+      }
+    },
+    {
+      "id": "feed-browse",
+      "app": "Cedar Social · Browser SIMULATED",
+      "moment": "feed",
+      "seconds": {
+        "realistic": 60,
+        "accelerated": 7
+      },
+      "title": {
+        "fr": "Fil · publications fictives",
+        "en": "Feed · invented posts"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Lina · un dessin du jardin",
+            "en": "Lina · a garden drawing"
+          },
+          "body": {
+            "fr": "Croquis du banc Cèdre. Publication 1.",
+            "en": "Sketch of the Cedar bench. Post 1."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Annonce · accessoires",
+            "en": "Advertisement · accessories"
+          },
+          "body": {
+            "fr": "Promotion fictive : accessoires de dessin pour le jardin.",
+            "en": "Invented promotion: garden sketching accessories."
+          }
+        }
+      ]
+    },
+    {
+      "id": "feed-pause",
+      "app": "Cedar Social · Browser SIMULATED",
+      "moment": "feed",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 5
+      },
+      "title": {
+        "fr": "Consultation en pause",
+        "en": "Browsing paused"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Pause",
+            "en": "Pause"
+          },
+          "body": {
+            "fr": "La consultation est suspendue.",
+            "en": "Browsing is paused."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Pause.",
+        "en": "Pause."
+      }
+    },
+    {
+      "id": "feed-resume",
+      "app": "Cedar Social · Browser SIMULATED",
+      "moment": "feed",
+      "seconds": {
+        "realistic": 150,
+        "accelerated": 9
+      },
+      "title": {
+        "fr": "Fil · reprise au même endroit",
+        "en": "Feed · resume at the same position"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Lina · un dessin du jardin",
+            "en": "Lina · a garden drawing"
+          },
+          "body": {
+            "fr": "Publication 1 · croquis du banc Cèdre.",
+            "en": "Post 1 · sketch of the Cedar bench."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Sam · les semis du balcon",
+            "en": "Sam · balcony seedlings"
+          },
+          "body": {
+            "fr": "Publication 2 · trois pots et deux pousses.",
+            "en": "Post 2 · three pots and two sprouts."
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Reprends.",
+        "en": "Resume."
+      }
+    },
+    {
+      "id": "video-one",
+      "app": "Cedar Clips · Browser SIMULATED",
+      "moment": "video",
+      "seconds": {
+        "realistic": 90,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Vidéo 1 · La rivière au crayon",
+        "en": "Video 1 · Drawing the river"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Lecteur fictif",
+            "en": "Invented player"
+          },
+          "body": {
+            "fr": "Images et texte générés localement. Aucun vrai flux vidéo.",
+            "en": "Locally generated images and text. No real video feed."
+          }
+        }
+      ],
+      "visual": "video"
+    },
+    {
+      "id": "video-two",
+      "app": "Cedar Clips · Browser SIMULATED",
+      "moment": "video",
+      "seconds": {
+        "realistic": 90,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Vidéo 2 · Les érables du jardin",
+        "en": "Video 2 · The garden maples"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Contenu suivant simulé",
+            "en": "Simulated next content"
+          },
+          "body": {
+            "fr": "Le passage à la deuxième vidéo n’est pas une preuve de contrôle d’un vrai service.",
+            "en": "Moving to the second video does not prove control of a real service."
+          }
+        }
+      ],
+      "visual": "video",
+      "cue": {
+        "fr": "Vidéo suivante.",
+        "en": "Next video."
+      }
+    },
+    {
+      "id": "reminder-edit",
+      "app": "Cedar Reminders SIMULATED",
+      "moment": "reminder",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "Créer un rappel exact",
+        "en": "Create an exact reminder"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Titre",
+            "en": "Title"
+          },
+          "body": {
+            "fr": "Apporter le carnet bleu au studio Nord",
+            "en": "Bring the blue notebook to North studio"
+          }
+        },
+        {
+          "heading": {
+            "fr": "Date et heure",
+            "en": "Date and time"
+          },
+          "body": {
+            "fr": "16 octobre 2026 · 09:25 · Europe/Paris",
+            "en": "16 October 2026 · 09:25 · Europe/Paris"
+          }
+        }
+      ],
+      "cue": {
+        "fr": "Rappelle-moi à neuf heures vingt-cinq d’apporter le carnet bleu au studio Nord.",
+        "en": "Remind me at nine twenty-five to bring the blue notebook to North studio."
+      }
+    },
+    {
+      "id": "reminder-confirm",
+      "app": "Cedar Reminders SIMULATED",
+      "moment": "reminder",
+      "seconds": {
+        "realistic": 30,
+        "accelerated": 6
+      },
+      "title": {
+        "fr": "Rappel SIMULÉ enregistré",
+        "en": "SIMULATED reminder saved"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Apporter le carnet bleu au studio Nord",
+            "en": "Bring the blue notebook to North studio"
+          },
+          "body": {
+            "fr": "16 octobre 2026 · 09:25 · Europe/Paris. Une seule écriture simulée.",
+            "en": "16 October 2026 · 09:25 · Europe/Paris. One simulated write only."
+          }
+        }
+      ]
+    },
+    {
+      "id": "reading-kept",
+      "app": "Cedar Reader",
+      "moment": "reading",
+      "seconds": {
+        "realistic": 180,
+        "accelerated": 10
+      },
+      "title": {
+        "fr": "Lire cinq pages",
+        "en": "Read five pages"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Le carnet du jardin · page 1",
+            "en": "The garden notebook · page 1"
+          },
+          "body": {
+            "fr": "Le banc était sec après la pluie. J’ai posé cinq feuilles sur la table pour dessiner les érables. Cette histoire est inventée.",
+            "en": "The bench was dry after the rain. I put five sheets on the table to draw the maples. This story is invented."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Page 2",
+            "en": "Page 2"
+          },
+          "body": {
+            "fr": "Une lumière claire arrivait du jardin.",
+            "en": "Clear light came from the garden."
+          }
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "app": "Cedar Music",
+      "moment": "music",
+      "seconds": {
+        "realistic": 120,
+        "accelerated": 8
+      },
+      "title": {
+        "fr": "Deux minutes de musique calme",
+        "en": "Two minutes of quiet music"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Morceau fictif : Lumière sur le jardin",
+            "en": "Invented track: Light in the garden"
+          },
+          "body": {
+            "fr": "Lecteur dessiné, sans son ni service externe.",
+            "en": "Drawn player, without audio or an external service."
+          }
+        }
+      ],
+      "visual": "music"
+    },
+    {
+      "id": "login",
+      "app": "Cedar Social · Browser SIMULATED",
+      "moment": null,
+      "seconds": {
+        "realistic": 20,
+        "accelerated": 4
+      },
+      "title": {
+        "fr": "Connexion requise",
+        "en": "Sign-in required"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Adresse électronique",
+            "en": "Email address"
+          },
+          "body": {
+            "fr": "Champ vide. Aucun identifiant ni mot de passe saisi.",
+            "en": "Empty field. No username or password entered."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Arrêt à la connexion",
+            "en": "Stop at sign-in"
+          },
+          "body": {
+            "fr": "Authentification non disponible dans cette source.",
+            "en": "Authentication is unavailable in this source."
+          }
+        }
+      ],
+      "negative": "login"
+    },
+    {
+      "id": "ambiguous",
+      "app": "Unknown synthetic surface",
+      "moment": null,
+      "seconds": {
+        "realistic": 14,
+        "accelerated": 4
+      },
+      "title": {
+        "fr": "Contenu non attribuable",
+        "en": "Unattributable content"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Atelier",
+            "en": "Workshop"
+          },
+          "body": {
+            "fr": "Réunion bientôt. Aucun nom d’app vérifiable ni heure exacte.",
+            "en": "Meeting soon. No verifiable app name or exact time."
+          }
+        }
+      ],
+      "negative": "ambiguous"
+    },
+    {
+      "id": "homonyms",
+      "app": "Synthetic app chooser",
+      "moment": null,
+      "seconds": {
+        "realistic": 14,
+        "accelerated": 4
+      },
+      "title": {
+        "fr": "Deux apps nommées Journal",
+        "en": "Two apps named Journal"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Journal",
+            "en": "Journal"
+          },
+          "body": {
+            "fr": "Deux sources distinctes portent le même nom. Aucun repère humain vérifié.",
+            "en": "Two distinct sources share the same name. No verified human distinction."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Choix indisponible",
+            "en": "Choice unavailable"
+          },
+          "body": {
+            "fr": "Renommer ou corriger la source avant de choisir. Aucun identifiant technique affiché.",
+            "en": "Rename or correct the source before choosing. No technical identifier displayed."
+          }
+        }
+      ],
+      "negative": "homonyms"
+    },
+    {
+      "id": "more-end",
+      "app": "MORE",
+      "moment": null,
+      "seconds": {
+        "realistic": 6,
+        "accelerated": 4
+      },
+      "title": {
+        "fr": "Observations",
+        "en": "Observations"
+      },
+      "blocks": [
+        {
+          "heading": {
+            "fr": "Choisir des matinées",
+            "en": "Choose mornings"
+          },
+          "body": {
+            "fr": "Votre routine actuelle reste en place jusqu’à ce que vous approuviez la mise à jour.",
+            "en": "Your current routine stays in place until you approve the update."
+          }
+        },
+        {
+          "heading": {
+            "fr": "Suggérer une mise à jour",
+            "en": "Suggest an update"
+          },
+          "body": {
+            "fr": "Choisissez entre une et cinq observations.",
+            "en": "Choose one to five observations."
+          }
+        }
+      ],
+      "negative": "own-interface"
+    }
+  ]
+}

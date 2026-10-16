@@ -3,6 +3,15 @@ import Foundation
 import MorningCore
 import Observation
 
+/// Only an explicit minute-resolution UI edit uses this boundary. Loading a
+/// prepared draft or editing its title must retain the original Date exactly.
+public enum NativeMomentDateInput {
+    public static func editedMinute(_ date: Date, calendar: Calendar = .current) -> Date {
+        guard date.timeIntervalSinceReferenceDate.isFinite else { return date }
+        return calendar.dateInterval(of: .minute, for: date)?.start ?? date
+    }
+}
+
 /// Exact local account/list identity. Titles are presentation; identifiers pin the destination.
 public struct NativeMomentDestination: Codable, Sendable, Equatable {
     public let id: String

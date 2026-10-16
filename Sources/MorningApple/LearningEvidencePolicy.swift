@@ -110,6 +110,7 @@ enum LearningEvidencePolicy {
         let value = normalized(text)
         if ["white to move", "black to move", "checkmate"].contains(where: value.contains) { return true }
         for line in text.components(separatedBy: .newlines) {
+            if ObservedTextRolePolicy.isProvenanceLine(line) { continue }
             let words = meaningfulWords(line)
             // A visible event time plus its content, not the status-bar clock or app name.
             let hasTime = line.range(of: #"\b\d{1,2}[:h]\d{2}\b"#, options: .regularExpression) != nil

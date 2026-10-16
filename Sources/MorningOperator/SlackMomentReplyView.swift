@@ -18,6 +18,11 @@ struct SlackMomentReplyView: View {
                 Text("SYNTHETIC local fixture · no Slack message is posted")
                     .font(.raleway(.caption)).accessibilityIdentifier("slackMoment.synthetic")
             }
+            if SlackSetupUITestFixture.integratedJourneyRequested {
+                Text("SYNTHETIC — isolated transport and draft. No account, network or real post; one simulated dispatch loses its response.")
+                    .font(.caption).accessibilityIdentifier("slackMoment.integratedSynthetic")
+                    .accessibilityValue(integratedDiagnostic)
+            }
             Text(french ? "Choisissez un message et dites ce que vous souhaitez répondre. MORE relit le compte, le canal, le message et la réponse avant votre instruction d’envoi."
                  : "Choose a message and say what you want to reply. MORE reviews the account, channel, message and reply before your send instruction.")
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
@@ -77,17 +82,32 @@ struct SlackMomentReplyView: View {
             }
             if reply.phase == .preparing || reply.phase == .sending { ProgressView() }
             if reply.context != nil {
-                Text(french ? "Votre matin est en pause. Dites reprends après avoir fermé cette demande."
-                     : "Your morning is paused. Say resume after closing this request.")
+                Text(MorningInteractionGuidance.pausedRequest(canHearCommands: store.canHearHandsFreeCommands, french: french))
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                 Button(french ? "Fermer cette demande" : "Close this request") { focused = false; store.clearSlackReply() }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("slackMoment.cancel")
             }
         }.accessibilityElement(children: .contain)
             .accessibilityIdentifier("slackMoment.panel")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    if focused {
+                        Spacer()
+                        Button(french ? "Terminé" : "Done") { focused = false }
+                            .accessibilityIdentifier("slackMoment.keyboardDone")
+                    }
+                }
+            }
             .onChange(of: scenePhase) { _, phase in if phase != .active { intention = ""; focused = false } }
             .onChange(of: store.dataGeneration) { _, _ in intention = ""; focused = false }
             .onChange(of: store.currentSlackContext) { _, _ in intention = ""; focused = false }
             .onDisappear { intention = ""; focused = false }
+    }
+
+    private var integratedDiagnostic: String {
+        let counts = store.session.flatMap { store.slackActionCounts(for: $0) }
+        return SlackSetupUITestFixture.integratedDiagnostic + "; confirmed replies: " +
+            (counts.map { String($0.confirmed) } ?? "unknown") + "; unconfirmed replies: " +
+            (counts.map { String($0.unconfirmed) } ?? "unknown")
     }
 }

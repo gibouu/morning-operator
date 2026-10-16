@@ -228,6 +228,97 @@ struct ScreenTimeRoutineLearningTests {
         #expect(proposal.steps.first { $0.title == "Safari" }?.minutes == 12)
     }
 
+    @Test func savedOrderPermutesCompleteSourceRowsAndKeepsNewMomentsInTheirSlots() throws {
+        let learning = learn(ordinaryDay(14), queryStart: at(18, day: 13))
+        let previous = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15),
+            baseRoutineID: nil, calendar: calendar()))
+        var journal = RoutinePreferenceJournal()
+        try journal.rememberOrder(of: [previous.steps[4].suggestedStep,
+            RoutineStep(title: "Absent order-only ritual", kind: .wellbeing),
+            previous.steps[0].suggestedStep, previous.steps[2].suggestedStep])
+        journal = try JSONDecoder().decode(RoutinePreferenceJournal.self, from: JSONEncoder().encode(journal))
+        var proposal = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15),
+            baseRoutineID: nil, calendar: calendar()))
+        #expect(proposal.steps[0].id != previous.steps[0].id, "The standing order must also match safely after fresh source IDs.")
+        proposal.setIncluded(false, stepID: proposal.steps[2].id)
+        proposal.setMinutes(9, stepID: proposal.steps[2].id)
+        let before = proposal.steps
+        let applied = proposal.applyPreferences(journal)
+        #expect(applied && proposal.steps == [before[4], before[1], before[0], before[3], before[2]])
+        #expect(proposal.steps.count == 5, "Order alone does not insert an absent moment.")
+        #expect(!proposal.steps[4].included && proposal.steps[4].minutes == 9)
+        let restored = try JSONDecoder().decode(ScreenTimeRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored == proposal && restored.isCurrent(preferences: journal))
+        let draft = try restored.draft(preserving: nil)
+        #expect(draft.steps.map(\.id) == restored.includedSteps.map { $0.suggestedStep.id })
+        #expect(!draft.isApproved)
+        let reapplied = proposal.applyPreferences(journal)
+        #expect(reapplied && proposal == restored)
+    }
+
+    @Test func sourceOrderHonorsKeepExcludeAndMinutesOnceAndRejectsAmbiguousHomonyms() throws {
+        let learning = learn(ordinaryDay(14), queryStart: at(18, day: 13))
+        var proposal = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15),
+            baseRoutineID: nil, calendar: calendar()))
+        let kept = RoutineStep(title: "WhatsApp", detail: "Exact owner-authored kept note.", kind: .messages,
+            durationMinutes: 11, isRequired: true, automation: .spokenNote)
+        let absent = RoutineStep(title: "Breathing", detail: "A complete kept ritual", kind: .wellbeing,
+            durationMinutes: 3, isRequired: true, automation: .spokenNote)
+        let sourceRows = proposal.steps
+        let safari = proposal.steps[1].suggestedStep, mail = proposal.steps[4].suggestedStep
+        var journal = RoutinePreferenceJournal()
+        try journal.rememberOrder(of: [absent, mail, kept, safari])
+        try journal.upsert(.init(target: kept, presence: .keep, durationMinutes: 7))
+        try journal.upsert(.init(target: absent, presence: .keep))
+        try journal.upsert(.init(target: safari, presence: .exclude))
+        try journal.upsert(.init(target: mail, durationMinutes: 8))
+        let applied = proposal.applyPreferences(journal)
+        #expect(applied && proposal.steps.count == 5)
+        #expect(proposal.steps.map { $0.suggestedStep.id } == [absent.id, sourceRows[2].id, sourceRows[3].id, mail.id, kept.id])
+        #expect(proposal.steps[1] == sourceRows[2] && proposal.steps[2] == sourceRows[3])
+        #expect(!proposal.steps.contains { $0.bundleIdentifier == "com.apple.mobilesafari" })
+        let visibleKept = try #require(proposal.steps.last)
+        var expectedKept = kept; expectedKept.durationMinutes = 7
+        #expect(visibleKept.retainedStep == kept && visibleKept.suggestedStep == expectedKept)
+        #expect(visibleKept.id == sourceRows[0].id && visibleKept.bundleIdentifier == "net.whatsapp.WhatsApp" && visibleKept.morningsSeen == 1)
+        #expect(proposal.steps[3].minutes == 8 && proposal.steps[0].retainedStep == absent)
+        let restored = try JSONDecoder().decode(ScreenTimeRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored.isCurrent(preferences: journal))
+        #expect(try restored.draft(preserving: nil).steps.last == expectedKept)
+
+        let hours = [hour(at(22, day: 13), [app("com.apple.mobilemail", 10)]),
+            hour(at(7), pickup: at(7, 5), longest: (at(7, 5), at(7, 50)),
+                [app("com.lichess.mobileapp", 10), app("org.lichess.mobileapp", 8), app("com.apple.mobilesafari", 20)])]
+        var ambiguous = try #require(ScreenTimeRoutineProposal.make(from: learn(hours, now: at(12), queryStart: at(18, day: 13)),
+            nextMorning: at(7, day: 15), baseRoutineID: nil, calendar: calendar()))
+        var homonymOrder = RoutinePreferenceJournal()
+        try homonymOrder.rememberOrder(of: [RoutineStep(title: "Lichess", kind: .entertainment)])
+        let original = ambiguous
+        let refused = ambiguous.applyPreferences(homonymOrder)
+        #expect(!refused && ambiguous == original, "A refusal leaves all source rows and the old preference snapshot untouched.")
+    }
+
+    @Test func savedSourceProposalMustStillSatisfyItsExactRecordedOrder() throws {
+        let learning = learn(ordinaryDay(14), queryStart: at(18, day: 13))
+        var proposal = try #require(ScreenTimeRoutineProposal.make(from: learning, nextMorning: at(7, day: 15),
+            baseRoutineID: nil, calendar: calendar()))
+        let legacy = try JSONDecoder().decode(ScreenTimeRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        var journal = RoutinePreferenceJournal()
+        try journal.rememberOrder(of: Array(proposal.steps.reversed()).map(\.suggestedStep))
+        #expect(!legacy.isCurrent(preferences: journal), "A legacy snapshot does not acknowledge a new order-only journal.")
+        let applied = proposal.applyPreferences(journal)
+        #expect(applied)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(proposal)) as? [String: Any])
+        var rows = try #require(object["steps"] as? [[String: Any]])
+        rows.swapAt(0, 1); object["steps"] = rows
+        let altered = try JSONDecoder().decode(ScreenTimeRoutineProposal.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(!altered.isCurrent(preferences: journal), "Keeping the journal bytes is insufficient to certify a different order.")
+        let restored = try JSONDecoder().decode(ScreenTimeRoutineProposal.self, from: JSONEncoder().encode(proposal))
+        #expect(restored.isCurrent(preferences: journal))
+        var cleared = journal; let removed = cleared.clearOrder()
+        #expect(removed && !restored.isCurrent(preferences: cleared))
+    }
+
     @Test func aLongUseAtNightIsNotSkippedAsANightCheck() throws {
         let hours = [hour(at(22, day: 13), [app("com.apple.mobilemail", 10)]),
                      hour(at(3), pickup: at(3), longest: (at(3), at(3, 10)), [app("com.apple.mobilesafari", 30)]),

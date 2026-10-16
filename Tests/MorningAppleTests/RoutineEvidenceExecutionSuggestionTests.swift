@@ -117,10 +117,12 @@ struct RoutineEvidenceExecutionSuggestionTests {
 
     private func assemble(_ evidence: PreparedLearningEvidence, title: String = "My selected moment", kind: StepKind = .entertainment,
                           preferences: RoutinePreferenceJournal? = nil) throws -> EvidenceRoutineProposal {
-        try LearningEvidencePreparation.assemble(evidence: evidence, steps: evidence.units.map {
-            EvidenceRoutineStepInput(title: title, detail: "A tentative moment", kind: kind, durationMinutes: 2,
-                citations: [.init(unitID: $0.id, quote: content)])
-        }, preserving: nil, preferences: preferences, at: instant)
+        // Deliberately propose one activity supported by all frames. These tests
+        // check its execution suggestion, not equivalence between separate inputs.
+        try LearningEvidencePreparation.assemble(evidence: evidence,
+            steps: [EvidenceRoutineStepInput(title: title, detail: "A tentative moment", kind: kind, durationMinutes: 2,
+                citations: evidence.units.map { .init(unitID: $0.id, quote: content) })],
+            preserving: nil, preferences: preferences, at: instant)
     }
 
     private func video(labels: [String?]) throws -> ObservationAcquisition {

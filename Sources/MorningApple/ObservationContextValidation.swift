@@ -46,6 +46,7 @@ public struct ObservationContextNativeError: Codable, Sendable, Equatable {
 }
 
 public struct ObservationContextDiagnostic: Codable, Sendable, Equatable {
+    public enum SelectionFailure: String, Codable, Sendable, Error { case shape, keys, membership }
     public enum Kind: String, Codable, Sendable {
         case unknownSampleID, duplicateSampleID, invalidResponse, invalidEvidence
         case unsupportedIdentity, generationFailed
@@ -54,8 +55,11 @@ public struct ObservationContextDiagnostic: Codable, Sendable, Equatable {
     public let sampleID: UUID?
     /// Optional so classifications saved before sanitized diagnostics still decode.
     public let nativeError: ObservationContextNativeError?
-    public init(kind: Kind, sampleID: UUID? = nil, nativeError: ObservationContextNativeError? = nil) {
+    public let selectionFailure: SelectionFailure?
+    public init(kind: Kind, sampleID: UUID? = nil, nativeError: ObservationContextNativeError? = nil,
+                selectionFailure: SelectionFailure? = nil) {
         self.kind = kind; self.sampleID = sampleID; self.nativeError = nativeError
+        self.selectionFailure = selectionFailure
     }
 }
 
@@ -265,6 +269,10 @@ enum ObservationContextValidation {
                 return unknown(frame, reason: AppLanguage.localized("The proposed quote was not grounded in this frame.", bundle: .module))
             }
             if proposal.outcome == "ambiguous", proposal.contextLabel.isEmpty {
+                guard !ObservedTextRolePolicy.isPureProvenance(quote) else {
+                    diagnostics.append(.init(kind: .unsupportedIdentity, sampleID: frame.id))
+                    return unknown(frame, reason: String(localized: "The proposed visual identity was unsupported.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))
+                }
                 return .init(sampleID: frame.id, timeSeconds: frame.timeSeconds, timeBasis: frame.timeBasis,
                              evidence: .ambiguous(reference: frame.evidenceReference), evidenceQuote: quote,
                              reason: AppLanguage.localized("The local model reported ambiguous visible context.", bundle: .module))
@@ -290,7 +298,7 @@ enum ObservationContextValidation {
         let headers = headerLines(excerpt)
         let label: String
         if catalog.isEmpty {
-            guard isSafeLabel(proposal.contextLabel), proposal.contextLabel == proposal.evidenceQuote,
+            guard isHeaderCandidate(proposal.contextLabel), proposal.contextLabel == proposal.evidenceQuote,
                   headers.contains(proposal.evidenceQuote) else { return nil }
             label = proposal.contextLabel
         } else {
@@ -300,6 +308,7 @@ enum ObservationContextValidation {
             // icon into a letter. A mention can block identity, never establish it.
             let mentionedCatalog = catalog.filter { entry in headers.contains { $0.contains(entry.headerText) } }
             guard visibleCatalog.count == 1, mentionedCatalog.count == 1, let entry = visibleCatalog.first,
+                  !ObservedTextRolePolicy.isProvenanceLine(removingLeadingDecoration(proposal.evidenceQuote)),
                   proposal.contextLabel == entry.label, headers.contains(proposal.evidenceQuote),
                   removingLeadingDecoration(proposal.evidenceQuote) == entry.headerText else { return nil }
             label = entry.label
@@ -368,11 +377,17 @@ enum ObservationContextValidation {
     }
 
     private static func isSafeLabel(_ label: String) -> Bool {
-        let allowed = CharacterSet.letters.union(.decimalDigits).union(CharacterSet(charactersIn: " -_&'’"))
+        // These separators can belong to a literal brand/header. Do not admit
+        // URL/bundle syntax, controls, or repair the exact source citation.
+        let allowed = CharacterSet.letters.union(.decimalDigits).union(CharacterSet(charactersIn: " -_&'’•·–—"))
         return (2...80).contains(label.count) && label == label.trimmingCharacters(in: .whitespacesAndNewlines) &&
             label.unicodeScalars.contains(where: CharacterSet.letters.contains) &&
             label.unicodeScalars.allSatisfy(allowed.contains)
     }
+
+    /// This is a narrow negative role check, never a source of app identity.
+    /// An ordinary name such as “Synthetic Studio” or “Test Kitchen” is retained.
+    static func isHeaderCandidate(_ line: String) -> Bool { isSafeLabel(line) && !ObservedTextRolePolicy.isProvenanceLine(line) }
 
     private static func normalized(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))

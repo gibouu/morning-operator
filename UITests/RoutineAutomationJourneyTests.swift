@@ -3,6 +3,165 @@ import XCTest
 /// Synthetic routine/persisted budgets; live-news explicitly uses a real public page.
 @MainActor
 final class RoutineAutomationJourneyTests: XCTestCase {
+    /// This is the separately authored portable oracle, not OCR/model output or
+    /// an executable provider plan. Only the ordinary editor delegates its draft.
+    func testParsedSyntheticFrenchRoutineStaysEditableAndApprovedAfterRelaunch() throws {
+        // Literal copy of Benchmarks/routine-fixture-v1/oracle-draft-fr.more-routine.json.
+        let portable = #"{"format":"morning-operator.routine","formatVersion":1,"detail":"includeDetails","sourceRoutineID":"90000000-0000-4000-8000-000000000100","sourceRoutineVersion":1,"sourceCreatedAt":1792129500.0,"approvalAtExport":false,"sourceIsSynthetic":true,"sourceLabel":"Demo fixture — SYNTHETIC manual oracle; no OCR or model execution","steps":[{"id":"90000000-0000-4000-8000-000000000001","title":"Mon agenda","kind":"calendar","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Consulter le calendrier principal fictif, sans confondre les homonymes."},{"id":"90000000-0000-4000-8000-000000000002","title":"Mes mails et ma réponse","kind":"messages","durationMinutes":5,"isRequired":false,"detail":"SYNTHETIC — Choisir le troisième mail, corriger six cartes bleues en huit cartes vertes, relire puis simuler un seul envoi."},{"id":"90000000-0000-4000-8000-000000000003","title":"Mon équipe","kind":"messages","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — Une réponse simulée incertaine ne doit jamais être relancée automatiquement."},{"id":"90000000-0000-4000-8000-000000000004","title":"Deuxième article et retour","kind":"briefing","durationMinutes":4,"isRequired":false,"detail":"SYNTHETIC — Choisir le deuxième lien observé, lire le texte attribué, revenir aux titres avec le budget restant."},{"id":"90000000-0000-4000-8000-000000000005","title":"Mon fil à mon rythme","kind":"entertainment","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — Pause puis reprise. La durée personnelle de trois minutes prime sur les quatre minutes observées dans la source réaliste."},{"id":"90000000-0000-4000-8000-000000000006","title":"Mes vidéos","kind":"entertainment","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — Deux contenus fictifs successifs. Aucun contrôle de vrai service n’est prouvé."},{"id":"90000000-0000-4000-8000-000000000007","title":"Mon rappel exact","kind":"custom","durationMinutes":1,"isRequired":false,"detail":"SYNTHETIC — Apporter le carnet bleu au studio Nord. 16 octobre 2026 à 09:25 Europe/Paris. Une seule écriture simulée."},{"id":"90000000-0000-4000-8000-000000000008","title":"Lire cinq pages","kind":"wellbeing","durationMinutes":3,"isRequired":true,"detail":"SYNTHETIC — Rituel personnel Garder conservé même si l’inférence l’omet. Le texte d’une page n’autorise aucun choix personnel."},{"id":"90000000-0000-4000-8000-000000000009","title":"Un peu de musique","kind":"wellbeing","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Lecteur fictif. La vidéo de test ne contient aucune piste audio."},{"id":"90000000-0000-4000-8000-000000000010","title":"La fin de mon matin","kind":"briefing","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Récap ajouté explicitement : Gmail et rappel simulés, Slack incertain. Ne pas apprendre ce moment depuis les écrans MORE."}]}"#
+        let data = Data(portable.utf8)
+        let document = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let steps = try XCTUnwrap(document["steps"] as? [[String: Any]])
+        XCTAssertEqual(steps.count, 10)
+        XCTAssertEqual(steps.compactMap { $0["durationMinutes"] as? Int }.reduce(0, +), 28)
+        let titles = try steps.map { try XCTUnwrap($0["title"] as? String) }
+        let app = launch(["--ui-testing-approved", "--ui-testing-stopped-run", "--ui-testing-ten-moments",
+                          "--ui-testing-parsed-routine=" + data.base64EncodedString()], french: true)
+        defer { app.terminate() }
+        tapHomeSettings(app)
+        let routine = visibleButton("setup.routine", in: app)
+        XCTAssertTrue(routine.label.contains("10 moments") && routine.label.contains("28 min"), routine.label)
+        routine.tap()
+        XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["routine.approve"].isEnabled,
+                      "The parsed plan must remain a draft even with the ordinary approval fixture flag.")
+        for index in titles.indices {
+            XCTAssertTrue(visibleButton("routine.step.\(index)", in: app).label.contains(titles[index]))
+        }
+        XCTAssertFalse(app.buttons["routine.step.10"].exists)
+        // Label's decorative image shares its identifier with the readable text.
+        let synthetic = app.staticTexts["routine.source"]
+        scrollTo(synthetic, identifier: "routine.source", in: app)
+        XCTAssertFalse(synthetic.label.isEmpty)
+        attach("automation-parsed-synthetic-ten-moment-french-draft", app)
+        enabledVisibleButton("routine.step.0", in: app).tap()
+        let duration = app.steppers["step.duration"]
+        scrollTo(duration, identifier: "step.duration", in: app)
+        XCTAssertEqual(duration.value as? String, "2")
+        let increment = duration.buttons["step.duration-Increment"]
+        XCTAssertTrue(increment.isHittable)
+        increment.tap()
+        XCTAssertEqual(duration.value as? String, "3")
+        enabledVisibleButton("step.save", in: app).tap()
+        XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 5))
+        _ = visibleButton("routine.step.0", in: app)
+        _ = visibleButton("routine.step.1", in: app)
+        enabledVisibleButton("routine.edit", in: app).tap()
+        let reorder = app.buttons.matching(NSPredicate(format:
+            "(label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@) AND label CONTAINS %@",
+            "Réorganiser", "Reorder", titles[0])).firstMatch
+        guard reorder.waitForExistence(timeout: 5), reorder.isHittable else {
+            captureFailure("parsed-routine-native-reorder-handle-unavailable", app)
+            XCTFail("The real native editor must expose its reorder handle; no Store mutation substitutes this gesture.")
+            return
+        }
+        let second = app.buttons["routine.step.1"]
+        reorder.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: second.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
+        enabledVisibleButton("routine.edit", in: app).tap()
+        let reordered = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", titles[1]), object: app.buttons["routine.step.0"])
+        let reorderedResult = XCTWaiter.wait(for: [reordered], timeout: 5)
+        if reorderedResult != .completed { captureFailure("parsed-routine-native-reorder-did-not-save", app) }
+        XCTAssertEqual(reorderedResult, .completed)
+        XCTAssertTrue(app.buttons["routine.step.1"].label.contains(titles[0]))
+        XCTAssertTrue(app.buttons["routine.step.1"].label.contains("3 min"))
+        attach("automation-parsed-synthetic-routine-duration-and-order-edited", app)
+        enabledVisibleButton("routine.approve", in: app).tap()
+        returnHome(app)
+        app.terminate()
+        app.launchArguments.removeAll {
+            $0.hasPrefix("--ui-testing-parsed-routine=") || $0 == "--ui-testing-approved" ||
+                $0 == "--ui-testing-stopped-run" || $0 == "--ui-testing-ten-moments" || $0 == "--ui-testing-empty-workspace"
+        }
+        app.launch()
+        let workspace = try XCTUnwrap(app.launchArguments.first { $0.hasPrefix("--ui-testing-workspace=") }
+            .map { String($0.dropFirst("--ui-testing-workspace=".count)) })
+        XCTAssertTrue(app.staticTexts["qa.testWorkspace"].waitForExistence(timeout: 8))
+        XCTAssertEqual(app.staticTexts["qa.testWorkspace"].value as? String, workspace)
+        tapHomeSettings(app)
+        let saved = visibleButton("setup.routine", in: app)
+        XCTAssertTrue(saved.label.contains("10 moments") && saved.label.contains("29 min"), saved.label)
+        saved.tap()
+        XCTAssertTrue(app.buttons["routine.edit"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["routine.approve"].exists, "Approval must come from the saved review, not a launch flag.")
+        var savedTitles = titles
+        savedTitles.swapAt(0, 1)
+        for index in savedTitles.indices {
+            let row = visibleButton("routine.step.\(index)", in: app)
+            XCTAssertTrue(row.label.contains(savedTitles[index]), row.label)
+            if index == 1 { XCTAssertTrue(row.label.contains("3 min")) }
+        }
+        XCTAssertFalse(app.buttons["routine.step.10"].exists)
+        attach("automation-parsed-synthetic-routine-approved-and-restored", app)
+    }
+
+    func testSyntheticSlackUncertainSendReplacesTheOldInstructionOnHome() {
+        checkSyntheticSlackUncertainSendOnHome()
+    }
+
+    func testFrenchLargestSyntheticSlackUncertainSendKeepsHomeControlsReachable() {
+        checkSyntheticSlackUncertainSendOnHome(french: true, largestText: true)
+    }
+
+    private func checkSyntheticSlackUncertainSendOnHome(french: Bool = false, largestText: Bool = false) {
+        var flags = ["--ui-testing-slack-reply", "--ui-testing-slack-uncertain-send", "--ui-testing-approved", "--ui-testing-hands-free"]
+        if largestText { flags += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        let app = launch(flags, french: french)
+        defer { app.terminate() }
+        reveal(app); app.buttons["morning.begin"].tap()
+        openHomeInteraction(app)
+        tapVisible("slackMoment.message.0", in: app)
+        let intention = app.descendants(matching: .any).matching(identifier: "slackMoment.intention").firstMatch
+        scrollTo(intention, identifier: "slackMoment.intention", in: app)
+        intention.tap(); intention.typeText("SYNTHETIC please confirm the meeting")
+        dismissSlackKeyboardIfShown(app)
+        tapVisible("slackMoment.prepare", in: app)
+        XCTAssertTrue(app.buttons["slackMoment.send"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["slackMoment.synthetic"].exists)
+        // This fixture interrupts TTS; only an actual complete screen review
+        // opens the gate. It never proves acoustic recognition or a provider write.
+        tapVisible("slackMoment.reviewed", in: app)
+        enabledVisibleButton("slackMoment.send", in: app).tap()
+        let status = app.staticTexts["slackMoment.status"]
+        let uncertain = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", french ? "La publication Slack n’est pas confirmée" : "Slack post is unconfirmed"), object: status)
+        let result = XCTWaiter.wait(for: [uncertain], timeout: 10)
+        if result != .completed { captureFailure("synthetic-slack-uncertain-not-shown", app) }
+        XCTAssertEqual(result, .completed)
+        XCTAssertFalse(app.buttons["slackMoment.send"].exists)
+        tapVisible("morning.closeDetails", in: app)
+        returnHome(app)
+        let homeStatus = app.staticTexts["morning.actionStatus"]
+        XCTAssertTrue(homeStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(homeStatus.label.contains(french ? "La publication Slack n’est pas confirmée" : "Slack post is unconfirmed"))
+        XCTAssertTrue(homeStatus.label.contains(french ? "ne la relance pas" : "will not retry"))
+        XCTAssertFalse(app.staticTexts["morning.caption"].exists)
+        XCTAssertFalse(app.staticTexts["morning.previousCaption"].exists)
+        XCTAssertFalse(app.staticTexts["morning.currentStep"].exists)
+        XCTAssertFalse(app.staticTexts["morning.remaining"].exists)
+        XCTAssertFalse(app.buttons["morning.actionDetails"].exists)
+        revealHomeControls(app)
+        for id in ["morning.playback", "morning.settings"] {
+            XCTAssertTrue(app.buttons[id].isHittable, "The revealed Home control must remain reachable at this text size: \(id)")
+        }
+        attach(largestText ? "automation-synthetic-slack-uncertain-french-largest-home" : "automation-synthetic-slack-uncertain-state-on-home", app)
+        for id in ["morning.next", "morning.more", "morning.details", "morning.stop", "morning.extend"] {
+            XCTAssertFalse(app.buttons[id].exists, "Additional commands belong in Settings, not on Home: \(id)")
+        }
+        XCTAssertEqual(app.navigationBars.count, 0)
+        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["morning.settings"])
+        let hiddenResult = XCTWaiter.wait(for: [hidden], timeout: 8)
+        if hiddenResult != .completed { captureFailure("synthetic-slack-home-controls-did-not-hide", app) }
+        XCTAssertEqual(hiddenResult, .completed, "Home commands must leave the landscape after five seconds without interaction.")
+        XCTAssertTrue(homeStatus.exists)
+        XCTAssertFalse(app.buttons["morning.playback"].exists)
+        XCTAssertFalse(app.buttons["morning.next"].exists)
+        attach(largestText ? "automation-synthetic-slack-uncertain-french-largest-quiet-home" : "automation-synthetic-slack-uncertain-quiet-home", app)
+        openHomeInteraction(app)
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.label.contains(french ? "La publication Slack n’est pas confirmée" : "Slack post is unconfirmed"))
+        XCTAssertFalse(app.buttons["slackMoment.send"].exists)
+        attach(largestText ? "automation-synthetic-slack-uncertain-french-largest-reopened" : "automation-synthetic-slack-uncertain-reopened-without-retry", app)
+    }
+
     func testFrenchLargestScreenTimeOverflowKeepsTheSourceAndLetsMeChooseEightApps() {
         let app = launch(["--ui-testing-approved", "--ui-testing-learning-source-join", "--ui-testing-evidence-proposals",
                           "--ui-testing-learning-source-many-apps", "-UIPreferredContentSizeCategoryName",
@@ -21,7 +180,8 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         for id in ["net.whatsapp.WhatsApp", "com.google.Gmail", "com.chess.iphone", "com.google.ios.youtube"] {
             let choice = visibleScreenTimeSwitch(id, in: app)
             XCTAssertEqual(choice.value as? String, "1", "The overflow must preserve the choices.")
-            choice.tap()
+            let native = choice.switches.firstMatch
+            if native.exists && native.isHittable { native.tap() } else { choice.tap() }
             XCTAssertEqual(choice.value as? String, "0")
         }
         enabledVisibleButton("observations.suggestUpdate", in: app).tap()
@@ -68,7 +228,10 @@ final class RoutineAutomationJourneyTests: XCTestCase {
             choice.tap()
             XCTAssertEqual(choice.value as? String, "Selected")
         }
-        XCTAssertEqual(app.buttons["observation.select.55555555-5555-4555-8555-555555555555"].value as? String, "Not selected")
+        let unselectedID = "observation.select.55555555-5555-4555-8555-555555555555"
+        let unselected = app.buttons[unselectedID]
+        scrollObservationListTo(unselected, identifier: unselectedID, in: app, towardBeginning: true)
+        XCTAssertEqual(unselected.value as? String, "Not selected")
         XCTAssertTrue(app.staticTexts["observations.selectionSummary"].label.contains("3 observations"))
         attach("automation-learning-three-source-types-explicit-selection", app)
         enabledVisibleButton("observations.suggestUpdate", in: app).tap()
@@ -132,7 +295,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         attach("automation-outlook-french-largest-added", app)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        tapVisible("setup.routine", in: app)
+        visibleSettingsButton("setup.routine", in: app).tap()
         XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["routine.approve"].isEnabled)
         XCTAssertTrue(app.buttons["routine.step.0"].label.contains("SYNTHETIC Camille"))
@@ -1034,6 +1197,72 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         attach("automation-persisted-recap", app)
     }
 
+    func testPublicNewsObservedArticleReturnsToHeadlinesAndKeepsItsBudget() throws {
+        let app = launch(["--ui-testing-live-news", "--ui-testing-approved", "--ui-testing-hands-free"])
+        defer { app.terminate() }
+        reveal(app); app.buttons["morning.begin"].tap()
+        XCTAssertTrue(app.buttons["web.close"].waitForExistence(timeout: 20))
+        let first = app.buttons["web.article.1"]
+        guard first.waitForExistence(timeout: 35) else {
+            let state = browserDiagnosticValue(app.staticTexts["web.result"], key: "pageState")
+            let refusal = browserDiagnosticValue(app.staticTexts["web.result"], key: "articleRefusal")
+            let pageRefusal = browserDiagnosticValue(app.staticTexts["web.result"], key: "pageAccessRefusal")
+            captureFailure("automation-live-news-no-observed-public-link", app)
+            let observedConsentWall = state == "needsChoice" && pageRefusal == "consentRequired"
+            if state == "needsSignIn" || observedConsentWall || refusal == "signInRequired" || refusal == "consentRequired" {
+                throw XCTSkip("The live worker observed a verified access block (pageState=\(state ?? "missing"), pageAccessRefusal=\(pageRefusal ?? "missing"), articleRefusal=\(refusal ?? "missing")). The wall is observed; no article was read and no reading or return journey is claimed.")
+            }
+            XCTFail("No observed article choice was exposed without a verified access block. pageState=\(state ?? "missing"), pageAccessRefusal=\(pageRefusal ?? "missing"), articleRefusal=\(refusal ?? "missing"). Unclassified choices, loading, HTTP, layout or extraction errors must not become an access skip.")
+            return
+        }
+        XCTAssertTrue(first.label.hasPrefix("1. "))
+        let observedTitle = String(first.label.dropFirst(3))
+        XCTAssertFalse(observedTitle.isEmpty)
+        if app.buttons["web.extend"].isEnabled { app.buttons["web.extend"].tap() }
+        attach("automation-live-news-observed-numbered-choice", app)
+        enabledVisibleButton("web.article.1", in: app).tap()
+        let readAgain = app.buttons["web.articleRepeat"]
+        guard readAgain.waitForExistence(timeout: 30) else {
+            let refusal = browserDiagnosticValue(app.staticTexts["web.result"], key: "articleRefusal")
+            captureFailure("automation-live-news-observed-article-body-unavailable", app)
+            if refusal == "signInRequired" || refusal == "consentRequired" {
+                throw XCTSkip("The selected article has an observed access block (articleRefusal=\(refusal ?? "missing")). No article body or acoustic reading is claimed.")
+            }
+            XCTFail("The selected article did not become readable. articleRefusal=\(refusal ?? "missing"). Missing body, script, navigation, HTTP or destination errors must fail this journey.")
+            return
+        }
+        XCTAssertTrue(app.buttons["web.articleReturn"].isHittable)
+        XCTAssertTrue(app.buttons["web.resume"].exists, "Selecting an article must pause the existing morning.")
+        XCTAssertEqual(app.staticTexts["web.host"].label, "www.lemonde.fr")
+        XCTAssertTrue(app.staticTexts["web.result"].label.contains("Article opened in MORE"))
+        // Read again is exposed only after a matching successful page response
+        // and bounded rendered article paragraphs, rather than a title alone.
+        let bodyText = app.webViews.staticTexts.allElementsBoundByIndex.map(\.label).filter {
+            $0.count > 80 && !$0.contains(observedTitle) && !$0.hasPrefix("1. ")
+        }
+        XCTAssertFalse(bodyText.isEmpty, "The selected article must also render readable body text in its visible browser.")
+        let pausedBudget = app.staticTexts["web.remaining"].label
+        attach("automation-live-news-observed-article-readable-body", app)
+        readAgain.tap()
+        enabledVisibleButton("web.articleReturn", in: app).tap()
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["web.articleReturn"])
+        let result = XCTWaiter.wait(for: [returned], timeout: 25)
+        if result != .completed { captureFailure("automation-live-news-return-to-headlines-failed", app) }
+        XCTAssertEqual(result, .completed)
+        XCTAssertTrue(app.buttons["web.article.1"].waitForExistence(timeout: 10))
+        XCTAssertFalse(readAgain.exists)
+        XCTAssertEqual(app.staticTexts["web.remaining"].label, pausedBudget,
+                       "Article selection, repeat and return must preserve the same paused budget.")
+        attach("automation-live-news-returned-to-observed-headlines", app)
+        enabledVisibleButton("web.resume", in: app).tap()
+        XCTAssertTrue(app.buttons["web.pause"].waitForExistence(timeout: 5))
+        let resumedBudget = remainingSeconds(app.staticTexts["web.remaining"].label)
+        let savedBudget = remainingSeconds(pausedBudget)
+        XCTAssertLessThanOrEqual(resumedBudget, savedBudget)
+        XCTAssertGreaterThanOrEqual(resumedBudget, savedBudget - 5)
+        attach("automation-live-news-same-budget-resumed", app)
+    }
+
     func testNewsPrivacyWallPausesWithoutPretendingContentWasRead() {
         let app = launch(["--ui-testing-live-news", "--ui-testing-approved", "--ui-testing-hands-free"])
         defer { app.terminate() }
@@ -1123,14 +1352,23 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         app.terminate(); app.launch()
         XCTAssertTrue(app.staticTexts["qa.testWorkspace"].waitForExistence(timeout: 8))
         XCTAssertEqual(app.staticTexts["qa.testWorkspace"].value as? String, workspace)
-        reveal(app)
+        revealHomeControls(app)
         XCTAssertFalse(app.buttons["morning.begin"].exists)
         MorningUITestNavigation.assertSession(state: "paused", in: app)
         XCTAssertTrue(currentStepTitle(in: app).contains("Reddit"))
         XCTAssertEqual(Int(MorningUITestNavigation.sessionSnapshot(in: app)["remaining"] ?? ""), remainingSeconds(remaining),
                        "Cold restoration must keep this paused morning's remaining budget.")
         attach("automation-real-public-feed-cold-morning-restored", app)
-        app.buttons["morning.playback"].tap()
+        // Home deliberately has no title or timer. Open the same paused page
+        // through Settings to inspect the retained budget before resume.
+        tapHomeSettings(app)
+        enabledVisibleButton("stepTimer.openPage", in: app).tap()
+        XCTAssertTrue(app.buttons["web.resume"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.staticTexts["web.remaining"].label, remaining,
+                       "Cold restoration must keep this paused morning's remaining budget.")
+        XCTAssertEqual(app.staticTexts["web.host"].label, "www.reddit.com")
+        attach("automation-real-public-feed-cold-page-paused-budget-restored", app)
+        app.buttons["web.resume"].tap()
         XCTAssertTrue(app.buttons["web.pause"].waitForExistence(timeout: 15))
         let firstObservation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             (result.value as? String)?.contains("newContent=") == true
@@ -1157,7 +1395,8 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         let app = XCUIApplication()
         let workspace = UUID().uuidString
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
-            "--light-preview", "--theme-phase=morning", "-more.appLanguage", french ? "fr" : "en", "-AppleLanguages", french ? "(fr)" : "(en)",
+            "--light-preview", "--theme-phase=morning", "-more.appLanguage", french ? "fr" : "en",
+            "-AppleLanguages", french ? "(fr)" : "(en)",
             "-AppleLocale", french ? "fr_FR" : "en_US"] + flags
         app.launch()
         let marker = app.staticTexts["qa.testWorkspace"]
@@ -1172,6 +1411,29 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     }
     private func reveal(_ app: XCUIApplication) {
         MorningUITestNavigation.revealControls(in: app)
+    }
+    private func revealHomeControls(_ app: XCUIApplication) {
+        let settings = app.buttons["morning.settings"]
+        if settings.exists && settings.isHittable { return }
+        let passages = app.descendants(matching: .any).matching(identifier: "morning.captions").firstMatch
+        XCTAssertTrue(passages.waitForExistence(timeout: 10))
+        // The ordinary landscape passage receives this tap. Avoid its bottom
+        // edge, where a newly revealed command could otherwise be selected.
+        passages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: settings)
+        let result = XCTWaiter.wait(for: [visible], timeout: 5)
+        if result != .completed { captureFailure("home-controls-not-revealed", app) }
+        XCTAssertEqual(result, .completed)
+    }
+    private func tapHomeSettings(_ app: XCUIApplication) {
+        reveal(app)
+        // Controls expire after five seconds. Select Settings directly after
+        // the reveal instead of scrolling Home or waiting on another predicate.
+        app.buttons["morning.settings"].tap()
+        let form = app.collectionViews["settings.appearance"]
+        let opened = form.waitForExistence(timeout: 5)
+        if !opened { captureFailure("home-settings-did-not-open", app) }
+        XCTAssertTrue(opened, "The actual Settings screen must open from Home.")
     }
     private func tapVisible(_ identifier: String, in app: XCUIApplication) {
         if ["morning.settings", "morning.next", "morning.extend", "morning.stop"].contains(identifier) {
@@ -1245,6 +1507,23 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         scrollTo(button, identifier: identifier, in: app)
         return button
     }
+    private func visibleSettingsButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let settings = app.collectionViews["settings.appearance"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let button = settings.buttons[identifier]
+        // Returning from Connections preserves the Settings scroll position.
+        // Lazy rows above us have no frame, so search the real form both ways.
+        for towardBeginning in [true, false] {
+            for _ in 0..<24 {
+                if button.exists && button.isHittable { return button }
+                if towardBeginning { settings.swipeDown() } else { settings.swipeUp() }
+            }
+        }
+        captureFailure("unreachable-settings-\(identifier)", app)
+        XCTAssertTrue(button.exists, "Missing Settings control: \(identifier)")
+        XCTAssertTrue(button.isHittable, "Unreachable Settings control: \(identifier)")
+        return button
+    }
     private func enabledVisibleButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         let button = visibleButton(identifier, in: app)
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: button)
@@ -1254,6 +1533,11 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         return button
     }
     private func scrollTo(_ element: XCUIElement, identifier: String, in app: XCUIApplication) {
+        let proposalClose = app.buttons["proposal.close"]
+        if proposalClose.exists && proposalClose.isHittable {
+            scrollProposalTo(element, identifier: identifier, in: app)
+            return
+        }
         for attempt in 0..<24 where !element.exists || !element.isHittable {
             let scrolls = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex + app.scrollViews.allElementsBoundByIndex
             let scroll = scrolls.first { $0.isHittable } ?? app
@@ -1276,9 +1560,51 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         XCTAssertTrue(element.exists, "Missing control: \(identifier)")
         XCTAssertTrue(element.isHittable, "Unreachable control: \(identifier)")
     }
+    private func scrollProposalTo(_ element: XCUIElement, identifier: String, in app: XCUIApplication) {
+        // A virtualized omission may be above the last one just checked.
+        // Search the actual proposal both ways, never observations.list behind it.
+        for towardBeginning in [true, false] {
+            for _ in 0..<24 {
+                let close = app.buttons["proposal.close"], approve = app.buttons["proposal.approve"]
+                guard close.exists && close.isHittable, approve.exists && approve.isHittable,
+                      let list = app.collectionViews.allElementsBoundByIndex.first(where: {
+                          $0.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "proposal.")).count > 0
+                      }) else {
+                    captureFailure("proposal-foreground-list-missing-\(identifier)", app)
+                    XCTFail("The real proposal must own the scroll gesture."); return
+                }
+                let frame = list.frame, viewport = frame.intersection(app.frame)
+                guard let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+                    $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(viewport)
+                }) else {
+                    captureFailure("proposal-scroll-navigation-missing", app); XCTFail("The proposal navigation geometry is missing."); return
+                }
+                let top = max(viewport.minY, bar.frame.maxY) + 8
+                let bottom = min(viewport.maxY, approve.frame.minY) - 8
+                guard !viewport.isNull, !viewport.isInfinite,
+                      [frame.minX, frame.minY, viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+                      viewport.width > 100, bottom - top > 120 else {
+                    captureFailure("proposal-scroll-no-safe-viewport", app); XCTFail("No proposal viewport clears the bars and approval control."); return
+                }
+                let visible = CGRect(x: viewport.minX + 12, y: top, width: viewport.width - 24, height: bottom - top)
+                if element.exists && element.isHittable && !element.frame.isEmpty,
+                   (identifier == "proposal.approve" || identifier == "proposal.close"
+                    ? app.frame.contains(element.frame) : visible.contains(element.frame)) { return }
+                let target = element.exists && element.frame.height > 0 ? element.frame : nil
+                let down = target.map { $0.minY < visible.minY } ?? towardBeginning
+                let high = visible.minY + visible.height * 0.2, low = visible.minY + visible.height * 0.8
+                let origin = list.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? high : low) - frame.minY))
+                let end = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? low : high) - frame.minY))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+        }
+        captureFailure("unreachable-proposal-\(identifier)", app)
+        XCTAssertTrue(element.exists, "Missing proposal control: \(identifier)")
+        XCTFail("The full proposal control must be visible and hittable: \(identifier)")
+    }
     private func openSlackSetup(_ app: XCUIApplication) {
-        reveal(app)
-        tapVisible("morning.settings", in: app)
+        tapHomeSettings(app)
         tapVisible("setup.connections", in: app)
         tapVisible("connections.account.slack", in: app)
     }
@@ -1290,8 +1616,61 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         tapVisible("learn.screenTime.observations", in: app)
         XCTAssertTrue(app.buttons["observations.choose"].waitForExistence(timeout: 8))
         app.buttons["observations.choose"].tap()
-        XCTAssertTrue(app.staticTexts["observations.fixtureMode"].exists)
+        XCTAssertTrue(app.buttons["observations.suggestUpdate"].waitForExistence(timeout: 5))
+        let synthetic = app.staticTexts["observations.fixtureMode"]
+        scrollObservationListTo(synthetic, identifier: "observations.fixtureMode", in: app, towardBeginning: false)
+        XCTAssertFalse(synthetic.label.isEmpty)
         XCTAssertFalse(app.buttons["observations.suggestUpdate"].isEnabled)
+    }
+    private func scrollObservationListTo(_ element: XCUIElement, identifier: String, in app: XCUIApplication,
+                                         towardBeginning: Bool) {
+        let list = app.collectionViews["observations.list"]
+        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        // List unloads distant rows. Search the actual observation list in both
+        // directions rather than reading an absent lazy row's value or frame.
+        for backward in [towardBeginning, !towardBeginning] {
+            for _ in 0..<24 {
+                if element.exists && element.isHittable { return }
+                if backward { list.swipeDown() } else { list.swipeUp() }
+            }
+        }
+        captureFailure("unreachable-\(identifier)", app)
+        XCTAssertTrue(element.exists, "Missing observation content: \(identifier)")
+        XCTAssertTrue(element.isHittable, "Unreachable observation content: \(identifier)")
+    }
+    private func dismissSlackKeyboardIfShown(_ app: XCUIApplication) {
+        let done = app.buttons["slackMoment.keyboardDone"]
+        guard done.waitForExistence(timeout: 2) else { return }
+        XCTAssertTrue(done.isHittable)
+        done.tap()
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
+        let result = XCTWaiter.wait(for: [dismissed], timeout: 5)
+        if result != .completed { captureFailure("slack-keyboard-did-not-dismiss", app) }
+        XCTAssertEqual(result, .completed)
+    }
+    private func openHomeInteraction(_ app: XCUIApplication) {
+        if app.buttons["morning.closeDetails"].exists { return }
+        tapHomeSettings(app)
+        _ = visibleButton("morning.next", in: app)
+        _ = visibleButton("morning.stop", in: app)
+        enabledVisibleButton("morning.details", in: app).tap()
+        XCTAssertTrue(app.buttons["morning.closeDetails"].waitForExistence(timeout: 5))
+    }
+    private func returnHome(_ app: XCUIApplication) {
+        for _ in 0..<5 {
+            let captions = app.scrollViews["morning.captions"]
+            let idleLandscape = app.buttons["morning.actions"]
+            if app.navigationBars.count == 0 && (captions.isHittable || idleLandscape.isHittable) { return }
+            let back = app.navigationBars.buttons.element(boundBy: 0)
+            guard back.waitForExistence(timeout: 5) else {
+                captureFailure("home-navigation-back-missing", app)
+                XCTFail("Expected the real Back route from Settings to Home.")
+                return
+            }
+            back.tap()
+        }
+        captureFailure("home-navigation-did-not-return", app)
+        XCTFail("Expected the landscape without a navigation bar.")
     }
     private func visibleScreenTimeSwitch(_ bundleID: String, in app: XCUIApplication) -> XCUIElement {
         let identifier = "observations.screenTime.app.\(bundleID)"
@@ -1311,14 +1690,12 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         return choice
     }
     private func openCalendlySetup(_ app: XCUIApplication) {
-        reveal(app)
-        tapVisible("morning.settings", in: app)
+        tapHomeSettings(app)
         tapVisible("setup.connections", in: app)
         tapVisible("connections.account.calendly", in: app)
     }
     private func openOutlookSetup(_ app: XCUIApplication) {
-        reveal(app)
-        tapVisible("morning.settings", in: app)
+        tapHomeSettings(app)
         tapVisible("setup.connections", in: app)
         tapVisible("connections.account.outlook", in: app)
     }
@@ -1356,8 +1733,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         }
     }
     private func openGoogleCalendarSetup(_ app: XCUIApplication) {
-        reveal(app)
-        tapVisible("morning.settings", in: app)
+        tapHomeSettings(app)
         tapVisible("setup.connections", in: app)
         tapVisible("connections.account.googlecalendar", in: app)
     }
@@ -1398,6 +1774,11 @@ final class RoutineAutomationJourneyTests: XCTestCase {
             .split(separator: " ").first.flatMap { Int($0) }
         guard let count else { XCTFail("Missing observed-content count: \(label)"); return 0 }
         return count
+    }
+    private func browserDiagnosticValue(_ status: XCUIElement, key: String) -> String? {
+        let value = status.value as? String ?? ""
+        return value.split(separator: " ").first { $0.hasPrefix(key + "=") }
+            .flatMap { $0.split(separator: "=", maxSplits: 1).last }.map(String.init)
     }
     private func browserDiagnostic(_ status: XCUIElement, key: String) -> Int {
         let value = status.value as? String ?? ""

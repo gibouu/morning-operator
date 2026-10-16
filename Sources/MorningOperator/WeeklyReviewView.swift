@@ -192,15 +192,15 @@ struct WeeklyReviewView: View {
 
     private func daySummaryText(_ day: MorningDaySummary) -> String {
         let observations = store.observationArchive.entries.filter { $0.observedDate?.dayKey == day.dayKey }.count
-        let observationSummary = String(localized: "\(observations) observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        let observationSummary = AppLanguage.localized("\(observations) observations")
         guard day.runCount > 0 else {
             if observations > 0 { return observationSummary }
-            return day.hasEvidence ? String(localized: "App observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Nothing saved", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return day.hasEvidence ? AppLanguage.localized("App observations") : AppLanguage.localized("Nothing saved")
         }
-        if observations > 0 { return String(localized: "\(day.runCount) runs · \(observations) observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        if observations > 0 { return AppLanguage.localized("\(day.runCount) runs · \(observations) observations") }
         let time = day.timedRunCount == day.runCount
-            ? MorningStyle.duration(day.totalActiveDurationSeconds) : String(localized: "incomplete timing", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        return String(localized: "\(day.runCount) runs · \(time)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            ? MorningStyle.duration(day.totalActiveDurationSeconds) : AppLanguage.localized("incomplete timing")
+        return AppLanguage.localized("\(day.runCount) runs · \(time)")
     }
 
     private var observationArchiveLinks: some View {
@@ -210,15 +210,15 @@ struct WeeklyReviewView: View {
                 NavigationLink {
                     ObservationHistoryView(store: store, onlyUndated: true, onLearn: onLearn)
                 } label: {
-                    actionRow(String(localized: "Date needed", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: String(localized: "\(undatedCount) observations need an observed day", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "calendar.badge.questionmark")
+                    actionRow(AppLanguage.localized("Date needed"), detail: AppLanguage.localized("\(undatedCount) observations need an observed day"), symbol: "calendar.badge.questionmark")
                 }.accessibilityIdentifier("review.undatedObservations")
                 Divider()
             }
             NavigationLink {
                 ObservationHistoryView(store: store, onLearn: onLearn)
             } label: {
-                actionRow(String(localized: "Saved observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: store.observationArchive.entries.isEmpty
-                          ? String(localized: "Original evidence and your corrections", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "\(store.observationArchive.entries.count) saved · separate from routine runs", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
+                actionRow(AppLanguage.localized("Saved observations"), detail: store.observationArchive.entries.isEmpty
+                          ? AppLanguage.localized("Original evidence and your corrections") : AppLanguage.localized("\(store.observationArchive.entries.count) saved · separate from routine runs"),
                           symbol: "doc.text.image")
             }.accessibilityIdentifier("review.observations")
         }.buttonStyle(.plain)
@@ -227,36 +227,36 @@ struct WeeklyReviewView: View {
     private var reviewActions: some View {
         VStack(spacing: 0) {
             Button { showingRoutineEditor = true } label: {
-                actionRow(String(localized: "Your routine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: routineDetail, symbol: "list.bullet")
+                actionRow(AppLanguage.localized("Your routine"), detail: routineDetail, symbol: "list.bullet")
             }.accessibilityIdentifier("review.routine")
             Divider()
             Button(action: onLearn) {
-                actionRow(store.hasImportedObservation ? String(localized: "Review your observation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Learn from a morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
-                          detail: store.hasPendingRecording ? String(localized: "A saved recording needs attention", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Record, describe or refine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "sparkles")
+                actionRow(store.hasImportedObservation ? AppLanguage.localized("Review your observation") : AppLanguage.localized("Learn from a morning"),
+                          detail: store.hasPendingRecording ? AppLanguage.localized("A saved recording needs attention") : AppLanguage.localized("Record, describe or refine"), symbol: "sparkles")
             }.accessibilityIdentifier("review.learn")
             Divider()
             NavigationLink {
                 CapturesView(store: store).navigationTitle("Saved thoughts").background(MorningStyle.background)
             } label: {
-                actionRow(String(localized: "Saved thoughts", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: store.captures.isEmpty ? String(localized: "A place for what comes to mind", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "\(store.captures.count) saved", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "text.bubble")
+                actionRow(AppLanguage.localized("Saved thoughts"), detail: store.captures.isEmpty ? AppLanguage.localized("A place for what comes to mind") : AppLanguage.localized("\(store.captures.count) saved"), symbol: "text.bubble")
             }.accessibilityIdentifier("review.thoughts")
             Divider()
             NavigationLink {
                 ScrollView { AppActivityView().padding(24).frame(maxWidth: 680).frame(maxWidth: .infinity) }
                     .background(MorningStyle.background).navigationTitle("App activity")
             } label: {
-                actionRow(String(localized: "App activity", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: String(localized: "Today's connected app entries", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "arrow.triangle.2.circlepath")
+                actionRow(AppLanguage.localized("App activity"), detail: AppLanguage.localized("Today's connected app entries"), symbol: "arrow.triangle.2.circlepath")
             }.accessibilityIdentifier("review.appActivity")
             Divider()
             Button(action: onSettings) {
-                actionRow(String(localized: "Settings & connections", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: String(localized: "Voice, calendar and preferences", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "slider.horizontal.3")
+                actionRow(AppLanguage.localized("Settings & connections"), detail: AppLanguage.localized("Voice, calendar and preferences"), symbol: "slider.horizontal.3")
             }.accessibilityIdentifier("navigation.setup")
         }.buttonStyle(.plain)
     }
 
     private var routineDetail: String {
-        guard let routine = store.routine else { return String(localized: "Build a routine that feels like you", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        return routine.isApproved ? String(localized: "\(routine.steps.count) moments · approved", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "\(routine.steps.count) moments · ready for your review", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        guard let routine = store.routine else { return AppLanguage.localized("Build a routine that feels like you") }
+        return routine.isApproved ? AppLanguage.localized("\(routine.steps.count) moments · approved") : AppLanguage.localized("\(routine.steps.count) moments · ready for your review")
     }
 
     private func actionRow(_ title: String, detail: String, symbol: String) -> some View {
@@ -295,6 +295,7 @@ struct RoutineReviewEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ViewState<RoutineStep?> private var editingStep = nil
+    @ViewState<RoutineStepAssignmentContext?> private var editingAssignment = nil
 
     var body: some View {
         OptionalNavigationStack(enabled: showsClose) {
@@ -311,17 +312,22 @@ struct RoutineReviewEditor: View {
                     }
                     Section {
                         ForEach(Array(routine.steps.enumerated()), id: \.element.id) { index, step in
-                            Button { editingStep = step } label: { stepRow(step) }
+                            Button {
+                                editingAssignment = .init(routineVersionID: routine.id, stepID: step.id, privacyGeneration: store.dataGeneration)
+                                editingStep = step
+                            } label: { stepRow(step) }
                                 .buttonStyle(.plain).disabled(store.busy || store.sessionActive)
                                 .accessibilityIdentifier("routine.step.\(index)")
                         }
                         .onMove { source, destination in
-                            var steps = store.routine?.steps ?? []
+                            var steps = routine.steps
                             steps.move(fromOffsets: source, toOffset: destination)
-                            store.updateSteps(steps)
+                            _ = store.reorderSteps(steps.map(\.id), expectedRoutineID: routine.id,
+                                expectedGeneration: store.dataGeneration)
                         }
                         .moveDisabled(store.busy || store.sessionActive)
                         Button {
+                            editingAssignment = nil
                             editingStep = RoutineStep(title: "", kind: .custom, durationMinutes: 5)
                         } label: { Label { Text("Add a moment") } icon: { MorningDottedIcon(systemName: "plus").frame(width: 22, height: 22) } }
                             .disabled(store.busy || store.sessionActive).accessibilityIdentifier("routine.add")
@@ -399,11 +405,12 @@ struct RoutineReviewEditor: View {
                 }
             }
             .sheet(item: $editingStep) { step in
-                StepEditor(step: step, preference: store.savedPreference(for: step), onSave: { edited, keep, timing in
-                    store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing)
+                let assignment = editingAssignment
+                StepEditor(store: store, step: step, preference: store.savedPreference(for: step), assignmentContext: assignment, onSave: { edited, keep, timing in
+                    store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing, assignmentContext: assignment)
                 }, onDelete: { exclude in
                     store.removeStep(step, excludeFromSuggestions: exclude)
-                }, failureMessage: { store.notice ?? String(localized: "Your change couldn't be saved. Try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) })
+                }, failureMessage: { store.notice ?? AppLanguage.localized("Your change couldn't be saved. Try again.") })
             }
         }
         #if os(macOS)
@@ -420,6 +427,9 @@ struct RoutineReviewEditor: View {
                 Text(step.title).font(.raleway(.subheadline, .medium))
                 Text("\(step.durationMinutes) min · \(step.executionDescription)")
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                if let sourceLabel = step.reviewedSourceLabel {
+                    Text(sourceLabel).font(.footnote).fixedSize(horizontal: false, vertical: true)
+                }
                 if let target = step.target, target.integrationRoute == .api {
                     Text(step.detail).font(.footnote).foregroundStyle(MorningStyle.muted)
                     Text(RoutineConnectedReview.summary(for: target) ?? String(localized: "Review unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
@@ -432,8 +442,9 @@ struct RoutineReviewEditor: View {
     }
 
     @ViewBuilder private var savedChoicesLink: some View {
-        // Only when saved choices can't be read: approval waits for their reset here.
-        if store.routinePreferencesIssue != nil {
+        // Saved choices remain inspectable and individually reversible, including
+        // an order-only journal. An unreadable journal exposes its recovery here.
+        if store.routinePreferencesIssue != nil || !store.routinePreferences.entries.isEmpty || store.routinePreferences.order != nil {
             NavigationLink { RoutinePreferencesView(store: store) } label: {
                 Label { Text(store.routinePreferencesIssue == nil ? String(localized: "Saved choices", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Saved choices need review", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)) } icon: {
                     MorningDottedIcon(systemName: store.routinePreferencesIssue == nil ? "heart.text.clipboard" : "exclamationmark.circle").frame(width: 22, height: 22)
@@ -461,6 +472,25 @@ struct RoutinePreferencesView: View {
                         .accessibilityIdentifier("preferences.reset")
                 }
             } else {
+                if let order = store.routinePreferences.order {
+                    Section {
+                        Text(verbatim: AppLanguage.isFrench ? "Ordre enregistré" : "Saved order")
+                            .font(MorningTheme.Typography.heading)
+                        Text(verbatim: AppLanguage.isFrench
+                            ? "Les moments retrouvés dans vos prochaines suggestions gardent cet ordre. Les nouveaux moments restent à vérifier."
+                            : "Matching moments keep this order in future suggestions. New moments still need your review.")
+                            .font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
+                        ForEach(Array(order.enumerated()), id: \.element.targetID) { index, moment in
+                            Text(verbatim: "\(index + 1). \(moment.targetTitle)")
+                        }
+                        Button(AppLanguage.isFrench ? "Ne plus conserver cet ordre" : "Forget saved order") {
+                            _ = store.clearSavedRoutineOrder()
+                        }
+                        .disabled(store.busy || store.sessionActive)
+                        .accessibilityIdentifier("preferences.clearOrder")
+                    }
+                    .accessibilityIdentifier("preferences.savedOrder")
+                }
                 ForEach(store.routinePreferences.entries) { preference in
                     Section {
                         Text(preference.targetTitle).font(MorningTheme.Typography.heading)
@@ -476,7 +506,7 @@ struct RoutinePreferencesView: View {
                             .accessibilityIdentifier("preferences.clear.\(preference.targetID.uuidString)")
                     }
                 }
-                if store.routinePreferences.entries.isEmpty {
+                if store.routinePreferences.entries.isEmpty && store.routinePreferences.order == nil {
                     ContentUnavailableView("No saved choices", systemImage: "heart",
                         description: Text("Future suggestions can vary. Keep a moment or its duration when editing your routine."))
                         .accessibilityIdentifier("preferences.empty")
@@ -524,7 +554,7 @@ private struct ReviewDayDetail: View {
                 Section {
                     MorningRecapView(store: store, session: run.session, showsMomentNames: false)
                     LabeledContent("Active routine time", value: MorningStyle.duration(run.activeDurationSeconds))
-                    LabeledContent("Planned time", value: String(localized: "\(run.plannedDurationMinutes) min", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                    LabeledContent("Planned time", value: AppLanguage.localized("\(run.plannedDurationMinutes) min"))
                     if run.activeDurationSeconds == nil {
                         Text("Timing is incomplete or unavailable; this run is excluded from time averages.")
                             .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)

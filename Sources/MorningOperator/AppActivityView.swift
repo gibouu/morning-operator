@@ -39,7 +39,7 @@ struct AppActivityView: View {
                             .accessibilityIdentifier("appActivity.misconfigured")
                     }
                 } else {
-                    Text(errorMessage ?? String(localized: "Connect the apps you want to understand. Their entries and repeated returns will appear here.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                    Text(errorMessage ?? AppLanguage.localized("Connect the apps you want to understand. Their entries and repeated returns will appear here."))
                         .font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
                     Button("Connect app activity") { showingSetup = true }
                         .buttonStyle(SecondaryButtonStyle())
@@ -60,7 +60,7 @@ struct AppActivityView: View {
             errorMessage = nil
         } catch {
             summary = nil
-            errorMessage = String(localized: "Your saved app activity couldn't be read. It has been kept intact.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            errorMessage = AppLanguage.localized("Your saved app activity couldn't be read. It has been kept intact.")
         }
     }
 }
@@ -124,9 +124,9 @@ private struct AppActivitySetupView: View {
         do {
             try await AppTransitionLogStore.shared.clear()
             await onCleared()
-            clearMessage = String(localized: "Recorded app activity cleared.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            clearMessage = AppLanguage.localized("Recorded app activity cleared.")
         } catch {
-            clearMessage = String(localized: "The saved app activity couldn't be cleared. Try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            clearMessage = AppLanguage.localized("The saved app activity couldn't be cleared. Try again.")
         }
     }
 

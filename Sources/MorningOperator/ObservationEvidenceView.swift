@@ -73,11 +73,11 @@ struct ObservationEvidenceView: View {
 
     private func classificationStatus(_ value: ObservationContextClassification) -> String {
         switch value.status {
-        case .noEligibleFrames: String(localized: "No samples have enough usable text to recognize a screen.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .unavailable: String(localized: "On-device screen recognition is unavailable. The saved samples are still here.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .completed: String(localized: "On-device recognition finished. Unclear screens remain unknown.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .partialFailure: String(localized: "Some screens could not be analyzed. Those samples remain unknown.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .failed: String(localized: "Screen recognition did not finish. Samples remain unknown; you can retry.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .noEligibleFrames: AppLanguage.localized("No samples have enough usable text to recognize a screen.")
+        case .unavailable: AppLanguage.localized("On-device screen recognition is unavailable. The saved samples are still here.")
+        case .completed: AppLanguage.localized("On-device recognition finished. Unclear screens remain unknown.")
+        case .partialFailure: AppLanguage.localized("Some screens could not be analyzed. Those samples remain unknown.")
+        case .failed: AppLanguage.localized("Screen recognition did not finish. Samples remain unknown; you can retry.")
         }
     }
 
@@ -93,15 +93,15 @@ struct ObservationEvidenceView: View {
         if let decision = classification?.decisions.first(where: { $0.sampleID == frame.id }) {
             switch decision.evidence {
             case .identified(let app, _): return app.displayName
-            case .ambiguous: return String(localized: "Unclear screen", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            case .ambiguous: return AppLanguage.localized("Unclear screen")
             case .unknown: break
             }
         }
         switch frame.outcome {
-        case .observed: return classification == nil ? String(localized: "Text found · screen not yet recognized", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Unknown screen", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .blank: return String(localized: "No readable text", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .decodeFailed: return String(localized: "Frame unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .ocrFailed: return String(localized: "Text extraction failed", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .observed: return classification == nil ? AppLanguage.localized("Text found · screen not yet recognized") : AppLanguage.localized("Unknown screen")
+        case .blank: return AppLanguage.localized("No readable text")
+        case .decodeFailed: return AppLanguage.localized("Frame unavailable")
+        case .ocrFailed: return AppLanguage.localized("Text extraction failed")
         }
     }
 
