@@ -67,8 +67,35 @@ import MorningCore
         XCTAssertEqual(running["resource"], "/headlines"); XCTAssertEqual(running["pausedAtBits"], "none")
         attach("private-news-observed-headlines-\(language)", app)
         Thread.sleep(forTimeInterval: 5)
+        wait(app.staticTexts["web.result"], predicate: NSPredicate(format: "label BEGINSWITH %@",
+            french ? "Ce moment est terminé ·" : "This moment is complete ·"), timeout: 15)
+        let beforeClose = try diagnostic(app), finishedLabel = app.staticTexts["web.result"].label
+        XCTAssertEqual(beforeClose["newsContext"], context); XCTAssertEqual(beforeClose["resource"], "/headlines")
+        let beforeCloseTap = Date().timeIntervalSinceReferenceDate
+        close.tap()
+        let afterCloseTap = Date().timeIntervalSinceReferenceDate
+        XCTAssertTrue(close.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(second.exists, "Closing must remove the private headline choices from Home.")
+        XCTAssertFalse(app.buttons["web.articleRepeat"].exists)
+        reveal(app); tap("morning.settings", app); tap("stepTimer.openPage", app)
+        XCTAssertTrue(app.buttons["web.resume"].waitForExistence(timeout: 10))
+        XCTAssertTrue(second.waitForExistence(timeout: 10)); XCTAssertTrue(second.isHittable)
+        XCTAssertEqual(second.label, "2. " + secondTitle)
         let beforeSelection = try diagnostic(app)
-        XCTAssertEqual(beforeSelection["newsContext"], context); XCTAssertEqual(beforeSelection["resource"], "/headlines")
+        XCTAssertEqual(beforeSelection["newsContext"], context)
+        XCTAssertEqual(beforeSelection["resource"], "/headlines")
+        XCTAssertEqual(beforeSelection["endsAtBits"], beforeClose["endsAtBits"])
+        XCTAssertEqual(beforeSelection["localLoads"], beforeClose["localLoads"], "Reopening must reuse the displayed document, without navigation.")
+        XCTAssertEqual(beforeSelection["newsRepeatCompleted"], beforeClose["newsRepeatCompleted"])
+        XCTAssertEqual(app.staticTexts["web.result"].label, finishedLabel,
+                       "Reobserving links must preserve the finished result and observed-content count, without a new execution event.")
+        let closedAt = try instant(beforeSelection, "pausedAtBits")
+        XCTAssertGreaterThanOrEqual(closedAt, beforeCloseTap - 0.1)
+        XCTAssertLessThanOrEqual(closedAt, afterCloseTap + 0.1)
+        let closedBudget = app.staticTexts["web.remaining"].label
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertEqual(app.staticTexts["web.remaining"].label, closedBudget)
+        attach("private-news-close-reopen-restored-current-choices-\(language)", app)
         let listOffset = try XCTUnwrap(beforeSelection["viewportY"].flatMap(Int.init))
         // This product ordinal button conveys the user's intention through
         // handleWebReadingUtterance. XCTest never taps a link inside the DOM.
@@ -85,7 +112,7 @@ import MorningCore
         XCTAssertGreaterThanOrEqual(localLoads, 2, "The list and chosen article must actually be delivered by the local handler.")
         XCTAssertEqual(paused["newsContext"], context); XCTAssertEqual(paused["resource"], "/article/two")
         XCTAssertEqual(paused["articleParagraphs"], "1"); XCTAssertEqual(paused["endsAtBits"], running["endsAtBits"])
-        XCTAssertNotEqual(paused["pausedAtBits"], "none")
+        XCTAssertEqual(paused["pausedAtBits"], beforeSelection["pausedAtBits"])
         let budget = app.staticTexts["web.remaining"].label
         attach("private-news-second-observed-body-\(language)", app)
         tap("web.articleRepeat", app)

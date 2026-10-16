@@ -58,6 +58,21 @@ private struct RoutineWebStepPresenter: ViewModifier {
                     },
                     onClose: closePage)
                     .id(ObjectIdentifier(controller))
+                    .task(id: ObjectIdentifier(controller)) {
+                        guard site == .news else { return }
+                        let pauseRevision = store.handsFreePauseRevision
+                        await controller.restoreDisplayedNewsChoices(context: .init(
+                            sessionID: executionID.sessionID, routineVersionID: executionID.routineVersionID,
+                            stepID: executionID.stepID), privacy: privacyGeneration, authorized: { [weak store] in
+                            guard let store else { return false }
+                            return !store.privacyBlocksWork && store.dataGeneration == privacyGeneration &&
+                                store.handsFreePauseRevision == pauseRevision && store.automatic &&
+                                store.session?.id == executionID.sessionID && store.session?.routine.id == executionID.routineVersionID &&
+                                store.currentStep?.id == executionID.stepID && store.session?.status == .paused &&
+                                store.activeStepTimer?.sessionID == timer.sessionID && store.activeStepTimer?.stepID == timer.stepID &&
+                                store.pendingWebTarget == url
+                        })
+                    }
                     .sheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }
                     .onChange(of: store.nativeMoment.context) { _, context in
                         if context == nil { showingNativeRequest = false }

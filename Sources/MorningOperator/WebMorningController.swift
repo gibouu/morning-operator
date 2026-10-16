@@ -207,6 +207,36 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         return articleText
     }
 
+    /// Close purges private text. A paused reopen observes the displayed list
+    /// again without restarting execution, narration, actions or its old budget.
+    func restoreDisplayedNewsChoices(context: MorningVoiceCommandContext, privacy: UUID,
+        authorized: @MainActor () -> Bool) async {
+        func current() -> Bool {
+            !Task.isCancelled && articleAccess(context: context, privacy: privacy, authorized: authorized) &&
+                !isLearning && !needsArticleReturn && !articleBusy && newsSnapshot == nil
+        }
+        func displayed() -> Bool {
+            executionPlan?.behavior == .readHeadlines && !actionsEnabled &&
+                webView.window != nil && !webView.isLoading
+        }
+        // SwiftUI can start its task before the retained WKView is attached or
+        // its onAppear has applied the paused plan. No navigation is requested.
+        for _ in 0..<20 {
+            guard current() else { return }
+            if displayed() { break }
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+        }
+        guard current(), displayed(), let page = webView.url,
+              WebMorningExecutionPolicy.permits(site: site, url: page, syntheticNews: syntheticNews) else { return }
+        let generation = pageGeneration
+        let value = try? await webView.evaluateJavaScript(
+            WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines, syntheticNews: syntheticNews),
+            contentWorld: .defaultClient)
+        guard current(), displayed(), generation == pageGeneration, page == webView.url,
+              let observation = WebMorningPageObservation.parse(value), observation.status == .ready else { return }
+        retainNewsSnapshot(observation)
+    }
+
     private func retainNewsSnapshot(_ observation: WebMorningPageObservation) {
         #if DEBUG
         defer { recordSyntheticNewsSnapshotObservation(observation) }
