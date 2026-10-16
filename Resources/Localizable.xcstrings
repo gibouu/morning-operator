@@ -27862,6 +27862,22 @@
           }
         }
       }
+    },
+    "Choose a website or an app above.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a website or an app above."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un site ou une app ci-dessus."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

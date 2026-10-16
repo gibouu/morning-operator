@@ -108,8 +108,10 @@ struct StepTargetEditor: View {
                      : "To choose another Inbox, add a moment from Apps & accounts.")
                     .font(.footnote).foregroundStyle(MorningStyle.muted)
             }
-            Text("Choose an action from Apps & accounts, then add it to your routine.")
-                .font(.footnote).foregroundStyle(MorningStyle.muted)
+            if target == nil {
+                Text("Choose a website or an app above.")
+                    .font(.footnote).foregroundStyle(MorningStyle.muted)
+            }
         } header: { Text("During this moment") } footer: {
             Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur. Les autres applications peuvent nécessiter vos gestes." : "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser. Other apps may still need your actions.")
         }
