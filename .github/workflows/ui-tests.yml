@@ -109,7 +109,7 @@ jobs:
             morning) selection="$(python3 scripts/ui-tests-ci.py select only $MORNING_CLASSES)" ;;
             proposals) selection="$(python3 scripts/ui-tests-ci.py select only $PROPOSAL_CLASSES)" ;;
             everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $PROPOSAL_CLASSES $LONG_ROUTINE_CLASSES)" ;;
-            long-routine) selection="$(python3 scripts/ui-tests-ci.py select only $LONG_ROUTINE_CLASSES)"; allowance=2700 ;;
+            long-routine) selection="$(python3 scripts/ui-tests-ci.py select only $LONG_ROUTINE_CLASSES)"; allowance=4200 ;;
             *) echo "Unknown shard: $SHARD" >&2; exit 1 ;;
           esac
           echo "$selection"
@@ -135,7 +135,8 @@ jobs:
             -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO -quiet
 
       # One simulator, one test at a time, no retry. Only the long-routine shard
-      # permits 45 minutes per test for its real budgets; all others keep 15.
+      # permits 70 minutes for native setup/review plus unchanged real budgets;
+      # all others keep 15.
       - name: Run the UI tests
         timeout-minutes: 80
         run: |

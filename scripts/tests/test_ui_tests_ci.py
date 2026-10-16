@@ -150,7 +150,7 @@ class WorkflowShardTests(unittest.TestCase):
 
     def test_only_long_routine_gets_45_minutes_and_run_bounds_stay_intact(self):
         self.assertEqual({name: output["TEST_ALLOWANCE"] for name, output in self.outputs.items()},
-                         {"morning": "900", "proposals": "900", "everything-else": "900", "long-routine": "2700"})
+                         {"morning": "900", "proposals": "900", "everything-else": "900", "long-routine": "4200"})
         run = re.search(r"^      - name: Run the UI tests\n((?:        [^\n]*\n|          [^\n]*\n)+)",
                         self.workflow, re.M)[1]
         self.assertIn("timeout-minutes: 80\n", run)

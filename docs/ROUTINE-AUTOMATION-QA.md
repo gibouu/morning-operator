@@ -177,8 +177,14 @@ UI-test target alone. Main's shared day/night sheet surfaces and SDK-free beta
 voice changes need this combined build/runtime, separately from9z. ElevenLabs
 TTS/preview remains; conversation transport is explicitly unavailable in that
 beta. CI uses the width1 package mode above, and the next local Long invocation
-explicitly enables XCTest's2700-second timeout in its command. No later native
-pass is inferred from compilation or a queued GitHub job.
+explicitly enables XCTest's4200-second timeout in its command. The whole driver
+includes native setup/review:9aa needed151s for initial inspection/source setup,
+86s for Calendar configuration and106s to select the second action. A45-minute
+driver bound left only17 minutes beyond the unchanged28-minute routine. The
+70-minute allowance covers that setup and dialogue; no product budget or action
+assertion changes. CI's other shards retain15 minutes per test and its existing
+80-minute run/100-minute job bounds. No later native pass is inferred from
+compilation or a queued GitHub job.
 
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
