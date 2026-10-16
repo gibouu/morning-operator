@@ -22,6 +22,11 @@ struct MorningHomePlaybackView: View {
         return reduceMotion
     }
     private var fallback: String {
+        #if MORE_JURY_DEMO
+        if store.currentStep?.detail == "Sommeil et météo préparés pour cette démonstration." {
+            return String(localized: "Sleep, weather and a few tips to start your day.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        }
+        #endif
         if let opening = store.currentOpening {
             return opening.briefText ?? opening.opening?.displayText
                 ?? (french ? "Je prépare votre journée…" : "Preparing your day…")

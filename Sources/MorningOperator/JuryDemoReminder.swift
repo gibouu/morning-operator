@@ -80,7 +80,7 @@ enum JuryDemoReminder {
                 try file.save(Entry(requestID: requestID, status: "pending", receiptID: nil,
                     generation: generation, title: title, dueDate: due))
                 let receipt = try service.createReminder(from: ReminderDraft(title: title,
-                    notes: "Routine MORE — rendez-vous préparé pour la démonstration.", dueDate: due, notifyAtDueTime: true))
+                    notes: String(localized: "Product meeting — MORE morning routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), dueDate: due, notifyAtDueTime: true))
                 createdReceiptID = receipt.id
                 try file.save(Entry(requestID: requestID, status: "pending", receiptID: receipt.id,
                     generation: generation, title: title, dueDate: due))

@@ -29,9 +29,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>MORE Démo</string>
+	<string>MORE</string>
 	<key>CFBundleDisplayName</key>
-	<string>MORE Démo</string>
+	<string>MORE</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -120,7 +120,7 @@
 	<key>MorningJuryDemoToken</key>
 	<string>$(MORE_JURY_DEMO_TOKEN)</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>MORE connects to your local demonstration service for the interactive morning you choose to start.</string>
+	<string>MORE connects to your local service for the morning conversation and actions you choose to start.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

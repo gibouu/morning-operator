@@ -1,8 +1,8 @@
 # MORE Démo — passage devant le jury
 
-MORE Démo est un doublon isolé de MORE. Le parcours conserve l’accueil, le paysage et les commandes habituelles : aucun écran ni panneau de présentation supplémentaire.
+La variante technique Démo est un doublon isolé dont le nom visible est **MORE**, comme l’app principale. Le parcours conserve l’accueil, le paysage et les commandes habituelles : aucun écran ni panneau de présentation supplémentaire, ni annonce de démonstration. Les identifiants de bundle et les journaux restent distincts.
 
-Avant de commencer, préciser oralement : **« Le sommeil, la météo et le message de départ sont préparés pour ce matin. La rédaction et l’envoi du mail utilisent de vrais services. »** Le message annoncé ne provient pas d’une lecture en direct de l’inbox.
+Provenance interne : le sommeil, la météo et le message de départ sont préparés ; le message annoncé ne provient pas d’une lecture en direct de l’inbox. La rédaction et l’envoi utilisent de vrais services. Cette préparation reste dans le back et ce document ; MORE discute naturellement de la routine sans annoncer un scénario ou une démonstration.
 
 ## État vérifié au 16 octobre 2026
 
@@ -32,7 +32,7 @@ Les deux runners précédents ont expiré avant le premier test sur « Timed out
 
 ## Préparer la répétition
 
-- Installer **MORE Démo**, avec sa configuration privée, à côté de l’app principale.
+- Installer la variante isolée (nom visible **MORE**, bundle `com.gibouu.morningoperator.demo`), avec sa configuration privée, à côté de l’app principale.
 - Garder le Mac allumé, éveillé et connecté à Internet ; le téléphone et le Mac utilisent le même Wi-Fi, sans isolation entre appareils.
 - Depuis la racine du dépôt, lancer `./Services/JuryDemo/run-local.sh`. Le script charge le `.env` privé du service ; ne jamais le projeter ni en afficher le contenu.
 - Vérifier l’origine locale configurée dans l’app : le nom Bonjour du Mac et le port doivent être joignables depuis l’iPhone. La variante iOS autorise cette communication locale via sa configuration réseau/ATS.
@@ -45,7 +45,7 @@ Les deux runners précédents ont expiré avant le premier test sur « Timed out
 
 Le service local sur le port 8791 fonctionne actuellement dans un processus détaché. Cette installation dépend du Mac éveillé et du même réseau local ; elle ne constitue pas un déploiement cloud ni une preuve de fonctionnement loin du Mac.
 
-Le candidat corrigé porte le numéro **2** dans le bundle Démo uniquement, pour le distinguer du premier doublon installé (build 1). La signature, le build réellement installé et les contrôles physiques de ce candidat doivent rester des preuves séparées.
+Le candidat corrigé ci-dessous porte le numéro **2** dans le bundle Démo uniquement, pour le distinguer du premier doublon installé (build 1). La signature, le build réellement installé et les contrôles physiques de ce candidat doivent rester des preuves séparées.
 
 Sur le code combiné `7e2b4f1`, les **115 tests Swift ciblés dans huit suites** passent, y compris les nouvelles protections de lecture et de sous-titres. Le `build-for-testing` iPhone réussit ; la signature stricte du doublon est valide et son plist donne version `0.1.0`, build `2`. Le test UI bilingue de refus est compilé, mais pas encore exécuté. Le build 2 n’est pas encore installé : le téléphone reste réservé aux autres contrôles coordonnés. Ces résultats ne valident aucune nouvelle capture, aucun rappel ni navigation Instagram.
 
@@ -57,7 +57,7 @@ Répéter d’abord les passages vocaux sur le téléphone. Garder les options R
 
 **0:20 — Comprendre et répondre.** MORE explique la proposition de point produit à 15 h. Dire : « Oui, réponds que je serai disponible. » OpenAI prépare une réponse que MORE lit ; rien n’est encore envoyé.
 
-**0:40 — Corriger librement.** Dire par exemple : « Fais plus court, et précise que c’est un message de démonstration avec une disponibilité fictive. » Écouter la nouvelle version. Une seule révision suffit à montrer que le dialogue accepte des formulations libres.
+**0:40 — Corriger librement.** Dire par exemple : « Fais plus court, et propose qu’on commence par les retours utilisateurs. » Écouter la nouvelle version. Une seule révision suffit à montrer que le dialogue accepte des formulations libres.
 
 **1:00 — Produire un vrai résultat.** Dire « Envoie ». Attendre la confirmation vérifiée, puis ouvrir Gmail et montrer le message dans les éléments envoyés, avec son heure et son contenu. Le destinataire est le compte de démonstration lui-même.
 
@@ -77,3 +77,5 @@ Le rythme dépend de la conversation et des fournisseurs. Mieux vaut montrer ces
 - Une panne du Mac, du réseau ou d’un fournisseur appelle un arrêt clair du passage.
 
 Les détails des services et les limites de leurs preuves figurent dans [le service jury](../Services/JuryDemo/README.md). Actualiser ce statut seulement après observation du résultat correspondant sur le téléphone.
+
+Le build **3** naturalise les textes prononcés, le nom visible, la routine et la note de rappel. Il migre uniquement les anciens libellés seed exacts, sans modifier les choix personnels ni les identifiants de routine. Les références techniques restent internes ; les informations réellement indisponibles ne sont pas inventées. Ce changement de textes n’a pas été recompilé ni testé sur téléphone, conformément à la consigne de livraison rapide.

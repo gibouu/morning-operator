@@ -634,7 +634,7 @@ final class JuryDemoJourneyTests: XCTestCase {
         XCTAssertTrue(caption.waitForExistence(timeout: 10))
         let spoken = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let text = caption.label.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR"))
-            let isPreparedPassage = ["bonjour", "matin prepare", "tu as dormi", "on regarde le message"].contains { text.contains($0) }
+            let isPreparedPassage = ["bonjour", "tu as dormi", "on regarde le message"].contains { text.contains($0) }
             return (previous == nil || caption.label != previous) && isPreparedPassage &&
                 !["indisponible", "connexion", "configuree", "autorisation"].contains { text.contains($0) }
         }, object: caption)

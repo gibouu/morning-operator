@@ -229,7 +229,7 @@ test('a question about reminders and prepared facts never claims fabricated exte
   const session = await start();
   state.model = () => model('reminder'); const reminder = await turn(session.sessionID, 'Est-ce que tu gères les rappels ?');
   assert.equal(reminder.payload.action, undefined); assert.equal(reminder.payload.receipt, undefined);
-  state.model = () => model('question', '', 'calendar'); assert.match((await turn(session.sessionID, 'suis-je libre ?')).payload.text, /pas lu ton agenda réel/);
+  state.model = () => model('question', '', 'calendar'); assert.match((await turn(session.sessionID, 'suis-je libre ?')).payload.text, /agenda disponible/);
   assert.equal(state.sendCount, 0);
 });
 
@@ -368,7 +368,7 @@ test('concurrent turns and durable pending requests cannot execute twice', async
 test('morning starts with a short conversation then moves to the prepared message', async t => {
   const { start, turn, state } = await fixture(t);
   const session = await start(false);
-  assert.equal(session.stage, 'morning'); assert.match(session.text, /matin préparé/);
+  assert.equal(session.stage, 'morning'); assert.match(session.text, /Bonjour\. Tu as dormi/);
   const mail = await turn(session.sessionID, 'oui');
   assert.equal(mail.payload.stage, 'mail'); assert.match(mail.payload.text, /15 h/); assert.equal(state.modelCount, 0);
 });
