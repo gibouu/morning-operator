@@ -40,6 +40,7 @@ struct MorningActivityWidget: Widget {
             } compactTrailing: {
                 if context.isStale {
                     Text("!").font(.caption.weight(.semibold)).foregroundStyle(.white)
+                        .dynamicTypeSize(...DynamicTypeSize.large)
                         .accessibilityLabel(activityText("Update needed. Open MORE.", locale: context.state.locale))
                 } else if let timer = context.state.stepTimer {
                     MorningActivityCompactTimer(timer: timer, state: context.state)
@@ -47,6 +48,8 @@ struct MorningActivityWidget: Widget {
                         .environment(\.layoutDirection, .leftToRight)
                 } else {
                     Text(presentation.shortProgress).font(.caption2.monospacedDigit())
+                        .dynamicTypeSize(...DynamicTypeSize.large)
+                        .lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: 52)
                         .foregroundStyle(.white).accessibilityLabel(presentation.progress)
                 }
             } minimal: {
@@ -251,6 +254,7 @@ private struct MorningActivityCompactTimer: View {
                     }
                 }
                 .font(.caption2).tint(MorningActivityPalette.islandAccent)
+                .dynamicTypeSize(...DynamicTypeSize.large)
                 .foregroundStyle(.white).frame(width: 22, height: 22)
                 .accessibilityRepresentation {
                     Text(state.status.displayName(locale: state.locale))
