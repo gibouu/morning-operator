@@ -500,7 +500,7 @@ enum EvidenceRoutineGenerationSchema {
             .init(name: "citationIDs", description: "Select exactly one inserted ID of actual supporting task content or reported activity; never generic controls or labels.", schema: .init(arrayOf: .init(referenceTo: "SuppliedCitationID"), minimumElements: 1, maximumElements: 1))
         ])
         let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
-            .init(name: "outcome", schema: .init(referenceTo: "EvidenceProposalOutcome")),
+            .init(name: "outcome", description: "Use supportedActivities when at least one reported activity or visible task is supported by a supplied citation. Use insufficientEvidence when only labels, setup or advertising are present, or no activity can be supported without guessing. Synthetic provenance alone determines neither outcome.", schema: .init(referenceTo: "EvidenceProposalOutcome")),
             .init(name: "steps", description: "Empty when evidence is insufficient. Otherwise tentative, quoted activities only.", schema: .init(arrayOf: .init(referenceTo: "CitedRoutineStep"), minimumElements: 0, maximumElements: 4))
         ])
         return try GenerationSchema(root: root, dependencies: [kind, outcome, citation, step])

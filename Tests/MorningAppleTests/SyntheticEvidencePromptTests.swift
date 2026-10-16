@@ -3,7 +3,7 @@ import MorningCore
 import Testing
 @testable import MorningApple
 
-@Suite("Native source origin bounds synthetic task proposals")
+@Suite("Native source origin bounds synthetic task proposals", .serialized)
 struct SyntheticEvidencePromptTests {
     private let instant = Date(timeIntervalSince1970: 1_792_123_200)
 
@@ -114,10 +114,7 @@ struct SyntheticEvidencePromptTests {
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [observation])
         let service = AppleIntelligenceService()
         try #require(service.isAvailable, "The explicitly requested positive control needs the real local model.")
-        defer {
-            let diagnostic = service.proposalDiagnostics
-            print("SYNTHETIC_TASK_PROPOSAL_DIAGNOSTIC phase=\(diagnostic?.phase.rawValue ?? "notStarted") respondInvocations=\(diagnostic?.respondInvocations ?? 0) responseReturns=\(diagnostic?.responseReturns ?? 0) validatedBatches=\(diagnostic?.validatedBatchCount ?? 0) resolvedSteps=\(diagnostic?.resolvedStepCount ?? 0)")
-        }
+        defer { printDiagnostics(service, label: "SYNTHETIC_TASK_PROPOSAL_DIAGNOSTIC") }
         let proposal = try await service.propose(evidence: evidence, preserving: nil)
         try #require(!proposal.routine.steps.isEmpty)
         #expect(proposal.routine.isSynthetic && !proposal.routine.isApproved)
@@ -131,5 +128,43 @@ struct SyntheticEvidencePromptTests {
                 #expect(Data(frame.text.utf8).range(of: Data(citation.quote.utf8)) != nil)
             }
         }
+    }
+
+    @Test("The real propose-and-anchor path grounds an explicitly reported synthetic activity", .enabled(
+        "Set MO_RUN_MODEL_INTEGRATION=1 and MO_RUN_SYNTHETIC_MANUAL_PROPOSAL=1; no inference runs by default.") {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["MO_RUN_MODEL_INTEGRATION"] == "1" && environment["MO_RUN_SYNTHETIC_MANUAL_PROPOSAL"] == "1"
+    })
+    @MainActor
+    func realSyntheticManualProposal() async throws {
+        let text = "After breakfast I read my project notes. Then I review the agenda for the day."
+        let observation = try entry(text, kind: .manual)
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [observation])
+        #expect(evidence.units.allSatisfy { $0.kind == .userReportedActivity })
+        let service = AppleIntelligenceService()
+        try #require(service.isAvailable, "The explicitly requested positive control needs the real local model.")
+        defer { printDiagnostics(service, label: "SYNTHETIC_MANUAL_PROPOSAL_DIAGNOSTIC") }
+        let proposal = try await service.propose(evidence: evidence, preserving: nil)
+        try #require(!proposal.routine.steps.isEmpty)
+        #expect(proposal.routine.isSynthetic && !proposal.routine.isApproved)
+        #expect(proposal.preferenceSnapshot == nil && proposal.preferenceRevision == nil)
+        #expect(proposal.routine.steps.allSatisfy { !$0.isRequired && $0.automation == nil && $0.target == nil })
+        #expect(proposal.isCurrent(archive: try ObservationArchive(entries: [observation]), baseRoutine: nil))
+        for support in proposal.support {
+            try #require(!support.citations.isEmpty)
+            for citation in support.citations {
+                #expect(citation.acquisitionID == observation.id && citation.sampleID == nil && citation.sourceLayer == .original)
+                #expect(Data(text.utf8).range(of: Data(citation.quote.utf8)) != nil)
+            }
+        }
+    }
+
+    @MainActor private func printDiagnostics(_ service: AppleIntelligenceService, label: String) {
+        guard let diagnostic = service.proposalDiagnostics else { print("\(label) notStarted"); return }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(diagnostic) else { print("\(label) encodingUnavailable"); return }
+        // The bounded native DTO contains phases, counts and fixed outcomes only.
+        // No source, IDs, prompts or generated response content enters this log.
+        print("\(label) \(String(decoding: data, as: UTF8.self))")
     }
 }

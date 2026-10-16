@@ -196,8 +196,15 @@ struct AppleIntelligenceCitationTests {
         let citationArray = try #require(objects(object)
             .compactMap { $0["citationIDs"] as? [String: Any] }.first)
         #expect((citationArray["minItems"] as? Int) == 1 && (citationArray["maxItems"] as? Int) == 1)
+        let outcome = try #require(objects(object).compactMap { $0["outcome"] as? [String: Any] }.first)
+        let description = try #require(outcome["description"] as? String)
+        #expect(description.contains("supportedActivities") && description.contains("insufficientEvidence"))
+        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["insufficientEvidence", "supportedActivities"] })
         let empty = try EvidenceRoutineGenerationSchema.make(citationIDs: [])
-        #expect(try JSONEncoder().encode(empty).count > 0)
+        let emptyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(empty))
+        #expect(objects(emptyObject).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] })
+        let emptySteps = try #require(objects(emptyObject).compactMap { $0["steps"] as? [String: Any] }.first)
+        #expect((emptySteps["minItems"] as? Int) == 0 && (emptySteps["maxItems"] as? Int) == 0)
     }
     #endif
 }
