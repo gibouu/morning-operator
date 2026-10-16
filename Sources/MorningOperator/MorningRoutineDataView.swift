@@ -59,8 +59,8 @@ struct MorningRoutineDataView: View {
             }
         }
         .navigationTitle("Routine files").navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $exportSnapshot) { routine in RoutineExportView(routine: routine) }
-        .sheet(item: $importPreview) { preview in
+        .morningSheet(item: $exportSnapshot) { routine in RoutineExportView(routine: routine) }
+        .morningSheet(item: $importPreview) { preview in
             RoutineImportView(document: preview.document, onUse: { document in
                 guard preview.generation == store.dataGeneration, !store.privacyBlocksWork,
                       store.useImportedRoutine(document, replacing: preview.baseRoutine) else { return false }

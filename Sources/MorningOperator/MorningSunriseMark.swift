@@ -1,4 +1,5 @@
 import SwiftUI
+import MorningCore
 
 /// Existing debug names remain source-compatible. The app now has one dotted mark.
 enum MorningSunriseDesign: String, CaseIterable {
@@ -23,11 +24,8 @@ struct MorningSunriseMark: View {
     var design: MorningSunriseDesign = .current
 
     var body: some View {
-        ZStack {
-            MorningDottedSunrise(part: .sun).fill(MorningTheme.current.accentText)
-            MorningDottedSunrise(part: .rays).fill(MorningTheme.current.ink)
-        }
-        .frame(width: 112, height: 68)
+        MorningBrandSymbol(appearance: MorningThemeClock.shared.brandAppearance)
+            .frame(width: 112, height: 68)
         .accessibilityHidden(true)
         .allowsHitTesting(false)
     }

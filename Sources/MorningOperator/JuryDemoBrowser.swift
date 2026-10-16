@@ -84,7 +84,7 @@ final class JuryDemoBrowser {
 struct JuryDemoBrowserPresenter: ViewModifier {
     @Bindable var store: MorningStore
     func body(content: Content) -> some View {
-        content.fullScreenCover(isPresented: Binding(get: { store.juryDemoWebURL != nil },
+        content.morningFullScreenCover(isPresented: Binding(get: { store.juryDemoWebURL != nil },
             set: { if !$0 { store.juryDemoBrowser.close() } })) {
             if let url = store.juryDemoWebURL, let site = WebMorningSite(url: url) {
                 WebMorningView(site: site, minutes: 1, initialURL: url,

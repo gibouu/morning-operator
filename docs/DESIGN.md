@@ -58,3 +58,18 @@ Before the dotted-journey revision, a separate MORE QA app passed the five-phase
 ## 15 October direction
 
 MORE always selects light appearance; its five clock palettes still move warm paper from dawn to night. System dark mode does not invert the app or Lock Screen art. The latest signed ordinary app/widget build and full 1,209-test package run pass. No further scripted iPhone routines run after the owner’s request. Final phone acceptance remains manual; see [CURRENT-DIRECTION.md](CURRENT-DIRECTION.md).
+
+
+## Approved day/night branding · 16 October 2026
+
+This direction replaces the earlier light-only appearance and two-arch wordmark.
+
+The approved wordmark spells lowercase `more` entirely in dots. Its `o` is a complete sun with eight rays by day and a full moon by night. The other letters, their spacing and the canvas bounds stay identical. `MorningCore.MorningBrandArtwork` owns the font-independent coordinates and palette; `MorningSharedActivity.MorningBrandView` draws the same geometry in MORE and its Live Activity. The app-owned wordmark is a noninteractive identity, not another Home control.
+
+`MorningThemeClock.brandAppearance` uses the same moon-visibility decision as the landscape and utility appearance. A single entry-level lifecycle refreshes before onboarding, in foreground and on significant time/time-zone changes. Root navigation and app-owned sheets carry a compact header; onboarding, permissions and membership use their existing header slots. System permissions, file pickers and account authentication retain their native presentation. Routine progress, pause, completion and hidden controls do not change the logo.
+
+The approved standalone icons remain the dotted sunrise by day and full moon by night, plus a grayscale tinted icon. `scripts/make-app-icon.swift` regenerates them from the shared native coordinates. iOS chooses the asset-catalog appearance according to the person's Home Screen setting (including Auto); MORE does not trigger an alternate-icon alert at every solar boundary.
+
+Live Activities receive solar rise/set minutes and a time-zone identifier without location coordinates. They resolve branding from the render date, and the app publishes an appearance change even when routine progress is unchanged. Background timer updates retain this context and the selected language. ActivityKit owns redraw timing while MORE is suspended; this implementation cannot guarantee an exact solar-boundary redraw without a system update.
+
+Validation includes 51 targeted package tests for geometry, solar appearance, activity payloads, coordinator updates and background timer preservation; all pass. The native Activity component proof passes 16 expanded bilingual layouts and eight compact timer checks (maximum height 146 of 160 pt). The final integrated simulator build compiles the app and widget and passes six isolated UI journeys covering day/night, English/French, largest text, navigation/sheets, playback pause/resume, automatic progression, hidden controls and foreground restoration. The gated ActivityKit journey remains unrun because its existing setup entry is unavailable. UI fixtures and macOS component renders do not constitute live-provider, ActivityKit lifecycle or physical-iPhone verification. Screenshots stay outside Git.

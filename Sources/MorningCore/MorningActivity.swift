@@ -109,12 +109,16 @@ public struct MorningActivityContentState: Codable, Hashable, Sendable {
     /// The app's selected language, carried across the widget process boundary.
     /// Nil in older activities, whose interface falls back to the current app language.
     public let languageIdentifier: String?
+    /// Solar timing only; no location coordinates cross into the extension.
+    /// Missing in older activities, which use the same reference day as Home.
+    public let brandClock: MorningActivityBrandClock?
     public var locale: Locale { Locale(identifier: languageIdentifier ?? AppLanguage.localeIdentifier) }
     public var currentStepNumber: Int { completedSteps + 1 }
 
     public init(category: MorningActivityCategory, status: MorningActivityStatus,
                 completedSteps: Int, totalSteps: Int, updatedAt: Date,
-                stepTimer: MorningActivityStepTimer? = nil, languageIdentifier: String? = nil) throws {
+                stepTimer: MorningActivityStepTimer? = nil, languageIdentifier: String? = nil,
+                brandClock: MorningActivityBrandClock? = nil) throws {
         guard (1...100).contains(totalSteps), completedSteps >= 0, completedSteps < totalSteps else {
             throw MorningActivityValidationError.invalidProgress
         }
@@ -125,8 +129,9 @@ public struct MorningActivityContentState: Codable, Hashable, Sendable {
         self.completedSteps = completedSteps; self.totalSteps = totalSteps; self.updatedAt = updatedAt
         self.stepTimer = stepTimer
         self.languageIdentifier = languageIdentifier.flatMap { ["fr", "en"].contains($0) ? $0 : nil }
+        self.brandClock = brandClock
     }
-    private enum CodingKeys: CodingKey { case category, status, completedSteps, totalSteps, updatedAt, stepTimer, languageIdentifier }
+    private enum CodingKeys: CodingKey { case category, status, completedSteps, totalSteps, updatedAt, stepTimer, languageIdentifier, brandClock }
     public init(from decoder: any Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(category: value.decode(MorningActivityCategory.self, forKey: .category),
@@ -135,12 +140,18 @@ public struct MorningActivityContentState: Codable, Hashable, Sendable {
             totalSteps: value.decode(Int.self, forKey: .totalSteps),
             updatedAt: value.decode(Date.self, forKey: .updatedAt),
             stepTimer: value.decodeIfPresent(MorningActivityStepTimer.self, forKey: .stepTimer),
-            languageIdentifier: value.decodeIfPresent(String.self, forKey: .languageIdentifier))
+            languageIdentifier: value.decodeIfPresent(String.self, forKey: .languageIdentifier),
+            brandClock: value.decodeIfPresent(MorningActivityBrandClock.self, forKey: .brandClock))
     }
     public func hasSameProgress(as other: Self) -> Bool {
         category == other.category && status == other.status &&
         completedSteps == other.completedSteps && totalSteps == other.totalSteps && stepTimer == other.stepTimer &&
-        languageIdentifier == other.languageIdentifier
+        languageIdentifier == other.languageIdentifier && brandClock == other.brandClock
+    }
+
+    /// The logo follows wall-clock light, independently of progress or pause.
+    public func brandAppearance(at date: Date) -> MorningBrandAppearance {
+        (brandClock ?? MorningActivityBrandClock(solar: .fixed)).appearance(at: date)
     }
 
     /// When this content stops being trustworthy. A running step timer is exact until
@@ -165,7 +176,8 @@ public enum MorningActivityProjection {
     /// Ready and terminal sessions have no Live Activity. Paused is explicit;
     /// a running session may instead need attention for an unavailable operation.
     public static func snapshot(session: RoutineSession?, needsAttention: Bool = false,
-                                timer: StepTimer? = nil, at date: Date = Date()) -> MorningActivitySnapshot? {
+                                timer: StepTimer? = nil, at date: Date = Date(),
+                                brandClock: MorningActivityBrandClock? = nil) -> MorningActivitySnapshot? {
         guard let session, session.status == .running || session.status == .paused,
               session.routine.isApproved, let step = session.currentStep,
               let category = MorningActivityCategory(rawValue: step.kind.rawValue) else { return nil }
@@ -180,7 +192,7 @@ public enum MorningActivityProjection {
         }
         guard let state = try? MorningActivityContentState(category: category, status: status,
             completedSteps: session.currentStepIndex, totalSteps: session.routine.steps.count, updatedAt: date,
-            stepTimer: stepTimer, languageIdentifier: AppLanguage.code) else { return nil }
+            stepTimer: stepTimer, languageIdentifier: AppLanguage.code, brandClock: brandClock) else { return nil }
         return .init(sessionID: session.id, state: state)
     }
 }

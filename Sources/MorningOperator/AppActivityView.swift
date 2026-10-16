@@ -50,7 +50,7 @@ struct AppActivityView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await refresh() } }
         }
-        .sheet(isPresented: $showingSetup) { AppActivitySetupView(onCleared: refresh) }
+        .morningSheet(isPresented: $showingSetup) { AppActivitySetupView(onCleared: refresh) }
     }
 
     private func refresh() async {

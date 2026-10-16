@@ -32,8 +32,8 @@ struct MorningActivityWidget: Widget {
                 }
             } compactLeading: {
                 HStack(spacing: 0) {
-                    MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 22, height: 22)
-                        .foregroundStyle(MorningActivityPalette.islandAccent)
+                    MorningBrandSymbol(appearance: presentation.appearance, contrasting: true)
+                        .frame(width: 24, height: 22).accessibilityHidden(true)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(presentation.accessibilitySummary)
@@ -54,8 +54,8 @@ struct MorningActivityWidget: Widget {
                 }
             } minimal: {
                 HStack(spacing: 0) {
-                    MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 22, height: 22)
-                        .foregroundStyle(MorningActivityPalette.islandAccent)
+                    MorningBrandSymbol(appearance: presentation.appearance, contrasting: true)
+                        .frame(width: 24, height: 22).accessibilityHidden(true)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(presentation.accessibilitySummary)
@@ -75,17 +75,17 @@ private struct MorningActivityLockScreen: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var presentation: MorningActivityPresentation { .init(state: state, isStale: isStale) }
-    private var ink: Color { MorningActivityPalette.ink }
-    private var accent: Color { MorningActivityPalette.rust }
-    private var muted: Color { MorningActivityPalette.muted }
-    private var background: Color { MorningActivityPalette.paper }
+    private var isNight: Bool { presentation.appearance == .night }
+    private var ink: Color { isNight ? MorningActivityPalette.moon : MorningActivityPalette.ink }
+    private var accent: Color { isNight ? MorningActivityPalette.moon : MorningActivityPalette.rust }
+    private var muted: Color { isNight ? MorningActivityPalette.moon.opacity(0.8) : MorningActivityPalette.muted }
+    private var background: Color { isNight ? MorningActivityPalette.night : MorningActivityPalette.paper }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
-                MorningWidgetLivingMark(fraction: presentation.artworkProgress).frame(width: 36, height: 28)
-                    .foregroundStyle(accent).accessibilityHidden(true)
-                Text("MORE").font(.caption.weight(.semibold)).foregroundStyle(ink)
+                MorningBrandWordmark(appearance: presentation.appearance)
+                    .frame(width: 100, height: 27).accessibilityHidden(true)
                 Spacer(minLength: 8)
                 Text(presentation.status).font(.caption.weight(.medium)).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -144,9 +144,8 @@ private struct MorningActivityIslandDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
-                MorningWidgetLivingMark(fraction: presentation.artworkProgress)
-                    .frame(width: 24, height: 18)
-                    .foregroundStyle(MorningActivityPalette.islandAccent)
+                MorningBrandWordmark(appearance: presentation.appearance, contrasting: true)
+                    .frame(width: 76, height: 20).accessibilityHidden(true)
                 Text(presentation.status).font(.caption.weight(.medium))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
@@ -277,7 +276,9 @@ private struct MorningActivityPresentation {
 
     var heading: String { isStale ? activityText("Update needed", locale: state.locale) : state.category.displayName(locale: state.locale) }
     var status: String { isStale ? activityText("Update needed", locale: state.locale) : state.status.displayName(locale: state.locale) }
-    var artworkProgress: Double? { state.stepTimer?.elapsedFraction(at: state.updatedAt) }
+    // ActivityKit invokes this view on content/system updates; it does not offer
+    // a widget timeline to guarantee a solar switch while the app is suspended.
+    var appearance: MorningBrandAppearance { state.brandAppearance(at: Date()) }
     var shortProgress: String { "\(state.completedSteps)/\(state.totalSteps)" }
     var progress: String { activityText("\(state.completedSteps) of \(state.totalSteps) moments passed", locale: state.locale) }
     var lastUpdate: String { activityText("Last update \(state.updatedAt.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(state.locale)))", locale: state.locale) }
@@ -288,11 +289,18 @@ private struct MorningActivityPresentation {
 }
 
 private enum MorningActivityPalette {
-    static let ink = Color(red: 0.102, green: 0.184, blue: 0.431)
-    static let paper = Color(red: 0.957, green: 0.925, blue: 0.867)
-    static let rust = Color(red: 0.608, green: 0.227, blue: 0.071)
+    static let ink = color(MorningBrandPalette.ink)
+    static let paper = color(MorningBrandPalette.paper)
+    static let night = color(MorningBrandPalette.night)
+    static let moon = color(MorningBrandPalette.moon)
+    static let rust = color(MorningBrandPalette.rust)
     static let muted = Color(red: 0.310, green: 0.333, blue: 0.420)
     static let islandAccent = Color(red: 0.949, green: 0.635, blue: 0.435)
+
+    private static func color(_ value: UInt32) -> Color {
+        Color(.sRGB, red: Double((value >> 16) & 255) / 255,
+              green: Double((value >> 8) & 255) / 255, blue: Double(value & 255) / 255, opacity: 1)
+    }
 }
 
 private struct StepCountdown: View {
@@ -341,15 +349,6 @@ private struct StepActivityControls: View {
     }
 }
 
-/// The extension repeats the app's small dot silhouette without importing app UI.
-/// Each impression is its own circle; no old category logo, emoji or stroked symbol.
-private struct MorningWidgetSunrise: Shape {
-    func path(in rect: CGRect) -> Path {
-        widgetDots(["....x....", ".x..x..x.", "..xxxxx..", ".xxxxxxx.", ".xxxxxxx.",
-                    ".xxxxxxx.", "xxxxxxxxx", ".........", "..xxxxx.."], in: rect)
-    }
-}
-
 private struct MorningWidgetControlGlyph: Shape {
     enum Kind { case extend, next, finish }
     let kind: Kind
@@ -379,75 +378,6 @@ private func widgetDots(_ rows: [String], in rect: CGRect) -> Path {
         }
     }
     return path
-}
-
-/// Two original print concepts. Production uses the rising sun; the quiet crescent
-/// remains available to native design previews without claiming a separate capability.
-private enum MorningWidgetArtworkConcept { case risingSun, quietMoon }
-
-/// The position changes only with published content, using the real persisted start.
-/// Short transitions are allowed; no TimelineView, repeated animation or background loop.
-private struct MorningWidgetLivingMark: View {
-    let fraction: Double?
-    var concept: MorningWidgetArtworkConcept = .risingSun
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isLuminanceReduced) private var reducedLuminance
-
-    var body: some View {
-        GeometryReader { geometry in
-            if fraction == nil, concept == .risingSun {
-                MorningWidgetSunrise()
-            } else {
-                let progress = min(1, max(0, fraction ?? 0))
-                let side = min(geometry.size.width * 0.72, geometry.size.height * 0.72)
-                ZStack {
-                    MorningWidgetCelestialDisc(crescent: concept == .quietMoon)
-                        .frame(width: side, height: side)
-                        .position(x: geometry.size.width / 2,
-                                  y: geometry.size.height * (0.74 - 0.34 * progress))
-                    MorningWidgetHorizon().frame(height: 3)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height * 0.86)
-                }
-                .clipped()
-                .animation(reduceMotion || reducedLuminance ? nil : .easeInOut(duration: 0.35), value: fraction)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct MorningWidgetCelestialDisc: Shape {
-    var crescent = false
-    func path(in rect: CGRect) -> Path {
-        let side = min(rect.width, rect.height), cell = side / 9
-        var path = Path()
-        for row in 0..<9 {
-            for column in 0..<9 {
-                let x = (CGFloat(column) + 0.5) / 9, y = (CGFloat(row) + 0.5) / 9
-                let distance = hypot(x - 0.5, y - 0.5)
-                guard distance < 0.5 else { continue }
-                if crescent, hypot(x - 0.72, y - 0.30) < 0.47 { continue }
-                let radius = cell * (0.28 + 0.10 * (1 - distance * 2))
-                let center = CGPoint(x: rect.midX + (x - 0.5) * side, y: rect.midY + (y - 0.5) * side)
-                path.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
-                                          width: radius * 2, height: radius * 2))
-            }
-        }
-        return path
-    }
-}
-
-private struct MorningWidgetHorizon: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let radius = min(1.1, rect.height / 2)
-        for index in 0..<7 {
-            let x = rect.width * (0.12 + CGFloat(index) * 0.126)
-            path.addEllipse(in: CGRect(x: x - radius, y: rect.midY - radius,
-                                      width: radius * 2, height: radius * 2))
-        }
-        return path
-    }
 }
 
 /// The system updates this date-based progress without asking the app to run.

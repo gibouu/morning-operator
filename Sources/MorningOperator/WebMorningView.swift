@@ -100,7 +100,7 @@ struct WebMorningView: View {
         .background(MorningPaper(showsSun: false))
         .foregroundStyle(MorningStyle.ink)
         .tint(MorningStyle.accent)
-        .sheet(isPresented: $showingAbout) { about }
+        .morningSheet(isPresented: $showingAbout) { about }
         .onAppear {
             controller.onExecutionEvent = onExecutionEvent
             controller.executionIsAuthorized = executionIsAuthorized
