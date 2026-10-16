@@ -11,7 +11,7 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
         case .watchVideos: AppLanguage.localized("Watch videos", bundle: .module)
         case .watchStories: AppLanguage.localized("Watch stories", bundle: .module)
         case .readHeadlines: AppLanguage.localized("Read headlines aloud", bundle: .module)
-        case .readUnread: AppLanguage.localized("Read visible unread information", bundle: .module)
+        case .readUnread: AppLanguage.localized("Read visible messages", bundle: .module)
         }
     }
 
@@ -21,7 +21,7 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
         case .watchVideos: AppLanguage.localized("MORE opens the video feed and moves to the next video after each viewing moment.", bundle: .module)
         case .watchStories: AppLanguage.localized("MORE opens your stories and advances through the visible stories.", bundle: .module)
         case .readHeadlines: AppLanguage.localized("MORE reads the visible headlines and continues through the page.", bundle: .module)
-        case .readUnread: AppLanguage.localized("MORE reads the unread information visible in this browser.", bundle: .module)
+        case .readUnread: AppLanguage.localized("MORE reads visible messages. Supported conversations can prepare a reply for review; sending needs your instruction.", bundle: .module)
         }
     }
 
@@ -33,7 +33,8 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
         case .twitter, .reddit, .threads: [.browseFeed]
         case .facebook: [.browseFeed, .watchStories]
         case .news: [.readHeadlines]
-        case .whatsapp: [.readUnread]
+        case .whatsapp, .slack: [.readUnread]
+        case .linkedin: [.readUnread, .browseFeed]
         case .gmail: []
         }
     }
@@ -46,7 +47,7 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
     public static func defaultBehavior(for site: WebMorningSite) -> Self? {
         switch site {
         case .news: .readHeadlines
-        case .whatsapp: .readUnread
+        case .whatsapp, .linkedin, .slack: .readUnread
         case .gmail: nil
         case .youtube, .tiktok: .watchVideos
         default: .browseFeed
@@ -295,7 +296,7 @@ public enum WebMorningExecutionPolicy {
             return "JSON.stringify({status:'unavailable'})"
         }
         let originCheck = syntheticRoutine?.javascriptPermits("location") ?? syntheticNews?.javascriptPermits("location") ??
-            "(location.protocol==='https:' && \(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) && (!location.port || location.port==='443') && !location.username && !location.password)"
+            "(location.protocol==='https:' && \(site.table.javascriptPermitsHost("location.hostname")) && (!location.port || location.port==='443') && !location.username && !location.password)"
         let articleCheck = syntheticNews?.javascriptPermits("u") ?? "(u.protocol==='https:' && u.origin===location.origin && !u.username && !u.password)"
         let selectors: [String]
         switch site {
@@ -308,6 +309,10 @@ public enum WebMorningExecutionPolicy {
         case .threads: selectors = ["[data-pressable-container=true]", "article"]
         case .news: selectors = site.table.headlines ?? []
         case .whatsapp: selectors = ["#pane-side [role=row]"]
+        case .linkedin: selectors = behavior == .readUnread
+            ? [".msg-s-message-list__event", ".msg-conversation-listitem--unread"]
+            : [".feed-shared-update-v2", "[data-urn^=\"urn:li:activity:\"]"]
+        case .slack: selectors = ["[data-qa=\"message_container\"]", "[data-item-key] .c-message_kit__message"]
         case .gmail: selectors = []
         }
         return #"""
@@ -435,7 +440,7 @@ public enum WebMorningExecutionPolicy {
                   .some(subscribe=>commonConsentPanel(accept,subscribe)));
             return out(observedConsent ? {status:'choice',pageAccessRefusal:'consentRequired'} : {status:'choice'});
           }
-          const sameRoute = href => { try { const u=new URL(href, location.href); return u.protocol==='https:' && \#(json(site.table.allowedHosts.sorted())).includes(u.hostname.toLowerCase()) && !u.username && !u.password && (!u.port || u.port==='443') && !\#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) ? u.pathname : null; } catch (_) { return null; } };
+          const sameRoute = href => { try { const u=new URL(href, location.href); return u.protocol==='https:' && \#(site.table.javascriptPermitsHost("u.hostname")) && !u.username && !u.password && (!u.port || u.port==='443') && !\#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) ? u.pathname : null; } catch (_) { return null; } };
           const behavior = \#(json(behavior.rawValue)), site = \#(json(site.rawValue));
           let nodes = [...new Set(all(document, \#(json(selectors))).filter(visible))];
           if (site==='whatsapp') {

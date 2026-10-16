@@ -715,9 +715,12 @@ struct StepEditor: View {
                 StepTargetEditor(target: $step.target, reviewedDetail: step.detail)
                 if assignmentContext != nil {
                     Section {
-                        Button(AppLanguage.isFrench ? "Choisir un compte et un canal Slack" : "Choose a Slack account and channel") { choosingSlack = true }
+                        Button(AppLanguage.isFrench ? "Autre option : choisir un compte et un canal Slack" : "Another option: choose a Slack account and channel") { choosingSlack = true }
                             .disabled(store.busy || store.sessionActive || store.privacyBlocksWork)
                             .accessibilityIdentifier("step.chooseSlack")
+                        Text(AppLanguage.isFrench ? "Pour utiliser Slack dans le navigateur intégré, choisissez Slack ci-dessus. Cette connexion de compte supplémentaire reste facultative."
+                            : "To use Slack in the built-in browser, choose Slack above. This additional account connection is optional.")
+                            .font(.footnote).foregroundStyle(MorningStyle.muted)
                         if let sourceLabel = step.reviewedSourceLabel {
                             Text(AppLanguage.isFrench ? "Source choisie" : "Selected source").font(.caption)
                             Text(sourceLabel).fixedSize(horizontal: false, vertical: true)

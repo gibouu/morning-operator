@@ -23,6 +23,9 @@ struct WebMorningView: View {
     var onNewsArticle: ((Int) -> Void)?
     var onNewsReturn: (() -> Void)?
     var onNewsRepeat: (() -> Void)?
+    var onConversation: ((String) -> Void)?
+    var onReconcileConversation: ((Bool) -> Void)?
+    var onBrowserSignedIn: (() -> Void)?
     /// A sign-in pass is normal browsing, without routine timers or page readers.
     var onSignInReady: (() -> Void)?
     var learningOnly: Bool
@@ -34,6 +37,7 @@ struct WebMorningView: View {
     @State private var controller: WebMorningController
     @State private var clock: WebMorningStepClock
     @State private var showingAbout = false
+    @State private var replyIntention = ""
     @AppStorage("webMorning.explained") private var explained = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.locale) private var locale
@@ -49,6 +53,7 @@ struct WebMorningView: View {
          onNativeRequest: (() -> Void)? = nil,
          retainedController: WebMorningController? = nil,
          onNewsArticle: ((Int) -> Void)? = nil, onNewsReturn: (() -> Void)? = nil, onNewsRepeat: (() -> Void)? = nil,
+         onConversation: ((String) -> Void)? = nil, onReconcileConversation: ((Bool) -> Void)? = nil, onBrowserSignedIn: (() -> Void)? = nil,
          onClose: @escaping () -> Void) {
         self.site = site; self.isStepActive = isStepActive; self.stepEndsAt = stepEndsAt; self.timerPausedAt = timerPausedAt
         self.onExtend = onExtend; self.onNext = onNext; self.onClose = onClose
@@ -57,6 +62,8 @@ struct WebMorningView: View {
         self.executionPlan = executionPlan; self.onExecutionEvent = onExecutionEvent
         self.onPause = onPause; self.onResume = onResume
         self.onNativeRequest = onNativeRequest
+        self.onReconcileConversation = onReconcileConversation
+        self.onConversation = onConversation; self.onBrowserSignedIn = onBrowserSignedIn
         self.onNewsArticle = onNewsArticle; self.onNewsReturn = onNewsReturn; self.onNewsRepeat = onNewsRepeat
         self.executionIsAuthorized = executionIsAuthorized; self.executionCanAdvance = executionCanAdvance
         retainsRoutineController = retainedController != nil
@@ -118,6 +125,14 @@ struct WebMorningView: View {
         }
         .onChange(of: stepEndsAt) { _, deadline in
             controller.configureExecution(plan: executionPlan, endsAt: deadline ?? clock.endsAt)
+        }
+        .task(id: "\(controller.awaitingSignIn).\(scenePhase == .active)") {
+            guard controller.awaitingSignIn, scenePhase == .active else { return }
+            for _ in 0..<600 {
+                guard !Task.isCancelled, scenePhase == .active else { return }
+                if await controller.signedInPageIsReady(), !Task.isCancelled, scenePhase == .active { onBrowserSignedIn?(); return }
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
         }
         .onDisappear {
             if retainsRoutineController { controller.suspendPresentation() }
@@ -210,8 +225,65 @@ struct WebMorningView: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var conversationControls: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                if let source = controller.conversationDraft.snapshot ?? controller.conversationSnapshot {
+                    Text(source.recipient).font(.headline)
+                    Text(source.messageText).font(.subheadline).textSelection(.enabled)
+                }
+                if controller.conversationDraft.phase == .idle {
+                    HStack {
+                        Button(text("Read conversation", "Lire la conversation")) { onConversation?("read this conversation") }
+                        Button(text("Reply", "Répondre")) { onConversation?("reply") }
+                    }
+                } else if ![.sending, .completed, .uncertain].contains(controller.conversationDraft.phase) {
+                    TextField(text("What would you like to reply?", "Que souhaitez-vous répondre ?"), text: $replyIntention, axis: .vertical)
+                        .textFieldStyle(.roundedBorder).accessibilityIdentifier("web.replyIntention")
+                    Button(text("Prepare reply", "Préparer la réponse")) {
+                        onConversation?("reply " + replyIntention)
+                        replyIntention = ""
+                    }.disabled(controller.conversationBusy || replyIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    TextEditor(text: Binding(get: { controller.conversationDraft.body }, set: { controller.editConversationReply($0) }))
+                        .frame(minHeight: 70, maxHeight: 120).disabled(controller.conversationBusy).accessibilityLabel(text("Reply text", "Texte de la réponse"))
+                        .accessibilityIdentifier("web.replyBody")
+                    HStack {
+                        Button(text("Read reply", "Relire la réponse")) { onConversation?("read the reply") }
+                        Button(text("I have reviewed this reply", "J’ai relu cette réponse")) { controller.markConversationReplyReviewed() }
+                            .disabled(controller.conversationBusy || !WebConversationDraft.validBody(controller.conversationDraft.body))
+                            .accessibilityIdentifier("web.replyReviewed")
+                    }
+                    Button(text("Send reply", "Envoyer la réponse")) { onConversation?("send") }
+                        .disabled(controller.conversationBusy || controller.conversationDraft.phase != .awaitingSend)
+                        .accessibilityIdentifier("web.replySend")
+                    Button(text("Cancel reply", "Annuler la réponse")) { onConversation?("cancel") }
+                }
+                if controller.conversationBusy { ProgressView() }
+                if let line = controller.conversationMessage { Text(line).font(.footnote).textSelection(.enabled) }
+                if controller.pendingConversationSendID != nil {
+                    Text(text("After checking the conversation yourself:", "Après avoir vérifié vous-même la conversation :")).font(.footnote)
+                    Button(text("I checked: the reply was sent", "J’ai vérifié : la réponse a été envoyée")) { onReconcileConversation?(true) }
+                    Button(text("I checked: the reply was not sent", "J’ai vérifié : la réponse n’a pas été envoyée")) { onReconcileConversation?(false) }
+                }
+                if controller.conversationDraft.phase == .uncertain {
+                    Text(text("Check the visible conversation before continuing. This reply will not be sent again automatically.",
+                        "Vérifiez la conversation affichée avant de continuer. Cette réponse ne sera pas renvoyée automatiquement."))
+                        .font(.footnote)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+
+        }.frame(maxHeight: 240).accessibilityIdentifier("web.conversation")
+    }
+
     private var bottomBar: some View {
         VStack(alignment: .leading, spacing: 6) {
+            if controller.awaitingSignIn || controller.isSignInPage {
+                Text(text("Sign in here. MORE keeps this website session for your next mornings, until the service asks you to sign in again.",
+                    "Connectez-vous ici. MORE garde cette session pour vos prochains matins, jusqu’à ce que le service demande une nouvelle connexion."))
+                    .font(.footnote).accessibilityIdentifier("web.inlineSignIn")
+            }
+            if executionPlan != nil, WebConversationPolicy.supports(site), onConversation != nil,
+               !controller.awaitingSignIn, !controller.isSignInPage { conversationControls }
             if site == .news {
                 if let snapshot = controller.newsSnapshot, let onNewsArticle {
                     ScrollView {
@@ -388,8 +460,8 @@ struct WebMorningView: View {
                               executionPlan == nil ? "Connectez-vous et naviguez ici. Une routine validée peut confier ce moment à MORE." : "MORE suit le comportement que vous avez validé. Vous pouvez le mettre en pause ou l’arrêter à tout moment."))
                         .font(MorningTheme.Typography.body)
                     DisclosureGroup(text("Privacy & website controls", "Confidentialité et commandes du site")) {
-                        Text(text("MORE does not read passwords or send messages from these pages. Likes run only when included in the approved behavior, up to three per moment. Sign-in stays in this browser.",
-                                  "MORE ne lit pas les mots de passe et n’envoie pas de message depuis ces pages. Les j’aime sont réalisés seulement s’ils font partie du comportement validé, au maximum trois par moment. La connexion reste dans ce navigateur."))
+                        Text(text("MORE does not read passwords. Replies are sent only after review and your instruction to send. Likes run only when included in the approved behavior, up to three per moment. Sign-in stays in this browser.",
+                                  "MORE ne lit pas les mots de passe. Les réponses sont envoyées après relecture et votre instruction d’envoi. Les j’aime sont réalisés seulement s’ils font partie du comportement validé, au maximum trois par moment. La connexion reste dans ce navigateur."))
                             .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted).padding(.top, 8)
                     }.font(.raleway(.subheadline))
                     Button(text("Clear all website sign-ins", "Effacer toutes les connexions aux sites"), role: .destructive) {

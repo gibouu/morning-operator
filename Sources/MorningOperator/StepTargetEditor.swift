@@ -24,6 +24,7 @@ struct StepTargetEditor: View {
         if choice.hasPrefix("app."), let app = StepApp(rawValue: String(choice.dropFirst(4))) {
             target = .externalApp(app, detail: nil)
         } else if choice.hasPrefix("web."), let site = WebMorningSite(rawValue: String(choice.dropFirst(4))) {
+            if case let .inAppWeb(url) = target?.routineExecutionTarget, WebMorningSite(url: url) == site { return }
             target = .inAppWeb(site: site.table.startURL)
         } else if choice == "shortcut" { target = .shortcut(name: "", input: "") }
         else if choice == "none" { target = nil }
@@ -107,14 +108,18 @@ struct StepTargetEditor: View {
                      : "To choose another Inbox, add a moment from Apps & accounts.")
                     .font(.footnote).foregroundStyle(MorningStyle.muted)
             }
+            if target == nil {
+                Text("Choose a website or an app above.")
+                    .font(.footnote).foregroundStyle(MorningStyle.muted)
+            }
             Text(AppLanguage.isFrench ? "Ce choix s’applique à ce moment. Appuyez sur Enregistrer pour conserver les modifications."
                  : "This choice applies to this moment. Tap Save to keep your changes.")
                 .font(.footnote).foregroundStyle(MorningStyle.muted)
         } header: { Text("During this moment") } footer: {
             switch target?.routineExecutionTarget {
             case .inAppWeb:
-                Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page."
-                     : "Also choose what MORE will do in the page.")
+                Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur."
+                     : "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser.")
             case .externalApp:
                 Text(AppLanguage.isFrench ? "Cette application peut nécessiter vos gestes."
                      : "This app may still need your actions.")

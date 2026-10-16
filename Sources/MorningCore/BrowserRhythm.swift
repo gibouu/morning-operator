@@ -90,9 +90,11 @@ public enum BrowserRhythmPolicy {
             if path.isEmpty || (path.count == 2 && path.first == "r") { return .browseFeed }
         case .threads:
             if path.isEmpty || path == ["following"] { return .browseFeed }
+        case .linkedin:
+            if path == ["feed"] { return .browseFeed }
         case .news:
             if path.isEmpty { return .readHeadlines }
-        case .gmail, .whatsapp: return nil
+        case .gmail, .whatsapp, .slack: return nil
         }
         return nil
     }
@@ -100,11 +102,10 @@ public enum BrowserRhythmPolicy {
     /// Installed only for the visible document after Start learning. Capture-phase
     /// scroll observes nested elements in that document, never cross-origin frames.
     public static func script(site: WebMorningSite, nonce: UUID) -> String {
-        let hosts = json(site.table.allowedHosts.sorted())
         let paths = json(WebMorningPolicy.signInPathFragments)
         return #"""
         (() => {
-          const nonce = '\#(nonce.uuidString)', hosts = \#(hosts), paths = \#(paths), site = '\#(site.rawValue)';
+          const nonce = '\#(nonce.uuidString)', paths = \#(paths), site = '\#(site.rawValue)';
           const previous = globalThis.__moreRhythm;
           if (previous) previous.stop(previous.nonce);
           let ended = false, pending = null, userUntil = 0, lastScroll = -Infinity;
@@ -133,6 +134,8 @@ public enum BrowserRhythmPolicy {
               if (!p.length || (p.length === 2 && first === 'r')) return 'browseFeed';
             } else if (site === 'threads') {
               if (!p.length || (p.length === 1 && first === 'following')) return 'browseFeed';
+            } else if (site === 'linkedin') {
+              if (p.length === 1 && first === 'feed') return 'browseFeed';
             } else if (site === 'news' && !p.length) return 'readHeadlines';
             return null;
           };
@@ -152,7 +155,9 @@ public enum BrowserRhythmPolicy {
             lastBehavior = current;
           };
           const safe = () => window.top === window && !document.hidden && location.protocol === 'https:' &&
-            hosts.includes(location.hostname.toLowerCase()) && !paths.some(p => (location.pathname.toLowerCase() + '/').includes(p)) &&
+            \#(site.table.javascriptPermitsHost("location.hostname")) &&
+            (!location.port || location.port === '443') && !location.username && !location.password &&
+            !paths.some(p => (location.pathname.toLowerCase() + '/').includes(p)) &&
             !document.querySelector('input[type="password"],input[type="email"],input[autocomplete="username"],input[autocomplete="current-password"],input[autocomplete="new-password"],input[autocomplete="one-time-code"],form[action*="login" i],form[action*="signin" i]');
           const post = body => {
             // Native revokes the bridge before asking this document to stop.

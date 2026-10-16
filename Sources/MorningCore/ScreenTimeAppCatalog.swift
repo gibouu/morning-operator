@@ -175,6 +175,8 @@ public extension ScreenTimeAppCatalog {
         case "com.reddit.Reddit": return .inAppWeb(site: WebMorningSite.reddit.table.startURL)
         case "com.facebook.Facebook": return .inAppWeb(site: WebMorningSite.facebook.table.startURL)
         case "com.burbn.barcelona": return .inAppWeb(site: WebMorningSite.threads.table.startURL)
+        case "com.linkedin.LinkedIn": return .inAppWeb(site: WebMorningSite.linkedin.table.startURL)
+        case "com.tinyspeck.chatlyio": return .inAppWeb(site: WebMorningSite.slack.table.startURL)
         case "com.apple.MobileSMS": app = .messages
         case "com.apple.mobilemail": app = .mail
         case "net.whatsapp.WhatsApp": app = .whatsapp

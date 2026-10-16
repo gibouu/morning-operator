@@ -2,11 +2,10 @@ import Foundation
 import CoreFoundation
 
 /// A website a routine step can open inside MORE's own browser.
-/// The person signs in themselves, sees the page the whole time and starts every action.
-/// Calibrated sites offer a number, headlines or one scroll; other sites support manual browsing.
-/// MORE never clicks, types, posts, likes, follows or sends, and blocks known sign-in URLs before a script.
+/// The person signs in themselves; validated routines may then operate on the visible page.
+/// Sign-in pages never participate in reading, learning or routine execution.
 public enum WebMorningSite: String, Codable, CaseIterable, Sendable, Identifiable {
-    case instagram, youtube, news, whatsapp, gmail, tiktok, twitter, reddit, facebook, threads
+    case instagram, youtube, news, whatsapp, gmail, tiktok, twitter, reddit, facebook, threads, linkedin, slack
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
@@ -20,14 +19,16 @@ public enum WebMorningSite: String, Codable, CaseIterable, Sendable, Identifiabl
         case .reddit: "Reddit"
         case .facebook: "Facebook"
         case .threads: "Threads"
+        case .linkedin: "LinkedIn"
+        case .slack: "Slack"
         }
     }
-    /// Only explicit supported HTTPS hosts map to known browser destinations.
+    /// Only supported HTTPS hosts map to known browser destinations.
     public init?(url: URL) {
         guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
               url.port == nil || url.port == 443,
               let host = url.host?.lowercased(),
-              let site = Self.allCases.first(where: { $0.table.allowedHosts.contains(host) }) else { return nil }
+              let site = Self.allCases.first(where: { $0.table.permits(host: host) }) else { return nil }
         self = site
     }
 
@@ -72,6 +73,24 @@ public struct WebMorningSiteTable: Sendable, Equatable {
     public let headlines: [String]?
     /// Selector for the video elements of the feed.
     public let video: String?
+
+    /// Slack workspaces use one DNS label under slack.com. Never accept nested
+    /// subdomains, lookalike suffixes or arbitrary sites reached while signing in.
+    public func permits(host: String) -> Bool {
+        let host = host.lowercased()
+        if allowedHosts.contains(host) { return true }
+        guard site == .slack, host != "signin.slack.com", host.hasSuffix(".slack.com") else { return false }
+        let workspace = host.dropLast(".slack.com".count)
+        return (1...63).contains(workspace.count) && workspace.first != "-" && workspace.last != "-" &&
+            workspace.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
+    }
+
+    /// Matches the native host gate in isolated page scripts.
+    public func javascriptPermitsHost(_ expression: String) -> String {
+        let hosts = WebMorningPolicy.json(allowedHosts.sorted())
+        let workspace = site == .slack ? " || (h !== 'signin.slack.com' && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.slack\\.com$/.test(h))" : ""
+        return "((h) => \(hosts).includes(h)\(workspace))(\(expression).toLowerCase())"
+    }
 
     public var tasks: [WebMorningTask] {
         var tasks: [WebMorningTask] = []
@@ -142,6 +161,14 @@ public struct WebMorningSiteTable: Sendable, Equatable {
             WebMorningSiteTable(site: site, startURL: URL(string: "https://www.threads.com/")!,
                 feedURL: nil, allowedHosts: ["threads.com", "www.threads.com", "threads.net", "www.threads.net"], feedPaths: [],
                 usesDesktopUserAgent: false, readyRoot: [], count: nil, headlines: nil, video: nil)
+        case .linkedin:
+            WebMorningSiteTable(site: site, startURL: URL(string: "https://www.linkedin.com/messaging/")!,
+                feedURL: nil, allowedHosts: ["linkedin.com", "www.linkedin.com"], feedPaths: [],
+                usesDesktopUserAgent: true, readyRoot: [], count: nil, headlines: nil, video: nil)
+        case .slack:
+            WebMorningSiteTable(site: site, startURL: URL(string: "https://app.slack.com/client/")!,
+                feedURL: nil, allowedHosts: ["app.slack.com", "slack.com", "www.slack.com"], feedPaths: [],
+                usesDesktopUserAgent: true, readyRoot: [], count: nil, headlines: nil, video: nil)
         }
     }
     // swiftlint:enable force_unwrapping
@@ -161,7 +188,7 @@ public enum WebMorningPolicy {
     ]
     static let signInHosts = ["accounts.google.com", "accounts.youtube.com", "login.lemonde.fr",
                               "secure.lemonde.fr", "consent.youtube.com",
-                              "consent.google.com"]
+                              "consent.google.com", "signin.slack.com"]
 
     public static func isSignInPage(_ url: URL?) -> Bool {
         guard let url, let host = url.host?.lowercased() else { return true }
@@ -176,7 +203,7 @@ public enum WebMorningPolicy {
         guard let url else { return .noPage }
         guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
               url.port == nil || url.port == 443 else { return .notSecure }
-        guard let host = url.host?.lowercased(), table.allowedHosts.contains(host) else { return .otherSite }
+        guard let host = url.host?.lowercased(), table.permits(host: host) else { return .otherSite }
         guard !isSignInPage(url) else { return .signInPage }
         guard table.tasks.contains(task) else { return .notOffered }
         if task == .nextVideo {
@@ -264,7 +291,7 @@ public enum WebMorningPolicy {
         return """
         (() => {
         const out = (o) => JSON.stringify(o);
-        if (location.protocol !== "https:" || !\(json(Array(table.allowedHosts).sorted())).includes(location.hostname.toLowerCase()) ||
+        if (location.protocol !== "https:" || !\(table.javascriptPermitsHost("location.hostname")) ||
             location.port && location.port !== "443" || location.username || location.password)
           return out({status: "unsupported", reason: "layout"});
         if (\(json(signInPathFragments)).some(s => (location.pathname.toLowerCase() + "/").includes(s)))
@@ -280,7 +307,7 @@ public enum WebMorningPolicy {
         """
     }
 
-    private static func json(_ value: some Encodable) -> String {
+    fileprivate static func json(_ value: some Encodable) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.withoutEscapingSlashes]
         guard let data = try? encoder.encode(value), let text = String(data: data, encoding: .utf8) else { return "[]" }
