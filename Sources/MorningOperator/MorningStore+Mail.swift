@@ -129,9 +129,14 @@ extension MorningStore {
         }
     }
 
+    func revokeMailReplyReview() {
+        guard let context = currentMailContext else { return }
+        mailMorning.revokeReviewPreservingDraft(context: context)
+    }
+
     func sendReviewedMailReply() {
         guard mailMorning.canSendReply else { return }
-        performMailReviewAction { mail, context in await mail.sendReviewedReply(context: context) }
+        performMailReviewAction(preservingReviewedReply: true) { mail, context in await mail.sendReviewedReply(context: context) }
     }
 
     private var currentMailContext: MorningExecutionID? {
@@ -141,11 +146,18 @@ extension MorningStore {
         return mailMorning.context == context ? context : nil
     }
 
-    private func performMailReviewAction(_ action: @escaping @MainActor (GmailMorningConversation, MorningExecutionID) async -> Void) {
+    private func performMailReviewAction(preservingReviewedReply: Bool = false,
+        _ action: @escaping @MainActor (GmailMorningConversation, MorningExecutionID) async -> Void) {
         guard let context = currentMailContext else { return }
-        if session?.status == .running { pause() }
-        guard session?.status == .paused else { return }
-        resumeForNext()
+        if preservingReviewedReply {
+            // This explicit Send already has an exact screen acknowledgement.
+            // Its own wrapper must not cancel it; genuine lifecycle pauses still do.
+            guard session?.status == .running, mailMorning.canSendReply else { return }
+        } else {
+            if session?.status == .running { pause() }
+            guard session?.status == .paused else { return }
+            resumeForNext()
+        }
         guard session?.status == .running, resumeMailBudget(context: context) else { return }
         let generation = dataGeneration
         connectedAPITask?.cancel()
