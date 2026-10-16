@@ -98,6 +98,13 @@ Health8, Core804 and Apple1327. Apple takes127.768s with width1. The two unchang
 native OCR checks remain separately validated. Before/after hashes match all529
 inputs; no application or test source is changed between v33 and v36.
 
+After combining main through `cb231f86`, full recompiled v37 passes **2,201
+reported tests, zero issues and16 optional integration skips**: Live51,
+Health8, Core814 and Apple1328. Apple takes83.560s at width1. All535 recorded
+inputs remain unchanged during that run, including across the subsequent
+UI-test/CI-only driver-allowance change. Native OCR remains separately checked;
+no model, movie or provider integration is enabled by this shared-package run.
+
 A source-selection regression first fails because the displayed third email
 is a different message from the one required by the scenario. Correcting only
 the private attention ranking makes it pass: three tests with EN/FR variants,
@@ -185,6 +192,19 @@ driver bound left only17 minutes beyond the unchanged28-minute routine. The
 assertion changes. CI's other shards retain15 minutes per test and its existing
 80-minute run/100-minute job bounds. No later native pass is inferred from
 compilation or a queued GitHub job.
+
+Build9ab on `8ed0d05` passes and its344 archived product entries match bytes,
+size and mode. No runtime starts on it: main then advances through `6d6d374d`,
+restoring optional ElevenLabs conversation and its SDK dependency. That current
+main is merged before the next build9ac. The project keeps the private browser
+handler and UI-test-only media factory exactly once; the unavailable transport
+is removed. Compiled package, Core/Apple/Health/LiveDemo and shared test inputs
+do not change from v37. App code/catalogue and bundle wiring do change and need
+their own new build/runtime. Fixture mode still refuses natural-voice networking
+before speech and provider-token routes, so the closed Long uses local speech.
+On this combined source, v38's current/historical own-interface wording suite
+passes32 tests in72.486s against the actual bilingual app sources/catalogue,
+using the unchanged v37 shared test products. All60 Python checks also pass.
 
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
