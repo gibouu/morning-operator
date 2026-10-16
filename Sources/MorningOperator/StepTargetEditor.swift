@@ -107,10 +107,20 @@ struct StepTargetEditor: View {
                      : "To choose another Inbox, add a moment from Apps & accounts.")
                     .font(.footnote).foregroundStyle(MorningStyle.muted)
             }
-            Text("Choose an action from Apps & accounts, then add it to your routine.")
+            Text(AppLanguage.isFrench ? "Ce choix s’applique à ce moment. Appuyez sur Enregistrer pour conserver les modifications."
+                 : "This choice applies to this moment. Tap Save to keep your changes.")
                 .font(.footnote).foregroundStyle(MorningStyle.muted)
         } header: { Text("During this moment") } footer: {
-            Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Les autres applications peuvent nécessiter vos gestes." : "Also choose what MORE will do in the page. Other apps may still need your actions.")
+            switch target?.routineExecutionTarget {
+            case .inAppWeb:
+                Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page."
+                     : "Also choose what MORE will do in the page.")
+            case .externalApp:
+                Text(AppLanguage.isFrench ? "Cette application peut nécessiter vos gestes."
+                     : "This app may still need your actions.")
+            default:
+                EmptyView()
+            }
         }
     }
     private func prompt(_ kind: StepAppDetailKind) -> String {
