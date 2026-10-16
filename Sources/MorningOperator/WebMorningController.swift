@@ -133,6 +133,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var executionContextText: [String] = []
     @ObservationIgnored private var isRetired = false
     @ObservationIgnored private var mediaPlaybackSuspended = false
+    @ObservationIgnored private var instagramNavigation = InstagramBrowserNavigation()
 
     var savedContentProgressIsAvailable: Bool { contentProgress.isAvailable }
 
@@ -173,6 +174,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         configuration.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
+        if site == .instagram { webView.allowsLinkPreview = false }
         if site.table.usesDesktopUserAgent { webView.customUserAgent = Self.desktopUserAgent }
         super.init()
         webView.navigationDelegate = self
@@ -935,6 +937,21 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         // Website links may navigate to a sign-in provider. MORE never runs scripts there.
         // Do not launch native social apps, custom schemes, insecure pages or downloads.
         guard privacyIsCurrent, let url = navigationAction.request.url, url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
+        if site == .instagram {
+            switch instagramDecision(for: navigationAction) {
+            case .cancel: decisionHandler(.cancel); return
+            case let .load(destination):
+                // Cancel before WebKit can attempt the universal link, including
+                // target=_blank and JavaScript/redirect navigations. Public load
+                // requests keep app links in this WKWebView.
+                var request = navigationAction.request
+                request.url = destination
+                decisionHandler(.cancel)
+                if privacyIsCurrent { webView.load(request) }
+                return
+            case .allow: break
+            }
+        }
         if syntheticNewsRequested {
             guard let syntheticNews, syntheticNews.permits(url), navigationAction.request.httpMethod == "GET",
                   navigationAction.request.httpBody == nil, !navigationAction.shouldPerformDownload else {
@@ -1010,12 +1027,38 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         // Keep a user-opened link visible in the same browser, including sign-in pages.
+        if site == .instagram, privacyIsCurrent, navigationAction.targetFrame == nil {
+            switch instagramDecision(for: navigationAction) {
+            case .cancel: return nil
+            case let .load(destination):
+                var request = navigationAction.request
+                request.url = destination
+                webView.load(request)
+                return nil
+            case .allow: break
+            }
+        }
         if privacyIsCurrent, navigationAction.targetFrame == nil, let url = navigationAction.request.url,
            url.user == nil, url.password == nil,
            syntheticNewsRequested ? syntheticNews?.permits(url) == true : url.scheme?.lowercased() == "https" {
             webView.load(navigationAction.request)
         }
         return nil
+    }
+
+    private func instagramDecision(for action: WKNavigationAction) -> InstagramBrowserNavigation.Decision {
+        guard let url = action.request.url else { return .cancel }
+        let kind: InstagramBrowserNavigation.Kind
+        switch action.navigationType {
+        case .linkActivated: kind = .link
+        case .formSubmitted, .formResubmitted: kind = .form
+        case .backForward, .reload: kind = .history
+        default: kind = .other
+        }
+        return instagramNavigation.decide(url: url, kind: kind,
+            method: action.request.httpMethod ?? "GET",
+            isTopLevel: action.targetFrame?.isMainFrame != false,
+            isNewWindow: action.targetFrame == nil, isDownload: action.shouldPerformDownload)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

@@ -32,9 +32,10 @@ extension RoutineStepTarget {
         case .externalApp, .inAppWeb: false
         }
     }
-    /// Legacy third-party app links are handoffs, not connected native integrations.
+    /// Resolve legacy Instagram choices before describing the execution route.
+    /// Other third-party app links remain handoffs, not native integrations.
     public var integrationRoute: IntegrationRoute? {
-        switch self {
+        switch routineExecutionTarget {
         case .shortcut: .nativeIOS
         case .connectedAPI, .googleCalendarDay, .calendlyDay, .outlookInbox: .api
         case .inAppWeb: .browser

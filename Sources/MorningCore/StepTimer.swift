@@ -103,7 +103,7 @@ public enum StepNavigation {
     public static func mayAdvanceAfterExternalAppReturn(session: RoutineSession?, sessionID: UUID, stepID: UUID) -> Bool {
         guard let session, session.status == .running, session.id == sessionID,
               let step = session.currentStep, step.id == stepID,
-              case .externalApp = step.target else { return false }
+              case .externalApp = step.target?.routineExecutionTarget else { return false }
         return true
     }
 

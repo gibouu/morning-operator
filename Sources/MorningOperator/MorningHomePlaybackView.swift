@@ -392,7 +392,7 @@ struct MorningRoutineControlsView: View {
                             Text("+2 min").frame(minHeight: 44)
                         }.accessibilityIdentifier("morning.extend")
                     }
-                    if case let .inAppWeb(url) = store.currentStep?.target {
+                    if case let .inAppWeb(url) = store.currentStep?.target?.routineExecutionTarget {
                         Button {
                             store.pendingWebTarget = url
                         } label: {

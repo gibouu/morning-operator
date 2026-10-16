@@ -479,6 +479,14 @@ final class MorningStore {
             } else {
             routine = DemoFixtures.candidateRoutine
             #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-instagram-routing") {
+                routine = RoutineVersion(sourceLabel: "Demo fixture — SYNTHETIC saved Instagram routes", steps: [
+                    RoutineStep(title: "SYNTHETIC Instagram home", durationMinutes: 5,
+                        target: .externalApp(.instagram, detail: nil)),
+                    RoutineStep(title: "SYNTHETIC Instagram profile", durationMinutes: 5,
+                        target: .externalApp(.instagram, detail: "@nasa"))
+                ])
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-automation") {
                 routine = RoutineVersion(sourceLabel: "Demo fixture — synthetic automation journey", steps: [
                     RoutineStep(title: "A quiet moment", detail: "Take a breath.", durationMinutes: 1, automation: .timedMoment),
