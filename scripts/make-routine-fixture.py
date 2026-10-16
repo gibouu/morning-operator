@@ -62,10 +62,17 @@ def lines(text, face, width, draw):
             if draw.textlength(trial, font=face) <= width:
                 current = trial
             else:
-                if not current or draw.textlength(word, font=face) > width:
-                    raise ValueError(f'A source word does not fit: {word!r}')
-                result.append(current)
-                current = word
+                if current:
+                    result.append(current)
+                current = ''
+                # URLs can wrap visually without truncating or rewriting their bytes.
+                for character in word:
+                    if draw.textlength(current + character, font=face) > width:
+                        if not current:
+                            raise ValueError('A source glyph does not fit')
+                        result.append(current)
+                        current = ''
+                    current += character
         result.append(current)
     return result
 
@@ -132,6 +139,10 @@ def validate(scenario, oracle):
     assert all(step['detail'][lang].startswith('SYNTHETIC') for step in oracle['steps'] for lang in scenario['languages'])
     assert oracle['approvalExpected'] is False
     assert [step['durationMinutes'] * 60 for step in oracle['steps']] == oracle['timing']['executionProfiles']['realisticBudgetSeconds']
+    for language in scenario['languages']:
+        saved = CORPUS / f'oracle-draft-{language}.more-routine.json'
+        if saved.exists():
+            assert read_json(saved) == portable(oracle, language), 'Saved portable draft drifted from its manual oracle'
 
 
 def portable(oracle, language):
@@ -190,6 +201,8 @@ def main():
     parser.add_argument('--languages', nargs='+', choices=['fr', 'en'], default=['fr', 'en'])
     parser.add_argument('--profiles', nargs='+', choices=['realistic', 'accelerated'], default=['realistic', 'accelerated'])
     parser.add_argument('--images-only', action='store_true', help='No movie; manifest explicitly records movies not generated.')
+    parser.add_argument('--scene', help='Separate isolated diagnostic clip of one scene; never rewrites a long timeline.')
+    parser.add_argument('--scene-seconds', type=int, default=12, help='Own diagnostic duration, 2–60s; requires --scene.')
     args = parser.parse_args()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}', args.run):
         parser.error('--run must be a filename-safe new identifier')
@@ -198,6 +211,11 @@ def main():
         parser.error('Already-installed ffmpeg and ffprobe are required; nothing is downloaded')
     scenario, oracle = read_json(CORPUS / 'scenario.json'), read_json(CORPUS / 'expected-parsed.json')
     validate(scenario, oracle)
+    selected = scenario['scenes']
+    if args.scene:
+        selected = [scene for scene in selected if scene['id'] == args.scene]
+        if len(selected) != 1 or not 2 <= args.scene_seconds <= 60:
+            parser.error('Choose an existing exact scene ID and a declared diagnostic duration from 2–60 seconds')
     os.umask(0o077)
     out = ROOT / 'work/routine-fixture' / args.run
     out.mkdir(parents=True, exist_ok=False)
@@ -214,8 +232,13 @@ def main():
         images = out / language
         images.mkdir()
         thumbnails = []
-        for scene in scenario['scenes']:
-            image = draw_scene(scene, language, images / f'{scene["id"]}.png')
+        for scene in selected:
+            try:
+                image = draw_scene(scene, language, images / f'{scene["id"]}.png')
+            except Exception as error:
+                save_json(out / 'generation-failure.json', dict(stage='rendering', sceneID=scene['id'],
+                          language=language, errorType=type(error).__name__, reason=str(error), pipelineExecuted=False))
+                raise
             image.thumbnail((195, 422))
             thumbnails.append(image)
         sheet = Image.new('RGB', (195 * 5, 422 * math.ceil(len(thumbnails) / 5)), '#e7e7e7')
@@ -224,16 +247,17 @@ def main():
         sheet.save(images / 'contact-sheet.png')
         pages(scenario, language, images / 'offline-news')
         save_json(out / f'oracle-draft-{language}.more-routine.json', portable(oracle, language))
-        for profile in dict.fromkeys(args.profiles):
+        for profile in ([f'diagnostic-{args.scene}'] if args.scene else dict.fromkeys(args.profiles)):
             timeline, cursor = [], 0
-            for scene in scenario['scenes']:
-                duration = scene['seconds'][profile]
+            for scene in selected:
+                duration = args.scene_seconds if args.scene else scene['seconds'][profile]
                 timeline.append(dict(sceneID=scene['id'], moment=scene['moment'], startSeconds=cursor,
                                      endSeconds=cursor + duration, image=str(images / f'{scene["id"]}.png'),
                                      imageSHA256=digest(images / f'{scene["id"]}.png'), negative=scene.get('negative')))
                 cursor += duration
             name = f'{profile}-{language}'
-            save_json(out / f'{name}.timeline.json', dict(profile=profile, language=language, durationSeconds=cursor, scenes=timeline))
+            save_json(out / f'{name}.timeline.json', dict(profile=profile, language=language, durationSeconds=cursor,
+                      isIsolatedDiagnostic=bool(args.scene), notLongSourceCoverage=bool(args.scene), scenes=timeline))
             manifest['timelines'].append(dict(profile=profile, language=language, path=str(out / f'{name}.timeline.json'),
                                              sha256=digest(out / f'{name}.timeline.json')))
             if not args.images_only:
