@@ -795,6 +795,41 @@ public final class MorningBriefingController {
         catch { return .unavailable }
     }
 
+    /// Reuses the person's Health choice for morning learning, without asking for access.
+    /// Samples stay in memory; missing/unreadable sleep leaves Screen Time's own rule in use.
+    public func morningSleepWindows(at instant: Date, calendar: Calendar) async throws -> [DateInterval] {
+        guard settings.includesHealth else { return [] }
+        let expectedRevision = revision, service = sleep
+        let input: SleepBriefingInput
+        do {
+            input = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) { [weak self] in
+                guard let self, self.revision == expectedRevision, self.settings.includesHealth else {
+                    throw CancellationError()
+                }
+                return try await service.read(at: instant)
+            }
+        } catch is CancellationError { throw CancellationError() }
+        catch { return [] }
+        try Task.checkCancellation()
+        guard revision == expectedRevision, settings.includesHealth else { throw CancellationError() }
+        guard case .snapshot(let snapshot) = input else { return [] }
+        var windows: [DateInterval] = []
+        var day = calendar.startOfDay(for: instant.addingTimeInterval(-SleepObservationService.lookback))
+        let lastDay = calendar.startOfDay(for: instant)
+        while day <= lastDay {
+            // Match the learning cutoff, so evening sleep never becomes that day's wake-up.
+            if let cutoff = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: day),
+               case .recorded(let night) = SleepNight.summarize(snapshot.samples, readAt: snapshot.readAt,
+                    at: min(instant, cutoff), calendar: calendar),
+               calendar.isDate(night.windowEnd, inSameDayAs: day) {
+                windows.append(DateInterval(start: night.windowStart, end: night.windowEnd))
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day), next > day else { break }
+            day = next
+        }
+        return windows
+    }
+
     /// The sleep part of one refresh. Excluded means the reader is not called at all.
     private func readSleep(cached: SleepBriefingInput, settings: MorningBriefingSettings, force: Bool,
                            at instant: Date, zone: TimeZone, attempt: UUID, revision expectedRevision: UUID) async throws -> SleepBriefingInput {

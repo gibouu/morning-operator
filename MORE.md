@@ -30,6 +30,8 @@ MORE doit réunir les informations disponibles dans une même compréhension de 
 | Une ou plusieurs vidéos des routines matinales | Une séquence visible, les contenus et les usages permettant de compléter les données agrégées | La personne enregistre elle-même son écran pendant sa routine, puis dépose les vidéos dans MORE. Elle peut en apporter plusieurs, sur plusieurs matins. |
 | L'usage du navigateur intégré | Des parcours et actions observables directement : pages, défilements, stories, interactions, rythme et durée | Les premiers jours, la personne utilise ses services dans MORE. L'apprentissage est explicite et visible ; MORE s'en sert pour préciser les habitudes et les actions à automatiser. |
 
+Screen Time sert à retrouver les premiers usages du matin, jour par jour, dans le fuseau horaire de la personne. Lorsque la lecture du sommeil Apple Santé est déjà autorisée et activée, MORE utilise les périodes réellement enregistrées pour distinguer un réveil matinal d'une consultation pendant la nuit. Sans cette source, le créneau reste une estimation fondée sur l'activité disponible ; une absence d'utilisation ne prouve pas que la personne dormait. La proposition et sa revue montrent les créneaux retenus et les applications de ces matins, sans remplacer la routine par le total des usages de toute la journée. Les données horaires ne permettent pas d'inventer un ordre précis à l'intérieur d'une heure.
+
 ### Les vidéos sont une entrée centrale
 
 L'utilisateur doit pouvoir déposer une vidéo ou plusieurs vidéos de ses routines. MORE ne suppose pas pouvoir récupérer directement les enregistrements sur l'iPhone à sa place.
@@ -78,6 +80,8 @@ Après le choix de continuer gratuitement ou de souscrire, une seule page facult
 Ces formulations sont des propositions, pas une copie figée. Leur sens doit rester clair : la personne valide ce que MORE fera pour elle. Les mots « agent », « sandbox », « parsing », « workflow », les noms d'outils API et le JSON appartiennent à l'implémentation, pas au parcours utilisateur.
 
 ## 4. Exécuter réellement la routine
+
+**Démarrer lance directement la première étape de la routine validée, sur l'accueil.** Aucune préparation vocale, introduction ni deuxième choix de démarrage ne précède son exécution. Pause suspend la session ; Play reprend cette même session. Les autorisations d'écoute se préparent dans les paramètres ou pendant l'onboarding. Une écoute indisponible ne bloque pas l'exécution et la voix locale reste le choix par défaut ; un service vocal en ligne demande un choix explicite dans les paramètres. Le texte qui expliquait une habitude pendant l'apprentissage ne devient pas un contenu à lire pendant son exécution.
 
 Chaque étape validée doit correspondre à un comportement réalisable : obtenir une information, la restituer, naviguer dans un contenu, effectuer une action ou combiner ces opérations. La session suit l'ordre et les durées retenus, puis passe à la suite selon le comportement de l'étape et les demandes de la personne.
 

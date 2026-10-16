@@ -3152,6 +3152,54 @@
           }
         }
       }
+    },
+    "Enjoy this moment. I’ll continue when its time is up.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profitez de ce moment. Je passerai à la suite à la fin du temps prévu."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enjoy this moment. I’ll continue when its time is up."
+          }
+        }
+      }
+    },
+    "Preparing this moment…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je prépare ce moment…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing this moment…"
+          }
+        }
+      }
+    },
+    "This moment needs your participation. Say next when you’re ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment demande votre participation. Dites suivant quand vous êtes prêt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This moment needs your participation. Say next when you’re ready."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

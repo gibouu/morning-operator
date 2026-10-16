@@ -42,6 +42,45 @@ struct ScreenTimeRoutineLearningTests {
                                        now: now ?? at(14, zone: zone), calendar: calendar(zone))
     }
 
+    @Test("Recorded sleep selects each day's first waking activity and excludes night and later use")
+    func recordedSleepScopesLearningAndArchivedEvidence() throws {
+        var hours: [ScreenTimeHour] = []
+        var sleeps: [DateInterval] = []
+        for day in [13, 14] {
+            hours += [
+                hour(at(22, day: day - 1), pickup: at(22, day: day - 1), [app("com.example.Evening", 10)]),
+                hour(at(2, day: day), pickup: at(2, day: day), longest: (at(2, day: day), at(2, 40, day: day)), [app("com.example.NightCheck", 40)]),
+                hour(at(7, day: day), pickup: at(7, 5, day: day), longest: (at(7, 5, day: day), at(7, 25, day: day)), [app("com.google.Gmail", 20)]),
+                hour(at(13, day: day), pickup: at(13, day: day), [app("com.example.Afternoon", 15)])
+            ]
+            sleeps.append(DateInterval(start: at(23, day: day - 1), end: at(7, day: day)))
+        }
+        let learning = ScreenTimeMorningLearner.learn(hours: hours, queryStart: at(18, day: 12), now: at(16),
+            calendar: calendar(), sleepWindows: sleeps)
+        #expect(learning.mornings.count == 2)
+        #expect(learning.mornings.map(\.start) == [at(7, 5, day: 13), at(7, 5, day: 14)])
+        #expect(learning.mornings.map(\.sleepWindow) == sleeps.map(Optional.some))
+        #expect(learning.mornings.allSatisfy { $0.apps.map(\.bundleIdentifier) == ["com.google.Gmail"] })
+        let evidence = try ScreenTimeObservationEvidence.make(hours: hours, queryStart: at(18, day: 12), now: at(16),
+            calendar: calendar(), sleepWindows: sleeps)
+        #expect(evidence.filter(\.hasMorningEvidence).map(\.morningWindow) == learning.mornings.map { DateInterval(start: $0.start, end: $0.end) })
+        #expect(evidence.filter(\.hasMorningEvidence).allSatisfy { $0.apps.map(\.bundleIdentifier) == ["com.google.Gmail"] })
+    }
+
+    @Test("Recorded sleep supplies the wake-up anchor when Screen Time begins at the first activity")
+    func sleepHintDoesNotRequireUnreturnedNightHours() throws {
+        let hours = [hour(at(7), pickup: at(7, 5), longest: (at(7, 5), at(7, 25)), [app("com.google.Gmail", 20)])]
+        let sleep = DateInterval(start: at(23, day: 13), end: at(7))
+        let unknown = learn(hours)
+        #expect(unknown.mornings.isEmpty)
+        let known = ScreenTimeMorningLearner.learn(hours: hours, queryStart: at(0), now: at(14),
+            calendar: calendar(), sleepWindows: [sleep])
+        let morning = try #require(known.mornings.first)
+        #expect(morning.start == at(7, 5) && morning.sleepWindow == sleep)
+        #expect(morning.apps.map(\.bundleIdentifier) == ["com.google.Gmail"])
+        #expect(!morning.apps[0].secondsMeasured)
+    }
+
     // MARK: Names and filtering
 
     @Test func commonAppsHaveNamesAndUnknownOnesGetAReadableFallback() {

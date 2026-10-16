@@ -55,9 +55,9 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
         if pinnedExecutionID != context.executionID {
             pinnedBriefing = nil; pinnedExecutionID = nil
         }
-        guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
         switch step.automation {
         case .spokenNote:
+            guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             try await speak("\(step.title). \(step.detail)")
         case .savedObservation:
             // Resolve against the current local archive on every play and Repeat.
@@ -67,6 +67,7 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
                 return .unavailable(AppLanguage.localized("This saved excerpt has changed or was removed.", bundle: .module))
             }
             try checkAttempt(token)
+            guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             try await speak(text)
         case .todayCalendar, .morningBriefing:
             if pinnedBriefing == nil {
@@ -96,6 +97,8 @@ public final class MorningAppStepExecutor: MorningStepExecuting {
             }
             let text = Self.text(for: step.automation, in: document)
             guard !text.isEmpty else { return .unavailable(AppLanguage.localized("There is no current briefing to read.", bundle: .module)) }
+            // Muting speech still obtains and presents current facts; it cannot certify that they were read.
+            guard spokenEnabled else { return .needsUser(AppLanguage.localized("Read at your pace, then tap Next.", bundle: .module)) }
             var spoken = text
             if step.automation == .morningBriefing, document.weather.status == .fresh {
                 do {

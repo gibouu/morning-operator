@@ -16,9 +16,9 @@ final class WebRoutineJourneyTests: XCTestCase {
             MorningUITestNavigation.launch(app)
             defer { app.terminate() }
             MorningUITestNavigation.tapButton("run.start", in: app)
-            let about = app.buttons["web.aboutDone"]
-            if about.waitForExistence(timeout: 5) { about.tap() }
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(app.buttons["web.aboutDone"].exists, "Starting a saved routine must open its moment directly.")
+            XCTAssertTrue(app.buttons["web.nextMoment"].isHittable)
             XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
             XCTAssertEqual(app.state, .runningForeground)
             app.buttons["web.nextMoment"].tap()
@@ -59,10 +59,9 @@ final class WebRoutineJourneyTests: XCTestCase {
         XCTAssertTrue(approve.waitForExistence(timeout: 5), app.debugDescription)
         approve.tap()
         MorningUITestNavigation.tapButton("run.start", in: app)
-        let about = app.buttons["web.aboutDone"]
-        if about.waitForExistence(timeout: 5) { about.tap() }
         XCTAssertTrue(app.otherElements["web.page"].waitForExistence(timeout: 10)
             || app.webViews["web.page"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["web.aboutDone"].exists, "A routine must not open an extra introduction over its page.")
         XCTAssertEqual(app.staticTexts["web.host"].label, "www.lemonde.fr")
         let before = try remaining("web.remaining", in: app)
         let beforeEnd = Date().addingTimeInterval(TimeInterval(before))

@@ -13,6 +13,44 @@ struct SleepBriefingControllerTests {
         [SleepFixtures.sample(.asleepCore, "2026-10-09T23:40:00Z", "2026-10-10T07:00:00Z", source: "SYNTHETIC_SLEEP_SOURCE")]
     }
 
+    @Test func morningLearningReadsOnlyChosenHealthAndKeepsEachLocalNightSeparate() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let samples = night + [
+            SleepFixtures.sample(.asleepREM, "2026-10-08T23:30:00Z", "2026-10-09T06:30:00Z"),
+            SleepFixtures.sample(.inBed, "2026-10-09T23:00:00Z", "2026-10-10T07:30:00Z"),
+            SleepFixtures.sample(.awake, "2026-10-10T07:00:00Z", "2026-10-10T07:40:00Z")]
+        let reader = SleepReaderFixture(.samples(samples))
+        let controller = makeController(directory: directory, reader: reader)
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "UTC")!
+        #expect(try await controller.morningSleepWindows(at: now, calendar: calendar).isEmpty)
+        #expect(reader.reads == 0 && reader.prompts == 0)
+        try controller.updateSettings(.init(includesHealth: true))
+        let windows = try await controller.morningSleepWindows(at: now, calendar: calendar)
+        #expect(windows == [
+            DateInterval(start: SleepFixtures.date("2026-10-08T23:30:00Z"), end: SleepFixtures.date("2026-10-09T06:30:00Z")),
+            DateInterval(start: SleepFixtures.date("2026-10-09T23:40:00Z"), end: SleepFixtures.date("2026-10-10T07:00:00Z"))])
+        #expect(reader.reads == 1 && reader.prompts == 0)
+        #expect(controller.prepared == nil, "Learning hints do not prepare speech or a running session.")
+        reader.answer = .samples([])
+        #expect(try await controller.morningSleepWindows(at: now, calendar: calendar).isEmpty)
+    }
+
+    @Test func withdrawingHealthDuringLearningDropsTheReturnedSleep() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.held)
+        let controller = makeController(directory: directory, reader: reader)
+        try controller.updateSettings(.init(includesHealth: true))
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "UTC")!
+        let attempt = Task { try await controller.morningSleepWindows(at: now, calendar: calendar) }
+        await reader.waitUntilCalled()
+        try controller.disableHealth()
+        reader.release(.samples(night))
+        await #expect(throws: CancellationError.self) { try await attempt.value }
+        #expect(reader.prompts == 0 && controller.prepared == nil)
+    }
+
     @Test func healthIsOffByDefaultAndTheReaderIsNeverCalledWhileItIsOff() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

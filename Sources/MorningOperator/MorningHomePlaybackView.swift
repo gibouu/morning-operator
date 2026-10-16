@@ -88,7 +88,11 @@ struct MorningHomePlaybackView: View {
             return opening.briefText ?? opening.opening?.displayText
                 ?? (french ? "Je prépare votre journée…" : "Preparing your day…")
         }
-        return store.connectedActionStatus ?? store.currentStep?.detail ?? ""
+        if let status = store.connectedActionStatus { return status }
+        if let step = store.currentStep, let document = store.preparedBriefing(for: step) {
+            return MorningAppStepExecutor.text(for: step.automation, in: document)
+        }
+        return store.currentStep?.executionPresentationText() ?? ""
     }
     private var caption: String {
         guard scenePhase != .background, !store.privacyBlocksWork else { return "" }
