@@ -121,12 +121,14 @@ import MorningCore
         XCTAssertEqual(try proof(in: app)["simulatedWrites"], "1", "Closing the result must not repeat it.")
         XCTAssertFalse(app.buttons["nativeMoment.confirm"].exists)
         tap("morning.closeDetails", in: app)
+        home(app) // Interact was presented from Settings; return to Home first.
         XCTAssertEqual(try executionIdentity(in: app), pinned)
         // Attach only the actual received dictionary observed before closing.
         let json = try JSONSerialization.data(withJSONObject: received, options: [.sortedKeys, .prettyPrinted])
         let payload = XCTAttachment(string: String(decoding: json, as: UTF8.self))
         payload.name = "exact-reminder-actual-received-payload-and-session"; payload.lifetime = .keepAlways; add(payload)
         app.terminate(); app.launch(); try requireWorkspace(workspace, in: app)
+        home(app)
         XCTAssertEqual(try executionIdentity(in: app), pinned)
         interact(app); tap("nativeMoment.open", in: app)
         let restored = try proof(in: app)
