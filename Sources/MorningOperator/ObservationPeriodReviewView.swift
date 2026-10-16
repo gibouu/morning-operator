@@ -154,10 +154,10 @@ private struct ObservationPeriodReviewView: View {
 
     private func originTitle(_ origin: ObservationAcquisitionOrigin) -> String {
         switch origin {
-        case .human: String(localized: "My mornings", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .synthetic: String(localized: "Samples & tests", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .automated: String(localized: "Automated activity", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .unknown: String(localized: "Origin unsure", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .human: AppLanguage.localized("My mornings")
+        case .synthetic: AppLanguage.localized("Samples & tests")
+        case .automated: AppLanguage.localized("Automated activity")
+        case .unknown: AppLanguage.localized("Origin unsure")
         }
     }
 }

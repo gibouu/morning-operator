@@ -102,14 +102,9 @@ final class ObservedMorningOverviewTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Sampled moment"].waitForExistence(timeout: 5), app.debugDescription)
 
         relaunchWithoutSeed(app)
-        MorningUITestNavigation.assertMorningAction("run.start", in: app,
-            "Cancel must leave the saved approval unchanged.")
-        MorningUITestNavigation.openRoutine(in: app)
-        let baseline = app.buttons["routine.step.0"]
-        XCTAssertTrue(baseline.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(baseline.label.contains("Your morning"), baseline.debugDescription)
-        MorningUITestNavigation.closeRoutine(in: app)
+        assertSavedBaselineApproval(in: app)
 
+        openReview(in: app)
         openDay(offset: -2, in: app)
         openSample(sourceID: sourceA, sampleID: lumenSample, in: app)
         XCTAssertEqual(openPreselectedNarration(in: app), preparedText)
@@ -119,13 +114,11 @@ final class ObservedMorningOverviewTests: XCTestCase {
         wait(message, matching: NSPredicate(format: "label == %@", "Review and approve your updated morning before running it."), in: app)
         tap("narration.done", in: app)
         waitForAbsence(app.navigationBars["A saved moment"], in: app)
-        MorningUITestNavigation.selectTab("Morning", in: app)
-        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
-            "Reading source evidence cannot authorize automatic execution.")
+        openDraftThroughHomeStart(in: app)
+        MorningUITestNavigation.closeRoutine(in: app)
 
         relaunchWithoutSeed(app)
-        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
-        MorningUITestNavigation.openRoutine(in: app)
+        openDraftThroughHomeStart(in: app)
         let added = app.buttons["routine.step.0"]
         XCTAssertTrue(added.waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(added.label.contains("A saved moment"), added.debugDescription)
@@ -154,8 +147,33 @@ final class ObservedMorningOverviewTests: XCTestCase {
 
     private func approveBaseline(in app: XCUIApplication) {
         MorningUITestNavigation.openRoutine(in: app)
+        XCTAssertTrue(app.buttons["routine.approve"].isEnabled, "The baseline must start as a reviewable draft.")
         tap("routine.approve", in: app)
-        MorningUITestNavigation.assertMorningAction("run.start", in: app)
+        waitForAbsence(app.navigationBars["Your routine"], in: app)
+        assertSavedBaselineApproval(in: app)
+    }
+
+    private func assertSavedBaselineApproval(in app: XCUIApplication) {
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.revealMorningAction("morning.begin", in: app)
+        XCTAssertTrue(app.buttons["morning.begin"].isEnabled)
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists, "Approval must not itself start a session.")
+        MorningUITestNavigation.openRoutine(in: app)
+        XCTAssertFalse(app.buttons["routine.approve"].exists, "The baseline's explicit approval must remain saved.")
+        let baseline = app.buttons["routine.step.0"]
+        XCTAssertTrue(baseline.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(baseline.label.contains("Your morning"), baseline.debugDescription)
+        MorningUITestNavigation.closeRoutine(in: app)
+    }
+
+    private func openDraftThroughHomeStart(in app: XCUIApplication) {
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        MorningUITestNavigation.revealMorningAction("morning.begin", in: app)
+        app.buttons["morning.begin"].tap()
+        XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["routine.approve"].isEnabled)
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists,
+                       "Reading source evidence cannot authorize execution; Start must open the unapproved draft.")
     }
 
     private func openReview(in app: XCUIApplication) {

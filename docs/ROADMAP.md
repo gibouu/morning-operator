@@ -1,5 +1,13 @@
 # Shared roadmap
 
+**Routine automation — 16 October 2026.** `MORE.md` is the current product
+reference. A closed synthetic mixed3 native journey passes, including explicit
+approval, durable uncertain reply handling and pause/relaunch/resume. Full
+video learning and the ten-moment native journey remain open; valid citations
+alone do not establish correct routine meaning. Read the current
+[acceptance ledger](ROUTINE-AUTOMATION-QA.md) and [synthetic corpus protocol](SYNTHETIC-ROUTINE-FIXTURE.md).
+Design and counts below retain their historical dates.
+
 Current access/location/weather behavior and verification: [location and weather checks](LOCATION-WEATHER-QA.md).
 
 Updated 10 October 2026. The roadmap separates observed capability, implementation and later product work. Issues #1–#19 were organized into three milestones; the newer voice and evidence-analytics issues are listed separately below. Collaborators can choose ownership together. No deadline or partner access has been assumed.

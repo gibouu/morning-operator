@@ -84,9 +84,9 @@ private enum MorningIntentError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .dataRemovalPending: String(localized: "Finish removing local data in MORE before capturing another thought.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .emptyText: String(localized: "Add a few words to capture.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .captureWaiting: String(localized: "Review the capture already waiting in MORE, then try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .dataRemovalPending: AppLanguage.localized("Finish removing local data in MORE before capturing another thought.")
+        case .emptyText: AppLanguage.localized("Add a few words to capture.")
+        case .captureWaiting: AppLanguage.localized("Review the capture already waiting in MORE, then try again.")
         }
     }
 }
@@ -114,10 +114,10 @@ enum MorningIntentCaptureKind: String, AppEnum {
 
     var textPrefix: String {
         switch self {
-        case .thought: String(localized: "Thought", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .dream: String(localized: "Dream", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .reminder: String(localized: "Reminder", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .calendar: String(localized: "Calendar", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .thought: AppLanguage.localized("Thought")
+        case .dream: AppLanguage.localized("Dream")
+        case .reminder: AppLanguage.localized("Reminder")
+        case .calendar: AppLanguage.localized("Calendar")
         }
     }
 }

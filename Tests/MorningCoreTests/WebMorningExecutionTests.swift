@@ -27,6 +27,10 @@ struct WebMorningExecutionTests {
         #expect(WebMorningPageObservation.parse(#"{"status":"dispatched"}"#) == nil)
         #expect(WebMorningPageObservation.parse(#"{"status":"empty"}"#)?.status == .empty)
         #expect(WebMorningPageObservation.parse(#"{"status":"signin"}"#)?.status == .signin)
+        #expect(WebMorningPageObservation.parse(#"{"status":"choice"}"#)?.pageAccessRefusal == nil)
+        #expect(WebMorningPageObservation.parse(#"{"status":"choice","pageAccessRefusal":"consentRequired"}"#)?.pageAccessRefusal == .consentRequired)
+        #expect(WebMorningPageObservation.parse(#"{"status":"choice","pageAccessRefusal":"guessedSubscription"}"#) == nil)
+        #expect(WebMorningPageObservation.parse(#"{"status":"ready","fingerprint":"abc","pageAccessRefusal":"consentRequired"}"#) == nil)
         #expect(WebMorningPageObservation.parse(#"{"status":"ready","fingerprint":"abc","liked":"true"}"#) == nil)
         #expect(WebMorningPageObservation.parse(String(repeating: "x", count: 12_001)) == nil)
         #expect(WebMorningPageObservation.parse("{") == nil)
@@ -318,6 +322,59 @@ struct WebMorningExecutionScriptTests {
         let result = try #require(context.evaluateScript(script)?.toString())
         #expect(context.exception == nil)
         #expect(WebMorningPageObservation.parse(result)?.status == .choice)
+        #expect(WebMorningPageObservation.parse(result)?.pageAccessRefusal == nil)
+        #expect(context.objectForKeyedSubscript("accepted")?.toInt32() == 0)
+        #expect(context.objectForKeyedSubscript("subscribed")?.toInt32() == 0)
+    }
+
+    @Test(arguments: ["observedPanel", "dispersedControls", "navbar", "textOutsidePanel", "hiddenPanel",
+        "hiddenText", "genericChoice", "mainContainer", "pageContainer", "genericFixedContainer"])
+    func aPageAccessGateRequiresTheObservedControlsAndVisibleTextInOneRealPanel(_ variant: String) throws {
+        let context = try context()
+        let mode = String(decoding: try JSONEncoder().encode(variant), as: UTF8.self)
+        // Shape/content is based on the captured wall; it does not claim a live
+        // provider DOM replay. In particular, body text behind it is not proof.
+        context.evaluateScript("""
+        location.hostname='www.lemonde.fr';location.href='https://www.lemonde.fr/';
+        var mode=\(mode), accepted=0, subscribed=0;
+        function element(tag,attributes,text){return {
+          localName:tag,parentElement:null,attributes:attributes||{},innerText:text||'',
+          getBoundingClientRect:bounds,getAttribute:function(k){return this.attributes[k]||null;},
+          querySelector:function(){return this.hasPageContent ? {} : null;},querySelectorAll:()=>[],
+          closest:function(){return null;}
+        };}
+        var panel=element('section',{role:'dialog'},''), footer=element('footer',{},'');
+        var navbar=element('nav',{},''), outside=element('div',{},'');
+        var copy=element('p',{},''), cookies=element('p',{},'');
+        var accept=element('button',{},'Accepter et continuer');accept.click=()=>{accepted++;};
+        var subscribe=element('a',{},'S’abonner');subscribe.click=()=>{subscribed++;};
+        panel.parentElement=document.body;footer.parentElement=panel;
+        navbar.parentElement=document.body;outside.parentElement=document.body;
+        accept.parentElement=footer;subscribe.parentElement=footer;
+        copy.parentElement=panel;cookies.parentElement=panel;
+        if(mode==='dispersedControls')subscribe.parentElement=outside;
+        if(mode==='navbar')subscribe.parentElement=navbar;
+        if(mode==='textOutsidePanel'){copy.parentElement=outside;cookies.parentElement=outside;}
+        if(mode==='hiddenPanel')panel.hidden=true;
+        if(mode==='hiddenText'){copy.hidden=true;cookies.hidden=true;}
+        if(mode==='mainContainer'){panel.localName='main';panel.attributes={role:'main'};}
+        if(mode==='pageContainer')panel.hasPageContent=true;
+        if(mode==='genericFixedContainer'){panel.attributes={};panel.fixed=true;}
+        var textNodes=[
+          {parentElement:copy,nodeValue:mode==='genericChoice' ? 'Choose a content plan.' : 'L’accès gratuit au site est subordonné à votre consentement.'},
+          {parentElement:cookies,nodeValue:mode==='genericChoice' ? 'Discover our products.' : 'Des données collectées via des cookies et technologies similaires.'}
+        ];
+        function belongs(root,node){for(var e=node;e;e=e.parentElement)if(e===root)return true;return false;}
+        document.createTreeWalker=root=>{var rows=textNodes.filter(n=>belongs(root,n.parentElement)),i=0;return {nextNode:()=>rows[i++]||null};};
+        getComputedStyle=e=>({visibility:e.hidden ? 'hidden' : 'visible',display:e.hidden ? 'none' : 'block',overflowY:'visible',position:e.fixed ? 'fixed' : 'static'});
+        document.querySelectorAll=s=>s==='button' ? [accept] : s==='a' ? [subscribe] : s==='*' ? [panel,footer,navbar,outside,copy,cookies,accept,subscribe] : [];
+        """)
+        let script = WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines)
+        let result = try #require(context.evaluateScript(script)?.toString())
+        #expect(context.exception == nil)
+        let observation = try #require(WebMorningPageObservation.parse(result))
+        #expect(observation.status == .choice && observation.text == nil && observation.articles == nil)
+        #expect(observation.pageAccessRefusal == (variant == "observedPanel" ? .consentRequired : nil))
         #expect(context.objectForKeyedSubscript("accepted")?.toInt32() == 0)
         #expect(context.objectForKeyedSubscript("subscribed")?.toInt32() == 0)
     }

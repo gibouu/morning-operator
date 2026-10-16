@@ -24,6 +24,41 @@ struct AppLanguageTests {
         #expect(chosen.numberingSystem == current.numberingSystem)
     }
 
+    @Test("Reading a chosen language preserves its persisted preference and neighboring settings")
+    func chosenPreferenceIsNotLegacyCleanup() throws {
+        let name = "test.more.chosen-language." + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.setPersistentDomain(["more.appLanguage": "fr", "AppleLanguages": ["fr"],
+                                      "readAloud": true, "unrelated": "kept"], forName: name)
+        let before = try #require(defaults.persistentDomain(forName: name))
+        #expect(AppLanguage.resolve(saved: defaults.string(forKey: AppLanguage.preferenceKey), preferredLanguages: ["en-US"]) == "fr")
+        let after = try #require(defaults.persistentDomain(forName: name))
+        #expect(NSDictionary(dictionary: before).isEqual(to: after))
+        #expect(after["more.appLanguage"] as? String == "fr")
+        #expect(after["AppleLanguages"] as? [String] == ["fr"])
+    }
+
+    @Test("Test-only argument and registered language overlays do not mutate the process locale")
+    func languageOverridesStayInTheirIsolatedDefaults() throws {
+        let processLanguages = Locale.preferredLanguages
+        for arguments in [true, false] {
+            let name = "test.more.language-overlay." + UUID().uuidString
+            let defaults = try #require(NonpersistentOverlayDefaults(suiteName: name))
+            defer { defaults.removePersistentDomain(forName: name) }
+            defaults.setPersistentDomain(["AppleLanguages": ["en"], "unrelated": "kept"], forName: name)
+            if arguments {
+                defaults.setVolatileDomain(["more.appLanguage": "fr", "AppleLanguages": ["fr"]], forName: UserDefaults.argumentDomain)
+            } else { defaults.register(defaults: ["more.appLanguage": "fr"]) }
+            #expect(AppLanguage.resolve(saved: defaults.string(forKey: AppLanguage.preferenceKey), preferredLanguages: ["en-US"]) == "fr")
+            let persisted = try #require(defaults.persistentDomain(forName: name))
+            #expect(persisted["more.appLanguage"] == nil)
+            #expect(persisted["AppleLanguages"] as? [String] == ["en"])
+            #expect(persisted["unrelated"] as? String == "kept")
+        }
+        #expect(Locale.preferredLanguages == processLanguages)
+    }
+
     @Test("French variants use French regardless of region", arguments: [
         "fr", "fr-FR", "fr-CA", "fr-BE", "fr-CH", "fr_CA", "fr-Latn-CA", "fr-CA-u-ca-gregory"
     ])
@@ -103,5 +138,31 @@ struct AppLanguageTests {
         let next = "Calendar"
         #expect(AppLanguage.localized("Next: \(next)", bundle: bundle, locale: english) == "Next: Calendar")
         #expect(AppLanguage.localized("Next: \(next)", bundle: bundle, locale: french) == "Ensuite : Calendar")
+    }
+}
+
+/// Foundation's NSArgumentDomain and registration domain are process-shared even
+/// for named suites. Keep argument/registration lookup local to this test
+/// double; only its UUID persistent domain uses real UserDefaults.
+/// Each mutable instance stays inside one synchronous test scope.
+private final class NonpersistentOverlayDefaults: UserDefaults, @unchecked Sendable {
+    private var argumentValues: [String: Any] = [:]
+    private var registeredValues: [String: Any] = [:]
+
+    override func setVolatileDomain(_ domain: [String: Any], forName domainName: String) {
+        precondition(domainName == UserDefaults.argumentDomain)
+        argumentValues = domain
+    }
+
+    override func volatileDomain(forName domainName: String) -> [String: Any] {
+        domainName == UserDefaults.argumentDomain ? argumentValues : super.volatileDomain(forName: domainName)
+    }
+
+    override func register(defaults registrationDictionary: [String: Any]) {
+        registeredValues.merge(registrationDictionary, uniquingKeysWith: { _, new in new })
+    }
+
+    override func object(forKey defaultName: String) -> Any? {
+        argumentValues[defaultName] ?? super.object(forKey: defaultName) ?? registeredValues[defaultName]
     }
 }

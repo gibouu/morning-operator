@@ -12,9 +12,9 @@ public enum PersistenceError: Error, LocalizedError, Sendable, Equatable {
     case fileTooLarge(byteCount: Int, limit: Int)
     public var errorDescription: String? {
         switch self {
-        case .fileTooLarge: String(localized: "This is more than the file can hold. Nothing was replaced.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .fileURLRequired: String(localized: "Choose a local file for this workspace.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .unsupportedSchema(let version): String(localized: "This file uses an unsupported schema version (\(version)).", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .fileTooLarge: AppLanguage.localized("This is more than the file can hold. Nothing was replaced.", bundle: .module)
+        case .fileURLRequired: AppLanguage.localized("Choose a local file for this workspace.", bundle: .module)
+        case .unsupportedSchema(let version): AppLanguage.localized("This file uses an unsupported schema version (\(version)).", bundle: .module)
         }
     }
 }

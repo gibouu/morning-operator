@@ -25,14 +25,14 @@ struct MorningPrivacyView: View {
             }
             Section("Saved in MORE") {
                 if store.privacyInventoryIsReadable {
-                    LabeledContent("Current routine", value: store.routine == nil ? String(localized: "None", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : "1")
-                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? String(localized: "None", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : "1")
+                    LabeledContent("Current routine", value: store.routine == nil ? AppLanguage.localized("None") : "1")
+                    LabeledContent("Previous routine", value: store.previousRoutine == nil ? AppLanguage.localized("None") : "1")
                     LabeledContent("Saved mornings", value: String(store.history.runs.count))
-                    countRow(String(localized: "Observations", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
-                    countRow(String(localized: "Saved thoughts & ideas", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: String(store.captures.count), identifier: "privacy.captures")
-                    countRow(String(localized: "Saved choices", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count) : String(localized: "Unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), identifier: "privacy.choices")
+                    countRow(AppLanguage.localized("Observations"), value: String(store.observationArchive.entries.count), identifier: "privacy.observations")
+                    countRow(AppLanguage.localized("Saved thoughts & ideas"), value: String(store.captures.count), identifier: "privacy.captures")
+                    countRow(AppLanguage.localized("Saved choices"), value: store.routinePreferencesIssue == nil ? String(store.routinePreferences.entries.count + (store.routinePreferences.order == nil ? 0 : 1)) : AppLanguage.localized("Unavailable"), identifier: "privacy.choices")
                     if store.setAsideWorkspaceCount > 0 {
-                        countRow(String(localized: "Unreadable parts kept", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), value: String(store.setAsideWorkspaceCount), identifier: "privacy.setAside")
+                        countRow(AppLanguage.localized("Unreadable parts kept"), value: String(store.setAsideWorkspaceCount), identifier: "privacy.setAside")
                     }
                 } else {
                     Text(store.privacyBlocksWork ? String(localized: "Saved data is unavailable while removal needs attention.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Saved data couldn’t be read. You can still choose to remove it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))

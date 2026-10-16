@@ -4,12 +4,12 @@ public enum StepKind: String, Codable, CaseIterable, Sendable {
     case briefing, messages, calendar, wellbeing, entertainment, custom
     public var displayName: String {
         switch self {
-        case .briefing: String(localized: "Briefing", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .messages: String(localized: "Messages", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .calendar: String(localized: "Calendar", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .wellbeing: String(localized: "Wellbeing", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .entertainment: String(localized: "Entertainment", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .custom: String(localized: "Custom", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .briefing: AppLanguage.localized("Briefing", bundle: .module)
+        case .messages: AppLanguage.localized("Messages", bundle: .module)
+        case .calendar: AppLanguage.localized("Calendar", bundle: .module)
+        case .wellbeing: AppLanguage.localized("Wellbeing", bundle: .module)
+        case .entertainment: AppLanguage.localized("Entertainment", bundle: .module)
+        case .custom: AppLanguage.localized("Custom", bundle: .module)
         }
     }
 }
@@ -20,12 +20,12 @@ public enum RoutineStepAutomation: String, Codable, CaseIterable, Sendable {
     case spokenNote, todayCalendar, morningBriefing, savedObservation, timedMoment, gmailInbox
     public var displayName: String {
         switch self {
-        case .spokenNote: String(localized: "Read this note aloud", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .todayCalendar: String(localized: "Read today's calendar", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .morningBriefing: String(localized: "Read today's briefing", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .savedObservation: String(localized: "Read reviewed observation text", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .timedMoment: String(localized: "Keep this moment, then continue", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .gmailInbox: String(localized: "Read my mail and help me reply", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .spokenNote: AppLanguage.localized("Read this note aloud", bundle: .module)
+        case .todayCalendar: AppLanguage.localized("Read today's calendar", bundle: .module)
+        case .morningBriefing: AppLanguage.localized("Read today's briefing", bundle: .module)
+        case .savedObservation: AppLanguage.localized("Read reviewed observation text", bundle: .module)
+        case .timedMoment: AppLanguage.localized("Keep this moment, then continue", bundle: .module)
+        case .gmailInbox: AppLanguage.localized("Read my mail and help me reply", bundle: .module)
         }
     }
 }
@@ -50,15 +50,23 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     /// Explicitly reviewed browser operations. Older plans remain manual until edited.
     public var webBehavior: WebMorningBehavior?
     public var webLikesAllowed: Bool?
+    /// Retained sample provenance, independent of editable wording or action authority.
+    public var syntheticEvidence: Bool?
+    /// Human source names reviewed in setup; usable only for this exact target.
+    public var sourceLabel: RoutineStepSourceLabel?
+    public var reviewedSourceLabel: String? { sourceLabel?.text(for: target) }
     public init(id: UUID = UUID(), title: String, detail: String = "", kind: StepKind = .custom,
                 durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
                 observationReference: RoutineObservationReference? = nil, target: RoutineStepTarget? = nil,
-                webBehavior: WebMorningBehavior? = nil, webLikesAllowed: Bool? = nil) {
+                webBehavior: WebMorningBehavior? = nil, webLikesAllowed: Bool? = nil,
+                syntheticEvidence: Bool? = nil, sourceLabel: RoutineStepSourceLabel? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
         self.durationMinutes = Self.bounded(durationMinutes); self.isRequired = isRequired
         self.automation = automation; self.observationReference = observationReference
         self.target = target
         self.webBehavior = webBehavior; self.webLikesAllowed = webLikesAllowed
+        self.syntheticEvidence = syntheticEvidence
+        self.sourceLabel = sourceLabel
     }
 
     private static func bounded(_ minutes: Int) -> Int {
@@ -86,6 +94,31 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
         target = try values.decodeIfPresent(RoutineStepTarget.self, forKey: .target)
         webBehavior = try values.decodeIfPresent(WebMorningBehavior.self, forKey: .webBehavior)
         webLikesAllowed = try values.decodeIfPresent(Bool.self, forKey: .webLikesAllowed)
+        syntheticEvidence = try values.decodeIfPresent(Bool.self, forKey: .syntheticEvidence)
+        sourceLabel = try values.decodeIfPresent(RoutineStepSourceLabel.self, forKey: .sourceLabel)
+    }
+}
+
+/// Display metadata, never an execution destination or proof of provider access.
+public struct RoutineStepSourceLabel: Codable, Sendable, Equatable {
+    public let target: RoutineStepTarget
+    public let label: String
+    public init?(target: RoutineStepTarget, label: String) {
+        guard !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              label.count <= 1_000, label.utf8.count <= 4_000,
+              !label.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
+              (try? target.validateIntegration()) != nil else { return nil }
+        self.target = target; self.label = label
+    }
+    public func text(for currentTarget: RoutineStepTarget?) -> String? { currentTarget == target ? label : nil }
+    private enum CodingKeys: String, CodingKey { case target, label }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        guard let value = try Self(target: values.decode(RoutineStepTarget.self, forKey: .target),
+                                   label: values.decode(String.self, forKey: .label)) else {
+            throw DecodingError.dataCorruptedError(forKey: .label, in: values, debugDescription: "Invalid source display label.")
+        }
+        self = value
     }
 }
 
@@ -116,7 +149,7 @@ public struct RoutineVersion: Codable, Sendable, Identifiable, Equatable {
     /// changes the routine label. A legacy sample marker remains conservative.
     public var isSynthetic: Bool {
         sourceLabel.localizedCaseInsensitiveContains("demo fixture") ||
-            steps.contains { $0.observationReference?.isSynthetic == true }
+            steps.contains { $0.observationReference?.isSynthetic == true || $0.syntheticEvidence == true }
     }
     public var totalDurationMinutes: Int { steps.reduce(0) { $0 + $1.durationMinutes } }
     /// The number of the version that follows this one. A saved number is not bounded when
@@ -220,11 +253,11 @@ private struct RoutineStepMatchKey: Hashable {
 public enum DemoFixtures {
     /// Synthetic demonstration data, never a recorded personal morning.
     public static var candidateRoutine: RoutineVersion {
-        RoutineVersion(sourceLabel: String(localized: "Demo fixture — synthetic morning, not observed personal data", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), steps: [
-            RoutineStep(title: String(localized: "Your morning", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), detail: String(localized: "Good morning. Let’s see what’s ahead.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), kind: .briefing, durationMinutes: 3, automation: .spokenNote),
-            RoutineStep(title: String(localized: "People and messages", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), detail: String(localized: "Check in with the people who matter.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), kind: .messages, durationMinutes: 5),
-            RoutineStep(title: String(localized: "Make room for the day", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), detail: String(localized: "Read today’s events from your connected calendar.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
-            RoutineStep(title: String(localized: "A little time to play", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), detail: String(localized: "A little chess. A little joy. Keep this time for yourself.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale), kind: .entertainment, durationMinutes: 8, isRequired: true)
+        RoutineVersion(sourceLabel: AppLanguage.localized("Demo fixture — synthetic morning, not observed personal data", bundle: .module), steps: [
+            RoutineStep(title: AppLanguage.localized("Your morning", bundle: .module), detail: AppLanguage.localized("Good morning. Let’s see what’s ahead.", bundle: .module), kind: .briefing, durationMinutes: 3, automation: .spokenNote),
+            RoutineStep(title: AppLanguage.localized("People and messages", bundle: .module), detail: AppLanguage.localized("Check in with the people who matter.", bundle: .module), kind: .messages, durationMinutes: 5),
+            RoutineStep(title: AppLanguage.localized("Make room for the day", bundle: .module), detail: AppLanguage.localized("Read today’s events from your connected calendar.", bundle: .module), kind: .calendar, durationMinutes: 3, automation: .todayCalendar),
+            RoutineStep(title: AppLanguage.localized("A little time to play", bundle: .module), detail: AppLanguage.localized("A little chess. A little joy. Keep this time for yourself.", bundle: .module), kind: .entertainment, durationMinutes: 8, isRequired: true)
         ])
     }
     public static var routine: RoutineVersion { candidateRoutine.approved() }

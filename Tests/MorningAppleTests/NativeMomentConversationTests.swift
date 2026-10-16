@@ -8,6 +8,44 @@ struct NativeMomentConversationTests {
     private func context() -> MorningExecutionID { .init(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID()) }
     private func directory() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent("native-moment-tests-\(UUID())") }
 
+    @Test func exactReminderUIEditRetainsPayloadAndNeedsSeparateReviewAndConfirmation() async throws {
+        let provider = NativeMomentFakeProvider(), path = directory()
+        defer { try? FileManager.default.removeItem(at: path) }
+        let step = RoutineStep(title: "My exact reminder", durationMinutes: 1, automation: .timedMoment)
+        var session = RoutineSession(routine: RoutineVersion(sourceLabel: "SYNTHETIC", steps: [step], isApproved: true))
+        try session.start()
+        let context = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
+        var paris = Calendar(identifier: .gregorian)
+        paris.timeZone = try #require(TimeZone(identifier: "Europe/Paris"))
+        let exact = try #require(ISO8601DateFormatter().date(from: "2026-10-16T07:25:00Z"))
+        let preciseDraft = exact.addingTimeInterval(37.625)
+        let conversation = NativeMomentConversation(provider: provider, directory: path, calendar: paris,
+            speak: { _ in throw CancellationError() })
+        _ = await conversation.respond("Reminder: Bring the blue notebook to North studio no date", context: context)
+        await conversation.edit(title: "Bring the blue notebook to North studio", date: preciseDraft, durationMinutes: 30, context: context)
+        #expect(conversation.draftDate == preciseDraft, "The engine does not round an existing source draft.")
+        conversation.stageEdit(title: "Edited title", date: preciseDraft, durationMinutes: 30)
+        #expect(conversation.draftDate == preciseDraft, "A title-only edit keeps the original precision.")
+        let minuteInput = NativeMomentDateInput.editedMinute(preciseDraft, calendar: paris)
+        #expect(minuteInput == exact && preciseDraft != exact)
+        await conversation.edit(title: "Bring the blue notebook to North studio", date: minuteInput, durationMinutes: 30, context: context)
+        #expect(!conversation.canConfirm && provider.writes.isEmpty)
+        _ = await conversation.respond("add it", context: context)
+        #expect(provider.writes.isEmpty, "Neither an edit nor interrupted review is permission to write.")
+        conversation.acknowledgeScreenReview()
+        _ = await conversation.respond("add it", context: context)
+        _ = await conversation.respond("add it", context: context)
+        #expect(provider.writes.count == 1)
+        guard let first = provider.writes.first, case let .reminder(received, destination) = first else { Issue.record("Expected the actual reminder payload"); return }
+        #expect(received.title == "Bring the blue notebook to North studio" && received.notes.isEmpty)
+        #expect(received.dueDate == exact && received.timeZoneIdentifier == "Europe/Paris" && received.notifyAtDueTime)
+        #expect(destination.id == "list-1" && destination.sourceID == "account-1" && destination.kind == .reminder)
+        let counts = try conversation.actionCounts(for: session)
+        #expect(counts.confirmed == 1 && counts.unconfirmed == 0)
+        let otherSession = RoutineSession(routine: session.routine)
+        #expect(try conversation.actionCounts(for: otherSession).confirmed == 0)
+    }
+
     @Test func languagePresentationPreservesActionAndRevokesReviewWithoutWriting() async {
         let provider = NativeMomentFakeProvider(), context = context(), path = directory()
         defer { try? FileManager.default.removeItem(at: path) }
