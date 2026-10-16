@@ -36,7 +36,7 @@ struct NativeMomentConversationTests {
         _ = await conversation.respond("add it", context: context)
         _ = await conversation.respond("add it", context: context)
         #expect(provider.writes.count == 1)
-        guard case let .reminder(received, destination) = provider.writes.first else { Issue.record("Expected the actual reminder payload"); return }
+        guard let first = provider.writes.first, case let .reminder(received, destination) = first else { Issue.record("Expected the actual reminder payload"); return }
         #expect(received.title == "Bring the blue notebook to North studio" && received.notes.isEmpty)
         #expect(received.dueDate == exact && received.timeZoneIdentifier == "Europe/Paris" && received.notifyAtDueTime)
         #expect(destination.id == "list-1" && destination.sourceID == "account-1" && destination.kind == .reminder)
