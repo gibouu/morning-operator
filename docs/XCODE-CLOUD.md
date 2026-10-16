@@ -42,6 +42,8 @@ This proves the automatic main-branch trigger, archive, upload and Apple process
 
 Build 33's OS-only encryption evidence applies only to its frozen SDK-free binary. Future builds from `main` contain SDK code and need an export-compliance assessment of their actual signed contents and truthful App Store Connect answers. PR #261 removes the `ITSAppUsesNonExemptEncryption = false` assertion from the source; do not carry build 33's conclusion into these builds automatically.
 
+In build 35's **Manage** flow, selecting standard encryption outside the Apple operating system and distribution in France displays Apple's requirement to upload export-compliance documentation and obtain approval before receiving a compliance key. The draft answers were not saved. The French encryption declaration and Apple's approval remain the external-delivery blocker in #263; no exemption or approved compliance key is claimed. See [Apple's encryption documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption).
+
 ## Workflow environment
 
 | Workflow variable | Requirement |
@@ -58,7 +60,7 @@ The existing GitHub workflows remain separate checks for packages, app compilati
 
 ## Remaining release checks
 
-- Resolve **Missing Compliance** for the SDK-containing builds using their actual contents and truthful App Store Connect answers. Track the blocker in [#263](https://github.com/gibouu/morning-operator/issues/263). Do not restore a false OS-only encryption assertion to bypass it.
+- Resolve **Missing Compliance** for the SDK-containing builds, including the French encryption declaration and Apple approval for distribution in France, using their actual contents and truthful App Store Connect answers. Track the blocker in [#263](https://github.com/gibouu/morning-operator/issues/263). Do not restore a false OS-only encryption assertion to bypass it.
 - After compliance is resolved, verify the queued external TestFlight post-action and the resulting beta-review state. External availability and installation are still unverified. Build 33 keeps its separate pending review.
 - Download the cloud archive or IPA and independently inspect the actual app/widget identities, distribution signatures, profiles, matching versions/builds, app and SDK privacy resources, symbols and public runtime configuration.
 
