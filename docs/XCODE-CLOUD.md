@@ -17,7 +17,7 @@ On 16 October 2026, MORE's Xcode Cloud connection to `gibouu/morning-operator` i
 | Distribution action | iOS **Archive**, Release, prepared for **App Store Connect** distribution |
 | Post-action | External TestFlight group **MORE – External testers**; currently zero members |
 | Public Google configuration | Both required workflow variables below are set |
-| Optional backend | `MORNING_API_BASE_URL` is absent |
+| Backend for future builds | `MORNING_API_BASE_URL` is set to the existing production origin `https://more-composio.more-gderamchi.workers.dev` |
 
 The checked-in `MorningOperator.xcodeproj` is the build entry point. Do not regenerate it with XcodeGen in Cloud. Keep the GitHub connection limited to this repository.
 
@@ -40,6 +40,8 @@ The following results are verified in the Xcode Cloud and App Store Connect web 
 
 This proves the automatic main-branch trigger, archive, upload and Apple processing path. The downloaded build 35 App Store IPA has SHA-256 `63161747f987e4cf952eb7990c57142d0d68c6db6c4f61b884f1384c50c3c863`. Independent inspection passes strict Apple Distribution signatures, team and App Store profiles, matching app/widget `0.1.1 (2026101635)` versions, expected entitlements, base/English/French permission text and ten privacy manifests. The actual binary links the restored SDK frameworks and includes WebRTC crypto. The download contains no dSYM, so no symbol-match result is claimed. Build 36 has upload/processing evidence only; build 33 remains separate.
 
+Build 35's inspected `MorningAPIBaseURL` is empty. The backend workflow variable is configured afterward for future builds; it does not change this historical IPA. A subsequent cloud artifact must confirm that it contains the configured production origin. Voice runtime acceptance for that new artifact remains pending.
+
 Build 33's OS-only encryption evidence applies only to its frozen SDK-free binary. Future builds from `main` contain SDK code and need an export-compliance assessment of their actual signed contents and truthful App Store Connect answers. PR #261 removes the `ITSAppUsesNonExemptEncryption = false` assertion from the source; do not carry build 33's conclusion into these builds automatically.
 
 In build 35's **Manage** flow, selecting standard encryption outside the Apple operating system and distribution in France displays Apple's requirement to upload export-compliance documentation and obtain approval before receiving a compliance key. The draft answers were not saved. The French encryption declaration and Apple's approval remain the external-delivery blocker in #263; no exemption or approved compliance key is claimed. See [Apple's encryption documentation table](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption).
@@ -50,9 +52,11 @@ In build 35's **Manage** flow, selecting standard encryption outside the Apple o
 | --- | --- |
 | `MORE_GOOGLE_CLIENT_ID` | Required public iOS OAuth client ID ending in `.apps.googleusercontent.com`. Use the same value as the manual release. |
 | `MORE_GOOGLE_CALLBACK_SCHEME` | Required exact `com.googleusercontent.apps.` plus the client ID prefix before `.apps.googleusercontent.com`. |
-| `MORNING_API_BASE_URL` | Optional. Leave absent or empty to match the current manual archive. If explicitly supplied, use a valid HTTPS base URL with no credentials, query or fragment. There is no production endpoint default. |
+| `MORNING_API_BASE_URL` | Set to `https://more-composio.more-gderamchi.workers.dev` for future cloud builds. This existing production origin enables the configured backend route used by the restored voice. The script accepts an empty value, but an empty backend leaves that route unavailable. A supplied URL must use HTTPS and contain no credentials, query or fragment; the repository has no production endpoint default. |
 
 The executable `ci_scripts/ci_post_clone.sh` validates these values before changing the temporary cloud checkout's `Configuration/iOS-Info.plist`. It changes only `MOREGoogleClientID`, `MorningAPIBaseURL`, and the Google callback URL scheme. It does nothing outside Xcode Cloud and prints no configuration values. No Google client secret is used. Never put Composio, ElevenLabs, model-provider, signing or App Store Connect credentials in the app plist or this repository.
+
+Live online voice also requires the person's explicit consent and the existing provider access checks. The workflow setting supplies a public runtime origin; it does not establish a working conversation. Verify the resulting build's opt-in voice behavior in French and English separately.
 
 Xcode Cloud handles signing through the connected Apple team. This route does not require an App Store Connect API key or an exported signing key in GitHub.
 
@@ -63,6 +67,7 @@ The existing GitHub workflows remain separate checks for packages, app compilati
 - Resolve **Missing Compliance** for the SDK-containing builds, including the French encryption declaration and Apple approval for distribution in France, using their actual contents and truthful App Store Connect answers. Track the blocker in [#263](https://github.com/gibouu/morning-operator/issues/263). Do not restore a false OS-only encryption assertion to bypass it.
 - After compliance is resolved, retry the external TestFlight post-action and verify its result and the resulting beta-review state. External availability and installation are still unverified. Build 33 keeps its separate pending review.
 - Keep each release tied to its actual signed artifact. Build 35 passes the independent IPA checks above; symbol matching and independent inspection of later binaries remain separate checks.
+- Inspect a new cloud artifact for the configured backend origin, then verify the opt-in voice route with its consent and provider checks in French and English. The new configuration has no completed cloud runtime acceptance yet.
 
 ## Troubleshooting
 
