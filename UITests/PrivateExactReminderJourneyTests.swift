@@ -161,7 +161,7 @@ import MorningCore
             fail("exact-reminder-absolute-month-year-not-observed", app); throw ProofError.unavailable
         }
         selectedHeader.tap()
-        let days = app.buttons.matching(NSPredicate(format: "label IN %@", ["Friday, October 16, 2026", "Friday, October 16", "16"]))
+        let days = app.buttons.matching(NSPredicate(format: "label IN %@", ["Friday, October 16, 2026", "Friday, October 16", "Today, Friday, October 16, 2026", "Today, Friday, October 16", "16"]))
         guard let day = days.allElementsBoundByIndex.first(where: \.isHittable) else { fail("exact-reminder-calendar-day-unavailable", app); throw ProofError.unavailable }
         day.tap()
         closeNativePickerIfNeeded(app)
