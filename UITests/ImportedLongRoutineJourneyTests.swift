@@ -804,7 +804,7 @@ import MorningCore
                     let save = app.buttons["step.save"]
                     return form.exists && save.exists && save.isHittable &&
                         form.descendants(matching: .any).matching(identifier: pickerID).allElementsBoundByIndex.contains {
-                            [.button, .popUpButton].contains($0.elementType) && $0.exists && $0.isEnabled && $0.isHittable &&
+                            $0.exists && $0.isEnabled && $0.isHittable &&
                                 ($0.label.contains(name) || ($0.value as? String ?? "").contains(name))
                         }
                 }, object: nil)
