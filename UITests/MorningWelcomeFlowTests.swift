@@ -55,7 +55,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
         app.terminate()
 
         let skipped = launch(french: true)
-        tap("onboarding.offer", in: skipped)
+        for _ in 0..<3 { tap("onboarding.next", in: skipped) }
         assertOffer(in: skipped, french: true)
         assertNoPermissionOrHome(in: skipped)
         skipped.terminate()
@@ -64,7 +64,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
     func testNoTrialUnavailableAndPendingOffersStayHonestAndGated() {
         for flag in ["--preview-onboarding-no-trial", "--preview-onboarding-unavailable", "--preview-onboarding-pending"] {
             let app = launch(extra: [flag])
-            tap("onboarding.offer", in: app)
+            for _ in 0..<3 { tap("onboarding.next", in: app) }
             let subscribe = app.buttons["paywall.subscribe"]
             XCTAssertTrue(subscribe.waitForExistence(timeout: 5), app.debugDescription)
             switch flag {
@@ -210,7 +210,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
             XCTAssertTrue(brand.exists)
             XCTAssertGreaterThan(brand.frame.midX, app.frame.midX, "Only the M mark belongs in the upper right.")
             XCTAssertEqual(brand.label, "MORE", "The symbol keeps its accessible brand name.")
-            tap("onboarding.offer", in: app)
+            for _ in 0..<3 { tap("onboarding.next", in: app) }
             tap("paywall.subscribe", in: app)
             XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 5))
             assertNoPermissionOrHome(in: app)
@@ -245,7 +245,8 @@ final class MorningWelcomeFlowTests: XCTestCase {
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
         ])
         for _ in 0..<3 {
-            reach(app.buttons["onboarding.skipForNow"], in: app)
+            XCTAssertFalse(app.buttons["onboarding.skipForNow"].exists, "Skip belongs only to the final offer.")
+            XCTAssertFalse(app.buttons["onboarding.offer"].exists, "Intro keeps a single Continue action.")
             tap("onboarding.next", in: app)
         }
         let skip = app.buttons["onboarding.skipForNow"]
