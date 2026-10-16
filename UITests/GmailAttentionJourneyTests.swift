@@ -241,9 +241,11 @@ import MorningCore
         replyFailure("gmail-reply-home-unreachable", app); XCTFail("Home did not become visible.")
     }
     private func revealReplyControls(_ app: XCUIApplication) {
-        if app.buttons["morning.settings"].isHittable { return }
+        let settings = app.buttons["morning.settings"]
+        if settings.exists && settings.isHittable { return }
         // Only Home owns this tap; never tap a caption behind a presented sheet.
-        XCTAssertFalse(app.buttons["morning.closeDetails"].isHittable)
+        let details = app.buttons["morning.closeDetails"]
+        XCTAssertFalse(details.exists && details.isHittable)
         XCTAssertEqual(app.navigationBars.count, 0)
         let captions = app.scrollViews["morning.captions"]
         if captions.exists && captions.isHittable { captions.tap() }
@@ -256,17 +258,28 @@ import MorningCore
         control.tap()
     }
     private func replyControl(_ id: String, _ app: XCUIApplication) -> XCUIElement {
+        if ["morning.settings", "morning.begin", "morning.playback", "morning.actions"].contains(id) {
+            // Home controls expire after five seconds. Query the exact button
+            // before absent Form probes; never try to reveal it by scrolling.
+            let control = app.buttons[id]
+            if control.exists && control.isHittable { return control }
+            if control.waitForExistence(timeout: 2), control.isHittable { return control }
+            replyFailure("gmail-reply-home-control-not-visible-" + id, app)
+            XCTFail("Reveal the actual Home control before using it: \(id)"); return control
+        }
         let matches = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ OR label == %@", id, id))
         _ = matches.firstMatch.waitForExistence(timeout: 6)
         for down in [false, true] {
             for _ in 0..<14 {
-                let details = app.buttons["morning.closeDetails"].isHittable
+                let detailsButton = app.buttons["morning.closeDetails"]
+                let details = detailsButton.exists && detailsButton.isHittable
                 let editor = app.collectionViews["step.editor.form"]
                 let editorForeground = editor.exists && editor.isHittable
                 let routine = app.collectionViews["routine.editor"].firstMatch
                 let approval = app.buttons["routine.approve"]
+                let edit = app.buttons["routine.edit"]
                 let routineForeground = !details && !editorForeground && routine.exists &&
-                    (approval.isHittable || app.buttons["routine.edit"].isHittable)
+                    ((approval.exists && approval.isHittable) || (edit.exists && edit.isHittable))
                 let holder: XCUIElement?
                 if details {
                     // Mail is in a non-lazy ScrollView. This ancestry selects the
