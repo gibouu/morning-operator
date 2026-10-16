@@ -45,7 +45,7 @@ final class MorningPermissionSetup {
     @ObservationIgnored private weak var activeVoiceAccess: MorningVoiceAccess?
     private var canSave = true
     var current: MorningPermission? { remaining.first }
-    var needsInitialSetup: Bool { !progress.pendingInitial.isEmpty && !isolatedBypass }
+    var needsInitialSetup: Bool { !progress.initialSetupCompleted && !isolatedBypass }
     private var isolatedBypass: Bool {
         isolated && !ProcessInfo.processInfo.arguments.contains("--ui-testing-permissions")
     }
@@ -81,12 +81,12 @@ final class MorningPermissionSetup {
     }
 
     func presentIfNeeded() {
-        guard needsInitialSetup, !isPresented else { return }
-        remaining = [.speech]
+        guard needsInitialSetup, !isPresented, !isRequesting else { return }
+        remaining = progress.pending(supported: supported)
+        if progress.pendingInitial.contains(.microphone), !remaining.contains(.speech) { remaining.append(.speech) }
         isRevisiting = false; routineAfterDismiss = false
-        if !isolated, SFSpeechRecognizer.authorizationStatus() == .authorized,
-           AVAudioApplication.shared.recordPermission == .granted {
-            resolve(.speech, outcome: .allowed)
+        if remaining.isEmpty {
+            completeInitialSetup()
             return
         }
         isPresented = true
@@ -111,64 +111,79 @@ final class MorningPermissionSetup {
     }
 
     func skip() {
-        guard let current, !isRequesting else { return }
-        resolve(current, outcome: .skipped)
+        guard !isRequesting else { return }
+        if isRevisiting {
+            if let current { resolve(current, outcome: .skipped) }
+        } else {
+            while let current { resolve(current, outcome: .skipped) }
+            completeInitialSetup()
+        }
     }
 
     func allow(store: MorningStore) {
-        guard let permission = current, !isRequesting, !store.privacyBlocksWork else { return }
+        guard current != nil, !isRequesting, !store.privacyBlocksWork else { return }
         let id = UUID(); attempt = id; isRequesting = true
         requestTask = Task { @MainActor [weak self, weak store] in
             guard let self, let store else { return }
-            let allowed: Bool
-            do {
-                if isolated {
-                    // Explicit isolated fixture: tests exercise explanation/queue/persistence,
-                    // never alter the simulator or a person's system authorizations.
-                    allowed = !ProcessInfo.processInfo.arguments.contains("--ui-testing-permissions-denied")
-                } else {
-                    switch permission {
-                    case .location:
-                        _ = await store.briefing.enableCurrentLocation()
-                        allowed = store.briefing.locationAuthorization == .authorized
-                    case .calendar:
-                        await store.briefing.requestCalendarAccess()
-                        allowed = store.briefing.isCalendarAuthorized
-                    case .reminders:
-                        let reminders = ReminderService()
-                        try await reminders.requestReminderAccess()
-                        allowed = reminders.hasReminderAccess
-                    case .screenTime:
-                        try await store.screenTimeSource.requestAccess()
-                        store.refreshScreenTimeAccess()
-                        allowed = store.screenTimeSource.access == .approved
-                    case .speech:
-                        activeVoiceAccess = store.voiceAccess
-                        let access = try await store.voiceAccess.requestAccess(language: .current)
-                        allowed = access.speech == .authorized && access.microphone == .granted
-                    case .microphone:
-                        allowed = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-                            let completion: @Sendable (Bool) -> Void = { continuation.resume(returning: $0) }
-                            AVAudioApplication.requestRecordPermission(completionHandler: completion)
-                        }
-                    case .notifications:
-                        allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
-                    case .alarms:
-                        allowed = try await AlarmManager.shared.requestAuthorization() == .authorized
-                    }
-                }
+            defer {
+                activeVoiceAccess = nil
+                isRequesting = false; requestTask = nil; attempt = nil
+            }
+            while let permission = current {
                 guard attempt == id, !Task.isCancelled, !store.privacyBlocksWork else { return }
-                activeVoiceAccess = nil
-                isRequesting = false; requestTask = nil; attempt = nil
-                resolve(permission, outcome: allowed ? .allowed : .denied)
-            } catch {
-                guard attempt == id, !store.privacyBlocksWork else { return }
-                activeVoiceAccess = nil
-                isRequesting = false; requestTask = nil; attempt = nil
-                if !(error is CancellationError) {
+                do {
+                    let allowed: Bool
+                    if isolated {
+                        // Explicit isolated fixture: tests exercise explanation/queue/persistence,
+                        // never alter the simulator or a person's system authorizations.
+                        if ProcessInfo.processInfo.arguments.contains("--ui-testing-permissions-delayed") {
+                            try await Task.sleep(for: .seconds(1))
+                        }
+                        allowed = !ProcessInfo.processInfo.arguments.contains("--ui-testing-permissions-denied")
+                    } else {
+                        switch permission {
+                        case .location:
+                            _ = await store.briefing.enableCurrentLocation()
+                            allowed = store.briefing.locationAuthorization == .authorized
+                        case .calendar:
+                            await store.briefing.requestCalendarAccess()
+                            allowed = store.briefing.isCalendarAuthorized
+                        case .reminders:
+                            let reminders = ReminderService()
+                            try await reminders.requestReminderAccess()
+                            allowed = reminders.hasReminderAccess
+                        case .screenTime:
+                            try await store.screenTimeSource.requestAccess()
+                            store.refreshScreenTimeAccess()
+                            allowed = store.screenTimeSource.access == .approved
+                        case .speech:
+                            activeVoiceAccess = store.voiceAccess
+                            let access = try await store.voiceAccess.requestAccess(language: .current)
+                            allowed = access.speech == .authorized && access.microphone == .granted
+                        case .microphone:
+                            allowed = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                                let completion: @Sendable (Bool) -> Void = { continuation.resume(returning: $0) }
+                                AVAudioApplication.requestRecordPermission(completionHandler: completion)
+                            }
+                        case .notifications:
+                            allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+                        case .alarms:
+                            allowed = try await AlarmManager.shared.requestAuthorization() == .authorized
+                        }
+                    }
+                    guard attempt == id, !Task.isCancelled, !store.privacyBlocksWork else { return }
+                    activeVoiceAccess = nil
+                    resolve(permission, outcome: allowed ? .allowed : .denied)
+                } catch {
+                    guard attempt == id, !Task.isCancelled, !store.privacyBlocksWork else { return }
+                    activeVoiceAccess = nil
+                    guard !(error is CancellationError) else { return }
                     resolve(permission, outcome: .unavailable)
                 }
+                if isRevisiting { return }
             }
+            isRequesting = false
+            completeInitialSetup()
         }
     }
 
@@ -186,14 +201,15 @@ final class MorningPermissionSetup {
 
     func cancelForBackground() {
         activeVoiceAccess?.cancel(); activeVoiceAccess = nil
-        attempt = nil; requestTask?.cancel(); requestTask = nil; isRequesting = false
+        // Keep ownership until the noncancellable iPhone dialog calls back.
+        attempt = nil; requestTask?.cancel()
     }
 
     /// Privacy cleanup cancels publication before the app removes the owned file.
     func cancelForPrivacy() {
         activeVoiceAccess?.cancel(); activeVoiceAccess = nil
-        attempt = nil; requestTask?.cancel(); requestTask = nil
-        isRequesting = false; isPresented = false; remaining = []; outcome = nil
+        attempt = nil; requestTask?.cancel()
+        isPresented = false; remaining = []; outcome = nil
         routineAfterDismiss = false
     }
     func resetAfterPrivacy() {
@@ -205,6 +221,17 @@ final class MorningPermissionSetup {
         guard remaining.first == permission else { return }
         var next = progress; next.resolve(permission)
         if permission == .speech { next.resolve(.microphone) }
+        save(next)
+        remaining.removeFirst(); self.outcome = outcome
+    }
+
+    private func completeInitialSetup() {
+        var next = progress; next.completeInitialSetup()
+        save(next)
+        finish(reviewRoutine: true)
+    }
+
+    private func save(_ next: MorningPermissionProgress) {
         do {
             guard canSave else { throw CocoaError(.fileReadCorruptFile) }
             try control.withReadyAccess { state in
@@ -217,8 +244,6 @@ final class MorningPermissionSetup {
             // Keep this launch usable even when persistence is unavailable.
             progress = next
         }
-        remaining.removeFirst(); self.outcome = outcome
-        if !isRevisiting, remaining.isEmpty { finish(reviewRoutine: true) }
     }
 
     private static var screenTimeCapabilityAvailable: Bool {
