@@ -160,6 +160,16 @@ import Testing
         return try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: String])
     }
 
+    private func chooseThirdObservedMaia(_ mail: GmailMorningConversation, context: MorningExecutionID) async throws {
+        // The native button uses the displayed ordinal, after attention reorders the Inbox.
+        let choice = try #require(mail.messageChoices.first { $0.number == 3 })
+        try #require(choice.sender == "SYNTHETIC Maïa <maia@morning-fixture.invalid>",
+                     "The third visible choice must be Maïa before preparing or sending this scenario.")
+        #expect(choice.id == "synthetic3" && choice.proposed != nil)
+        await mail.chooseMessage(id: choice.id, context: context)
+        #expect(mail.selectedMessageID == choice.id)
+    }
+
     @Test func everyPrivateFlagAndExactUniqueWorkspaceIsRequiredWithoutLiveFallback() async throws {
         let (privacy, flags, directory) = setup()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -188,8 +198,8 @@ import Testing
         let mail = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: french) { spoken.append($0) }
         await mail.begin(context: context, generation: nil)
         #expect(mail.state == .askingToReply && mail.attentionSelection?.isSynthetic == true)
-        #expect(mail.messageChoices.count == 5 && mail.attentionSelection?.items.map(\.id) == ["synthetic3", "synthetic2", "synthetic5"])
-        await mail.chooseMessage(id: "synthetic3", context: context)
+        #expect(mail.messageChoices.count == 5 && mail.attentionSelection?.items.map(\.id) == ["synthetic5", "synthetic2", "synthetic3"])
+        try await chooseThirdObservedMaia(mail, context: context)
         #expect(mail.recipient == "maia@morning-fixture.invalid")
         await mail.respond("send", context: context)
         #expect(try proof(context)["simulatedSendAttempts"] == "0")
@@ -252,7 +262,7 @@ import Testing
         // A fresh in-memory service still consults the ordinary durable claim for the same operation.
         let restored = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: french) { _ in }
         await restored.begin(context: context, generation: nil)
-        await restored.chooseMessage(id: "synthetic3", context: context)
+        try await chooseThirdObservedMaia(restored, context: context)
         await restored.respond(initialRequest, context: context)
         await restored.respond(correction, context: context)
         await restored.respond("send", context: context)
@@ -268,7 +278,7 @@ import Testing
         let context = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         let mail = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: false) { _ in }
         await mail.begin(context: context, generation: nil)
-        await mail.chooseMessage(id: "synthetic3", context: context)
+        try await chooseThirdObservedMaia(mail, context: context)
         await mail.respond("yes", context: context)
         await mail.prepareReplyFromScreen(guidance: "Reply that I will bring six blue cards at 09:15.", revising: false, context: context)
         let body = mail.draftText, recipient = "maia@morning-fixture.invalid"
@@ -277,7 +287,7 @@ import Testing
         #expect(mail.lastSendOutcome == nil && !mail.canSendReply)
         #expect(try proof(context)["simulatedSendAttempts"] == "0")
         await mail.begin(context: context, generation: nil)
-        await mail.chooseMessage(id: "synthetic3", context: context)
+        try await chooseThirdObservedMaia(mail, context: context)
         await mail.respond("yes", context: context)
         await mail.prepareReplyFromScreen(guidance: "Reply that I will bring six blue cards at 09:15.", revising: false, context: context)
         #expect(mail.acknowledgeReplyReview(body: mail.draftText, recipient: recipient, context: context))
