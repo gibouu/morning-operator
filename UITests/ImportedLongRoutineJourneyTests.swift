@@ -611,13 +611,18 @@ import MorningCore
             for _ in 0..<10 {
                 if value.exists && value.isHittable { return }
                 if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
+                let slack = app.scrollViews["slack.setup.scroll"].firstMatch
                 let editor = stepEditorForm(app)
-                if editor.exists {
+                if slack.exists && slack.isHittable {
+                    if down { slack.swipeDown() } else { slack.swipeUp() }
+                } else if editor.exists && editor.isHittable {
                     guard dragVisibleEditor(editor, down: down, in: app) else { return }
-                } else {
-                    let holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
-                        ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) ?? app
+                } else if let holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
+                    ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) {
                     if down { holder.swipeDown() } else { holder.swipeUp() }
+                } else {
+                    captureFailure("long-ten-no-foreground-scroll-\(id)", app)
+                    XCTFail("No foreground scroll container is available for \(id)."); return
                 }
             }
         }

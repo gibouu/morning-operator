@@ -106,6 +106,7 @@ import MorningCore
                 }
             }.padding(24).frame(maxWidth: 640).frame(maxWidth: .infinity, alignment: .leading)
         }
+        .accessibilityIdentifier("slack.setup.scroll")
         .foregroundStyle(MorningStyle.ink).background(MorningPaper(showsSun: false))
         .navigationTitle("Slack").navigationBarTitleDisplayMode(.inline).disabled(store.privacyBlocksWork)
         .onAppear { visible = true; refreshAccounts() }
