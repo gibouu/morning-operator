@@ -104,6 +104,10 @@ struct MorningPermissionSetupView: View {
                 .font(MorningTheme.Typography.note).foregroundStyle(muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("permissions.note")
+            if let note = setup.screenTimeUnavailableNote {
+                Text(note).font(MorningTheme.Typography.note).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             DisclosureGroup(isExpanded: $detailsExpanded) {
                 VStack(alignment: .leading, spacing: 16) {
                     ForEach(setup.supported, id: \.rawValue) { permission in

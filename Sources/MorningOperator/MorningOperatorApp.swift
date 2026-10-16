@@ -34,8 +34,7 @@ struct MorningOperatorApp: App {
                     // It never fabricates a StoreKit transaction or source access.
                     developerAccess = true
                     showingOnboardingPreview = false
-                    // Revisit genuine optional access choices; no grant is assumed.
-                    store.permissionSetup.revisit()
+                    store.permissionSetup.revisit(asOnboarding: true)
                 })
             } else if let site = Self.webMorningLaunchSite, showingWebPreview {
                 WebMorningView(site: site, minutes: 10, onClose: { showingWebPreview = false })

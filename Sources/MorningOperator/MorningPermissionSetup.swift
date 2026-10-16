@@ -92,10 +92,10 @@ final class MorningPermissionSetup {
         isPresented = true
     }
 
-    func revisit() {
+    func revisit(asOnboarding: Bool = false) {
         guard !isRequesting else { return }
-        remaining = []; outcome = nil
-        isRevisiting = true; routineAfterDismiss = false
+        remaining = asOnboarding ? supported : []; outcome = nil
+        isRevisiting = !asOnboarding; routineAfterDismiss = false
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { isPresented = true }
     }
@@ -143,7 +143,7 @@ final class MorningPermissionSetup {
                     } else {
                         switch permission {
                         case .location:
-                            _ = await store.briefing.enableCurrentLocation()
+                            _ = await store.briefing.enableCurrentLocation(resolveLocation: false)
                             allowed = store.briefing.locationAuthorization == .authorized
                         case .calendar:
                             await store.briefing.requestCalendarAccess()

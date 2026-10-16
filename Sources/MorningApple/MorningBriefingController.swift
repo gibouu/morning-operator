@@ -337,7 +337,7 @@ public final class MorningBriefingController {
     }
 
     /// Permission is requested only from an explained, explicit action.
-    @discardableResult public func enableCurrentLocation(requestPermission: Bool = true) async -> Bool {
+    @discardableResult public func enableCurrentLocation(requestPermission: Bool = true, resolveLocation: Bool = true) async -> Bool {
         guard prepareForAccess() else { return false }
         do {
             if requestPermission, deviceLocation.authorization == .notDetermined {
@@ -346,8 +346,8 @@ public final class MorningBriefingController {
             try Task.checkCancellation()
             var next = settings; next.usesCurrentLocation = true
             try updateSettings(next)
-            await resolveCurrentLocationIfNeeded(force: true)
-            return currentWeatherLocation != nil
+            if resolveLocation { await resolveCurrentLocationIfNeeded(force: true) }
+            return resolveLocation ? currentWeatherLocation != nil : deviceLocation.authorization == .authorized
         } catch {
             if !(error is CancellationError) { locationError = error }
             return false
