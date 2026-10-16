@@ -66,7 +66,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var syntheticRoutineDiagnostic: String {
         #if DEBUG
         guard let syntheticRoutine, let context = routineContext else { return "" }
-        return "syntheticRoutine=1 browserContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(syntheticRoutine.path) localLoads=\(syntheticRoutineHandler?.deliveryCount ?? 0)"
+        let timer = StepTimerFile.load().flatMap { $0.belongs(to: context.sessionID, stepID: context.stepID) ? $0 : nil }
+        let instants = "startedAtBits=\(timer.map { String($0.startedAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") endsAtBits=\(timer.map { String($0.endsAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") pausedAtBits=\(timer?.pausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none")"
+        return "syntheticRoutine=1 browserContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(syntheticRoutine.path) localLoads=\(syntheticRoutineHandler?.deliveryCount ?? 0) observedContents=\(executionEvent?.observedContentCount ?? 0) \(instants)"
         #else
         return ""
         #endif
@@ -75,7 +77,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var syntheticNewsDiagnostic: String {
         guard syntheticNews != nil, let context = routineContext else { return "" }
         #if DEBUG
-        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0) newsRepeatCompleted=\(syntheticNewsRepeatCompletions) retainedLinks=\(newsSnapshot?.links.count ?? 0) \(syntheticNewsSnapshotObservation)"
+        let timer = StepTimerFile.load().flatMap { $0.belongs(to: context.sessionID, stepID: context.stepID) ? $0 : nil }
+        let start = timer.map { String($0.startedAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none"
+        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) startedAtBits=\(start) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0) newsRepeatCompleted=\(syntheticNewsRepeatCompletions) retainedLinks=\(newsSnapshot?.links.count ?? 0) observedContents=\(executionEvent?.observedContentCount ?? 0) \(syntheticNewsSnapshotObservation)"
         #else
         return ""
         #endif
@@ -728,7 +732,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             executionDiagnostic = "status=\(observation?.status.rawValue ?? "invalid") reason=\(observation?.reason ?? "none") evalMs=\(milliseconds) attached=\(webView.window != nil)"
             #if DEBUG
             if syntheticRoutine != nil {
-                executionDiagnostic += " mediaPlaying=\(observation?.mediaPlaying == true) mediaTime=\(observation?.mediaPlaybackSeconds.map { String(format: "%.3f", $0) } ?? "none")"
+                executionDiagnostic += " mediaPlaying=\(observation?.mediaPlaying == true) mediaTime=\(observation?.mediaPlaybackSeconds.map { String(format: "%.3f", $0) } ?? "none") mediaContent=\(observation?.contentID ?? "none")"
             }
             #endif
             Self.record("WEBMORNING site=\(site.rawValue) \(executionDiagnostic)")

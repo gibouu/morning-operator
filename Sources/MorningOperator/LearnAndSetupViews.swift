@@ -420,6 +420,17 @@ struct SetupView: View {
                 }
             }
             completion
+            #if DEBUG
+            if let session = store.session,
+               let proof = GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: session.id, routineVersionID: session.routine.id) {
+                // Fictional input only, absent outside the closed private QA
+                // capability. No payload is written to app storage or logs.
+                Section("SYNTHETIC") {
+                    Text(french ? "Reçu du transport mail simulé" : "Simulated mail transport receipt")
+                        .accessibilityIdentifier("qa.gmailReplyReceipt").accessibilityValue(proof)
+                }
+            }
+            #endif
             Section {
                 if let openRoutine {
                     settingsButton(String(localized: "Your routine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
