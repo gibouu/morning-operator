@@ -296,7 +296,7 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         attach("automation-outlook-french-largest-added", app)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        tapVisible("setup.routine", in: app)
+        visibleSettingsButton("setup.routine", in: app).tap()
         XCTAssertTrue(app.buttons["routine.approve"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["routine.approve"].isEnabled)
         XCTAssertTrue(app.buttons["routine.step.0"].label.contains("SYNTHETIC Camille"))
@@ -1399,6 +1399,23 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     private func visibleButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         let button = app.buttons[identifier]
         scrollTo(button, identifier: identifier, in: app)
+        return button
+    }
+    private func visibleSettingsButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        let settings = app.collectionViews["settings.appearance"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let button = settings.buttons[identifier]
+        // Returning from Connections preserves the Settings scroll position.
+        // Lazy rows above us have no frame, so search the real form both ways.
+        for towardBeginning in [true, false] {
+            for _ in 0..<24 {
+                if button.exists && button.isHittable { return button }
+                if towardBeginning { settings.swipeDown() } else { settings.swipeUp() }
+            }
+        }
+        captureFailure("unreachable-settings-\(identifier)", app)
+        XCTAssertTrue(button.exists, "Missing Settings control: \(identifier)")
+        XCTAssertTrue(button.isHittable, "Unreachable Settings control: \(identifier)")
         return button
     }
     private func enabledVisibleButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
