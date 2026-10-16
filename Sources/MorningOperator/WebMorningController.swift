@@ -38,6 +38,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var articleText: WebArticleText?
     private(set) var articleMessage: String?
     private(set) var articleRefusal: WebArticleRefusal?
+    private(set) var pageAccessRefusal: WebPageAccessRefusal?
     private(set) var articleBusy = false
     var needsArticleReturn: Bool { articleReturnPoint != nil }
     @ObservationIgnored private let routineContext: MorningVoiceCommandContext?
@@ -460,6 +461,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// Closing a retained routine page suspends its worker without discarding the
     /// live page, viewport, spoken-content identity or observed-content set.
     func suspendPresentation() {
+        pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil; cancelArticleWork()
         actionsEnabled = false
         learningAllowed = false
@@ -477,6 +479,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func clearSourceText() {
+        pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil
         articleResponse = nil
         executionContextText = []
@@ -503,7 +506,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         executionPlan = nil; executionHistoryPlan = nil; executionContextText = []
         executionEvent = nil; outcome = nil; contentProgress = .init()
         articleOperation = nil; articleBusy = false; articleReturnPoint = nil; articleText = nil; newsSnapshot = nil; articleMessage = nil; articleRefusal = nil
-        articleExpectedDestination = nil; articleResponse = nil
+        articleExpectedDestination = nil; articleResponse = nil; pageAccessRefusal = nil
         lastSpokenFingerprint = nil
         webView.stopLoading()
         webView.navigationDelegate = nil; webView.uiDelegate = nil
@@ -524,7 +527,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func resumeExecutionIfNeeded() {
         guard let plan = executionPlan, actionsEnabled, !isClearing, !isLearning,
               !executionFinished, executionTask == nil, privacyIsCurrent, !articleBusy, !needsArticleReturn else { return }
-        if executionEvent?.state == .needsChoice { executionEvent = nil }
+        if executionEvent?.state == .needsChoice { executionEvent = nil; pageAccessRefusal = nil }
         let nonce = UUID(); executionNonce = nonce
         executionTask = Task { [weak self] in
             guard let self else { return }
@@ -648,6 +651,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 guard await executionWait(1, nonce: nonce) else { return }; continue
             }
             failedObservations = 0
+            pageAccessRefusal = nil
             switch observation.status {
             case .signin:
                 unreadyAttempts = 0
@@ -657,6 +661,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             case .choice:
                 unreadyAttempts = 0
                 clearSourceText()
+                pageAccessRefusal = observation.pageAccessRefusal
                 publishExecution(.needsChoice)
                 guard await executionWait(1, nonce: nonce) else { return }; continue
             case .loading, .empty:

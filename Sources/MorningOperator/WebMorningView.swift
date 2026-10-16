@@ -315,7 +315,12 @@ struct WebMorningView: View {
             case .paused: return text("Paused · \(event.observedContentCount) contents viewed. Resume when you're ready.",
                                       "En pause · \(event.observedContentCount) contenus parcourus. Reprenez quand vous le souhaitez.")
             case .needsSignIn: return text("Sign in on the page. MORE will resume here.", "Connectez-vous sur la page. MORE reprendra ici.")
-            case .needsChoice: return text("This site needs a privacy choice, subscription or sign-in. Choose on the page, then resume, or skip this moment.", "Ce site demande un choix de confidentialité, un abonnement ou une connexion. Faites votre choix sur la page, puis reprenez, ou passez ce moment.")
+            case .needsChoice:
+                if controller.pageAccessRefusal == .consentRequired {
+                    return text("This page requires a cookie choice. Choose on the page, then resume, or skip this moment.",
+                        "Cette page demande un choix sur les cookies. Faites votre choix sur la page, puis reprenez, ou passez ce moment.")
+                }
+                return text("This site needs a privacy choice, subscription or sign-in. Choose on the page, then resume, or skip this moment.", "Ce site demande un choix de confidentialité, un abonnement ou une connexion. Faites votre choix sur la page, puis reprenez, ou passez ce moment.")
             case .unavailable:
                 if !controller.savedContentProgressIsAvailable {
                     return text("Saved progress for this moment is unavailable. Skip this moment to continue your morning.",
@@ -347,7 +352,7 @@ struct WebMorningView: View {
         guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return "" }
         let source = controller.executionEvent?.contextText ?? []
         let position = Int(controller.webView.scrollView.contentOffset.y.rounded())
-        return "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)"
+        return "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)"
         #else
         return ""
         #endif

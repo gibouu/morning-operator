@@ -170,6 +170,12 @@ public struct WebMorningExecutionEvent: Sendable, Equatable {
     }
 }
 
+/// A volatile observed page gate, never an inferred subscription or permission.
+/// Kept separate from an article refusal because no article may be open yet.
+public enum WebPageAccessRefusal: String, Decodable, Sendable, Equatable {
+    case consentRequired
+}
+
 public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
     public enum Status: String, Decodable, Sendable { case ready, loading, signin, choice, empty, unavailable }
     public let status: Status
@@ -184,6 +190,7 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
     public let mediaPlaying: Bool?
     public let scrollOffset: Double?
     public let consentCanDismiss: Bool?
+    public let pageAccessRefusal: WebPageAccessRefusal?
     /// Fixed diagnostic code only; never page or account content.
     public let reason: String?
 
@@ -193,6 +200,7 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
               (result.fingerprint?.count ?? 0) <= 128, (result.contentID?.count ?? 0) <= 512,
               (result.storyRoute?.count ?? 0) <= 512,
               result.reason.map({ ["expired", "origin", "hidden"].contains($0) }) != false,
+              result.pageAccessRefusal == nil || result.status == .choice,
               result.scrollOffset.map({ $0.isFinite && $0 >= 0 && $0 <= 100_000_000 }) != false,
               (result.text?.count ?? 0) <= 5,
               (result.articles?.count ?? 0) <= 5,
@@ -366,11 +374,52 @@ public enum WebMorningExecutionPolicy {
             consent.click(); return out({status:'dispatched'});
           }
           if (consent) return out({status:'loading',fingerprint:'consent',consentCanDismiss:true});
-          const choiceLabels=all(document,['button','a','[role=button]']).filter(visible)
-            .map(e=>clean(e.getAttribute('aria-label')||e.innerText).toLowerCase());
+          const choiceControls=all(document,['button','a','[role=button]']).filter(visible);
+          const choiceName=e=>clean(e.getAttribute('aria-label')||e.innerText).toLowerCase();
+          const choiceLabels=choiceControls.map(choiceName);
           const accepts=choiceLabels.some(t=>['accepter et continuer','accept and continue','accepter les cookies','tout accepter','accept all','accept all cookies'].includes(t));
           const personalChoice=choiceLabels.some(t=>["s’abonner","s'abonner",'subscribe','se connecter','sign in','paramétrer','manage preferences','personnaliser mes choix'].includes(t));
-          if (accepts && personalChoice) return out({status:'choice'});
+          if (accepts && personalChoice) {
+            // The observed Le Monde wall offers consent or a subscription, not
+            // a free decline. Never choose either. Names on unrelated controls
+            // do not establish this gate: require one visible common panel and
+            // its actually visible cookie/consent text, not background body text.
+            const panelLike=e=>{
+              const role=e.getAttribute?.('role'), modal=e.getAttribute?.('aria-modal');
+              const identity=[e.localName,e.getAttribute?.('id'),e.getAttribute?.('class')].filter(Boolean).join(' ');
+              if(['body','html','main','header','nav','footer','article'].includes(e.localName) ||
+                ['main','navigation','banner','contentinfo'].includes(role) || e.querySelector?.('main,[role=main],article'))return false;
+              return role==='dialog' || modal==='true' || ['dialog','faceplate-dialog','faceplate-modal'].includes(e.localName) ||
+                /cookie|consent|didomi/i.test(identity);
+            };
+            const hasVisibleConsentText=panel=>{
+              if(typeof document.createTreeWalker!=='function')return false;
+              const walker=document.createTreeWalker(panel,4); // SHOW_TEXT, without reading form values.
+              let node, scanned=0, characters=0, cookie=false, consent=false;
+              while((node=walker.nextNode()) && ++scanned<=1024){
+                const owner=node.parentElement;
+                if(!owner || !visible(owner) || owner.closest?.('script,style,nav,header,footer,form,input,textarea,[role=navigation]'))continue;
+                const text=clean(node.nodeValue).toLowerCase();
+                characters+=text.length;if(characters>20000)return false;
+                cookie ||= /\bcookies?\b/u.test(text);
+                consent ||= /\bconsentement\b|\bconsent\b/u.test(text);
+                if(cookie && consent)return true;
+              }
+              return false;
+            };
+            const commonConsentPanel=(accept,subscribe)=>{
+              for(let e=parent(accept),depth=0;e && depth<16;depth++,e=parent(e)){
+                if(e===document.body || e===document.documentElement)return false;
+                if(composedContains(e,subscribe) && panelLike(e) && visible(e) && hasVisibleConsentText(e))return true;
+              }
+              return false;
+            };
+            const observedConsent=\#(json(site.rawValue))==='news' &&
+              choiceControls.filter(e=>choiceName(e)==='accepter et continuer').some(accept=>
+                choiceControls.filter(e=>["s’abonner","s'abonner"].includes(choiceName(e)))
+                  .some(subscribe=>commonConsentPanel(accept,subscribe)));
+            return out(observedConsent ? {status:'choice',pageAccessRefusal:'consentRequired'} : {status:'choice'});
+          }
           const sameRoute = href => { try { const u=new URL(href, location.href); return u.protocol==='https:' && \#(json(site.table.allowedHosts.sorted())).includes(u.hostname.toLowerCase()) && !u.username && !u.password && (!u.port || u.port==='443') && !\#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) ? u.pathname : null; } catch (_) { return null; } };
           const behavior = \#(json(behavior.rawValue)), site = \#(json(site.rawValue));
           let nodes = [...new Set(all(document, \#(json(selectors))).filter(visible))];
