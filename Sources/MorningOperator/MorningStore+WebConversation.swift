@@ -61,6 +61,7 @@ extension MorningStore {
             if !controller.conversationIsActive { resume() }
         case .read:
             guard let result = await controller.observeConversation(authorized: authorized), authorized(), let source = result.snapshot else {
+                guard authorized() else { return true }
                 speakHandsFree(french: "Ouvrez une conversation dans la page pour que je puisse la lire.",
                     english: "Open a conversation on the page so I can read it.")
                 return true
@@ -79,6 +80,7 @@ extension MorningStore {
         case .reply(let intention), .revise(let intention):
             if controller.conversationDraft.snapshot == nil {
                 guard await controller.beginConversationReply(authorized: authorized), authorized() else {
+                    guard authorized() else { return true }
                     speakHandsFree(french: controller.conversationMessage ?? "Ouvrez une conversation dans la page, puis demandez une réponse.",
                         english: controller.conversationMessage ?? "Open a conversation on the page, then ask for a reply.")
                     return true
@@ -109,7 +111,7 @@ extension MorningStore {
     private func reviewBrowserReply(_ controller: WebMorningController, authorized: @MainActor () -> Bool) async {
         let body = controller.conversationDraft.body, operation = controller.conversationDraft.operationID
         guard !body.isEmpty, authorized() else {
-            if let line = controller.conversationMessage { speech.speak(line) }
+            if authorized(), let line = controller.conversationMessage { speech.speak(line) }
             return
         }
         let source = controller.conversationDraft.snapshot?.recipient ?? controller.site.displayName
