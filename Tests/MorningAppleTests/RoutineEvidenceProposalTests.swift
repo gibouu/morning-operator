@@ -826,9 +826,9 @@ struct RoutineEvidenceProposalTests {
     }
 
     #if canImport(FoundationModels)
-    @Test("The cited guided schema resolves its exact supplied unit identifiers")
+    @Test("The cited guided schema resolves its exact supplied citation identifiers")
     func citedSchemaResolves() throws {
-        let schema = try EvidenceRoutineGenerationSchema.make(unitIDs: [UUID(), UUID()])
+        let schema = try EvidenceRoutineGenerationSchema.make(citationIDs: ["q1", "q2"])
         #expect(try JSONEncoder().encode(schema).count > 100)
     }
     #endif
