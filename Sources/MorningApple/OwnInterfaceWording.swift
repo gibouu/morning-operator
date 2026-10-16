@@ -379,7 +379,8 @@ enum OwnInterfaceWording {
             shown("What Screen Time can show", fr: "Ce que montre Temps d’écran")
         ]),
         Screen(name: "Screen Time review", copy: [
-            shown("Your morning, from Screen Time", fr: "Votre matin, d’après Temps d’écran"),
+            shown("Here is what your morning looks like.", fr: "Voici à quoi ressemble votre matin.",
+                  earlier: "Your morning, from Screen Time", "Votre matin, d’après Temps d’écran"),
             shown("Your current routine stays ready until you approve. Approving replaces it with the moments you keep here.",
                   fr: "Votre routine actuelle reste prête jusqu’à votre accord. Approuver la remplace par les moments gardés ici.",
                   earlier: "Your current routine stays ready until you approve. Approving replaces it with the apps you keep here.",
@@ -915,7 +916,7 @@ enum OwnInterfaceWording {
             shown("Kept by your choice", fr: "Gardé selon votre choix"),
             shown("Your saved timing choice", fr: "Votre choix de durée enregistré"),
             shown("Selected observations", fr: "Observations sélectionnées"),
-            shown("About this suggestion", fr: "À propos de cette suggestion"),
+            shown("About this suggestion", fr: "À propos de cette proposition", earlier: "À propos de cette suggestion"),
             shown("Suggestion no longer available", fr: "Suggestion plus disponible"),
             shown("Your next morning", fr: "Votre prochaine matinée")
         ]),
