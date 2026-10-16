@@ -234,6 +234,7 @@ public enum WebConversationPolicy {
             });
             return added.length===1&&editorText==='' ? out({status:'verified',snapshot,receiptID:added[0].id}) : out({status:'unavailable'});
           }
+          if(JSON.stringify(snapshot.outgoingMessageIDs)!==JSON.stringify(expected.outgoingMessageIDs)) return out({status:'stale'});
           if(command==='fill') {
             if(editorText!==clean(expectedEditor)) return out({status:'stale'});
             editor.focus(); editor.textContent=body;

@@ -91,6 +91,15 @@ struct WebConversationScriptTests {
         #expect(context.objectForKeyedSubscript("contentReads")?.toInt32() == 0)
     }
 
+    @Test("A reply from another device invalidates the prepared send")
+    func changedOutgoingContext() throws {
+        let context = try page()
+        let before = try #require(run(context).snapshot)
+        context.evaluateScript("messages.unshift(makeMessage('another-device-reply','Already answered.',true));editor.innerText='Yes, tomorrow.';")
+        #expect(try run(context, command: .send, snapshot: before).status == .stale)
+        #expect(context.objectForKeyedSubscript("clicks")?.toInt32() == 0)
+    }
+
     @Test("A changed source, wrong draft or ambiguous editor never clicks send")
     func refuseChangedSource() throws {
         let context = try page(), original = try #require(run(context).snapshot)
