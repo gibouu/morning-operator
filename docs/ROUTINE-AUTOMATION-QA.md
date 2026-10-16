@@ -2,7 +2,7 @@
 
 Product reference: [MORE](../MORE.md). This ledger separates implemented behavior, observed evidence and gates that remain open. Screenshots, recordings, private service results and credentials are local-only and are not committed.
 
-The table and dated paragraphs retain earlier checkpoints, including their then-pending work. The [latest source-specific checkpoint](#latest-source-specific-checkpoint--16-october-2026) below records the package, real-model and native results separately; an older pass does not certify a later scene or build.
+The table and dated paragraphs retain earlier checkpoints, including their then-pending work. The [resumed synthetic acceptance checkpoint](#resumed-synthetic-acceptance--16-october-2026) below records the package, real-model and native results separately; an older pass does not certify a later scene or build.
 
 | MORE requirement | Earlier recorded evidence | Remaining acceptance |
 | --- | --- | --- |
@@ -67,6 +67,243 @@ Further review finds a separate identity gap: renaming a Screen Time Keep/Exclud
 The corrected snapshot `c9332ca`, including Home changes through `554a614`, passes 233 targeted shared tests: 109 Core and 124 Apple, zero issues (`/tmp/more-routine-acceptance-combined-v3.log`). This covers renamed native Keep/Exclude/duration across days, explicit app review at creation and restoration, native/browser exclusions without reinsertion, and retained synthetic provenance through export. An initial compile caught a private-helper visibility mistake; the helper was moved within its existing implementation before this pass. The full run on the same compiled products reports 1,598 tests (4 Health, 679 Core, 915 Apple), six optional model/media skips and zero issues (`/tmp/more-routine-acceptance-full-v3.log`). The native Home/status journeys, including French XXXL recovery, remain pending; the later `b0e161a` changes only the UI-test variant.
 
 The later Home decision (`99ef99d`, `3dfed93`) replaces scrolling history with a single short passage and tap-revealed controls that disappear after five seconds. It is integrated with the action-state correction, using the same passage instead of a permanent status/button panel. Build6 of the previous scene succeeds, but its six runtime journeys were deliberately not started after this product change. The new scene, its speech-chunk changes and adapted runtime journeys require fresh validation; the 1,598-test checkpoint above does not cover them.
+
+## Resumed synthetic acceptance — 16 October 2026
+
+The owner resumed simulator correction/testing and authorized main integration
+after the complete synthetic routine passes. PR224 carries this continuation.
+The personal checkout and its uncommitted edits are preserved; these journeys
+use a dedicated simulator and isolated workspaces, not the physical iPhone.
+
+Shared package v32 on `a54a6b6` reports **2,172 tests, zero issues and 16 optional
+integration skips**. Its source receipt binds 525 shared/app wording inputs,
+unchanged after the run. The two native OCR checks are excluded from that full
+run and separately pass on unchanged OCR source (layout 25.346s; text 0.305s).
+The targeted current/historical EN/FR wording suite passes 31 tests. Historical
+v30 remains a failure (24 issues); the unchanged Calendar/Calendly suites then
+pass 21 isolated tests, and v32 passes those suites in the full recheck too.
+Shared-logic success does not establish live deliveries or native journeys.
+
+Main through `52befaf` is then merged before the next native build, retaining
+direct execution of approved routines and current presentation/permission work.
+On combined `318a280`, full v33 compiles but fails during Apple tests: 156
+timeouts and three subsequent assertions, followed by a City test helper reading
+an empty queue. The other completed targets pass (Live51, Health8, Core804).
+City/Health alone pass18 tests in0.171s; all13 affected groups pass169 tests in
+21.697s on the same products. Those runs do not erase the v33 failure or prove
+its initial cause. The complete v36 recheck limits Swift Testing to width1,
+retaining all assertions, app deadlines, optional gates and the same529 inputs.
+It passes **2,190 reported tests, zero issues and16 optional skips**: Live51,
+Health8, Core804 and Apple1327. Apple takes127.768s with width1. The two unchanged
+native OCR checks remain separately validated. Before/after hashes match all529
+inputs; no application or test source is changed between v33 and v36.
+
+After combining main through `cb231f86`, full recompiled v37 passes **2,201
+reported tests, zero issues and16 optional integration skips**: Live51,
+Health8, Core814 and Apple1328. Apple takes83.560s at width1. All535 recorded
+inputs remain unchanged during that run, including across the subsequent
+UI-test/CI-only driver-allowance change. Native OCR remains separately checked;
+no model, movie or provider integration is enabled by this shared-package run.
+
+A source-selection regression first fails because the displayed third email
+is a different message from the one required by the scenario. Correcting only
+the private attention ranking makes it pass: three tests with EN/FR variants,
+zero issues. Recipient, body, MIME, context and journal guards are unchanged.
+The ordinary reply UI also preserves intention/correction after preparation
+fails, and clears only unchanged submitted input after a successful new draft.
+Newer edits survive; preparation never authorizes Send.
+
+Frozen9o / `6714173` runs six native cases: five pass, one fails before a
+reminder write. EN/FR news verify the actual second article paragraph, completed
+Repeat, Return and the retained paused budget. History→Settings, compact proposal
+controls and KeepCurrent also pass. The later exact-reminder9u / `03309e7`
+passes in **110.630s**: exact 16 October 2026 09:25 Europe/Paris, title, alert,
+destination and session/version/step pins; one received simulated write; no
+second write on reopening; durable confirmed count after cold launch with zero
+fresh provider writes. Captures, payload and restored state are independently
+reviewed. This uses a synthetic provider, not EventKit or an acoustic command.
+
+Subsequent native failures remain failures with their private xcresults and
+source/product receipts. Long9v fails during setup on an unmaterialized Form
+field, before Start. Gmail9w selects the scenario's wrong third source and
+never reaches Send; the private ranking regression above reproduces that gap.
+Gmail9x fails before Save when a swipe on a clipped Action menu option selects
+Calendar. The accessibility-size Action picker is consequently changed to a
+native navigation list; ordinary sizes retain their existing picker. Each
+fix comes from the actual capture/AX/timeline, without relaxing effect guards.
+Products are sealed and archived with byte/size/mode verification before cache
+reuse; no historical build is inferred from mutable DerivedData.
+
+9y / `9fef967` demonstrates a real Action page, native list scroll, explicit
+Gmail tap and the selected value back in the editor. It is stopped before Save
+after identifying an incorrect test expectation: the explanation includes the
+real `Gmail · ` service prefix. The interrupted result remains STOPPED, with
+no Gmail execution/effect credited; recoverable page/AX evidence is reviewed,
+and the undecodable interrupted video is not treated as visual proof. Only the
+exact expected label is corrected for the next run.
+
+The complete downstream journey imports an explicitly synthetic, unapproved
+10-moment/28-minute parsed draft with no automation or target. It configures and
+approves operations through ordinary UI, cold-relaunches without the parsed
+argument, then exercises Calendar, corrected/reviewed Gmail sending, uncertain
+Slack, news article/return, feed pause/cold restoration, two playing video items,
+one exact reminder, retained reading, playing music and a closing budget. Local
+origins supply finite pages and generated media to the ordinary WebKit executor;
+fictional providers receive actual application payloads. No duration is shortened
+and a timer never proves a provider effect. The real-minute journey has its own
+CI shard; the older time-only substitute is removed. Acceptance remains pending
+until the complete native run and its payload/recap evidence are reviewed.
+
+The separate largest-text/night French Gmail9z journey on `62d4f89` passes in
+496.185s. It retains its original five-minute import and explicitly adds two
+minutes through the ordinary UI, with the same session/version/step pins and
+real elapsed budget. It selects the displayed third message, prepares six blue
+cards, corrects to eight green cards at09:15, reviews the exact recipient/body,
+then uses a separate Send. The received decoded MIME contains the corrected
+body, intended recipient/thread and matching pins; exactly one simulated send
+and one Inbox list call are received. Root and independent UX review inspect
+Action, initial body, reviewed state, receipt and actual payload. The corrected
+body screenshot shows only its beginning; full assertions and received MIME
+establish the remaining text, without reconstructing a replacement screenshot.
+No live service, acoustic dialogue or complete Long result is credited.
+
+Long9aa on `aeac1bb` fails before Gmail Save/approval/Start in361.229s. Two frames
+from its actual recording show an explicit Gmail menu tap followed by the
+selected Action and complete Gmail explanation in the editor. The global
+first-match XCTest query fails to observe that selected value; the final AX is
+incomplete, so the exact native wrapper cause remains unproved. The next test
+scopes all matching IDs to the foreground editor with Save available, retaining
+the selected label/value and requiring the complete Gmail explanation before
+Save. It adds a failure capture and changes no product action or duration.
+Post-run product hashes match;360 archived entries preserve bytes/size/mode.
+
+Before the next combined validation, main through `cb231f86` is merged. The
+generated project is regenerated from its existing specification to resolve
+duplicate file IDs while keeping the private browser media factory in the
+UI-test target alone. Main's shared day/night sheet surfaces and SDK-free beta
+voice changes need this combined build/runtime, separately from9z. ElevenLabs
+TTS/preview remains; conversation transport is explicitly unavailable in that
+beta. CI uses the width1 package mode above, and the next local Long invocation
+explicitly enables XCTest's4200-second timeout in its command. The whole driver
+includes native setup/review:9aa needed151s for initial inspection/source setup,
+86s for Calendar configuration and106s to select the second action. A45-minute
+driver bound left only17 minutes beyond the unchanged28-minute routine. The
+70-minute allowance covers that setup and dialogue; no product budget or action
+assertion changes. CI's other shards retain15 minutes per test and its existing
+80-minute run/100-minute job bounds. No later native pass is inferred from
+compilation or a queued GitHub job.
+
+Build9ab on `8ed0d05` passes and its344 archived product entries match bytes,
+size and mode. No runtime starts on it: main then advances through `6d6d374d`,
+restoring optional ElevenLabs conversation and its SDK dependency. That current
+main is merged before the next build9ac. The project keeps the private browser
+handler and UI-test-only media factory exactly once; the unavailable transport
+is removed. Compiled package, Core/Apple/Health/LiveDemo and shared test inputs
+do not change from v37. App code/catalogue and bundle wiring do change and need
+their own new build/runtime. Fixture mode still refuses natural-voice networking
+before speech and provider-token routes, so the closed Long uses local speech.
+On this combined source, v38's current/historical own-interface wording suite
+passes32 tests in72.486s against the actual bilingual app sources/catalogue,
+using the unchanged v37 shared test products. All60 Python checks also pass.
+
+Main then advances to `b1986fed`, adding browser login and LinkedIn/Slack
+conversation behavior, including changed Core logic/tests. The two source
+conflicts are resolved in `02e857f`: the private origin remains exclusive and
+precedes the new ordinary HTTPS host policy; target help retains Save and
+describes login only for browser targets. Independent source review accepts the
+composition. V37 is historical evidence, not validation of this changed Core.
+Build9ac had already passed on `0b93422` before its proposed stop; no signal or
+runtime is performed. Its365 archived entries preserve bytes/size/mode.
+
+The owner's next priority is immediate ordinary-iPhone delivery. Source
+`02e857f` builds, is signed with the existing valid identity/profiles and passes
+strict/deep verification. **MORE0.1.1(2026101631) is installed in place and
+opened**, with its ordinary process confirmed. All six workspace/preference
+files match before/after installation; backend URL, namespace, Google client,
+callbacks and subscription configuration match the previous installation.
+Actual signed WeatherKit, Family Controls and app/website usage capabilities
+are retained. No fixture arguments, UI test or external action is used. This
+delivery does not certify a microphone dialogue, a send or the full simulator
+routine. Private delivery/signature/configuration receipts stay outside Git.
+
+The remaining solar-filming work from PR228 is combined separately: its explicit
+DEBUG-only visual timeline uses the existing global lifecycle, retaining the
+ordinary30-second refresh. Routine/provider clocks remain real. The four tests,
+Debug/Release build and short filming smoke still need their own results; no
+filming flag is used by the complete routine. Main's subsequent `0d562f2`
+change is documentation only. The owner defers Apple reauthentication until
+after the iPhone installation; TestFlight submission remains unverified.
+
+The combined shared v39 checkpoint on `f8ccd65` passes with2,228 reported tests,
+zero issues and16 optional integration skips, including all four solar tests.
+All541 recorded inputs remain unchanged during that run. The later `d495b20`
+changes only app DEBUG filming behavior and documentation; all415 recorded
+package/library/test inputs remain identical. The two unchanged native OCR
+checks remain separately validated; all60 Python checks pass.
+
+Debug and unsigned generic-iOS Release9ad on `f8ccd65` both compile. The standard
+solar smoke shows day, held night and ordinary time after relaunch without
+filming flags. Independent visual review accepts that bounded result. A DEBUG
+Reduce Motion defect is corrected in `d495b20`; Debug/Release9ae then compile,
+and the filming type/flag are absent from Release. The explicit QA Reduce Motion
+flag holds the same pose past the ten-second deadline and after background
+return with the same process. Captures extend to32.96s and a subsequent ordinary
+relaunch restores the day. These images do not establish continuous FPS, the
+real iOS accessibility toggle or a second periodic30-second tick after return.
+
+Complete Long9ae on `d495b20` fails in223.494s before Save/approval/Start.
+Actual PNG/AX establish that Calendar is selected, but its Picker is beneath
+the open keyboard. The driver immediately requires hittability without first
+revealing the control again. Root and independent UX agree on this bounded
+driver failure; no product selection defect or executed session is credited.
+Products remain hash-identical. The owner initially stops work, then explicitly
+requests the fix and main integration. The focused regression and final
+integration outcome are recorded separately below; the full routine is not
+retrospectively marked passed.
+
+The focused fix `5723f5f` reveals the actual selected Picker in its foreground
+Form after the native menu closes, retaining the same selected-value,
+hittability and Gmail-explanation checks. Debug9af compiles; its app binary is
+identical to9ae and only the UITest binary changes. The single native keyboard
+regression passes in229.264s: one executed, one passed, zero failed/skipped.
+Calendar and Gmail are chosen with the keyboard open, saved and reopened with
+their exact selections and complete multiline notes retained. The draft stays
+unapproved; no routine or service is started. Full product hashes remain
+unchanged after execution. All60 Python checks pass in0.966s. Independent
+source review accepts this targeted correction.
+
+Visual review confirms the names and complete notes after reopening. The
+Action label remains partly behind the keyboard in the before-Save PNGs and
+is outside the later note captures. Native assertions establish the selected
+values and restoration; these images do not prove full label readability.
+No broader UI-readability result is claimed from this focused driver fix.
+
+The owner explicitly requests merging this combined work into main. This
+focused pass fixes the observed driver blocker; it does not certify the
+unrerun complete Long or current branded French/night/largest-text Gmail.
+GitHub Mac checks remain queued rather than green at integration. Package
+inputs remain identical to the v39 checkpoint; no test duration or execution
+budget is shortened. Broader learning/live-provider/acoustic gates remain
+open in #23/#173, and TestFlight compliance in #263 remains separate.
+
+The separately consented OpenAI comparison replays only frozen invented OCR
+text: the third diagnostic passes in77.910s with seven HTTP200 responses and
+seven validated outcomes. Five abstain; two yield four synthetic unapproved
+moments (news, social, reminder, reading; ten proposed minutes). Exact citations
+bind to actual sampled frames. Calendar, Gmail, Slack, video and music are
+missing: **4/9 source families is partial**, and unchanged local full-movie v11
+remains **0/9**. A later local prompt contrast brings no full-disclosure gain
+and regresses bare French; that experiment is reverted. Learning remains open
+in #23, separate from parsed-draft execution. The temporary remote API-key file
+was deleted. Raw OCR, media, payloads and captures stay out of Git.
+
+Separately, ordinary-iPhone installation1630 completes all four French/English ×
+Male/Female examples through ElevenLabs without Apple backup, and the owner
+confirms they are audible and better. Activating the installed identity resolves
+the previous fallback. This evidence is documented in merged PR225. It does not
+prove microphone conversation or interruption; closed simulator fixtures use
+Apple speech. Broader live-provider/acoustic/personal MORE §10 acceptance stays
+open in #173.
 
 ## Delivery handoff — 16 October 2026
 

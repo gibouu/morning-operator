@@ -106,6 +106,39 @@ extension MorningStore {
         performMailReviewAction { mail, context in await mail.chooseMessage(id: id, context: context) }
     }
 
+    func beginMailReply() {
+        performMailReviewAction { mail, context in
+            guard mail.state == .askingToReply else { return }
+            await mail.respond("yes", context: context)
+        }
+    }
+
+    func prepareMailReply(guidance: String, revising: Bool) {
+        guard let context = currentMailContext, !guidance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if revising { mailMorning.revokeReviewPreservingDraft(context: context) }
+        performMailReviewAction { mail, context in
+            await mail.prepareReplyFromScreen(guidance: guidance, revising: revising, context: context)
+        }
+    }
+
+    func reviewMailReply() {
+        let body = mailMorning.draftText
+        guard let recipient = mailMorning.recipient else { return }
+        performMailReviewAction { mail, context in
+            mail.acknowledgeReplyReview(body: body, recipient: recipient, context: context)
+        }
+    }
+
+    func revokeMailReplyReview() {
+        guard let context = currentMailContext else { return }
+        mailMorning.revokeReviewPreservingDraft(context: context)
+    }
+
+    func sendReviewedMailReply() {
+        guard mailMorning.canSendReply else { return }
+        performMailReviewAction(preservingReviewedReply: true) { mail, context in await mail.sendReviewedReply(context: context) }
+    }
+
     private var currentMailContext: MorningExecutionID? {
         guard !privacyBlocksWork, sessionActive, let session, let step = currentStep,
               step.automation == .gmailInbox else { return nil }
@@ -113,11 +146,18 @@ extension MorningStore {
         return mailMorning.context == context ? context : nil
     }
 
-    private func performMailReviewAction(_ action: @escaping @MainActor (GmailMorningConversation, MorningExecutionID) async -> Void) {
+    private func performMailReviewAction(preservingReviewedReply: Bool = false,
+        _ action: @escaping @MainActor (GmailMorningConversation, MorningExecutionID) async -> Void) {
         guard let context = currentMailContext else { return }
-        if session?.status == .running { pause() }
-        guard session?.status == .paused else { return }
-        resumeForNext()
+        if preservingReviewedReply {
+            // This explicit Send already has an exact screen acknowledgement.
+            // Its own wrapper must not cancel it; genuine lifecycle pauses still do.
+            guard session?.status == .running, mailMorning.canSendReply else { return }
+        } else {
+            if session?.status == .running { pause() }
+            guard session?.status == .paused else { return }
+            resumeForNext()
+        }
         guard session?.status == .running, resumeMailBudget(context: context) else { return }
         let generation = dataGeneration
         connectedAPITask?.cancel()

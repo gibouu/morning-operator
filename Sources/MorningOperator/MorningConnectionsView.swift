@@ -135,6 +135,7 @@ struct MorningConnectionsView: View {
                     .font(.footnote).foregroundStyle(MorningStyle.muted).padding(.top, 8)
             }.tint(MorningStyle.ink)
         }
+        .accessibilityIdentifier("connections.list")
         .listStyle(.insetGrouped)
         .font(.body)
         .buttonStyle(.plain)

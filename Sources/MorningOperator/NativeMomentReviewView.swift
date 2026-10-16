@@ -17,6 +17,14 @@ struct NativeMomentReviewView: View {
     private enum Input: Hashable { case request, title }
     private var native: NativeMomentConversation { store.nativeMoment }
     private var french: Bool { AppLanguage.isFrench }
+    private var requestHelp: String {
+        if store.canHearHandsFreeCommands {
+            return french ? "Dites « rappelle-moi de… », « ajoute un événement… » ou « lis mes rappels ». Vous pouvez aussi préparer la demande ici."
+                : "Say “remind me to…”, “add an event…” or “read my reminders”. You can also prepare the request here."
+        }
+        return french ? "Écrivez « rappelle-moi de… », « ajoute un événement… » ou « lis mes rappels », puis préparez la demande."
+            : "Write “remind me to…”, “add an event…” or “read my reminders”, then prepare the request."
+    }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -35,7 +43,7 @@ struct NativeMomentReviewView: View {
                         .accessibilityValue(proof)
                 }
                 #endif
-                Text(french ? "Dites « rappelle-moi de… », « ajoute un événement… » ou « lis mes rappels ». Vous pouvez aussi préparer la demande ici." : "Say “remind me to…”, “add an event…” or “read my reminders”. You can also prepare the request here.")
+                Text(requestHelp)
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
                 TextField(french ? "Votre demande" : "Your request", text: $request, axis: .vertical)
                     .textFieldStyle(.roundedBorder).focused($focusedInput, equals: .request).accessibilityIdentifier("nativeMoment.request")
@@ -50,7 +58,7 @@ struct NativeMomentReviewView: View {
                         .accessibilityIdentifier("nativeMoment.status")
                 }
                 if native.phase == .completed {
-                    Text(french ? "Votre matin est en pause. Dites reprends pour continuer." : "Your morning is paused. Say resume to continue.")
+                    Text(french ? "Votre matin est en pause. Reprenez pour continuer." : "Your morning is paused. Resume to continue.")
                         .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).fixedSize(horizontal: false, vertical: true)
                 }
                 if native.draftKind != nil {

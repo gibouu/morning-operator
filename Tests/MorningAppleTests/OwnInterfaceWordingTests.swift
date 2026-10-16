@@ -680,6 +680,25 @@ struct OwnInterfaceWordingTests {
         #expect(!isOwnInterface(ordinary))
     }
 
+    @Test("Current and earlier review copy needs its own screen context", arguments: [0, 1])
+    func currentAndEarlierReviewCopyNeedsItsScreen(index: Int) {
+        let titles = ["Here is what your morning looks like.", "Voici à quoi ressemble votre matin."]
+        let earlierTitles = ["Your morning, from Screen Time", "Votre matin, d’après Temps d’écran"]
+        let controls = ["Keep current", "Garder l’actuelle"]
+        let activity = index == 0 ? "09:00 Team planning meeting" : "09:00 Réunion de planification"
+        for title in [titles[index], earlierTitles[index]] {
+            #expect(isOwnInterface("\(title)\n\(controls[index])\n\(activity)"))
+            #expect(!isOwnInterface("Calendar\n\(title)\n\(activity)"))
+        }
+        let explanation = index == 0 ? "Correct a source in Learn to request a new suggestion."
+            : "Corrigez une source dans Apprendre pour demander une nouvelle suggestion."
+        let about = index == 0 ? ["About this suggestion"] : ["À propos de cette proposition", "À propos de cette suggestion"]
+        for label in about {
+            #expect(isOwnInterface("\(explanation)\n\(label)\n\(activity)"))
+            #expect(!isOwnInterface("Calendar\n\(label)\n\(activity)"))
+        }
+    }
+
     @Test("Every recognized catalog string is one the app's source still shows")
     func recognizedWordingIsShownByTheApp() throws {
         let sources = try ShippedCatalogs.appSources()

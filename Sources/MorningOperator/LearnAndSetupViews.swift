@@ -422,6 +422,17 @@ struct SetupView: View {
                 }
             }
             completion
+            #if DEBUG
+            if let session = store.session,
+               let proof = GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: session.id, routineVersionID: session.routine.id) {
+                // Fictional input only, absent outside the closed private QA
+                // capability. No payload is written to app storage or logs.
+                Section("SYNTHETIC") {
+                    Text(french ? "Reçu du transport mail simulé" : "Simulated mail transport receipt")
+                        .accessibilityIdentifier("qa.gmailReplyReceipt").accessibilityValue(proof)
+                }
+            }
+            #endif
             Section {
                 if let openRoutine {
                     settingsButton(String(localized: "Your routine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
@@ -618,6 +629,7 @@ struct SetupView: View {
 struct StepEditor: View {
     @Bindable var store: MorningStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @ViewState<RoutineStep> var step: RoutineStep
     @ViewState<Bool> private var keepInSuggestions: Bool
     @ViewState<Bool> private var keepDuration: Bool
@@ -686,20 +698,15 @@ struct StepEditor: View {
                     Text("Keeping a moment preserves its wording, time and action. Saving only its duration lets the other details vary. Minutes are planned, not measured. Clear these choices later in Review.")
                 }
                 Section {
-                    Picker("Action", selection: $step.automation) {
-                        Text(step.target == nil ? AppLanguage.localized("User-led moment")
-                             : (AppLanguage.isFrench ? "Action choisie ci-dessous" : "Action chosen below"))
-                            .tag(Optional<RoutineStepAutomation>.none)
-                        Text("Read this text aloud").tag(Optional(RoutineStepAutomation.spokenNote))
-                        Text("Read today's calendar").tag(Optional(RoutineStepAutomation.todayCalendar))
-                        Text("Read today's briefing").tag(Optional(RoutineStepAutomation.morningBriefing))
-                        Text(AppLanguage.isFrench ? "Prendre ce temps, puis continuer" : "Keep this time, then continue").tag(Optional(RoutineStepAutomation.timedMoment))
-                        Text(AppLanguage.isFrench ? "Lire mes mails et m’aider à répondre" : "Read my mail and help me reply").tag(Optional(RoutineStepAutomation.gmailInbox))
-                        if step.observationReference != nil {
-                            Text("Read saved excerpt").tag(Optional(RoutineStepAutomation.savedObservation))
-                        }
+                    #if os(iOS)
+                    if dynamicType.isAccessibilitySize {
+                        actionPicker.pickerStyle(.navigationLink)
+                    } else {
+                        actionPicker
                     }
-                    .accessibilityIdentifier("step.automation")
+                    #else
+                    actionPicker
+                    #endif
                 } header: {
                     Text("What Morning Operator does")
                 } footer: {
@@ -825,6 +832,23 @@ struct StepEditor: View {
     private func remove(excluding: Bool) {
         if onDelete(excluding) { dismiss() }
         else { saveError = failureMessage() }
+    }
+
+    private var actionPicker: some View {
+        Picker("Action", selection: $step.automation) {
+            Text(step.target == nil ? AppLanguage.localized("User-led moment")
+                 : (AppLanguage.isFrench ? "Action choisie ci-dessous" : "Action chosen below"))
+                .tag(Optional<RoutineStepAutomation>.none)
+            Text("Read this text aloud").tag(Optional(RoutineStepAutomation.spokenNote))
+            Text("Read today's calendar").tag(Optional(RoutineStepAutomation.todayCalendar))
+            Text("Read today's briefing").tag(Optional(RoutineStepAutomation.morningBriefing))
+            Text(AppLanguage.isFrench ? "Prendre ce temps, puis continuer" : "Keep this time, then continue").tag(Optional(RoutineStepAutomation.timedMoment))
+            Text(AppLanguage.isFrench ? "Lire mes mails et m’aider à répondre" : "Read my mail and help me reply").tag(Optional(RoutineStepAutomation.gmailInbox))
+            if step.observationReference != nil {
+                Text("Read saved excerpt").tag(Optional(RoutineStepAutomation.savedObservation))
+            }
+        }
+        .accessibilityIdentifier("step.automation")
     }
 
     private var automationExplanation: String {

@@ -121,12 +121,14 @@ import MorningCore
         XCTAssertEqual(try proof(in: app)["simulatedWrites"], "1", "Closing the result must not repeat it.")
         XCTAssertFalse(app.buttons["nativeMoment.confirm"].exists)
         tap("morning.closeDetails", in: app)
+        home(app) // Interact was presented from Settings; return to Home first.
         XCTAssertEqual(try executionIdentity(in: app), pinned)
         // Attach only the actual received dictionary observed before closing.
         let json = try JSONSerialization.data(withJSONObject: received, options: [.sortedKeys, .prettyPrinted])
         let payload = XCTAttachment(string: String(decoding: json, as: UTF8.self))
         payload.name = "exact-reminder-actual-received-payload-and-session"; payload.lifetime = .keepAlways; add(payload)
         app.terminate(); app.launch(); try requireWorkspace(workspace, in: app)
+        home(app)
         XCTAssertEqual(try executionIdentity(in: app), pinned)
         interact(app); tap("nativeMoment.open", in: app)
         let restored = try proof(in: app)
@@ -146,25 +148,32 @@ import MorningCore
         }) else { fail("exact-reminder-native-date-control-unavailable", app); throw ProofError.unavailable }
         dateButton.tap()
         let headerPattern = "^(January|February|March|April|May|June|July|August|September|October|November|December) [12][0-9]{3}$"
-        let headers = app.buttons.matching(NSPredicate(format: "label MATCHES %@", headerPattern))
-        XCTAssertTrue(headers.firstMatch.waitForExistence(timeout: 5))
+        let headers = app.buttons.matching(NSPredicate(format: "identifier == %@ AND value MATCHES %@",
+                                                       "DatePicker.Show", headerPattern))
+        guard headers.firstMatch.waitForExistence(timeout: 5) else {
+            fail("exact-reminder-month-year-unavailable", app); throw ProofError.unavailable
+        }
         guard let header = headers.allElementsBoundByIndex.first(where: \.isHittable) else { fail("exact-reminder-month-year-unavailable", app); throw ProofError.unavailable }
         header.tap()
         let wheels = app.pickerWheels.allElementsBoundByIndex.filter(\.isHittable)
         guard wheels.count == 2 else { fail("exact-reminder-native-month-year-wheels-unavailable", app); throw ProofError.unavailable }
         wheels[0].adjust(toPickerWheelValue: "October"); wheels[1].adjust(toPickerWheelValue: "2026")
-        guard let selectedHeader = app.buttons.matching(identifier: "October 2026").allElementsBoundByIndex.first(where: \.isHittable)
-            ?? app.buttons.matching(NSPredicate(format: "label == %@", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
+        guard let selectedHeader = app.buttons.matching(NSPredicate(format: "identifier == %@ AND value == %@",
+            "DatePicker.Hide", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
             fail("exact-reminder-absolute-month-year-not-observed", app); throw ProofError.unavailable
         }
         selectedHeader.tap()
-        let days = app.buttons.matching(NSPredicate(format: "label IN %@", ["Friday, October 16, 2026", "Friday, October 16", "16"]))
+        let days = app.buttons.matching(NSPredicate(format: "label IN %@", ["Friday, October 16, 2026", "Friday, October 16", "Today, Friday, October 16, 2026", "Today, Friday, October 16", "16"]))
         guard let day = days.allElementsBoundByIndex.first(where: \.isHittable) else { fail("exact-reminder-calendar-day-unavailable", app); throw ProofError.unavailable }
         day.tap()
         closeNativePickerIfNeeded(app)
         visible(picker, id: "nativeMoment.date", in: app)
+        // The aggregate date/time control also includes a time in its value;
+        // only the standalone native time button opens the time wheels.
+        let timePattern = "^[0-9]{1,2}:[0-9]{2}(?:\\s*[AP]M)?$"
         guard let time = picker.buttons.allElementsBoundByIndex.first(where: {
-            $0.isHittable && ($0.label + " " + ($0.value as? String ?? "")).range(of: "[0-9]{1,2}:[0-9]{2}", options: .regularExpression) != nil
+            $0.isHittable && ($0.label.range(of: timePattern, options: .regularExpression) != nil ||
+                ($0.value as? String ?? "").range(of: timePattern, options: .regularExpression) != nil)
         }) else { fail("exact-reminder-native-time-control-unavailable", app); throw ProofError.unavailable }
         time.tap()
         let timeWheels = app.pickerWheels.allElementsBoundByIndex.filter(\.isHittable)
@@ -174,6 +183,27 @@ import MorningCore
         closeNativePickerIfNeeded(app)
     }
     private func closeNativePickerIfNeeded(_ app: XCUIApplication) {
+        if let dismiss = app.buttons.matching(identifier: "PopoverDismissRegion").allElementsBoundByIndex.first(where: \.isHittable) {
+            let rect = dismiss.frame.intersection(app.frame)
+            let obstacles = app.datePickers.allElementsBoundByIndex.filter {
+                $0.exists && $0.identifier != "nativeMoment.date" && !$0.frame.isEmpty
+            }.map(\.frame) + app.pickerWheels.allElementsBoundByIndex.filter(\.exists).map(\.frame)
+            let points = [CGPoint(x: rect.minX + rect.width * 0.04, y: rect.midY),
+                          CGPoint(x: rect.maxX - rect.width * 0.04, y: rect.midY),
+                          CGPoint(x: rect.midX, y: rect.maxY - rect.height * 0.04)]
+            guard !rect.isNull, !rect.isInfinite, rect.width > 40, rect.height > 40,
+                  [rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy({ $0.isFinite }),
+                  !obstacles.isEmpty, let point = points.first(where: { point in
+                      rect.contains(point) && !obstacles.contains(where: { $0.contains(point) })
+                  }) else { fail("exact-reminder-native-popup-has-no-dismiss-point", app); return }
+            // The system dismiss button spans the screen; its centre is covered
+            // by the calendar. Tap only its observed exposed area outside it.
+            dismiss.coordinate(withNormalizedOffset: .zero).withOffset(
+                CGVector(dx: point.x - dismiss.frame.minX, dy: point.y - dismiss.frame.minY)).tap()
+            let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: dismiss)
+            XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
+            return
+        }
         if let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["Done", "Close"])).allElementsBoundByIndex.first(where: {
             $0.isHittable && $0.identifier != "morning.closeDetails" && $0.identifier != "destination.close"
         }) { done.tap() }

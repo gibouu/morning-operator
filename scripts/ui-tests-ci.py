@@ -64,7 +64,7 @@ def pick_simulator(listing, max_os=None):
 def declared_test_classes(directory):
     names = set()
     for path in pathlib.Path(directory).glob("*.swift"):
-        names.update(re.findall(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase\b", path.read_text(), re.M))
+        names.update(re.findall(r"^\s*(?:@MainActor\s+)?(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase\b", path.read_text(), re.M))
     return names
 
 

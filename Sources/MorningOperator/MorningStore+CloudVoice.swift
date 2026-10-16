@@ -10,6 +10,41 @@ struct MorningNaturalSpeechConsent: Equatable {
     let languageCode: String
 }
 
+/// Volatile fixed-sample QA facts. No text, credentials or installation identity.
+struct MorningVoicePreviewReceipt: Equatable {
+    enum Route: String { case elevenLabs, directApple }
+    enum Result: String { case pending, completed, cancelled, failed }
+    enum Failure: String {
+        case none, activationRequired, unauthorized, notConfigured, credentialsUnavailable
+        case invalidResponse, invalidRequest, transport, serviceUnavailable, playback, unexpected
+        static func category(_ error: any Error) -> Self {
+            if let error = error as? ComposioServiceError {
+                switch error {
+                case .notConfigured, .insecureURL: return .notConfigured
+                case .credentialsUnavailable: return .credentialsUnavailable
+                case .notAuthorized: return .unauthorized
+                case .invalidArguments: return .invalidRequest
+                case .invalidResponse: return .invalidResponse
+                case .backend(let failure):
+                    return failure.code == "voice_not_configured" ? .activationRequired : .serviceUnavailable
+                case .requestFailed: return .serviceUnavailable
+                case .executionUncertain: return .unexpected
+                }
+            }
+            return error is URLError ? .transport : .unexpected
+        }
+    }
+    let selectedRoute: Route
+    var validatedMPEGResponse = false
+    var drainCompleted = false
+    var fallback = false
+    var result: Result = .pending
+    var failure: Failure = .none
+    var diagnostic: String {
+        "selected=\(selectedRoute.rawValue) validatedMPEGResponse=\(validatedMPEGResponse ? 1 : 0) drainCompleted=\(drainCompleted ? 1 : 0) fallback=\(fallback ? 1 : 0) result=\(result.rawValue) category=\(failure.rawValue)"
+    }
+}
+
 extension MorningStore {
     var naturalSpeechScope: MorningNaturalSpeechConsent {
         .init(generation: dataGeneration, sessionID: session?.id,
@@ -21,8 +56,9 @@ extension MorningStore {
 
     private var mayUseNaturalVoiceNetwork: Bool {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
-           !ProcessInfo.processInfo.arguments.contains("--ui-testing-real-voice-provider") { return false }
+        let flags = ProcessInfo.processInfo.arguments
+        if flags.contains("--fixture-mode") { return false }
+        if flags.contains("--ui-testing"), !flags.contains("--ui-testing-real-voice-provider") { return false }
         #endif
         return true
     }
@@ -94,11 +130,12 @@ extension MorningStore {
     }
 
     /// A fixed, non-personal sample needs neither a morning nor microphone access.
-    func previewNaturalVoice() async {
+    func previewNaturalVoice(diagnostic: (@MainActor (MorningVoicePreviewReceipt) -> Void)? = nil) async {
         guard !Task.isCancelled, !sessionActive, !privacyBlocksWork,
               UIApplication.shared.applicationState == .active else { return }
         let attempt = UUID(), scope = naturalSpeechScope, gender = speech.voiceGender
         let text = speech.previewText
+        var receipt = MorningVoicePreviewReceipt(selectedRoute: mayUseNaturalVoiceNetwork ? .elevenLabs : .directApple)
         voicePreviewAttempt = attempt
         defer {
             if voicePreviewAttempt == attempt { voicePreviewAttempt = nil; configureNaturalSpeech() }
@@ -107,6 +144,17 @@ extension MorningStore {
             try checkNaturalSpeechScope(scope)
             guard voicePreviewAttempt == attempt, speech.voiceGender == gender, !sessionActive else { throw CancellationError() }
         }
+        func publishReceipt() {
+            #if DEBUG
+            let flags = ProcessInfo.processInfo.arguments
+            guard flags.contains("--ui-testing"), flags.contains("--ui-testing-real-voice-provider"),
+                  voicePreviewAttempt == attempt, naturalSpeechScope == scope,
+                  !privacyBlocksWork, !sessionActive, speech.voiceGender == gender,
+                  UIApplication.shared.applicationState == .active else { return }
+            diagnostic?(receipt)
+            #endif
+        }
+        publishReceipt()
         do {
             stopCloudVoice()
             await cloudVoiceReleaseTask?.value
@@ -122,20 +170,37 @@ extension MorningStore {
                     try checkNaturalSpeechScope(scope)
                     guard voicePreviewAttempt == attempt, passage == text, selectedGender == gender,
                           speech.voiceGender == gender, !sessionActive else { throw CancellationError() }
-                    let data = try await composio.morningSpeech(text, language: scope.languageCode, voiceGender: gender)
+                    let data: Data
+                    do { data = try await composio.morningSpeech(text, language: scope.languageCode, voiceGender: gender) }
+                    catch {
+                        receipt.failure = .category(error); publishReceipt()
+                        throw error
+                    }
                     try checkNaturalSpeechScope(scope)
                     guard voicePreviewAttempt == attempt, speech.voiceGender == gender else { throw CancellationError() }
+                    receipt.validatedMPEGResponse = true; publishReceipt()
                     return data
                 }
                 speech.externalSpeechFallback = { [weak self] in
                     guard let self else { throw CancellationError() }
+                    try checkNaturalSpeechScope(scope)
+                    guard voicePreviewAttempt == attempt, speech.voiceGender == gender, !sessionActive else { throw CancellationError() }
+                    receipt.fallback = true
+                    if receipt.failure == .none { receipt.failure = .playback }
                     try await useAppleVoiceAfterFailure(scope: scope)
                 }
             } else { speech.cloudSpeech = nil }
             try await speech.speakAndWait(text)
-        } catch is CancellationError { }
+            try check()
+            receipt.drainCompleted = true; receipt.result = .completed; publishReceipt()
+        } catch is CancellationError {
+            receipt.result = .cancelled; publishReceipt()
+        }
         catch {
             guard voicePreviewAttempt == attempt else { return }
+            receipt.result = .failed
+            if receipt.failure == .none { receipt.failure = .playback }
+            publishReceipt()
             voiceFallbackMessage = AppLanguage.isFrench ? "L’exemple vocal est indisponible. Réessayez." : "The voice sample is unavailable. Try again."
         }
     }

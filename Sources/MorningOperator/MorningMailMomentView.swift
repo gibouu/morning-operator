@@ -6,15 +6,35 @@ import MorningApple
 /// when the optional local model is unavailable. Draft text stays in memory.
 struct MorningMailMomentView: View {
     @Bindable var store: MorningStore
+    @State private var replyIntention = ""
+    @State private var replyCorrection = ""
+    @State private var submittedReplyIntention: String?
+    @State private var submittedReplyCorrection: String?
+    @FocusState private var replyInputFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
     private var french: Bool { AppLanguage.isFrench }
 
     var body: some View {
         let mail = store.mailMorning
         VStack(alignment: .leading, spacing: 12) {
             if GmailAttentionUITestFixture.isRequested {
-                Text("SYNTHETIC — Gmail attention test. No account, network, or sending.")
-                    .font(.caption).accessibilityIdentifier("mail.attention.synthetic")
-                    .accessibilityValue("HTTP list reads: \(GmailAttentionUITestFixture.inboxReadCount); body reads: \(GmailAttentionUITestFixture.bodyReadCount)")
+                if GmailAttentionUITestFixture.isPrivateReplyRequested {
+                    Text(french ? "SYNTHETIC — Mails, réponses et envois entièrement simulés. Aucun compte ni réseau réel."
+                                : "SYNTHETIC — Mail, replies and sends are entirely simulated. No real account or network.")
+                        .font(.caption).accessibilityIdentifier("mail.attention.synthetic")
+                    if let proof = GmailAttentionUITestFixture.privateReplyDiagnostic(context: mail.context) {
+                        Text(french ? "Transport Gmail simulé" : "Simulated Gmail transport")
+                            .font(.caption).accessibilityIdentifier("mail.reply.syntheticReceipt").accessibilityValue(proof)
+                    }
+                    if mail.lastSendOutcome == .sent {
+                        Text(french ? "Envoi simulé confirmé. Aucun vrai mail envoyé." : "Simulated send confirmed. No real email was sent.")
+                            .font(.caption).accessibilityIdentifier("mail.reply.simulatedSent")
+                    }
+                } else {
+                    Text("SYNTHETIC — Gmail attention test. No account, network, or sending.")
+                        .font(.caption).accessibilityIdentifier("mail.attention.synthetic")
+                        .accessibilityValue("HTTP list reads: \(GmailAttentionUITestFixture.inboxReadCount); body reads: \(GmailAttentionUITestFixture.bodyReadCount)")
+                }
             }
             if let selection = mail.attentionSelection, !mail.isComposingSelfMessage {
                 Text(french ? "Vos mails à examiner" : "Your messages to review").font(.headline)
@@ -43,6 +63,52 @@ struct MorningMailMomentView: View {
                 }
                 Text(french ? "Choisir un autre mail efface l’ancien brouillon. Son destinataire vient du message réellement lu ; la préparation et l’envoi restent des demandes distinctes."
                     : "Choosing another message clears the previous draft. Its recipient comes from the read message; preparing and sending remain separate requests.").font(.caption)
+            }
+            if !mail.isComposingSelfMessage {
+                if mail.state == .askingToReply {
+                    Button(french ? "Répondre à ce mail" : "Reply to this message") { store.beginMailReply() }
+                        .accessibilityIdentifier("mail.reply.begin")
+                }
+                if mail.state == .askingForIntention {
+                    TextField(french ? "Votre intention de réponse" : "What you want to reply", text: $replyIntention, axis: .vertical)
+                        .lineLimit(2...5).focused($replyInputFocused).accessibilityIdentifier("mail.reply.intention")
+                    Button(french ? "Préparer la réponse" : "Prepare reply") {
+                        let guidance = replyIntention
+                        submittedReplyIntention = guidance; replyInputFocused = false
+                        store.prepareMailReply(guidance: guidance, revising: false)
+                    }.disabled(replyIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("mail.reply.prepare")
+                }
+                if mail.state == .reviewingReply {
+                    if let recipient = mail.recipient {
+                        Text((french ? "À : " : "To: ") + recipient).textSelection(.enabled)
+                            .accessibilityIdentifier("mail.reply.recipient")
+                    }
+                    Text(verbatim: mail.draftText).textSelection(.enabled).accessibilityIdentifier("mail.reply.body")
+                    TextField(french ? "Votre correction" : "Your correction", text: Binding(get: { replyCorrection }, set: { value in
+                        if value != replyCorrection, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            store.revokeMailReplyReview()
+                        }
+                        replyCorrection = value
+                    }), axis: .vertical)
+                        .lineLimit(2...5).focused($replyInputFocused).accessibilityIdentifier("mail.reply.correction")
+                    Button(french ? "Corriger la réponse" : "Revise reply") {
+                        let guidance = replyCorrection
+                        submittedReplyCorrection = guidance; replyInputFocused = false
+                        store.prepareMailReply(guidance: guidance, revising: true)
+                    }.disabled(replyCorrection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("mail.reply.revise")
+                    Button(mail.replyWasReviewedOnScreen ? (french ? "Réponse relue" : "Reply reviewed")
+                                                       : (french ? "J’ai relu le destinataire et la réponse" : "I reviewed the recipient and reply")) {
+                        replyInputFocused = false; store.reviewMailReply()
+                    }.disabled(!replyCorrection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("mail.reply.reviewed")
+                    Button(french ? "Envoyer cette réponse" : "Send this reply") { store.sendReviewedMailReply() }
+                        .disabled(!mail.canSendReply || !replyCorrection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("mail.reply.send")
+                    Text(french ? "La relecture n’envoie rien. Une correction exige une nouvelle relecture. L’envoi reste une demande distincte."
+                                : "Review sends nothing. A correction needs a new review. Sending is a separate request.").font(.caption)
+                }
             }
             if mail.canComposeSelfMessage, !mail.isComposingSelfMessage {
                 Button(french ? "Note à moi-même" : "Note to myself") { store.beginSelfMail() }
@@ -82,5 +148,21 @@ struct MorningMailMomentView: View {
         .disabled([.preparing, .preparingReply, .sending].contains(mail.state))
         .font(.subheadline)
         .accessibilityElement(children: .contain)
+        .onChange(of: mail.replyPreparationID) { _, prepared in
+            guard prepared != nil else { return }
+            if let submittedReplyIntention, replyIntention == submittedReplyIntention { replyIntention = "" }
+            if let submittedReplyCorrection, replyCorrection == submittedReplyCorrection { replyCorrection = "" }
+            submittedReplyIntention = nil; submittedReplyCorrection = nil
+        }
+        .onChange(of: mail.context) { _, _ in clearReplyInputs() }
+        .onChange(of: mail.selectedMessageID) { _, _ in clearReplyInputs() }
+        .onChange(of: store.dataGeneration) { _, _ in clearReplyInputs() }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { clearReplyInputs() } }
+        .onDisappear { clearReplyInputs() }
+    }
+
+    private func clearReplyInputs() {
+        replyIntention = ""; replyCorrection = ""; replyInputFocused = false
+        submittedReplyIntention = nil; submittedReplyCorrection = nil
     }
 }

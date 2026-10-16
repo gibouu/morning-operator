@@ -112,8 +112,20 @@ struct StepTargetEditor: View {
                 Text("Choose a website or an app above.")
                     .font(.footnote).foregroundStyle(MorningStyle.muted)
             }
+            Text(AppLanguage.isFrench ? "Ce choix s’applique à ce moment. Appuyez sur Enregistrer pour conserver les modifications."
+                 : "This choice applies to this moment. Tap Save to keep your changes.")
+                .font(.footnote).foregroundStyle(MorningStyle.muted)
         } header: { Text("During this moment") } footer: {
-            Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur. Les autres applications peuvent nécessiter vos gestes." : "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser. Other apps may still need your actions.")
+            switch target?.routineExecutionTarget {
+            case .inAppWeb:
+                Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur."
+                     : "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser.")
+            case .externalApp:
+                Text(AppLanguage.isFrench ? "Cette application peut nécessiter vos gestes."
+                     : "This app may still need your actions.")
+            default:
+                EmptyView()
+            }
         }
     }
     private func prompt(_ kind: StepAppDetailKind) -> String {
