@@ -21,7 +21,7 @@ The installed app is MORE **0.1.1 (2026101630)**, ordinary bundle `com.gibouu.mo
 
 Only the signed UI-test runner was separately installed. Both acceptance runs used Xcode's documented `UseDestinationArtifacts=true` mode and the already installed target bundle. App paths and dependent products were removed from those plans, so the test driver could not reinstall the old 1622 app or replace MORE during testing. Ordinary app arguments and environment overrides were empty. No seeded workspace, StoreKit fixture, microphone, purchase, provider reauthorization or saved-routine execution was used.
 
-`OrdinaryConnectionsAcceptanceTests.test12ReadPrivateInstallationSupportCodeFromOrdinaryApp` passed in **27.764 seconds** and captured a fresh private support code from build 1630. Its unique server match differed from the earlier 1622 test12 identity. No installation identity, support code, bearer or signing value is published.
+`OrdinaryConnectionsAcceptanceTests.test12ReadPrivateInstallationSupportCodeFromOrdinaryApp` passed in **27.764 seconds** and captured a fresh private support code from build 1630. It selected the product's visible Debug developer entry and deferred optional setup prompts; no StoreKit entitlement, purchase or native grant was simulated. Its unique server match differed from the earlier 1622 test12 identity. No installation identity, support code, bearer or signing value is published.
 
 ## Targeted server activation
 
