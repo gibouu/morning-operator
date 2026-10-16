@@ -1,5 +1,16 @@
 # MORE: implementation and verification
 
+## Routine automation checkpoint — 16 October 2026
+
+Frozen build9d (`06f9848`) passes the closed synthetic three-moment native
+journey (1/1, 444.017s), including UI approval and durable pause/relaunch/reply
+uncertainty. Actual movie extraction on `003ba4a` passes, while semantic model
+learning remains unaccepted. The new attributed recap passes targeted package
+checks; its native replay and the long10 journey remain pending. The
+[QA ledger](ROUTINE-AUTOMATION-QA.md) records exact source/skip/artifact boundaries.
+This simulator evidence does not supersede physical installation records or
+establish ordinary-iPhone acoustic/provider acceptance.
+
 **Verified physical checkpoint before final-main delivery: MORE 0.1.0 (1522), app source `a5eaff1`, 15 October 2026, from PR [#170](https://github.com/gibouu/morning-operator/pull/170).** Signed build, deep/strict verification, in-place installation and ordinary launch passed on the connected iPhone 17 / iOS 27.2; post-install version and running-process queries confirmed the new app. No fixture arguments, uninstall or data reset were used. Physical visual acceptance remains with the owner. The PR targets `main` and includes the current connection work. The latest merge/final-install checkpoint is recorded in [#171](https://github.com/gibouu/morning-operator/issues/171).
 
 ## WeatherKit account activation and owner handoff — 15 October 2026

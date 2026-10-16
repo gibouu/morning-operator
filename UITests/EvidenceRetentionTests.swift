@@ -142,7 +142,7 @@ final class EvidenceRetentionTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--light-preview",
             "--ui-testing-workspace=\(UUID().uuidString)", "--ui-testing-retention-fixture"] + extra
-        app.launch()
+        MorningUITestNavigation.launch(app)
         return app
     }
 

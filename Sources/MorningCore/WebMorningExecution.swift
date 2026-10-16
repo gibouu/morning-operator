@@ -7,21 +7,21 @@ public enum WebMorningBehavior: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .browseFeed: String(localized: "Browse the feed", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .watchVideos: String(localized: "Watch videos", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .watchStories: String(localized: "Watch stories", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .readHeadlines: String(localized: "Read headlines aloud", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .readUnread: String(localized: "Read visible unread information", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .browseFeed: AppLanguage.localized("Browse the feed", bundle: .module)
+        case .watchVideos: AppLanguage.localized("Watch videos", bundle: .module)
+        case .watchStories: AppLanguage.localized("Watch stories", bundle: .module)
+        case .readHeadlines: AppLanguage.localized("Read headlines aloud", bundle: .module)
+        case .readUnread: AppLanguage.localized("Read visible unread information", bundle: .module)
         }
     }
 
     public var behaviorDescription: String {
         switch self {
-        case .browseFeed: String(localized: "MORE reads visible posts and scrolls through your feed at a gentle pace.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .watchVideos: String(localized: "MORE opens the video feed and moves to the next video after each viewing moment.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .watchStories: String(localized: "MORE opens your stories and advances through the visible stories.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .readHeadlines: String(localized: "MORE reads the visible headlines and continues through the page.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .readUnread: String(localized: "MORE reads the unread information visible in this browser.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .browseFeed: AppLanguage.localized("MORE reads visible posts and scrolls through your feed at a gentle pace.", bundle: .module)
+        case .watchVideos: AppLanguage.localized("MORE opens the video feed and moves to the next video after each viewing moment.", bundle: .module)
+        case .watchStories: AppLanguage.localized("MORE opens your stories and advances through the visible stories.", bundle: .module)
+        case .readHeadlines: AppLanguage.localized("MORE reads the visible headlines and continues through the page.", bundle: .module)
+        case .readUnread: AppLanguage.localized("MORE reads the unread information visible in this browser.", bundle: .module)
         }
     }
 
@@ -170,12 +170,19 @@ public struct WebMorningExecutionEvent: Sendable, Equatable {
     }
 }
 
+/// A volatile observed page gate, never an inferred subscription or permission.
+/// Kept separate from an article refusal because no article may be open yet.
+public enum WebPageAccessRefusal: String, Decodable, Sendable, Equatable {
+    case consentRequired
+}
+
 public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
     public enum Status: String, Decodable, Sendable { case ready, loading, signin, choice, empty, unavailable }
     public let status: Status
     public let fingerprint: String?
     public let contentID: String?
     public let text: [String]?
+    public let articles: [WebArticleLink]?
     public let liked: Bool?
     public let canLike: Bool?
     public let canAdvance: Bool?
@@ -183,6 +190,7 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
     public let mediaPlaying: Bool?
     public let scrollOffset: Double?
     public let consentCanDismiss: Bool?
+    public let pageAccessRefusal: WebPageAccessRefusal?
     /// Fixed diagnostic code only; never page or account content.
     public let reason: String?
 
@@ -192,8 +200,11 @@ public struct WebMorningPageObservation: Decodable, Sendable, Equatable {
               (result.fingerprint?.count ?? 0) <= 128, (result.contentID?.count ?? 0) <= 512,
               (result.storyRoute?.count ?? 0) <= 512,
               result.reason.map({ ["expired", "origin", "hidden"].contains($0) }) != false,
+              result.pageAccessRefusal == nil || result.status == .choice,
               result.scrollOffset.map({ $0.isFinite && $0 >= 0 && $0 <= 100_000_000 }) != false,
               (result.text?.count ?? 0) <= 5,
+              (result.articles?.count ?? 0) <= 5,
+              result.articles?.allSatisfy({ !$0.title.isEmpty && $0.title.count <= 240 && $0.href.absoluteString.utf8.count <= 2_048 }) != false,
               result.text?.allSatisfy({ !$0.isEmpty && $0.count <= 600 }) != false,
               result.status != .ready || result.fingerprint?.isEmpty == false else { return nil }
         return result
@@ -246,7 +257,8 @@ public struct WebMorningLikeJournal: Sendable {
 }
 
 public enum WebMorningExecutionPolicy {
-    public static func permits(site: WebMorningSite, url: URL?) -> Bool {
+    public static func permits(site: WebMorningSite, url: URL?, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+        if let syntheticNews { return site == .news && syntheticNews.permits(url) }
         guard let url, WebMorningSite(url: url) == site, !WebMorningPolicy.isSignInPage(url), site != .gmail else { return false }
         return true
     }
@@ -265,10 +277,17 @@ public enum WebMorningExecutionPolicy {
     /// no page text is evaluated and no arbitrary selector or script is accepted.
     public static func script(site: WebMorningSite, behavior: WebMorningBehavior,
                               command: String = "observe", fingerprint: String? = nil,
-                              likesAllowed: Bool = false, expiresAt: Date = Date().addingTimeInterval(2)) -> String {
+                              likesAllowed: Bool = false, expiresAt: Date = Date().addingTimeInterval(2),
+                              syntheticNews: SyntheticNewsOrigin? = nil) -> String {
         guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
             return "JSON.stringify({status:'unavailable'})"
         }
+        if syntheticNews != nil && (site != .news || behavior != .readHeadlines) {
+            return "JSON.stringify({status:'unavailable'})"
+        }
+        let originCheck = syntheticNews?.javascriptPermits("location") ??
+            "(location.protocol==='https:' && \(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) && (!location.port || location.port==='443') && !location.username && !location.password)"
+        let articleCheck = syntheticNews?.javascriptPermits("u") ?? "(u.protocol==='https:' && u.origin===location.origin && !u.username && !u.password)"
         let selectors: [String]
         switch site {
         case .instagram: selectors = behavior == .watchStories ? ["[role=dialog] video", "[role=dialog] img[alt]", "main video"] : ["article", "main video"]
@@ -286,9 +305,7 @@ public enum WebMorningExecutionPolicy {
         (() => {
           const out = x => JSON.stringify(x), command = \#(json(command)), expected = \#(json(fingerprint));
           if (command !== 'observe' && Date.now() > \#(Int(expiresAt.timeIntervalSince1970 * 1000))) return out({status:'unavailable',reason:'expired'});
-          if (window.top !== window || location.protocol !== 'https:' ||
-              !\#(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) ||
-              location.port && location.port !== '443' || location.username || location.password) return out({status:'unavailable',reason:'origin'});
+          if (window.top !== window || !\#(originCheck)) return out({status:'unavailable',reason:'origin'});
           if (\#(json(WebMorningPolicy.signInPathFragments)).some(p => (location.pathname.toLowerCase() + '/').includes(p))) return out({status:'signin'});
           if (document.hidden) return out({status:'loading',reason:'hidden'});
           const parent = e => e?.assignedSlot || e?.parentElement || e?.getRootNode?.().host || null;
@@ -363,11 +380,52 @@ public enum WebMorningExecutionPolicy {
             consent.click(); return out({status:'dispatched'});
           }
           if (consent) return out({status:'loading',fingerprint:'consent',consentCanDismiss:true});
-          const choiceLabels=all(document,['button','a','[role=button]']).filter(visible)
-            .map(e=>clean(e.getAttribute('aria-label')||e.innerText).toLowerCase());
+          const choiceControls=all(document,['button','a','[role=button]']).filter(visible);
+          const choiceName=e=>clean(e.getAttribute('aria-label')||e.innerText).toLowerCase();
+          const choiceLabels=choiceControls.map(choiceName);
           const accepts=choiceLabels.some(t=>['accepter et continuer','accept and continue','accepter les cookies','tout accepter','accept all','accept all cookies'].includes(t));
           const personalChoice=choiceLabels.some(t=>["s’abonner","s'abonner",'subscribe','se connecter','sign in','paramétrer','manage preferences','personnaliser mes choix'].includes(t));
-          if (accepts && personalChoice) return out({status:'choice'});
+          if (accepts && personalChoice) {
+            // The observed Le Monde wall offers consent or a subscription, not
+            // a free decline. Never choose either. Names on unrelated controls
+            // do not establish this gate: require one visible common panel and
+            // its actually visible cookie/consent text, not background body text.
+            const panelLike=e=>{
+              const role=e.getAttribute?.('role'), modal=e.getAttribute?.('aria-modal');
+              const identity=[e.localName,e.getAttribute?.('id'),e.getAttribute?.('class')].filter(Boolean).join(' ');
+              if(['body','html','main','header','nav','footer','article'].includes(e.localName) ||
+                ['main','navigation','banner','contentinfo'].includes(role) || e.querySelector?.('main,[role=main],article'))return false;
+              return role==='dialog' || modal==='true' || ['dialog','faceplate-dialog','faceplate-modal'].includes(e.localName) ||
+                /cookie|consent|didomi/i.test(identity);
+            };
+            const hasVisibleConsentText=panel=>{
+              if(typeof document.createTreeWalker!=='function')return false;
+              const walker=document.createTreeWalker(panel,4); // SHOW_TEXT, without reading form values.
+              let node, scanned=0, characters=0, cookie=false, consent=false;
+              while((node=walker.nextNode()) && ++scanned<=1024){
+                const owner=node.parentElement;
+                if(!owner || !visible(owner) || owner.closest?.('script,style,nav,header,footer,form,input,textarea,[role=navigation]'))continue;
+                const text=clean(node.nodeValue).toLowerCase();
+                characters+=text.length;if(characters>20000)return false;
+                cookie ||= /\bcookies?\b/u.test(text);
+                consent ||= /\bconsentement\b|\bconsent\b/u.test(text);
+                if(cookie && consent)return true;
+              }
+              return false;
+            };
+            const commonConsentPanel=(accept,subscribe)=>{
+              for(let e=parent(accept),depth=0;e && depth<16;depth++,e=parent(e)){
+                if(e===document.body || e===document.documentElement)return false;
+                if(composedContains(e,subscribe) && panelLike(e) && visible(e) && hasVisibleConsentText(e))return true;
+              }
+              return false;
+            };
+            const observedConsent=\#(json(site.rawValue))==='news' &&
+              choiceControls.filter(e=>choiceName(e)==='accepter et continuer').some(accept=>
+                choiceControls.filter(e=>["s’abonner","s'abonner"].includes(choiceName(e)))
+                  .some(subscribe=>commonConsentPanel(accept,subscribe)));
+            return out(observedConsent ? {status:'choice',pageAccessRefusal:'consentRequired'} : {status:'choice'});
+          }
           const sameRoute = href => { try { const u=new URL(href, location.href); return u.protocol==='https:' && \#(json(site.table.allowedHosts.sorted())).includes(u.hostname.toLowerCase()) && !u.username && !u.password && (!u.port || u.port==='443') && !\#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) ? u.pathname : null; } catch (_) { return null; } };
           const behavior = \#(json(behavior.rawValue)), site = \#(json(site.rawValue));
           let nodes = [...new Set(all(document, \#(json(selectors))).filter(visible))];
@@ -384,6 +442,7 @@ public enum WebMorningExecutionPolicy {
             return out({status:document.querySelector('[aria-busy=true],[role=progressbar]') ? 'loading' : 'empty'});
           }
           nodes.sort((a,b)=>Math.abs(a.getBoundingClientRect().top+a.getBoundingClientRect().height/2-innerHeight/2)-Math.abs(b.getBoundingClientRect().top+b.getBoundingClientRect().height/2-innerHeight/2));
+          if(site==='news')nodes.sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top);
           let item = nodes[0];
           const readable = e => {
             const own=clean(e.innerText || e.textContent);
@@ -417,6 +476,20 @@ public enum WebMorningExecutionPolicy {
           scroller=scroller && scroller!==document.body && scroller!==document.documentElement ? scroller : document.scrollingElement;
           const canScroll=!!scroller && scroller.scrollTop+scroller.clientHeight<scroller.scrollHeight-2;
           const result = {status:'ready',fingerprint,contentID,mediaPlaying:video ? !video.paused && video.readyState>=2 : null,liked:!!likedButton,canLike:!!likeButton && !!contentID,scrollOffset:scroller?.scrollTop ?? 0,canAdvance:!!next || behavior!=='watchStories' && canScroll,text:behavior==='readHeadlines' ? nodes.slice(0,5).map(e=>clean(e.innerText||e.textContent).slice(0,600)).filter(Boolean) : text ? [text] : []};
+          if(site==='news' && behavior==='readHeadlines'){
+            const articles=[], seen=new Set();
+            for(const e of nodes){
+              const a=e.closest('a[href]') || e.querySelector('a[href]');
+              if(!a || a.hasAttribute('download'))continue;
+              let u;try{u=new URL(a.href,location.href);}catch(_){continue;}
+              const title=clean(e.innerText||e.textContent).slice(0,240);
+              if(!title || !\#(articleCheck) ||
+                u.href.split('#')[0]===location.href.split('#')[0] || /\.(pdf|zip|epub|mp3|mp4)$/i.test(u.pathname) ||
+                \#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) || seen.has(u.href))continue;
+              seen.add(u.href);articles.push({title,href:u.href});if(articles.length===5)break;
+            }
+            result.articles=articles;
+          }
           if (command==='observe') return out(result);
           if (expected!==fingerprint) return out({status:'unavailable'});
           if (command==='play') {

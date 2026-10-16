@@ -979,8 +979,12 @@ private final class JuryDemoAudioOutput {
         engine.attach(player)
         // Voice processing uses the same format for both I/O nodes. Build this
         // path before engine.start; decoded speech never reconnects the graph.
+        #if compiler(>=6.4)
         if #available(iOS 27.0, *) { try engine.connectNode(player, to: engine.outputNode, format: format) }
         else { engine.connect(player, to: engine.outputNode, format: format) }
+        #else
+        engine.connect(player, to: engine.outputNode, format: format)
+        #endif
     }
 
     func play(data: Data, id: UUID, completion: @escaping @MainActor () -> Void) throws -> TimeInterval {

@@ -12,7 +12,7 @@ final class MorningNotificationDelegate: NSObject, UIApplicationDelegate, UNUser
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         let start = UNNotificationAction(identifier: MorningInvitationService.startActionIdentifier,
-            title: String(localized: "Start morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), options: [.foreground, .authenticationRequired])
+            title: AppLanguage.localized("Start morning"), options: [.foreground, .authenticationRequired])
         let category = UNNotificationCategory(identifier: MorningInvitationService.categoryIdentifier,
             actions: [start], intentIdentifiers: [])
         let learning = UNNotificationCategory(identifier: MorningInvitationService.learningReminderCategoryIdentifier,

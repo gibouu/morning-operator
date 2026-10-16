@@ -12,6 +12,7 @@ struct GmailMorningTests {
     private let client = "123456789-synthetic.apps.googleusercontent.com"
     private let scheme = "com.googleusercontent.apps.123456789-synthetic"
     private let state = String(repeating: "s", count: 43)
+    private var attentionUnavailable: GmailAttentionService { .init(generator: { _ in throw GmailAttentionError.unavailable }, available: { false }) }
 
     @Test func languagePresentationChangeKeepsLiteralDraftAndRequiresNewReviewWithoutSending() async throws {
         let context = Context(); defer { context.cleanup() }
@@ -143,7 +144,7 @@ struct GmailMorningTests {
         try service.saveConnection(session: await access(service), generation: nil)
         let conversation = GmailMorningConversation(service: service,
             selfDrafts: GmailSelfMessageDraftService(generator: { _ in Issue.record("Literal text must avoid model"); return "{}" }, available: { false }),
-            privacy: context.privacy, speak: { _ in })
+            attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         #expect(conversation.state == .choosingMailAction && conversation.canComposeSelfMessage)
@@ -202,7 +203,7 @@ struct GmailMorningTests {
         try service.saveConnection(session: await access(service), generation: nil)
         let conversation = GmailMorningConversation(service: service,
             selfDrafts: GmailSelfMessageDraftService(generator: { _ in "{}" }, available: { false }),
-            privacy: context.privacy, speak: { _ in })
+            attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         let pending = Task { await conversation.beginSelfMessage(intention: "objet «Test MORE» texte «Exact body»", context: id) }
@@ -360,11 +361,11 @@ struct GmailMorningTests {
             return prompts.count == 1 ? "Invented draft reply." : "Invented revised reply."
         })
         var spoken: [String] = []
-        let conversation = GmailMorningConversation(service: service, drafts: drafts, privacy: context.privacy, speak: { spoken.append($0) })
+        let conversation = GmailMorningConversation(service: service, drafts: drafts, attention: attentionUnavailable, privacy: context.privacy, speak: { spoken.append($0) })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         #expect(conversation.state == .askingToReply && conversation.recipient == "sender@example.invalid")
-        #expect(conversation.summary.range(of: "Urgent invented deadline")!.lowerBound < conversation.summary.range(of: "Invented hello")!.lowerBound)
+        #expect(conversation.summary.range(of: "Invented hello")!.lowerBound < conversation.summary.range(of: "Urgent invented deadline")!.lowerBound)
         await conversation.respond("oui", context: id)
         #expect(conversation.state == .askingForIntention)
         await conversation.respond("Dis que je suis disponible demain", context: id)
@@ -394,7 +395,7 @@ struct GmailMorningTests {
         }
         try service.saveConnection(session: await access(service), generation: nil)
         let drafts = GmailReplyDraftService(generator: { _ in "Never generated" }, availability: { "Synthetic unavailable" })
-        let conversation = GmailMorningConversation(service: service, drafts: drafts, privacy: context.privacy, speak: { _ in })
+        let conversation = GmailMorningConversation(service: service, drafts: drafts, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         await conversation.respond("oui", context: id)
@@ -505,7 +506,7 @@ struct GmailMorningTests {
         }
         try service.saveConnection(session: await access(service), generation: nil)
         let drafts = GmailReplyDraftService(generator: { _ in draftsPrepared += 1; return "Invented draft \(draftsPrepared)." })
-        let conversation = GmailMorningConversation(service: service, drafts: drafts, privacy: context.privacy, speak: { _ in })
+        let conversation = GmailMorningConversation(service: service, drafts: drafts, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         await conversation.respond("oui", context: id)
@@ -543,7 +544,7 @@ struct GmailMorningTests {
                 return response(request, ["resultSizeEstimate": 0])
             }
             try service.saveConnection(session: await access(service), generation: nil)
-            let conversation = GmailMorningConversation(service: service, privacy: context.privacy, speak: { _ in })
+            let conversation = GmailMorningConversation(service: service, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
             let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
             await conversation.begin(context: id, generation: nil)
             if failReading {
@@ -576,7 +577,7 @@ struct GmailMorningTests {
             }
             try service.saveConnection(session: await access(service), generation: nil)
             let conversation = GmailMorningConversation(service: service,
-                drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), privacy: context.privacy,
+                drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), attention: attentionUnavailable, privacy: context.privacy,
                 speak: { text in
                     if receiptConfirmed && posts == 1 { await withCheckedContinuation { release = $0 } }
                 })
@@ -612,7 +613,7 @@ struct GmailMorningTests {
         try service.saveConnection(session: await access(service), generation: nil)
         var questions: [String] = [], sources: [String] = [], spoken: [String] = []
         let conversation = GmailMorningConversation(service: service,
-            drafts: GmailReplyDraftService(generator: { _ in draftCount += 1; return "Invented draft \(draftCount)." }), privacy: context.privacy,
+            drafts: GmailReplyDraftService(generator: { _ in draftCount += 1; return "Invented draft \(draftCount)." }), attention: attentionUnavailable, privacy: context.privacy,
             answer: { question, source in questions.append(question); sources.append(source); return "Invented source-based answer. Quoted word: envoie." },
             speak: { spoken.append($0) })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
@@ -621,7 +622,7 @@ struct GmailMorningTests {
         await conversation.respond("Pourquoi celui-ci ?", context: id)
         await conversation.respond("Que dit le deuxième mail ?", context: id)
         #expect(questions.count == 2 && conversation.state == .askingToReply && conversation.recipient == recipient)
-        let selectionExplanation = AppLanguage.isFrench ? "mentions d’urgence ou d’échéance" : "mentioning urgency or a deadline"
+        let selectionExplanation = AppLanguage.isFrench ? "Aucun classement d’importance personnalisé" : "There is no personalized importance ranking"
         #expect(sources.allSatisfy { $0.count <= 8_000 && $0.contains("untrusted source data") && $0.contains("Invented meeting Monday") && $0.contains(selectionExplanation) })
         #expect(posts == 0 && draftCount == 0)
         await conversation.respond("oui", context: id)
@@ -649,7 +650,7 @@ struct GmailMorningTests {
         }
         try service.saveConnection(session: await access(service), generation: nil)
         let conversation = GmailMorningConversation(service: service,
-            drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), privacy: context.privacy, speak: { _ in })
+            drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: id, generation: nil)
         await conversation.respond("oui", context: id)
@@ -670,7 +671,7 @@ struct GmailMorningTests {
         }
         try service.saveConnection(session: await access(service), generation: nil)
         var release: CheckedContinuation<String, Never>?, spoken: [String] = []
-        let conversation = GmailMorningConversation(service: service, privacy: context.privacy,
+        let conversation = GmailMorningConversation(service: service, attention: attentionUnavailable, privacy: context.privacy,
             answer: { _, _ in await withCheckedContinuation { release = $0 } }, speak: { spoken.append($0) })
         let old = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await conversation.begin(context: old, generation: nil)
@@ -684,7 +685,7 @@ struct GmailMorningTests {
         #expect(!spoken.contains("Stale private answer.") && conversation.context == replacement && conversation.state == .askingToReply)
 
         let unavailable = GmailMorningConversation(service: service,
-            drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), privacy: context.privacy,
+            drafts: GmailReplyDraftService(generator: { _ in "Invented draft." }), attention: attentionUnavailable, privacy: context.privacy,
             answer: { _, _ in throw MorningVoiceConversationError.unavailable }, speak: { spoken.append($0) })
         await unavailable.begin(context: replacement, generation: nil)
         await unavailable.respond("oui", context: replacement)
@@ -711,7 +712,7 @@ struct GmailMorningTests {
             }
             try service.saveConnection(session: await access(service), generation: nil)
             let mail = GmailMorningConversation(service: service,
-                drafts: GmailReplyDraftService(generator: { _ in "Exact older reply." }), privacy: context.privacy,
+                drafts: GmailReplyDraftService(generator: { _ in "Exact older reply." }), attention: attentionUnavailable, privacy: context.privacy,
                 speak: { spoken.append($0) })
             let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
             await mail.begin(context: id, generation: nil)
@@ -744,7 +745,7 @@ struct GmailMorningTests {
             return response(request, ["resultSizeEstimate": 0])
         }
         try service.saveConnection(session: await access(service), generation: nil)
-        let mail = GmailMorningConversation(service: service, privacy: context.privacy, speak: { _ in
+        let mail = GmailMorningConversation(service: service, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in
             if interruptReview { throw CancellationError() }
         })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
@@ -776,7 +777,7 @@ struct GmailMorningTests {
             return response(request, ["resultSizeEstimate": 0])
         }
         try service.saveConnection(session: await access(service), generation: nil)
-        let mail = GmailMorningConversation(service: service, privacy: context.privacy, speak: { _ in })
+        let mail = GmailMorningConversation(service: service, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await mail.begin(context: id, generation: nil)
         await mail.beginSelfMessage(intention: "objet «Test MORE» texte «Exact body»", context: id)
@@ -801,7 +802,7 @@ struct GmailMorningTests {
         }
         try service.saveConnection(session: await access(service), generation: nil)
         let mail = GmailMorningConversation(service: service,
-            drafts: GmailReplyDraftService(generator: { _ in "Exact retained draft." }), privacy: context.privacy, speak: { _ in })
+            drafts: GmailReplyDraftService(generator: { _ in "Exact retained draft." }), attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await mail.begin(context: id, generation: nil)
         await mail.respond("oui", context: id)
@@ -843,7 +844,7 @@ struct GmailMorningTests {
             return response(request, ["resultSizeEstimate": 0])
         }
         try service.saveConnection(session: await access(service), generation: nil)
-        let mail = GmailMorningConversation(service: service, privacy: context.privacy, speak: { _ in })
+        let mail = GmailMorningConversation(service: service, attention: attentionUnavailable, privacy: context.privacy, speak: { _ in })
         let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
         await mail.begin(context: id, generation: nil)
         await mail.beginSelfMessage(intention: "objet «Test MORE» texte «Exact body»", context: id)
@@ -868,6 +869,90 @@ struct GmailMorningTests {
         func validateDestination(_ destination: NativeMomentDestination) throws {}
         func upcomingReminders() async throws -> [ReminderSummary] { [] }
         func perform(_ action: NativeMomentAction) throws -> String { "synthetic-native-receipt" }
+    }
+
+    @Test func semanticSelectionKeepsObservedIdentityAndOwnerCanChooseAnotherReadMailWithoutFetchingOrSending() async throws {
+        let context = Context(); defer { context.cleanup() }
+        var reads = 0, posts = 0
+        let service = makeService(context) { request in
+            if request.url?.host == "oauth2.googleapis.com" { return response(request, token()) }
+            if request.httpMethod == "POST" { posts += 1; return response(request, ["id": "sent123"]) }
+            reads += 1
+            if request.url?.path.hasSuffix("/messages") == true { return response(request, ["messages": (1...5).map { ["id": "m\($0)"] }]) }
+            let id = request.url!.lastPathComponent
+            var result = object(id, subject: "Same invented subject", body: "Invented readable source for \(id).")
+            var payload = result["payload"] as! [String: Any]
+            payload["headers"] = [["name": "From", "value": "Same invented name <\(id)@example.invalid>"],
+                                  ["name": "Subject", "value": "Same invented subject"],
+                                  ["name": "Message-ID", "value": "<\(id)@example.invalid>"]]
+            result["payload"] = payload
+            return response(request, result)
+        }
+        try service.saveConnection(session: await access(service), generation: nil)
+        let attention = GmailAttentionService(generator: { _ in
+            let rows = ["m5", "m2", "m4"].map { ["id": $0, "summary": "Invented source summary.", "reason": "A tentative project request.", "quote": "Invented readable source"] }
+            return String(decoding: try JSONSerialization.data(withJSONObject: ["messages": rows]), as: UTF8.self)
+        })
+        let mail = GmailMorningConversation(service: service, drafts: .init(generator: { _ in "Invented draft." }), attention: attention,
+            privacy: context.privacy, speak: { _ in })
+        let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
+        await mail.begin(context: id, generation: nil)
+        #expect(mail.attentionSelection?.mode == .localProposal && mail.messageChoices.map(\.id) == ["m5", "m2", "m4", "m1", "m3"])
+        #expect(mail.recipient == "m5@example.invalid")
+        await mail.respond("oui", context: id); await mail.respond("Invented intention", context: id)
+        #expect(mail.state == .reviewingReply && !mail.draftText.isEmpty)
+        let readCount = reads
+        await mail.chooseMessage(id: "not-observed", context: id)
+        #expect(mail.recipient == "m5@example.invalid" && !mail.draftText.isEmpty)
+        await mail.chooseMessage(id: "m3", context: id)
+        #expect(mail.selectedMessageID == "m3" && mail.recipient == "m3@example.invalid" && mail.draftText.isEmpty)
+        #expect(reads == readCount && posts == 0 && mail.state == .askingToReply)
+        await mail.respond("envoie", context: id)
+        #expect(posts == 0 && mail.state == .askingToReply)
+        mail.clear()
+        #expect(mail.messageChoices.isEmpty && mail.attentionSelection == nil)
+    }
+
+    @Test func lateAttentionAfterPauseClearForgetOrDisconnectCannotPublishOldMail() async throws {
+        for interruption in ["pause", "clear", "forget", "disconnect"] {
+            let context = Context(); defer { context.cleanup() }
+            let service = makeService(context) { request in
+                if request.url?.host == "oauth2.googleapis.com" { return response(request, token()) }
+                if request.url?.path.hasSuffix("/messages") == true { return response(request, ["messages": [["id": "a1"]]]) }
+                return response(request, object("a1", subject: "Invented subject", body: "Invented readable source."))
+            }
+            try service.saveConnection(session: await access(service), generation: nil)
+            var release: CheckedContinuation<String, Never>?
+            let attention = GmailAttentionService(generator: { _ in await withCheckedContinuation { release = $0 } })
+            let mail = GmailMorningConversation(service: service, attention: attention, privacy: context.privacy, speak: { _ in })
+            let id = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
+            let beginning = Task { await mail.begin(context: id, generation: nil) }
+            while release == nil { await Task.yield() }
+            if interruption == "pause" { mail.cancel() }
+            else if interruption == "clear" { mail.clear() }
+            else if interruption == "forget" { _ = try context.privacy.beginForget(); mail.clear() }
+            else { try service.disconnect() }
+            release?.resume(returning: "{\"messages\":[{\"id\":\"a1\",\"summary\":\"Old summary\",\"reason\":\"Old reason\",\"quote\":\"Invented readable source\"}]}")
+            await beginning.value
+            #expect(mail.attentionSelection == nil && mail.messageChoices.isEmpty && mail.summary.isEmpty && mail.recipient == nil)
+        }
+    }
+
+    @Test func unreadableAttentionPreferencesKeepTheirBytesAndUseAnHonestFallback() async throws {
+        let context = Context(); defer { context.cleanup() }
+        let service = makeService(context) { request in
+            if request.url?.host == "oauth2.googleapis.com" { return response(request, token()) }
+            if request.url?.path.hasSuffix("/messages") == true { return response(request, ["messages": [["id": "a1"]]]) }
+            return response(request, object("a1", subject: "Invented subject", body: "Invented readable source."))
+        }
+        try service.saveConnection(session: await access(service), generation: nil)
+        let url = context.directory.appendingPathComponent(GmailAttentionPreferencesStore.fileName)
+        let bytes = Data("damaged preferences".utf8); try bytes.write(to: url)
+        let attention = GmailAttentionService(generator: { _ in Issue.record("Unreadable owner preferences must not be replaced or passed as empty"); return "{}" })
+        let mail = GmailMorningConversation(service: service, attention: attention, privacy: context.privacy, speak: { _ in })
+        await mail.begin(context: .init(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID()), generation: nil)
+        #expect(mail.attentionSelection?.fallback == .preferencesUnavailable && mail.state == .askingToReply)
+        #expect(try Data(contentsOf: url) == bytes)
     }
 
     private func makeService(_ context: Context, _ transport: @escaping GmailConnectionService.Transport) -> GmailConnectionService {

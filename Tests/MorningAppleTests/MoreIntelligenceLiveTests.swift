@@ -19,7 +19,7 @@ struct MoreIntelligenceLiveTests {
         let text = "Every morning I review my calendar, then read my email inbox."
         let acquisition = try ObservationAcquisition(importedAt: .now,
             observedDate: ObservationObservedDate(date: .now, timeZoneIdentifier: "Europe/Paris", provenance: .userAssigned),
-            origin: .human, sourceKind: .text, sourceLabel: "Synthetic live verification", originalText: text)
+            origin: .synthetic, sourceKind: .text, sourceLabel: "Synthetic live verification", originalText: text)
         let archive = try ObservationArchive(entries: [acquisition])
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [acquisition])
         let proposal = try await AppleIntelligenceService(model: model).propose(evidence: evidence,

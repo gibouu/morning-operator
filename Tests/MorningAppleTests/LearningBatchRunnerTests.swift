@@ -103,25 +103,56 @@ struct LearningBatchRunnerTests {
         #expect(chunks.joined().utf8.elementsEqual(text.utf8))
     }
 
-    @Test func serialRequestsReachLastSourceMergeRepeatedStepsAndRetainIndependentCitations() async throws {
+    @Test func serialRequestsReachEveryChunkAndRefuseTooManyDistinctSupports() async throws {
         let entries = try (0..<2).map { try source(String(repeating: sentence + "\n", count: 840), day: $0) }
         let prepared = try LearningEvidencePreparation.prepare(acquisitions: entries)
         var submitted: [UUID] = []
         var completed: [Int] = []
         var totals: [Int] = []
+        var submittedUnits: [PreparedLearningEvidenceUnit] = []
+        var submittedPrompts: [String] = []
         let results = try await LearningBatchRunner.run(evidence: prepared, progress: { done, total in
             completed.append(done); totals.append(total)
-        }) { batch, _ in
+        }) { batch, prompt in
             submitted += batch.map(\.id)
+            submittedUnits += batch
+            submittedPrompts.append(prompt)
             return try batch.map { try input($0, title: submitted.count.isMultiple(of: 2) ? "Review calendar" : " review CALENDAR ") }
         }
         #expect(submitted == prepared.units.map(\.id))
         #expect(completed == Array(0...prepared.modelRequestCount))
         #expect(totals.allSatisfy { $0 == prepared.modelRequestCount })
-        let proposal = try LearningEvidencePreparation.assemble(evidence: prepared, steps: results, preserving: nil)
+        #expect(submittedUnits == prepared.units)
+        #expect(submittedPrompts.map { Data($0.utf8) } == prepared.prompts.map { Data($0.utf8) })
+        #expect(submittedUnits.map(\.text).joined().utf8.elementsEqual(entries.map(\.originalText).joined().utf8))
+        #expect(results.flatMap(\.citations).map(\.unitID) == submitted)
+        // Every returned candidate is individually grounded, including the last
+        // chunk. That does not make distinct offsets one activity by title alone.
+        let citations = try results.flatMap { input in
+            try LearningEvidencePreparation.assemble(evidence: prepared, steps: [input], preserving: nil, at: now)
+                .support.flatMap(\.citations)
+        }
+        #expect(citations.count > 24)
+        #expect(Set(citations.map(\.startCharacterOffset)).count > 10)
+        #expect(Set(citations.map(\.acquisitionID)) == Set(entries.map(\.id)))
+        let last = try #require(prepared.units.last)
+        #expect(citations.contains { $0.acquisitionID == last.acquisitionID && $0.startCharacterOffset >= last.startCharacterOffset })
+        #expect(throws: RoutineEvidenceProposalError.tooManySteps) {
+            try LearningEvidencePreparation.assemble(evidence: prepared, steps: results, preserving: nil, at: now)
+        }
+    }
+
+    @Test func sharedSupportRetainsIndependentCitationsAndRoundTrips() throws {
+        let entries = try (0..<2).map { try source(sentence, day: $0) }
+        let prepared = try LearningEvidencePreparation.prepare(acquisitions: entries)
+        let inputs = try prepared.units.map { try input($0) }
+        // Exact duplicate inputs and independent byte-identical declarations
+        // genuinely share support; their original references must remain separate.
+        let repeated = inputs + (try prepared.units.map { try input($0, title: " review CALENDAR ") })
+        let proposal = try LearningEvidencePreparation.assemble(evidence: prepared, steps: repeated, preserving: nil, at: now)
         try #require(proposal.routine.steps.count == 1 && proposal.support.count == 1)
         let support = proposal.support[0]
-        #expect(support.citations.count > 24)
+        #expect(support.citations.count == 2)
         #expect(Set(support.citations.map(\.acquisitionID)) == Set(entries.map(\.id)))
         let last = try #require(prepared.units.last)
         #expect(support.citations.contains { $0.acquisitionID == last.acquisitionID && $0.startCharacterOffset >= last.startCharacterOffset })

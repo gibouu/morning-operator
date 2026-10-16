@@ -84,6 +84,13 @@ private struct MoreModelCredential: Codable, CustomStringConvertible, CustomDebu
     var debugDescription: String { description }
 }
 
+/// Closed composition for synthetic QA and explicitly local diagnostics.
+private struct MoreModelLocalOnlyStorage: MoreModelCredentialStorage {
+    func load() throws -> Data? { nil }
+    func save(_ data: Data) throws { throw MoreLanguageModelError.unavailable }
+    func clear() throws { }
+}
+
 private final class MoreModelNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
@@ -126,6 +133,36 @@ public final class MoreLanguageModel {
     /// Identifies the explicit route choice without exposing its credentials.
     public var configurationID: UUID { generation }
     @ObservationIgnored private var pending: [UUID: Task<String, any Error>] = [:]
+
+    /// Never reads Keychain or provisioning variables, and cannot enable a remote route.
+    /// A supplied workspace still participates in Forget invalidation.
+    public static func localOnly(directory: URL? = nil) -> MoreLanguageModel {
+        .init(storage: MoreModelLocalOnlyStorage(), transport: { _ in throw MoreLanguageModelError.unavailable },
+              localAvailable: Self.appleAvailable, localGenerate: Self.generateLocally, privacyEpoch: {
+                  guard let directory else { return nil }
+                  let state = try LocalDataControl(directory: directory).status()
+                  guard !state.forgetPending else { throw MoreLanguageModelError.unavailable }
+                  return state.generation
+              })
+    }
+
+    struct RequestContext: Equatable, Sendable {
+        let configurationID: UUID
+        let privacyEpoch: UUID?
+        let usesOpenAI: Bool
+    }
+
+    func requestContext() throws -> RequestContext {
+        try Task.checkCancellation()
+        guard !credentialStorageFailed else { throw MoreLanguageModelError.credentialStorageUnavailable }
+        return .init(configurationID: generation, privacyEpoch: try accessEpoch(), usesOpenAI: usesOpenAI)
+    }
+
+    func requireCurrent(_ context: RequestContext) throws {
+        try Task.checkCancellation()
+        do { guard try requestContext() == context else { throw CancellationError() } }
+        catch { throw CancellationError() }
+    }
 
     public convenience init() {
         self.init(storage: MoreModelKeychainStorage(), transport: Self.send,
@@ -208,10 +245,17 @@ public final class MoreLanguageModel {
     }
 
     public func generate(instructions: String, prompt: String, maximumResponseTokens: Int,
-                         schema: ComposioJSONValue? = nil) async throws -> String {
+                         schema: ComposioJSONValue? = nil, expectedConfigurationID: UUID? = nil,
+                         expectedPrivacyGeneration: UUID? = nil) async throws -> String {
         try Task.checkCancellation()
         guard !credentialStorageFailed else { throw MoreLanguageModelError.credentialStorageUnavailable }
+        if let expectedConfigurationID, expectedConfigurationID != generation { throw CancellationError() }
         let epoch = try accessEpoch()
+        // A pinned configuration also pins an absent privacy epoch. Forget may
+        // create the first epoch after the caller captured its source context.
+        if expectedConfigurationID != nil || expectedPrivacyGeneration != nil {
+            guard expectedPrivacyGeneration == epoch else { throw CancellationError() }
+        }
         guard instructions.utf8.count + prompt.utf8.count <= Self.maximumRequestBytes,
               maximumResponseTokens > 0, maximumResponseTokens <= 8_192 else {
             throw MoreLanguageModelError.inputTooLong
@@ -226,7 +270,8 @@ public final class MoreLanguageModel {
             let transport = transport
             task = Task { @MainActor in
                 do {
-                    guard try self.accessEpoch() == epoch else { throw CancellationError() }
+                    try Task.checkCancellation()
+                    guard self.generation == route, try self.accessEpoch() == epoch else { throw CancellationError() }
                     let (data, response) = try await transport(request)
                     try Task.checkCancellation()
                     return try Self.output(data: data, response: response)
@@ -242,7 +287,8 @@ public final class MoreLanguageModel {
             let generate = localGenerate
             task = Task { @MainActor in
                 do {
-                    guard try self.accessEpoch() == epoch else { throw CancellationError() }
+                    try Task.checkCancellation()
+                    guard self.generation == route, try self.accessEpoch() == epoch else { throw CancellationError() }
                     return try await generate(instructions, prompt, maximumResponseTokens)
                 }
                 catch is CancellationError { throw CancellationError() }

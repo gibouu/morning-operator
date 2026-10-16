@@ -24,8 +24,11 @@ struct SpeechCaptionProgress {
     private(set) var currentCaption: String?
     private(set) var revision: UInt = 0
     private var requestID: UUID?
+    private var originalText = ""
     private var passages: [(range: NSRange, text: String)] = []
     private var currentPassage: Int?
+    private var currentCaptionRange: NSRange?
+    private var nextDuplexPassage = 0
 
     static func chunks(_ text: String) throws -> [String] {
         try LearningTextChunker.split(text, maximumCharacters: 110, maximumUTF8Bytes: 800)
@@ -34,12 +37,13 @@ struct SpeechCaptionProgress {
     mutating func begin(_ text: String, requestID: UUID) {
         reset()
         self.requestID = requestID
+        originalText = text
         let chunks = (try? Self.chunks(text)) ?? []
         var offset = 0
         passages = chunks.map { chunk in
             let range = NSRange(location: offset, length: chunk.utf16.count)
             offset += range.length
-            return (range, chunk.trimmingCharacters(in: .whitespacesAndNewlines))
+            return (range, chunk)
         }
     }
 
@@ -51,16 +55,49 @@ struct SpeechCaptionProgress {
               let index = passages.firstIndex(where: { NSLocationInRange(range.location, $0.range) }),
               currentPassage.map({ index > $0 }) ?? true else { return }
         currentPassage = index
-        show(passages[index].text)
+        let text = passages[index].text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        currentCaptionRange = passages[index].range
+        show(text)
     }
 
     mutating func showChunk(_ text: String, requestID: UUID) {
         guard self.requestID == requestID else { return }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        // Duplex synthesizes these exact chunks in order, skipping whitespace.
+        // A mismatched callback cannot supply a guessed position in private text.
+        while nextDuplexPassage < passages.count,
+              passages[nextDuplexPassage].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            nextDuplexPassage += 1
+        }
+        if nextDuplexPassage < passages.count,
+           passages[nextDuplexPassage].text.utf8.elementsEqual(text.utf8) {
+            currentCaptionRange = passages[nextDuplexPassage].range
+            nextDuplexPassage += 1
+        } else {
+            currentCaptionRange = nil
+            nextDuplexPassage = passages.count
+        }
         show(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    /// Removes only an exact initial prefix, using the spoken passage's source
+    /// range even when that prefix crosses several chunks. Audio stays intact.
+    func caption(omittingInitialPrefix prefix: String) -> String? {
+        guard let currentCaption else { return nil }
+        guard !prefix.isEmpty, originalText.utf8.starts(with: prefix.utf8) else { return currentCaption }
+        guard let currentCaptionRange else { return nil }
+        let start = max(currentCaptionRange.location, prefix.utf16.count)
+        let end = NSMaxRange(currentCaptionRange)
+        guard start < end,
+              let range = Range(NSRange(location: start, length: end - start), in: originalText) else { return nil }
+        let text = originalText[range].trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
     mutating func reset() {
-        requestID = nil; passages.removeAll(); currentPassage = nil
+        requestID = nil; originalText = ""; passages.removeAll(); currentPassage = nil
+        currentCaptionRange = nil; nextDuplexPassage = 0
         if currentCaption != nil { currentCaption = nil; revision &+= 1 }
     }
 
@@ -110,6 +147,10 @@ public final class SpeechCoordinator: NSObject {
     /// Only the passage currently being spoken; never persisted as a transcript.
     public var currentCaption: String? { captionProgress.currentCaption }
     public var captionRevision: UInt { captionProgress.revision }
+    /// Display-only projection of the current spoken range; never changes TTS.
+    public func caption(omittingInitialPrefix prefix: String) -> String? {
+        captionProgress.caption(omittingInitialPrefix: prefix)
+    }
     public var usesDuplexPlayback: Bool { duplexOutput != nil }
     /// Only an installed voice in the app's language can become a persisted choice.
     /// This also repairs a saved English voice when the app is opened in French.

@@ -19,6 +19,7 @@ struct ObservationHistoryView: View {
     @ViewState<UUID?> private var proposalBeforeRequest = nil
     @ViewState<Date> private var screenTimeReferenceDate = Date()
     @ViewState<Set<String>?> private var includedScreenTimeApps = nil
+    @ViewState<Bool> private var showingPersonalChoices = true
 
     private var entries: [ObservationAcquisition] {
         store.observationArchive.entries
@@ -35,21 +36,25 @@ struct ObservationHistoryView: View {
         guard let screenTimeSelection else { return [] }
         return (try? LearningEvidencePreparation.screenTimeAppChoices(acquisitions: selectedEntries, selection: screenTimeSelection)) ?? []
     }
+    private var screenTimeReviewRevision: String? {
+        try? LearningEvidencePreparation.screenTimeSelectionReviewRevision(acquisitions: selectedEntries,
+            routine: store.routine, preferences: store.routinePreferences)
+    }
     private var holdsEntry: Bool { choosingMornings || confirmingClear || learnAfterProposalDismissal || editAfterProposalDismissal }
     private var selectionIssue: String? {
-        guard !selectedIDs.isEmpty else { return String(localized: "Choose one to five observations.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        guard selectedIDs.count <= 5 else { return String(localized: "Choose at most five observations for one update.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        guard selectedEntries.count == selectedIDs.count else { return String(localized: "A selected observation was removed. Clear the selection and choose again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if selectedEntries.contains(where: { eligibilityIssue($0) != nil }) { return String(localized: "Check the date, origin and notes of your selected observations.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        guard Set(selectedEntries.compactMap { $0.observedDate?.timeZoneIdentifier }).count == 1 else { return String(localized: "Choose observations from one time zone for this update.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        guard Set(selectedEntries.map { $0.origin.rawValue }).count == 1 else { return String(localized: "Choose personal mornings or samples separately.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        guard !selectedIDs.isEmpty else { return AppLanguage.localized("Choose one to five observations.") }
+        guard selectedIDs.count <= 5 else { return AppLanguage.localized("Choose at most five observations for one update.") }
+        guard selectedEntries.count == selectedIDs.count else { return AppLanguage.localized("A selected observation was removed. Clear the selection and choose again.") }
+        if selectedEntries.contains(where: { eligibilityIssue($0) != nil }) { return AppLanguage.localized("Check the date, origin and notes of your selected observations.") }
+        guard Set(selectedEntries.compactMap { $0.observedDate?.timeZoneIdentifier }).count == 1 else { return AppLanguage.localized("Choose observations from one time zone for this update.") }
+        guard Set(selectedEntries.map { $0.origin.rawValue }).count == 1 else { return AppLanguage.localized("Choose personal mornings or samples separately.") }
         return nil
     }
     private var selectionSummary: String {
         let days = Set(selectedEntries.compactMap { $0.observedDate?.dayKey }).count
-        let prefix = selectedEntries.first?.origin == .synthetic ? String(localized: "Sample update · ", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : ""
+        let prefix = selectedEntries.first?.origin == .synthetic ? AppLanguage.localized("Sample update · ") : ""
         let count = selectedIDs.count
-        return prefix + String(localized: "\(count) observations across \(days) dated days", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        return prefix + AppLanguage.localized("\(count) observations across \(days) dated days")
     }
 
     var body: some View {
@@ -146,6 +151,10 @@ struct ObservationHistoryView: View {
             screenTimeReferenceDate = Date()
             includedScreenTimeApps = nil
         }
+        .onChange(of: screenTimeReviewRevision) { _, _ in
+            screenTimeReferenceDate = Date()
+            includedScreenTimeApps = nil
+        }
         .sheet(isPresented: $showingProposal, onDismiss: {
             if editAfterProposalDismissal {
                 editAfterProposalDismissal = false
@@ -210,7 +219,7 @@ struct ObservationHistoryView: View {
                 finishSuggestionIfReady()
             } label: {
                 Label(dynamicTypeSize.isAccessibilitySize
-                      ? (AppLanguage.isFrench ? "Proposer" : "Suggest") : String(localized: "Suggest an update", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), systemImage: "sparkles")
+                      ? (AppLanguage.isFrench ? "Proposer" : "Suggest") : AppLanguage.localized("Suggest an update"), systemImage: "sparkles")
                     .frame(maxWidth: .infinity)
             }
             .accessibilityLabel("Suggest an update")
@@ -241,6 +250,28 @@ struct ObservationHistoryView: View {
                 ? "Choisissez les apps à ajouter comme moments distincts. Les séquences observées et vos rituels gardés restent dans le plan. Jusqu’à huit moments d’app peuvent être ajoutés."
                 : "Choose apps to add as separate moments. Observed sequences and your kept rituals stay in the plan. Up to eight app moments can be added.")
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+            if !store.routinePreferences.entries.isEmpty {
+                DisclosureGroup(AppLanguage.isFrench ? "Vos choix personnels conservés" : "Your saved personal choices",
+                    isExpanded: $showingPersonalChoices) {
+                    ForEach(store.routinePreferences.entries) { choice in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(choice.targetTitle).font(.raleway(.subheadline))
+                            Text(choice.presence == .keep ? (AppLanguage.isFrench ? "Garder" : "Keep")
+                                : choice.presence == .exclude ? (AppLanguage.isFrench ? "Exclure" : "Exclude")
+                                : (AppLanguage.isFrench ? "Durée personnalisée" : "Custom duration"))
+                                .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                            if let minutes = choice.durationMinutes ?? choice.retainedStep?.durationMinutes {
+                                Text(AppLanguage.isFrench ? "\(minutes) min conservées" : "\(minutes) min retained")
+                                    .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                            }
+                        }
+                    }
+                }.accessibilityIdentifier("observations.screenTime.personalChoices")
+                Text(AppLanguage.isFrench
+                    ? "Un ancien nom peut ne plus désigner une app connue. Relisez ces choix et les apps ci-dessous. Confirmer les apps de cette suggestion ne modifie aucun choix personnel et ne valide pas la routine."
+                    : "An earlier name may no longer identify a known app. Review these choices and the apps below. Confirming apps for this suggestion changes no personal choice and does not approve the routine.")
+                    .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+            }
             ForEach(screenTimeChoices.filter(\.isEligible)) { choice in
                 Toggle(isOn: Binding(get: { choice.isIncluded }, set: { included in
                     var ids = includedScreenTimeApps ?? Set(screenTimeChoices.filter { $0.isEligible && !$0.isAmbiguous }.map(\.id))
@@ -260,6 +291,18 @@ struct ObservationHistoryView: View {
                 }.disabled(store.busy || store.sessionActive || choice.isAmbiguous)
                     .accessibilityIdentifier("observations.screenTime.app.\(choice.id)")
             }
+            if screenTimeChoices.contains(where: { $0.isEligible && !$0.isAmbiguous }) {
+                Button(AppLanguage.isFrench ? "Confirmer les apps de cette suggestion" : "Confirm apps for this suggestion") {
+                    includedScreenTimeApps = Set(screenTimeChoices.filter { $0.isIncluded }.map(\.id))
+                }.disabled(store.busy || store.sessionActive)
+                    .accessibilityIdentifier("observations.screenTime.confirmApps")
+                if includedScreenTimeApps != nil {
+                    Text(AppLanguage.isFrench ? "Choix d’apps confirmé pour cette suggestion. La routine attend toujours votre validation."
+                        : "App choices confirmed for this suggestion. The routine still needs your approval.")
+                        .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                        .accessibilityIdentifier("observations.screenTime.appsConfirmed")
+                }
+            }
             if screenTimeChoices.contains(where: { !$0.isEligible }) {
                 DisclosureGroup(AppLanguage.isFrench ? "Apps conservées comme sources uniquement" : "Apps kept as sources only") {
                     Text(ScreenTimeAppMomentChoice.policyExplanation)
@@ -276,18 +319,18 @@ struct ObservationHistoryView: View {
     }
 
     private func eligibilityIssue(_ entry: ObservationAcquisition) -> String? {
-        if entry.observedDate == nil { return String(localized: "Set the observed day before using this observation.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if entry.origin == .unknown { return String(localized: "Confirm whether this is your morning or a sample.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if entry.origin == .automated { return String(localized: "Automated activity isn't used to learn a personal morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if entry.effectiveText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return String(localized: "Add readable notes before using this observation.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        if entry.observedDate == nil { return AppLanguage.localized("Set the observed day before using this observation.") }
+        if entry.origin == .unknown { return AppLanguage.localized("Confirm whether this is your morning or a sample.") }
+        if entry.origin == .automated { return AppLanguage.localized("Automated activity isn't used to learn a personal morning.") }
+        if entry.effectiveText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return AppLanguage.localized("Add readable notes before using this observation.") }
         return nil
     }
 
     private func compatibilityIssue(_ entry: ObservationAcquisition) -> String? {
         guard !selectedIDs.contains(entry.id), let first = selectedEntries.first else { return nil }
-        if first.origin != entry.origin { return String(localized: "Choose personal mornings and samples separately.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if first.observedDate?.timeZoneIdentifier != entry.observedDate?.timeZoneIdentifier { return String(localized: "Choose observations from the same time zone.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if selectedIDs.count >= 5 { return String(localized: "Five observations selected; remove one to choose another.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        if first.origin != entry.origin { return AppLanguage.localized("Choose personal mornings and samples separately.") }
+        if first.observedDate?.timeZoneIdentifier != entry.observedDate?.timeZoneIdentifier { return AppLanguage.localized("Choose observations from the same time zone.") }
+        if selectedIDs.count >= 5 { return AppLanguage.localized("Five observations selected; remove one to choose another.") }
         return nil
     }
 
@@ -423,12 +466,12 @@ struct ObservationHistoryDetail: View {
                         .disabled(store.busy || store.sessionActive)
                         .accessibilityIdentifier("observation.edit")
                     DisclosureGroup("Current notes") {
-                        Text(entry.effectiveText.isEmpty ? String(localized: "No notes saved.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : entry.effectiveText)
+                        Text(entry.effectiveText.isEmpty ? AppLanguage.localized("No notes saved.") : entry.effectiveText)
                             .textSelection(.enabled).font(.raleway(.subheadline))
                             .accessibilityIdentifier("observation.currentText")
                     }
                     DisclosureGroup("Original extracted text") {
-                        Text(entry.originalText.isEmpty ? String(localized: "No original text was retained.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : entry.originalText)
+                        Text(entry.originalText.isEmpty ? AppLanguage.localized("No original text was retained.") : entry.originalText)
                             .textSelection(.enabled).font(.raleway(.subheadline))
                             .accessibilityIdentifier("observation.originalText")
                     }
@@ -602,7 +645,7 @@ private struct ObservationTimeZonePicker: View {
 }
 
 private func observationDateLabel(_ entry: ObservationAcquisition) -> String {
-    guard let value = entry.observedDate else { return String(localized: "Date needed", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+    guard let value = entry.observedDate else { return AppLanguage.localized("Date needed") }
     let formatter = DateFormatter()
     formatter.locale = AppLanguage.locale
     formatter.dateStyle = .medium
@@ -614,15 +657,15 @@ private func observationDateLabel(_ entry: ObservationAcquisition) -> String {
 
 private func observationOriginLabel(_ origin: ObservationAcquisitionOrigin) -> String {
     switch origin {
-    case .human: String(localized: "My morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .synthetic: String(localized: "Sample or test", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .automated: String(localized: "Automated activity", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .unknown: String(localized: "Origin unsure", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+    case .human: AppLanguage.localized("My morning")
+    case .synthetic: AppLanguage.localized("Sample or test")
+    case .automated: AppLanguage.localized("Automated activity")
+    case .unknown: AppLanguage.localized("Origin unsure")
     }
 }
 
 private func observationImportDateLabel(_ entry: ObservationAcquisition) -> String {
-    entry.importedAt?.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.locale)) ?? String(localized: "Import date unknown", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+    entry.importedAt?.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.locale)) ?? AppLanguage.localized("Import date unknown")
 }
 
 private func observationRecordingStartLabel(_ context: ObservationRecordingContext) -> String {
@@ -637,10 +680,10 @@ private func observationRecordingStartLabel(_ context: ObservationRecordingConte
 
 private func observationClassificationLabel(_ status: ObservationContextInferenceStatus) -> String {
     switch status {
-    case .completed: String(localized: "Screen interpretation saved; unclear samples remain unknown.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .noEligibleFrames: String(localized: "No samples have enough complete text to recognize a screen.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .unavailable: String(localized: "Screen interpretation unavailable; original evidence is retained.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .partialFailure: String(localized: "Some screen interpretations failed; those samples remain unknown.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-    case .failed: String(localized: "Screen interpretation failed; original evidence is retained.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+    case .completed: AppLanguage.localized("Screen interpretation saved; unclear samples remain unknown.")
+    case .noEligibleFrames: AppLanguage.localized("No samples have enough complete text to recognize a screen.")
+    case .unavailable: AppLanguage.localized("Screen interpretation unavailable; original evidence is retained.")
+    case .partialFailure: AppLanguage.localized("Some screen interpretations failed; those samples remain unknown.")
+    case .failed: AppLanguage.localized("Screen interpretation failed; original evidence is retained.")
     }
 }

@@ -2,7 +2,9 @@
 
 Product reference: [MORE](../MORE.md). This ledger separates implemented behavior, observed evidence and gates that remain open. Screenshots, recordings, private service results and credentials are local-only and are not committed.
 
-| MORE requirement | Current evidence | Remaining acceptance |
+The table and dated paragraphs retain earlier checkpoints, including their then-pending work. The [latest source-specific checkpoint](#latest-source-specific-checkpoint--16-october-2026) below records the package, real-model and native results separately; an older pass does not certify a later scene or build.
+
+| MORE requirement | Earlier recorded evidence | Remaining acceptance |
 | --- | --- | --- |
 | Review what MORE will do, then delegate in the interface | Explicit operation/service/duration review; approval and Start are separate. Simulator delegation test passes. Largest French text test edits the duration, saves it and reaches approval (33.184 seconds). The learned-proposal journey selects a saved source, brings Keep/Adjust fully clear of navigation and the pinned delegation control, then opens the unapproved editor at AccessibilityXXXL (57.745 seconds). Selection, proposal and editor captures were visually inspected. | Repeat the personal routine on the ordinary iPhone. |
 | Convert learned observations into reviewable operations | Reviewed video context, structured browser sequences and dated Screen Time aggregates now feed one explicitly selected proposal. Typed coverage remains separate from observed gestures; unknowns and personal corrections are retained. The initial join and source revisions pass 141 targeted tests, including 14 new regressions. The unknown-window native journey passes; the three-source proposal saves its three expected moments and awaits a test rerun with real scrolling. A separate many-brief-apps defect is being corrected. Browser metadata restores operation/order/duration/citations independently of editable notes; personal choices apply last. 185 focused learning/browser/safety tests pass. Native synthetic multi-source selection → suggestion → edit → save/relaunch draft → restore previous approved routine passes (44.151 seconds). | Finish native validation of the common selection, then prove real personal coverage from available video/Screen Time/browser observations. |
@@ -57,3 +59,269 @@ The shared full checkpoint matching `30fe1c3` passes 1,575 reported tests (4 Hea
 An additional source-level evaluation finds a distinct Screen Time join defect: one app used for eight minutes plus eleven ten-second openings produces twelve baseline moments and aborts the entire proposal, even with a personal Keep. The legacy Screen Time selector proposes the one useful app from the same data. The diagnostic test confirms this failure; it is not counted as a successful product journey. A shared selection-policy correction is in progress, preserving all source aggregates and observed video/browser steps. Separately, browser content identities previously lived only in memory while counts persisted. The new opaque-hash checkpoint preserves identities in the exact session/step record and passes 26 targeted tests across three suites (`/tmp/more-browser-content-progress-focused.log`), including four new cold-state, legacy, corruption and capacity regressions. Its native cold-relaunch check is pending; this does not establish document/viewport restoration. Neither later correction is covered by the `30fe1c3` full result above.
 
 The phone owner confirms MORE1535 responds to gestures after the driver loses its accessibility connection; an app freeze is not demonstrated. Reinstalling only the test runner restores control without replacing the app or starting another morning. The exact existing self-mail is reviewed again (39.952s); its Send remains unperformed while the device-testing task waits for the owner's actual acoustic instruction. No duplicate mail is prepared or dispatched.
+
+The isolated checkpoint `9089ff0` passes 200 combined targeted tests: 84 Core and 116 Apple (`/tmp/more-isolated-routine-combined-focused.log`, zero issues). This covers the first app-selection correction, legacy Keep restoration, OwnInterface wording and recoverable browser progress. An unreadable derived progress field preserves the approved routine, count, likes and uncertain outcome while blocking further browser operations for that moment. It does not silently restart deduplication. This is a targeted package result, not a full test or iPhone claim.
+
+Further review finds a separate identity gap: renaming a Screen Time Keep/Exclude and then selecting the next day's acquisition can lose the preference match because the baseline ID included source IDs. Stable app identity, explicit review of legacy unmatched choices and retained synthetic provenance are the next correction; the 200-test result predates those changes. The new home-caption scene `0334b89` is now included in the isolated acceptance worktree. Its privacy-blocked rendering and current sending/uncertain status display are being reviewed/corrected before native acceptance. Earlier build5 captures describe the previous home, not this new scene. No synthetic data or controller test establishes the complete personal MORE §10 routine.
+
+The corrected snapshot `c9332ca`, including Home changes through `554a614`, passes 233 targeted shared tests: 109 Core and 124 Apple, zero issues (`/tmp/more-routine-acceptance-combined-v3.log`). This covers renamed native Keep/Exclude/duration across days, explicit app review at creation and restoration, native/browser exclusions without reinsertion, and retained synthetic provenance through export. An initial compile caught a private-helper visibility mistake; the helper was moved within its existing implementation before this pass. The full run on the same compiled products reports 1,598 tests (4 Health, 679 Core, 915 Apple), six optional model/media skips and zero issues (`/tmp/more-routine-acceptance-full-v3.log`). The native Home/status journeys, including French XXXL recovery, remain pending; the later `b0e161a` changes only the UI-test variant.
+
+The later Home decision (`99ef99d`, `3dfed93`) replaces scrolling history with a single short passage and tap-revealed controls that disappear after five seconds. It is integrated with the action-state correction, using the same passage instead of a permanent status/button panel. Build6 of the previous scene succeeds, but its six runtime journeys were deliberately not started after this product change. The new scene, its speech-chunk changes and adapted runtime journeys require fresh validation; the 1,598-test checkpoint above does not cover them.
+
+## Delivery handoff — 16 October 2026
+
+The owner requested immediate delivery and no further tests. Local full-packagev22
+and the Native9m build were stopped cleanly; neither is a completed validation.
+Native9m ran no UI journey and produced no sealed accepted build. This chat made
+no phone installation or additional mail attempt.
+
+Full-packagev21 on `e5f79b6` reported2,141 tests and14 issues: nine retired voice
+wording references, two assertions relying on the old title-only merge, and
+three functional extras reads expiring under concurrent wall-clock scheduling.
+The same compiled extras suite passed25 tests in0.039s when isolated. Historical
+wording, explicit multi-citation retention and controlled functional-test clocks
+were subsequently corrected, but the stopped v22 does not prove them green.
+The old-SDK audio compilation incompatibility was also corrected without
+changing its graph. The synthetic voice/server Node checks passed31 tests.
+
+The second authorized OCR-only replay on the frozen `e5f79b6` binary returned
+seven HTTP200 responses in94.469s, but native evidence policy refused the final
+proposal. Its recorded category is generic; no more specific cause is assigned
+retrospectively. A bounded test-only diagnostic now retains validated structured
+batch summaries and static refusal categories, but its proposed next replay was
+not run. No input scope, inference default or execution permission was expanded.
+
+The final merge with current main preserves its live input captions alongside
+the routine action states, caption boundaries, privacy clearing and reachable
+Home controls. It has not been rebuilt or retested after this stop instruction.
+Delivery is tracked in PR211. The remaining acceptance work stays open in issue173;
+this handoff does not establish MORE §10 or any unobserved provider effect.
+
+## Latest native checkpoint — 16 October 2026, frozen9l / `bb759d7`
+
+Six of seven planned cases ran in eight XCTest attempts: **0 passed, 8 failed,
+0 skipped**. Three attempts stopped before a valid isolated workspace appeared;
+their onboarding screens prove no scenario behavior. Five valid launches
+reached distinct failures. Slack FR was not run. The app, UI-test binary and
+xctestrun hashes still match their original seal.
+
+- News EN parses, admits and deduplicates all three synthetic links, but records
+  `snapshotPrivacy=0` and retains none. No article, Repeat or return is credited.
+  Source review found two different generation identities being compared:
+  the Store's runtime nonce and the durable Forget marker, which legitimately
+  starts nil. The integrated correction preserves separate fail-closed checks
+  for durable privacy state and the exact runtime nonce. A second correction
+  reobserves the displayed headlines after Close/reopen while paused, without
+  replaying navigation, actions, narration or the budget. Both need native proof.
+- The exact-reminder journey configures, approves and relaunches its routine,
+  then incorrectly requires a spoken opening that a silent automatic launch
+  need not show. Its replacement observes actual Continue/Pause and the same
+  session/version/step/index. No reminder request, picker, review or write ran.
+- Long10 reaches its unapproved editor, then the helper rejects the foreground
+  List before virtualized row7 appears. The integrated correction scopes the
+  gestures between the actual navigation and approval footer. No configuration,
+  approval, Start, provider outcome or 28-minute execution is credited.
+- Screen Time FR XXXL verifies all four native switches OFF and opens the
+  unapproved eight-app proposal. Its omission helper cannot materialize Gmail
+  above the retained position. AX/PNG show the foreground proposal separately
+  from the archive behind it; this establishes no lost Gmail source. The new
+  helper scopes that proposal and searches both directions. Later assertions
+  remain unexecuted.
+- Slack EN reaches a synthetic source and destination, then honestly reports
+  preparation unavailable: the classic private transport still used the
+  ordinary model preparer. The body is empty and review/send remain disabled.
+  No draft, review, send or uncertain outcome is credited. A separately gated
+  deterministic private preparer is being added; ordinary behavior must not
+  gain a silent model fallback.
+
+The isolated News/reminder/Long journeys now retain invalid-launch evidence
+and allow one unchanged relaunch only when the workspace marker is absent.
+A wrong UUID fails immediately. This is a harness guard, not a demonstrated
+fix to the launch-argument problem.
+
+CI on `bb759d7` compiles the app successfully. Package CI has one remaining
+grounded-schema assertion failure; the replacement resolves the root's actual
+selection field instead of the first arbitrary two-branch object and retains
+the original exact constraints. Its precise CI assertion cause was not logged.
+Proposal CI reports15 failures and one skip out of16: most are transient Home
+Settings navigation, one folded imported-text editor, and two native selection
+taps still reading Not selected. Shared navigation and disclosure helpers are
+corrected. Selection now waits for the real state after one tap, records PNG/AX
+on failure and verifies the actual count and unchanged destination; its cause
+still requires a native replay.
+
+Source fixes, pure contracts and review findings are not promoted to runtime
+passes. Full MORE §10, movie learning, Long10, the exact reminder, ordinary
+iPhone acoustic proof and the one authorized self-mail remain open in issue173.
+
+## Earlier native checkpoint — 16 October 2026, frozen9k / `c3cbd3b`
+
+Seventeen distinct native journeys finish **8 passed, 9 failed, 0 skipped**.
+Their sealed app/UI-test products remain unchanged. Results are local to their
+own workspace and scenario; they are not combined into MORE §10 acceptance.
+
+- The strict Calendar smoke passes in80.344s, with an independently reviewed
+  native prefix/date/fact clear of Pause in standard portrait. Three Gmail
+  journeys, Home caption drag and French XXXL Outlook setup pass.
+- The French parsed synthetic routine passes in251.970s through editing,
+  approval and relaunch. It is an explicitly imported manual draft, not video
+  learning. Ten short-budget moments pass in97.417s, retaining order/session
+  through the fifth-moment pause/relaunch and restoring the recap. This is
+  separate from the 28-minute Long10 path and proves no provider effect.
+- Private EN/FR News still fail before the native article ordinal. Three DOM
+  titles render, but there is no native `web.article.2`; no delegated article,
+  Repeat or return is credited. The next build adds private snapshot admission
+  counts to distinguish missing parsed links from later clearing.
+- Long10 fails before approval/Start in149.308s: the selected Slack sheet's
+  Use control is below the viewport, while the helper scrolls the editor behind
+  it. The foreground-container correction is integrated for the next build.
+- Screen Time's French XXXL switch stays selected after its tap. Slack EN/FR
+  fail to reveal Settings before preparation. Neither failure has yet been
+  isolated between the control and its helper. The three-source merge fails
+  its planned-minutes assertion, but its final recording is zero bytes and
+  final snapshots contain only the app root; cause remains unknown.
+- Reddit's wait for two observed contents expires before cold relaunch, even
+  though the later failure capture shows two. No persistence/deduplication
+  result is credited. Public News shows a real consent wall, but no typed
+  refusal; it is a failure, not a successful reading or an expanded skip.
+
+The next source integrates the current main, exact-reminder private transport
+and displayed-minute precision fix, pure-provenance citation exclusion,
+foreground Slack scrolling, History navigation and schema diagnostics. These
+changes still need their own compiled/native results. App-owned UI and runtime
+behavior must remain French and English according to the current AGENTS rule.
+
+On `ee5d180`,77 reported shared tests in four affected suites pass with one
+optional preparation replay skipped. This covers provenance exclusion, native
+moment precision/transport, context schema and the current model route. It is
+not an app or full-package result.
+
+Full packagev19 on `8c302aa` passes with2,098 reported tests (51 LiveDemo,
+8 Health,774 Core,1,265 Apple),16 optional skips and the same two real OCR
+tests separately excluded. This compiled scope includes the new OCR guard and
+reminder precision contracts. No later app/UI-test fix is promoted by this
+shared-package result.
+
+The explicitly authorized OCR-only OpenAI replay on `6b73592` completes in
+81.709s:7 actual requests,7 returns, all HTTP200, and8 natively validated draft
+moments using the current `gpt-6-luna/high` route. Its two local guards also pass.
+Only the frozen invented OCR texts were eligible to leave the machine; no movie,
+audio, oracle or personal data was transmitted. The interface language is EN,
+with original FR quotes retained. The report is expressly an OCR replay, not
+fresh extraction/classification or a complete video-learning result. Independent
+review finds all9 citations byte-exact,9 cited frames out of24, and18 proposed
+minutes. Eight of nine source families have some cited content; that is not
+eight faithfully reconstructed activities. Gmail and Slack collapse into one
+generic message moment, the feed is split twice, and music is omitted. The
+native kind/title deduplication permits the cross-source merge and is being
+corrected separately. The draft stays synthetic and unapproved, without actions,
+targets or personal Keep authority. Absence of an inferred Keep or explicit
+recap is correct because no personal preference journal/base was supplied.
+
+CI on the preceding c3 source builds the app successfully but fails package
+schema assertions and14 proposal UI journeys (one additional skip). The package
+log omits the actual enum encoding, so the assertion is retained with a new
+diagnostic. The proposal helpers still address the removed Home date control;
+their replacement follows Home → Settings → History. Later obsolete `run.*`
+controls were subsequently migrated to real Begin/Continue/Pause and Settings
+routes, without a runtime result yet. On `ee5d180`, the diagnostic establishes
+the package cause: SDK26.6 encodes the exact choices as an anyOf of singleton
+enums; SDK27 uses one enum. The compatibility assertion is being corrected to
+check the same exact choices. That CI app build also catches private snapshot
+visibility in the new reminder diagnostic; it is corrected by querying the
+provider's already-validated private capability. The next native build must
+verify compilation. Neither earlier failure is reclassified as green.
+
+Full MORE §10, movie learning, the 28-minute Long10, ordinary-iPhone acoustic
+proof and the single authorized self-mail remain open in issue173. The task
+branch is pushed in PR211; remote main was not yet updated at that checkpoint.
+
+## Prior package and learning checkpoint — 16 October 2026
+
+- **Package v18, compiled from `ae231e0`: zero issues, 2,093 reported tests**
+  (51 LiveDemo, 8 Health, 774 Core, 1,260 Apple), including **15 optional skips**.
+  Two real OCR checks were separately excluded. Thirty-four targeted tests pass
+  for assignment, retained choices, fixture contracts, Slack and recap. Neither
+  check executes the iPhone app or certifies the movie.
+- **Frozen9j / `9cf39c3`: strict Calendar smoke passes in 77.812s.** Independent
+  visual review accepts the real Calendar prefix/date/fact clear of Pause with
+  the pinned identity. Acoustic listening, TTS completion, XXXL and landscape
+  remain unproved. EN/FR private news fail before the delegated article action
+  (57.145s/57.767s): the browser is already foreground, while the test taps Home
+  behind the sheet. An incidental DOM tap is not an agent action. The corrected
+  test requires the actual foreground browser and observed ordinal control.
+- **Long10 has still not reached approval/Start.** Frozen9j fails in 324.803s.
+  Its seven native reorder gestures reach the required third position; later,
+  row6 remains partly below the pinned Approve control. The tap opens no Form,
+  then a premature field-label query fails. No long session or timer is credited.
+  The new test requires the real Form after a visible row tap. Thirteen follow-up
+  journeys remain unexecuted. Seven long-path moments are explicitly time-only,
+  not executed browser, media or reminder actions.
+- **Assigning Slack to an existing moment is implemented, pending native proof.**
+  Ordinary verified setup changes the editor copy; Save replaces the pinned ID,
+  preserving order, title, duration, note, Keep and provenance. It creates an
+  unapproved revision. Human source names survive serialization only for the
+  exact target; portable exports remain manual. Stale version/step/privacy pins
+  cannot append a row. Source review and Core tests pass; build9k is next.
+- **The global summary now shares the per-moment projection.** A finished browser
+  budget is distinguished from a verified operation. A service budget needs its
+  confirmed receipt; source review and FR/EN restoration contracts pass. Native
+  verification of the integrated summary is still pending.
+- **Frozen9d / `06f9848` mixed3 remains passed:** 444.017s, UI configuration and
+  approval/relaunch, read-only synthetic Gmail, one uncertain simulated Slack
+  attempt without retry, and a real one-minute pause/relaunch timer. This older
+  source does not certify the later Home, recap or editor changes.
+- **Video learning remains failed.** Compact v11 on `7542d49` observes all24
+  frames with no OCR failure, but all7 actual proposal SDK responses abstain:
+  65.445s, independent citation coverage **0/9**, exit4. Original v9 also has
+  coverage0/9; compact v10 has eight OCR failures and coverage0/7. Failed prompt
+  and schema experiments were reverted, never repaired into acceptance.
+- **Matched local diagnostics narrow the learning failure.** The unchanged
+  simple event/message pair under the retained contract yields two proposals
+  covering two source frames in both EN and FR (12.763s, pub control0). Exact
+  citations and planned5-minute budgets do not make all titles impeccable: one
+  title changes a message about an agenda into the agenda document. Adding the
+  existing full-disclosure text to the same bodies yields zero proposals in both
+  languages (4.863s, pub0). This affects these constructed inputs; it does not
+  explain compactv11 or establish learning from a video. The full-disclosure
+  contrast has no new OCR, action or product-acceptance claim.
+
+Literal log audit supersedes earlier manual skip counts: **v16 has14 optional
+skips, v17 and v18 have15**. Each separately excludes two OCR tests; those two
+checks are absent from the reported optional-skip lines. The previous correction
+subtracting them from those log counts was wrong. Nineteen Python scorer
+regressions pass, separately from these Swift and native gates.
+
+At that checkpoint main through `d5d9b0e` was integrated into the task branch,
+but this task had not updated remote main. PR #211 was subsequently marked
+ready; the actual CI failures are recorded above. Full MORE §10,
+ordinary-iPhone acoustic/provider proof and the single
+authorized self-mail remain open in [issue #173](https://github.com/gibouu/morning-operator/issues/173).
+See the [fixture ledger](SYNTHETIC-ROUTINE-FIXTURE.md) for source-specific receipts,
+failed experiments, immutable media and the distinct manual-oracle path.
+
+## Earlier source-specific checkpoint — `830e9cd`, 16 October 2026
+
+The Home contract has since changed to tap-revealed Play/Pause and Settings; commands and interaction live in Settings. The earlier single-passage and historical menu results above remain evidence for their own sources. The complete MORE §10 acceptance routine still has **not passed**.
+
+The shared full run on **compiled products from `70427b4`** reports **1,691 tests: 4 Health, 713 Core and 974 Apple**, with **eight optional skips and zero issues** (`/tmp/more-integrated-synthetic-full-v8.log`). This supersedes the older full-package counts only for that compiled scope. It does not execute the opt-in local model, simulator journeys, physical microphone or providers, and does not validate later source merges merely because they compile into a forthcoming build.
+
+The fixed-frame-slot replay in `work/routine-fixture-validation/context-frame-slot-schema-budget-v2.json` prepares **24 frames in 12 batches**. Its maxima are **2,821 UTF-8 bytes for the actual SDK schema, 1,616 for the prompt and 4,408 for instructions**. This is preparation-only measurement, with no inference. Bytes are not tokens, and preparation counts are not actual model calls.
+
+The actual immutable 28-minute video's **v3** pipeline on `830e9cd` **fails after 183.183s** at `localRoutineProposal` with `invalidCitation` (`work/routine-fixture-validation/full-pipeline-realistic-fr-v3.json`). Classification is `partialFailure`: **12 batches attempted, 12 responded, one failed; 8 frames identified, 3 ambiguous, 13 unknown**. Proposal preparation originally yields eight requests; repacked progress announces eleven and completes nine. Those callbacks do not establish the actual proposal-attempt count. No validated draft, approval or service execution follows from this failed report. Its full-file fingerprint matches the frozen source; older extraction/classification reports without that field still require separate invocation/hash verification. The [corpus protocol](SYNTHETIC-ROUTINE-FIXTURE.md) records immutable media, coverage omissions, scorer exits and the distinct direct-oracle path.
+
+The native lot on **`830e9cd`** finishes **5 passed, 7 failed, 0 skipped in 1,027.944s** (`/tmp/more-isolated-acceptance-ux-golden-830e9cd-round1.log`). The five passes are:
+
+- Gmail fallback, with an honest result and no mail retained by Next (41.774s).
+- Gmail preference persistence and explicit choice of the fourth actually read message (74.958s).
+- Home caption drag renewing the five-second control lifetime (48.362s).
+- French AccessibilityXXXL Outlook setup into an unapproved draft (109.978s).
+- Cold-relaunch public Reddit with the same morning and deduplication state (78.482s).
+
+The seven failing tests are the French largest-text Gmail choice, Screen Time overflow selection, French Slack preparation, common-source learning, parsed synthetic routine, public news article, and English Slack preparation. In particular, the parsed case establishes **ten draft moments / 28 minutes only**, then fails in its image helper: **editing, approval and relaunch restoration are not proved**. The Slack captures show an open keyboard with Prepare below the viewport; neither run reaches preparation, review or send. The French Gmail fifth-choice failure is retained. Later compact Gmail interaction copy and Slack keyboard-dismissal controls require a new native result; source fixes do not convert these failures into passes.
+
+The Le Monde journey observes a real consent wall; **no consent is clicked and no article reading is proved**. It is one of the failures above, not a successful or skipped article journey. That journey does not bypass the consent gate. The separate eight synthetic negative clips have actual Vision coverage (48 samples, 528 lines, eight hashes checked), but their model exclusion/proposal behavior is not validated by extraction alone.
+
+A separate private test is prepared to follow **ten timed moments**, pause/relaunch/resume around the fifth, retain the same session/version/order and check the honest recap. It has **not run at this checkpoint** and claims no provider action. It is distinct from isolated Gmail/Slack/Apple conversations with simulated transports and from real public-browser checks; their results cannot be combined into a claim that all ten story actions ran. No ordinary-user fixture mode or real send is introduced by that test.
+
+**Pipeline v4 and native build8 are in progress; no outcome is recorded here.** Real personal source learning, repeated ordinary-iPhone acoustic interaction, authorized account behavior and observed provider effects remain separate MORE §10 gates. Synthetic movies and direct oracle imports do not satisfy those gates.

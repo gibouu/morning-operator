@@ -214,12 +214,12 @@ final class GmailConnectionController {
                 try requireCurrent(token)
                 guard selectedMessageID == message.id else { throw CancellationError() }
                 replyText = draft
-                replyNotice = String(localized: "Prepared on this iPhone. Review before copying.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                replyNotice = AppLanguage.localized("Prepared on this iPhone. Review before copying.")
             } catch {
                 guard attempt == token else { return }
                 if error is CancellationError { clearLocal(); return }
                 if let known = error as? GmailReplyDraftError { errorMessage = known.moreDescription }
-                else { errorMessage = String(localized: "A reply could not be prepared. You can write one below.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+                else { errorMessage = AppLanguage.localized("A reply could not be prepared. You can write one below.") }
             }
         }
     }
@@ -230,7 +230,7 @@ final class GmailConnectionController {
             try requireCurrent(attempt)
             UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: replyText]],
                 options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(300)])
-            replyNotice = String(localized: "Copied.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            replyNotice = AppLanguage.localized("Copied.")
         } catch { clearLocal() }
     }
 
@@ -319,7 +319,7 @@ final class GmailConnectionController {
             canRetryConnection = hasSavedConnection
             if let known = error as? GmailConnectionError,
                [.invalidResponse, .redirectRejected].contains(known) {
-                errorMessage = String(localized: "This message could not be read. Choose another message or refresh the Inbox.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                errorMessage = AppLanguage.localized("This message could not be read. Choose another message or refresh the Inbox.")
             } else {
                 errorMessage = safeMessage(error)
             }
@@ -370,9 +370,9 @@ final class GmailConnectionController {
     }
 
     private func safeMessage(_ error: any Error) -> String {
-        if error is CancellationError { return String(localized: "Gmail connection cancelled.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        if error is CancellationError { return AppLanguage.localized("Gmail connection cancelled.") }
         if let known = error as? GmailConnectionError { return known.moreDescription }
-        return String(localized: "Gmail is unavailable. Try again from this screen.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        return AppLanguage.localized("Gmail is unavailable. Try again from this screen.")
     }
 }
 

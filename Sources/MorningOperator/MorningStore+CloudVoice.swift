@@ -148,9 +148,7 @@ extension MorningStore {
     /// Consent belongs to the current session identity (including none) and privacy generation.
     func startCloudVoice() async {
         #if MORE_JURY_DEMO
-        cloudVoiceStartIssue = AppLanguage.isFrench
-            ? "Cette démo utilise sa propre conversation."
-            : "This demo uses its own conversation."
+        cloudVoiceStartIssue = String(localized: "Voice conversation is available during your morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
         return
         #else
         guard !privacyBlocksWork, !cloudVoiceReleasing,
