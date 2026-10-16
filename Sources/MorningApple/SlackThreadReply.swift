@@ -280,7 +280,7 @@ public struct SlackReplyReceipt: Sendable, Equatable {
     private static func allowsClassicSyntheticInput(_ source: SlackReplySource, intention: String, previousReply: String) -> Bool {
         let messages = ["Can we meet tomorrow?", "The draft is ready to review.", "Thanks for the update."]
         guard intention == "SYNTHETIC please confirm the meeting", previousReply.isEmpty,
-              source.origin.connectionID == "synthetic-slack", source.origin.privacyGeneration != nil,
+              source.origin.connectionID == "synthetic-slack",
               source.origin.tool == "SLACK_FETCH_CONVERSATION_HISTORY",
               source.origin.arguments == ["channel": .string("CSYNTHETIC"), "limit": .number(3)],
               source.channelID == "CSYNTHETIC", source.authorID == "USYNTHETIC", source.threadTS == source.messageTS else { return false }

@@ -22,10 +22,13 @@ struct SlackThreadReplyTests {
             #expect(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: invalid) == nil)
         }
         let drafts = try #require(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: flags))
-        for index in 0..<3 {
-            let body = try await drafts.draft(source: classicSource(index: index), intention: "SYNTHETIC please confirm the meeting")
-            #expect(body == SlackReplyDraftService.syntheticClassicReply(french: AppLanguage.isFrench))
-            #expect(try SlackReplyContract.reply(body) == body)
+        let generations: [UUID?] = [nil, UUID()]
+        for generation in generations {
+            for index in 0..<3 {
+                let body = try await drafts.draft(source: classicSource(index: index, generation: generation), intention: "SYNTHETIC please confirm the meeting")
+                #expect(body == SlackReplyDraftService.syntheticClassicReply(french: AppLanguage.isFrench))
+                #expect(try SlackReplyContract.reply(body) == body)
+            }
         }
         for french in [false, true] {
             let body = SlackReplyDraftService.syntheticClassicReply(french: french)
@@ -39,7 +42,7 @@ struct SlackThreadReplyTests {
     func classicDraftAllowlistDoesNotPrepareOrdinaryContent() async throws {
         let flags = ["--ui-testing", "--fixture-mode", "--ui-testing-slack-reply", "--ui-testing-workspace=\(UUID())"]
         let drafts = try #require(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: flags))
-        for field in ["connection", "tool", "arguments", "privacy", "channel", "author", "timestamp", "thread", "text"] {
+        for field in ["connection", "tool", "arguments", "channel", "author", "timestamp", "thread", "text"] {
             await #expect(throws: SlackReplyError.unsupportedSource) {
                 try await drafts.draft(source: classicSource(changed: field), intention: "SYNTHETIC please confirm the meeting")
             }
@@ -57,14 +60,14 @@ struct SlackThreadReplyTests {
         }
     }
 
-    private func classicSource(index: Int = 0, changed: String = "") -> SlackReplySource {
+    private func classicSource(index: Int = 0, changed: String = "", generation: UUID? = UUID()) -> SlackReplySource {
         let texts = ["Can we meet tomorrow?", "The draft is ready to review.", "Thanks for the update."]
         let timestamp = "179210000\(index).000001"
         return .init(executionID: context(), origin: .init(
             tool: changed == "tool" ? "SLACK_SEND_MESSAGE" : "SLACK_FETCH_CONVERSATION_HISTORY",
             connectionID: changed == "connection" ? "ca_other" : "synthetic-slack",
             arguments: ["channel": .string("CSYNTHETIC"), "limit": .number(changed == "arguments" ? 4 : 3)],
-            privacyGeneration: changed == "privacy" ? nil : UUID()), receivedAt: instant,
+            privacyGeneration: generation), receivedAt: instant,
             channelID: changed == "channel" ? "COTHER" : "CSYNTHETIC",
             messageTS: changed == "timestamp" ? "1792100099.000001" : timestamp,
             threadTS: changed == "thread" ? "1792100099.000001" : timestamp,
