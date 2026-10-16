@@ -39,7 +39,12 @@ fi
 cp -R "$products_dir/MorningOperator_MorningCore.bundle" "$bundle_dir/Contents/Resources/"
 xcrun xcstringstool compile "$repo_dir/Sources/MorningActivityWidget/Localizable.xcstrings" \
     --output-directory "$bundle_dir/Contents/Resources"
-production_sha="$(shasum -a 256 "$repo_dir/Sources/MorningActivityWidget/MorningActivityWidget.swift" | cut -d ' ' -f 1)"
+production_sources=(
+    "$repo_dir/Sources/MorningActivityWidget/MorningActivityWidget.swift"
+    "$repo_dir/Sources/MorningSharedActivity/MorningBrandView.swift"
+    "$repo_dir/Sources/MorningCore/MorningBrand.swift"
+)
+production_sha="$(cat "${production_sources[@]}" | shasum -a 256 | cut -d ' ' -f 1)"
 proof_output_base="$proof_output"
 proof_run="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 proof_output="$proof_output_base/$production_sha/$proof_run"
@@ -53,6 +58,7 @@ from pathlib import Path
 import sys
 repo, output = map(Path, sys.argv[1:])
 source = (repo / 'Sources/MorningActivityWidget/MorningActivityWidget.swift').read_text()
+brand_views = (repo / 'Sources/MorningSharedActivity/MorningBrandView.swift').read_text()
 marker = 'private struct MorningActivityIslandDetail: View {'
 if source.count(marker) != 1:
     raise SystemExit('Expected exactly one production island detail view.')
@@ -66,7 +72,7 @@ if production.count(clock) != 1 or production.count(progress) != 1:
     raise SystemExit('Production clock/progress providers changed; review the proof adapters.')
 production = production.replace(clock, 'Text(proofFrozenCountdown(timer: timer, state: state))')
 production = production.replace(progress, 'ProgressView(value: timer.elapsedFraction(at: state.updatedAt) ?? 0)')
-output.write_text('import AppKit\nimport AppIntents\nimport Foundation\nimport MorningCore\nimport SwiftUI\nimport Vision\n\n' + production + '\n' + (repo / 'scripts/proofs/MorningActivityLayoutProof.swift').read_text())
+output.write_text('import AppKit\nimport AppIntents\nimport Foundation\nimport MorningCore\nimport SwiftUI\nimport Vision\n\n' + brand_views + '\n' + production + '\n' + (repo / 'scripts/proofs/MorningActivityLayoutProof.swift').read_text())
 PY
 xcrun swiftc -sdk "$SDKROOT" -swift-version 6 -parse-as-library \
     -I "$products_dir" "${core_objects[@]}" "$build_dir/ActivityLayoutProof.swift" \
@@ -76,7 +82,7 @@ cat > "$bundle_dir/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict><key>CFBundleExecutable</key><string>ActivityLayoutProof</string><key>CFBundleIdentifier</key><string>local.more.activity-layout-proof</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleDevelopmentRegion</key><string>en</string></dict></plist>
 PLIST
-shasum -a 256 "$repo_dir/Sources/MorningActivityWidget/MorningActivityWidget.swift" \
+shasum -a 256 "${production_sources[@]}" \
     > "$proof_output/production-source.sha256"
 "$bundle_dir/Contents/MacOS/ActivityLayoutProof" "$proof_output"
 ln -sfn "$production_sha/$proof_run" "$proof_output_base/latest"
