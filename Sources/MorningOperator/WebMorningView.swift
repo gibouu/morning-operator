@@ -133,7 +133,7 @@ struct WebMorningView: View {
             Button(action: onClose) {
                 MorningDottedIcon(systemName: "xmark").frame(width: 23, height: 23).frame(width: 44, height: 44)
             }.accessibilityLabel(text("Close", "Fermer")).accessibilityIdentifier("web.close")
-            Text(site == .gmail || controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
+            Text(controller.isSyntheticNews ? controller.sourceLabel : site == .gmail || controller.displayedHost.isEmpty ? site.displayName : controller.displayedHost)
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted).lineLimit(1)
                 .accessibilityIdentifier("web.host")
             Spacer(minLength: 4)
@@ -352,7 +352,8 @@ struct WebMorningView: View {
         guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return "" }
         let source = controller.executionEvent?.contextText ?? []
         let position = Int(controller.webView.scrollView.contentOffset.y.rounded())
-        return "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)"
+        let news = controller.isSyntheticNews ? " \(controller.syntheticNewsDiagnostic) endsAtBits=\(stepEndsAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") pausedAtBits=\(timerPausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none")" : ""
+        return "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)\(news)"
         #else
         return ""
         #endif

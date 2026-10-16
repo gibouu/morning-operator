@@ -15,11 +15,11 @@ public struct WebNewsSnapshot: Sendable, Equatable {
     public let fingerprint: String
     public let links: [WebArticleLink]
     public init?(context: MorningVoiceCommandContext, privacyGeneration: UUID, pageGeneration: Int,
-        pageURL: URL, fingerprint: String, links: [WebArticleLink]) {
-        guard WebArticlePolicy.isPage(pageURL), !fingerprint.isEmpty, fingerprint.count <= 128,
+        pageURL: URL, fingerprint: String, links: [WebArticleLink], syntheticNews: SyntheticNewsOrigin? = nil) {
+        guard WebArticlePolicy.isPage(pageURL, syntheticNews: syntheticNews), !fingerprint.isEmpty, fingerprint.count <= 128,
               (1...5).contains(links.count), Set(links.map(\.href)).count == links.count,
               links.allSatisfy({ !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                  $0.title.count <= 240 && WebArticlePolicy.permits($0.href, from: pageURL) }) else { return nil }
+                  $0.title.count <= 240 && WebArticlePolicy.permits($0.href, from: pageURL, syntheticNews: syntheticNews) }) else { return nil }
         self.context = context; self.privacyGeneration = privacyGeneration; self.pageGeneration = pageGeneration
         self.pageURL = pageURL; self.fingerprint = fingerprint; self.links = links
     }
@@ -29,6 +29,9 @@ public struct WebNewsSnapshot: Sendable, Equatable {
         self.context == context && self.privacyGeneration == privacyGeneration && self.pageGeneration == pageGeneration && self.pageURL == pageURL
     }
     public func select(_ ordinal: Int) -> WebArticleLink? { ordinal > 0 && ordinal <= links.count ? links[ordinal - 1] : nil }
+    public func matchesObservation(_ observation: WebMorningPageObservation) -> Bool {
+        observation.status == .ready && observation.fingerprint == fingerprint && observation.articles == links
+    }
 }
 
 public enum WebArticleCommand: Equatable, Sendable {
@@ -60,19 +63,20 @@ public enum WebArticleCommand: Equatable, Sendable {
 
 public enum WebArticlePolicy {
     public static let maximumCharacters = 6_000
-    public static func isPage(_ url: URL) -> Bool {
-        url.scheme?.lowercased() == "https" && url.user == nil && url.password == nil &&
+    public static func isPage(_ url: URL, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+        if let syntheticNews { return syntheticNews.permits(url) }
+        return url.scheme?.lowercased() == "https" && url.user == nil && url.password == nil &&
             (url.port == nil || url.port == 443) && WebMorningSite(url: url) == .news && !WebMorningPolicy.isSignInPage(url)
     }
-    public static func permits(_ url: URL, from page: URL) -> Bool {
-        guard isPage(url), isPage(page), url.host?.lowercased() == page.host?.lowercased(),
+    public static func permits(_ url: URL, from page: URL, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+        guard isPage(url, syntheticNews: syntheticNews), isPage(page, syntheticNews: syntheticNews), url.host?.lowercased() == page.host?.lowercased(),
               url.absoluteString.utf8.count <= 2_048, !["pdf", "zip", "epub", "mp3", "mp4"].contains(url.pathExtension.lowercased()) else { return false }
         var destination = URLComponents(url: url, resolvingAgainstBaseURL: false), source = URLComponents(url: page, resolvingAgainstBaseURL: false)
         destination?.fragment = nil; source?.fragment = nil
         return destination?.url != source?.url
     }
-    public static func matchesDestination(_ observed: URL, selected: URL) -> Bool {
-        guard isPage(observed), isPage(selected) else { return false }
+    public static func matchesDestination(_ observed: URL, selected: URL, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+        guard isPage(observed, syntheticNews: syntheticNews), isPage(selected, syntheticNews: syntheticNews) else { return false }
         var actual = URLComponents(url: observed, resolvingAgainstBaseURL: false)
         var expected = URLComponents(url: selected, resolvingAgainstBaseURL: false)
         actual?.fragment = nil; expected?.fragment = nil

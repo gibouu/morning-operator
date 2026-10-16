@@ -52,11 +52,11 @@ extension MorningStore {
         case .select(let ordinal, let read):
             let body = await controller.openNewsArticle(ordinal: ordinal, context: context, privacy: generation, authorized: authorized)
             guard authorized() else { return true }
-            if read, let body { try? await speech.speakAndWait(body.narration(source: WebMorningSite.news.displayName, french: AppLanguage.isFrench)) }
+            if read, let body { try? await speech.speakAndWait(body.narration(source: controller.sourceLabel, french: AppLanguage.isFrench)) }
             else if let line = controller.articleMessage { notice = line; speech.speak(line) }
         case .repeatArticle:
             if let body = controller.articleText {
-                try? await speech.speakAndWait(body.narration(source: WebMorningSite.news.displayName, french: AppLanguage.isFrench))
+                try? await speech.speakAndWait(body.narration(source: controller.sourceLabel, french: AppLanguage.isFrench))
             } else {
                 speech.speak(AppLanguage.isFrench ? "Je n’ai aucun texte d’article actuel à relire. Dites retour aux titres ou suivant."
                     : "No current article text is available to repeat. Say back to headlines or next.")

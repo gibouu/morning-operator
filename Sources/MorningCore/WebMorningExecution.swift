@@ -257,7 +257,8 @@ public struct WebMorningLikeJournal: Sendable {
 }
 
 public enum WebMorningExecutionPolicy {
-    public static func permits(site: WebMorningSite, url: URL?) -> Bool {
+    public static func permits(site: WebMorningSite, url: URL?, syntheticNews: SyntheticNewsOrigin? = nil) -> Bool {
+        if let syntheticNews { return site == .news && syntheticNews.permits(url) }
         guard let url, WebMorningSite(url: url) == site, !WebMorningPolicy.isSignInPage(url), site != .gmail else { return false }
         return true
     }
@@ -276,10 +277,17 @@ public enum WebMorningExecutionPolicy {
     /// no page text is evaluated and no arbitrary selector or script is accepted.
     public static func script(site: WebMorningSite, behavior: WebMorningBehavior,
                               command: String = "observe", fingerprint: String? = nil,
-                              likesAllowed: Bool = false, expiresAt: Date = Date().addingTimeInterval(2)) -> String {
+                              likesAllowed: Bool = false, expiresAt: Date = Date().addingTimeInterval(2),
+                              syntheticNews: SyntheticNewsOrigin? = nil) -> String {
         guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
             return "JSON.stringify({status:'unavailable'})"
         }
+        if syntheticNews != nil && (site != .news || behavior != .readHeadlines) {
+            return "JSON.stringify({status:'unavailable'})"
+        }
+        let originCheck = syntheticNews?.javascriptPermits("location") ??
+            "(location.protocol==='https:' && \(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) && (!location.port || location.port==='443') && !location.username && !location.password)"
+        let articleCheck = syntheticNews?.javascriptPermits("u") ?? "(u.protocol==='https:' && u.origin===location.origin && !u.username && !u.password)"
         let selectors: [String]
         switch site {
         case .instagram: selectors = behavior == .watchStories ? ["[role=dialog] video", "[role=dialog] img[alt]", "main video"] : ["article", "main video"]
@@ -297,9 +305,7 @@ public enum WebMorningExecutionPolicy {
         (() => {
           const out = x => JSON.stringify(x), command = \#(json(command)), expected = \#(json(fingerprint));
           if (command !== 'observe' && Date.now() > \#(Int(expiresAt.timeIntervalSince1970 * 1000))) return out({status:'unavailable',reason:'expired'});
-          if (window.top !== window || location.protocol !== 'https:' ||
-              !\#(json(site.table.allowedHosts.sorted())).includes(location.hostname.toLowerCase()) ||
-              location.port && location.port !== '443' || location.username || location.password) return out({status:'unavailable',reason:'origin'});
+          if (window.top !== window || !\#(originCheck)) return out({status:'unavailable',reason:'origin'});
           if (\#(json(WebMorningPolicy.signInPathFragments)).some(p => (location.pathname.toLowerCase() + '/').includes(p))) return out({status:'signin'});
           if (document.hidden) return out({status:'loading',reason:'hidden'});
           const parent = e => e?.assignedSlot || e?.parentElement || e?.getRootNode?.().host || null;
@@ -477,7 +483,7 @@ public enum WebMorningExecutionPolicy {
               if(!a || a.hasAttribute('download'))continue;
               let u;try{u=new URL(a.href,location.href);}catch(_){continue;}
               const title=clean(e.innerText||e.textContent).slice(0,240);
-              if(!title || u.protocol!=='https:' || u.origin!==location.origin || u.username || u.password ||
+              if(!title || !\#(articleCheck) ||
                 u.href.split('#')[0]===location.href.split('#')[0] || /\.(pdf|zip|epub|mp3|mp4)$/i.test(u.pathname) ||
                 \#(json(WebMorningPolicy.signInPathFragments)).some(p=>(u.pathname.toLowerCase()+'/').includes(p)) || seen.has(u.href))continue;
               seen.add(u.href);articles.push({title,href:u.href});if(articles.length===5)break;

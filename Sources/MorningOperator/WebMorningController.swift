@@ -46,6 +46,22 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var articleOperation: UUID?
     @ObservationIgnored private var articleExpectedDestination: URL?
     @ObservationIgnored private var articleResponse: (url: URL, status: Int)?
+    @ObservationIgnored private var articleLocalResponse: URL?
+    @ObservationIgnored private let syntheticNews: SyntheticNewsOrigin?
+    @ObservationIgnored private let syntheticNewsRequested: Bool
+    #if DEBUG
+    @ObservationIgnored private let syntheticNewsHandler: SyntheticNewsSchemeHandler?
+    #endif
+    var sourceLabel: String { syntheticNews == nil ? site.displayName : "SYNTHETIC Cedar News" }
+    var isSyntheticNews: Bool { syntheticNews != nil }
+    var syntheticNewsDiagnostic: String {
+        guard syntheticNews != nil, let context = routineContext else { return "" }
+        #if DEBUG
+        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0)"
+        #else
+        return ""
+        #endif
+    }
     /// The presenting view revokes this whenever it leaves the foreground.
     var actionsEnabled = false {
         didSet {
@@ -75,7 +91,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var learningMonitor: Task<Void, Never>?
     private static let rhythmWorld = WKContentWorld.world(name: "MOREBrowserRhythm")
     var canLearn: Bool {
-        privacyIsCurrent && learningAllowed && UIApplication.shared.applicationState == .active &&
+        privacyIsCurrent && !syntheticNewsRequested && learningAllowed && UIApplication.shared.applicationState == .active &&
             !isSignInPage && !loadFailed && !isClearing && !isRunning && !isFinishingLearning && !webView.isLoading &&
             BrowserRhythmPolicy.permits(site: site, url: webView.url)
     }
@@ -115,11 +131,24 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     init(site: WebMorningSite, initialURL: URL? = nil, routineContext: MorningVoiceCommandContext? = nil) {
         self.site = site
         self.routineContext = routineContext
-        startURL = initialURL.flatMap { WebMorningSite(url: $0) == site ? $0 : nil } ?? site.table.startURL
+        #if DEBUG
+        syntheticNewsRequested = site == .news && ProcessInfo.processInfo.arguments.contains("--ui-testing-private-news")
+        let source = site == .news && routineContext != nil ? SyntheticNewsOrigin.requested(
+            arguments: ProcessInfo.processInfo.arguments, directory: LocalDataControl.defaultDirectory) : nil
+        syntheticNewsHandler = source.map { SyntheticNewsSchemeHandler(origin: $0, french: AppLanguage.isFrench) }
+        #else
+        syntheticNewsRequested = false
+        let source: SyntheticNewsOrigin? = nil
+        #endif
+        syntheticNews = source
+        startURL = source?.startURL ?? initialURL.flatMap { WebMorningSite(url: $0) == site ? $0 : nil } ?? site.table.startURL
         privacyAtCreation = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status()
         Self.excludeWebDataFromBackup()
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: Self.storeIdentifier)
+        configuration.websiteDataStore = syntheticNewsRequested ? .nonPersistent() : WKWebsiteDataStore(forIdentifier: Self.storeIdentifier)
+        #if DEBUG
+        if let syntheticNewsHandler { configuration.setURLSchemeHandler(syntheticNewsHandler, forURLScheme: SyntheticNewsOrigin.scheme) }
+        #endif
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: configuration)
@@ -136,6 +165,11 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func startIfNeeded() {
         guard !hasStarted, privacyIsCurrent else { return }
         hasStarted = true
+        guard !syntheticNewsRequested || syntheticNews != nil else {
+            loadFailed = true
+            articleMessage = "SYNTHETIC news input refused. No network page was opened."
+            return
+        }
         let destination = startURL == site.table.startURL ? (executionPlan.flatMap { WebMorningExecutionPolicy.entryURL(site: site, behavior: $0.behavior) } ?? startURL) : startURL
         webView.load(URLRequest(url: destination))
     }
@@ -152,14 +186,14 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             newsSnapshot = nil; return
         }
         newsSnapshot = WebNewsSnapshot(context: context, privacyGeneration: privacy, pageGeneration: pageGeneration,
-            pageURL: page, fingerprint: fingerprint, links: links)
+            pageURL: page, fingerprint: fingerprint, links: links, syntheticNews: syntheticNews)
         if !needsArticleReturn && !articleBusy { articleMessage = nil; articleRefusal = nil }
     }
 
     func cancelArticleWork() {
         articleRefusal = nil
         articleOperation = nil; articleBusy = false; articleText = nil
-        articleExpectedDestination = nil; articleResponse = nil
+        articleExpectedDestination = nil; articleResponse = nil; articleLocalResponse = nil
         if needsArticleReturn { articleMessage = AppLanguage.isFrench ? "Lecture interrompue. Dites retour aux titres ou reprends."
             : "Reading interrupted. Say back to headlines or resume." }
     }
@@ -188,30 +222,28 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard let selected = snapshot.select(ordinal) else { refuseArticle(.selectionUnavailable); return nil }
         let operation = UUID(); articleOperation = operation; articleBusy = true; articleRefusal = nil
         defer { if articleOperation == operation { articleBusy = false; articleOperation = nil } }
-        let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines), contentWorld: .defaultClient)
+        let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines, syntheticNews: syntheticNews), contentWorld: .defaultClient)
         guard articleOperation == operation, articleAccess(context: context, privacy: privacy, authorized: authorized) else { return nil }
         guard snapshot.matches(context: context, privacyGeneration: privacy, pageGeneration: pageGeneration, pageURL: webView.url) else {
             newsSnapshot = nil; refuseArticle(.stale); return nil
         }
         guard let current = WebMorningPageObservation.parse(value) else { refuseArticle(.invalidScriptResult); return nil }
-        guard current.status == .ready, current.fingerprint == snapshot.fingerprint, current.articles == snapshot.links else {
+        guard snapshot.matchesObservation(current) else {
             newsSnapshot = nil; refuseArticle(.stale); return nil
         }
         articleReturnPoint = (listItem, webView.scrollView.contentOffset)
-        articleExpectedDestination = selected.href; articleResponse = nil
+        articleExpectedDestination = selected.href; articleResponse = nil; articleLocalResponse = nil
         articleText = nil; articleMessage = AppLanguage.isFrench ? "Ouverture de l’article observé…" : "Opening the observed article…"
         webView.load(URLRequest(url: selected.href))
         guard await waitForArticleNavigation(operation, context: context, privacy: privacy, authorized: authorized,
             destination: selected.href, requireResponse: true), let page = webView.url,
-            let response = articleResponse,
-            WebArticlePolicy.permitsResponse(selected: selected.href, observed: response.url, status: response.status),
-            WebArticlePolicy.matchesDestination(page, selected: selected.href) else { return nil }
+            articleResponsePermits(selected: selected.href),
+            WebArticlePolicy.matchesDestination(page, selected: selected.href, syntheticNews: syntheticNews) else { return nil }
         let generation = pageGeneration
         let body = try? await webView.evaluateJavaScript(WebArticleScript.body(pageURL: page, expiresAt: Date().addingTimeInterval(2)), contentWorld: .defaultClient)
         guard articleOperation == operation, articleAccess(context: context, privacy: privacy, authorized: authorized) else { return nil }
         guard generation == pageGeneration, webView.url == page else { refuseArticle(.stale); return nil }
-        guard let latestResponse = articleResponse,
-              WebArticlePolicy.permitsResponse(selected: selected.href, observed: latestResponse.url, status: latestResponse.status) else {
+        guard articleResponsePermits(selected: selected.href) else {
             refuseArticle(.unexpectedDestination); return nil
         }
         switch WebArticleReadResult.parse(body) {
@@ -229,10 +261,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         for _ in 0..<40 {
             guard articleOperation == operation, articleAccess(context: context, privacy: privacy, allowFailed: destination != nil, authorized: authorized) else { return false }
             if !loadFailed, !webView.isLoading, let page = webView.url,
-               destination.map({ WebArticlePolicy.matchesDestination(page, selected: $0) }) ?? (page != articleReturnPoint?.item.url), WebArticlePolicy.isPage(page) {
+               destination.map({ WebArticlePolicy.matchesDestination(page, selected: $0, syntheticNews: syntheticNews) }) ?? (page != articleReturnPoint?.item.url), WebArticlePolicy.isPage(page, syntheticNews: syntheticNews) {
                 if !requireResponse { return true }
-                if let response = articleResponse, let destination,
-                   WebArticlePolicy.permitsResponse(selected: destination, observed: response.url, status: response.status) { return true }
+                if let destination, articleResponsePermits(selected: destination) { return true }
             }
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return false }
         }
@@ -246,7 +277,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard articleAccess(context: context, privacy: privacy, allowFailed: true, authorized: authorized) else { return false }
         guard let point = articleReturnPoint else { return !articleBusy }
         let operation = UUID(); articleOperation = operation; articleBusy = true; articleText = nil; newsSnapshot = nil
-        articleExpectedDestination = point.item.url; articleResponse = nil; articleRefusal = nil
+        articleExpectedDestination = point.item.url; articleResponse = nil; articleLocalResponse = nil; articleRefusal = nil
         defer { if articleOperation == operation { articleBusy = false; articleOperation = nil } }
         webView.stopLoading()
         if webView.backForwardList.currentItem === point.item, webView.url != point.item.url || loadFailed {
@@ -267,15 +298,27 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
               webView.url == point.item.url else { return false }
         webView.scrollView.setContentOffset(point.offset, animated: false)
         articleReturnPoint = nil
-        articleExpectedDestination = nil; articleResponse = nil
+        articleExpectedDestination = nil; articleResponse = nil; articleLocalResponse = nil
         articleMessage = AppLanguage.isFrench ? "Retour aux titres. Le temps restant est conservé. Dites reprends pour continuer."
             : "Back at the headlines. Your remaining time is preserved. Say resume to continue."
         let generation = pageGeneration, page = webView.url
-        let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines), contentWorld: .defaultClient)
+        let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: .news, behavior: .readHeadlines, syntheticNews: syntheticNews), contentWorld: .defaultClient)
         guard articleOperation == operation, articleAccess(context: context, privacy: privacy, authorized: authorized),
               generation == pageGeneration, page == webView.url else { return false }
         if let observation = WebMorningPageObservation.parse(value), observation.status == .ready { retainNewsSnapshot(observation) }
         return true
+    }
+
+    private func articleResponsePermits(selected: URL) -> Bool {
+        if let syntheticNews {
+            #if DEBUG
+            return articleLocalResponse == selected && syntheticNews.permits(selected) && syntheticNewsHandler?.deliveredHTML.contains(selected) == true
+            #else
+            return false
+            #endif
+        }
+        guard let response = articleResponse else { return false }
+        return WebArticlePolicy.permitsResponse(selected: selected, observed: response.url, status: response.status)
     }
 
     @discardableResult
@@ -481,7 +524,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func clearSourceText() {
         pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil
-        articleResponse = nil
+        articleResponse = nil; articleLocalResponse = nil
         executionContextText = []
         outcome = nil
         if let plan = executionPlan, let event = executionEvent {
@@ -506,7 +549,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         executionPlan = nil; executionHistoryPlan = nil; executionContextText = []
         executionEvent = nil; outcome = nil; contentProgress = .init()
         articleOperation = nil; articleBusy = false; articleReturnPoint = nil; articleText = nil; newsSnapshot = nil; articleMessage = nil; articleRefusal = nil
-        articleExpectedDestination = nil; articleResponse = nil; pageAccessRefusal = nil
+        articleExpectedDestination = nil; articleResponse = nil; articleLocalResponse = nil; pageAccessRefusal = nil
         lastSpokenFingerprint = nil
         webView.stopLoading()
         webView.navigationDelegate = nil; webView.uiDelegate = nil
@@ -560,9 +603,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private func executionObserve(_ plan: WebMorningExecutionPlan, nonce: UUID) async -> WebMorningPageObservation? {
         guard executionIsCurrent(nonce), !loadFailed, !webView.isLoading,
-              WebMorningExecutionPolicy.permits(site: site, url: webView.url) else { return nil }
+              WebMorningExecutionPolicy.permits(site: site, url: webView.url, syntheticNews: syntheticNews) else { return nil }
         let generation = pageGeneration, page = webView.url
-        let script = WebMorningExecutionPolicy.script(site: site, behavior: plan.behavior)
+        let script = WebMorningExecutionPolicy.script(site: site, behavior: plan.behavior, syntheticNews: syntheticNews)
         let started = ProcessInfo.processInfo.systemUptime
         do {
             let value = try await webView.evaluateJavaScript(script, contentWorld: .defaultClient)
@@ -584,11 +627,11 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func executionCommand(_ command: String, observation: WebMorningPageObservation,
                                   plan: WebMorningExecutionPlan, nonce: UUID) async -> Bool {
         guard executionIsCurrent(nonce), !loadFailed, !webView.isLoading,
-              WebMorningExecutionPolicy.permits(site: site, url: webView.url),
+              WebMorningExecutionPolicy.permits(site: site, url: webView.url, syntheticNews: syntheticNews),
               let fingerprint = observation.fingerprint else { return false }
         let generation = pageGeneration, page = webView.url
         let script = WebMorningExecutionPolicy.script(site: site, behavior: plan.behavior, command: command,
-            fingerprint: fingerprint, likesAllowed: plan.likesAllowed)
+            fingerprint: fingerprint, likesAllowed: plan.likesAllowed, syntheticNews: syntheticNews)
         let value = try? await webView.evaluateJavaScript(script, contentWorld: .defaultClient)
         guard executionIsCurrent(nonce), generation == pageGeneration, page == webView.url,
               let text = value as? String, text.utf8.count < 200,
@@ -636,7 +679,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 guard await executionWait(1, nonce: nonce) else { return }; continue
             }
             navigationAttempts = 0
-            if WebMorningPolicy.isSignInPage(webView.url) || WebMorningSite(url: webView.url ?? startURL) != site {
+            if !pageBelongsToSite(webView.url) {
                 clearSourceText()
                 publishExecution(.needsSignIn)
                 guard await executionWait(1, nonce: nonce) else { return }; continue
@@ -802,7 +845,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         outcome = nil
         await Self.clearAllSignIns()
         guard privacyIsCurrent else { return }
-        webView.load(URLRequest(url: site.table.startURL))
+        guard !syntheticNewsRequested || syntheticNews != nil else { return }
+        webView.load(URLRequest(url: syntheticNews?.startURL ?? site.table.startURL))
     }
 
     func reload() { if privacyIsCurrent { executionFinished = false; webView.reload() } }
@@ -811,11 +855,17 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
         // Website links may navigate to a sign-in provider. MORE never runs scripts there.
         // Do not launch native social apps, custom schemes, insecure pages or downloads.
-        guard privacyIsCurrent, let url = navigationAction.request.url, url.scheme?.lowercased() == "https",
-              url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
+        guard privacyIsCurrent, let url = navigationAction.request.url, url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
+        if syntheticNewsRequested {
+            guard let syntheticNews, syntheticNews.permits(url), navigationAction.request.httpMethod == "GET",
+                  navigationAction.request.httpBody == nil, !navigationAction.shouldPerformDownload else {
+                if articleReturnPoint != nil { refuseArticle(.unexpectedDestination, cancelOperation: true) }
+                decisionHandler(.cancel); return
+            }
+        } else if url.scheme?.lowercased() != "https" { decisionHandler(.cancel); return }
         if navigationAction.targetFrame?.isMainFrame != false, let point = articleReturnPoint,
-           (!WebArticlePolicy.isPage(url) || url.host?.lowercased() != point.item.url.host?.lowercased() || navigationAction.shouldPerformDownload ||
-            articleExpectedDestination.map({ !WebArticlePolicy.matchesDestination(url, selected: $0) }) == true) {
+           (!WebArticlePolicy.isPage(url, syntheticNews: syntheticNews) || url.host?.lowercased() != point.item.url.host?.lowercased() || navigationAction.shouldPerformDownload ||
+            articleExpectedDestination.map({ !WebArticlePolicy.matchesDestination(url, selected: $0, syntheticNews: syntheticNews) }) == true) {
             refuseArticle(.unexpectedDestination, cancelOperation: true)
             decisionHandler(.cancel); return
         }
@@ -836,6 +886,24 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
                  decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void) {
+        if syntheticNewsRequested {
+            #if DEBUG
+            guard let syntheticNews, let url = navigationResponse.response.url, syntheticNews.permits(url),
+                  navigationResponse.response.mimeType == "text/html", syntheticNewsHandler?.deliveredHTML.contains(url) == true else {
+                refuseArticle(.unexpectedDestination, cancelOperation: true); decisionHandler(.cancel); return
+            }
+            if needsArticleReturn, navigationResponse.isForMainFrame {
+                guard let selected = articleExpectedDestination,
+                      WebArticlePolicy.matchesDestination(url, selected: selected, syntheticNews: syntheticNews) else {
+                    refuseArticle(.unexpectedDestination, cancelOperation: true); decisionHandler(.cancel); return
+                }
+                articleLocalResponse = url
+            }
+            decisionHandler(privacyIsCurrent ? .allow : .cancel); return
+            #else
+            decisionHandler(.cancel); return
+            #endif
+        }
         if needsArticleReturn, navigationResponse.isForMainFrame {
             guard let selected = articleExpectedDestination, let response = navigationResponse.response as? HTTPURLResponse,
                   let url = response.url else {
@@ -864,7 +932,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         // Keep a user-opened link visible in the same browser, including sign-in pages.
         if privacyIsCurrent, navigationAction.targetFrame == nil, let url = navigationAction.request.url,
-           url.scheme?.lowercased() == "https", url.user == nil, url.password == nil {
+           url.user == nil, url.password == nil,
+           syntheticNewsRequested ? syntheticNews?.permits(url) == true : url.scheme?.lowercased() == "https" {
             webView.load(navigationAction.request)
         }
         return nil
@@ -872,12 +941,17 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         displayedHost = webView.url?.host ?? ""
-        isSignInPage = WebMorningPolicy.isSignInPage(webView.url) || WebMorningSite(url: webView.url ?? site.table.startURL) != site
+        isSignInPage = !pageBelongsToSite(webView.url)
         loadFailed = false
         let kind = isSignInPage ? "blocked" : "site"
         Self.record("WEBMORNING site=\(site.rawValue) page=\(kind)")
         Self.excludeWebDataFromBackup()
         resumeExecutionIfNeeded()
+    }
+
+    private func pageBelongsToSite(_ url: URL?) -> Bool {
+        if let syntheticNews { return syntheticNews.permits(url) }
+        return !WebMorningPolicy.isSignInPage(url) && WebMorningSite(url: url ?? site.table.startURL) == site
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) { failed(error) }
