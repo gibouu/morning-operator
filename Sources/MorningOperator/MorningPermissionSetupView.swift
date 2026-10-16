@@ -171,8 +171,9 @@ struct MorningPermissionSetupView: View {
                 .modifier(MorningEntryPrimaryStyle())
                 .disabled(setup.isRequesting || scenePhase != .active)
                 .accessibilityIdentifier("permissions.allow")
-                Button(setup.isRevisiting ? text("Not now", "Plus tard")
-                       : text("Continue without voice", "Continuer sans la voix")) { setup.skip() }
+                Button(!setup.isRevisiting && setup.current == .speech
+                       ? text("Continue without voice", "Continuer sans la voix")
+                       : text("Not now", "Plus tard")) { setup.skip() }
                     .font(.system(.subheadline, weight: .medium))
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .disabled(setup.isRequesting)
