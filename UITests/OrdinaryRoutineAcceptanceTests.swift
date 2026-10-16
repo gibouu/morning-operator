@@ -290,9 +290,11 @@ final class OrdinaryRoutineAcceptanceTests: XCTestCase {
                             "A native calendar selection had no readable on/off state.")
                 if calendar.value as? String == "1" {
                     try require(calendar.isEnabled, "A selected native calendar could not be disabled for the public-data run.")
-                    calendar.tap()
+                    calendar.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
                 }
-                try require(calendar.value as? String == "0", "A native calendar remained selected for the public-data run.")
+                try wait(6, message: "A native calendar remained selected for the public-data run.") {
+                    calendar.value as? String == "0"
+                }
             }
             let clearUnavailable = app.buttons.matching(NSPredicate(format: "label IN %@", [
                 "Clear calendar selection", "Effacer la sélection de calendriers"
@@ -521,9 +523,11 @@ final class OrdinaryRoutineAcceptanceTests: XCTestCase {
         try require(toggle.exists, "The ordinary setting was unavailable: \(id)")
         if toggle.value as? String != (on ? "1" : "0") {
             try require(toggle.isHittable && toggle.isEnabled, "The ordinary setting cannot change: \(id)")
-            toggle.tap()
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         }
-        try require(toggle.value as? String == (on ? "1" : "0"), "The ordinary setting did not save: \(id)")
+        try wait(6, message: "The ordinary setting did not save: \(id)") {
+            toggle.value as? String == (on ? "1" : "0")
+        }
     }
 
     private func replace(_ field: XCUIElement, with text: String, in app: XCUIApplication) throws {
