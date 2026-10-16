@@ -166,14 +166,18 @@ final class MorningStore {
     @ObservationIgnored var slackReplyTask: Task<Void, Never>?
     @ObservationIgnored lazy var slackReply: SlackThreadReplyConversation = {
         let provider: any SlackThreadReplyProviding
+        let drafts: SlackReplyDraftService
         #if DEBUG
         if usesSyntheticSlack { provider = SlackReplyUITestProvider() }
         else { provider = SlackComposioReplyProvider(service: composio) }
+        drafts = SlackSetupUITestFixture.integratedDraftsIfRequested()
+            ?? SlackReplyDraftService.syntheticClassicJourneyIfRequested() ?? SlackReplyDraftService()
         #else
         provider = SlackComposioReplyProvider(service: composio)
+        drafts = SlackReplyDraftService()
         #endif
         return SlackThreadReplyConversation(provider: provider,
-            drafts: SlackSetupUITestFixture.integratedDraftsIfRequested() ?? SlackReplyDraftService(),
+            drafts: drafts,
             directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
             guard let self, !privacyBlocksWork else { throw CancellationError() }
             #if DEBUG

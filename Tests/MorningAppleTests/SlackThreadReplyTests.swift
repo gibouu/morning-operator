@@ -10,6 +10,68 @@ struct SlackThreadReplyTests {
     private let channel = "C12345678", author = "U33333333", parent = "1800000000.000001"
 
     #if DEBUG
+    @Test("Classic synthetic drafts require all private launch guards")
+    func classicDraftCannotEnterAnOrdinaryOrIntegratedLaunch() async throws {
+        let flags = ["--ui-testing", "--fixture-mode", "--ui-testing-slack-reply", "--ui-testing-workspace=\(UUID())"]
+        for missing in flags.indices {
+            #expect(SlackReplyDraftService.syntheticClassicJourneyIfRequested(
+                arguments: flags.enumerated().filter { $0.offset != missing }.map(\.element)) == nil)
+        }
+        for invalid in [[], flags + [flags.last!], Array(flags.dropLast()) + ["--ui-testing-workspace=invalid"],
+                        flags + ["--ui-testing-integrated-three-moments"]] {
+            #expect(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: invalid) == nil)
+        }
+        let drafts = try #require(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: flags))
+        for index in 0..<3 {
+            let body = try await drafts.draft(source: classicSource(index: index), intention: "SYNTHETIC please confirm the meeting")
+            #expect(body == SlackReplyDraftService.syntheticClassicReply(french: AppLanguage.isFrench))
+            #expect(try SlackReplyContract.reply(body) == body)
+        }
+        for french in [false, true] {
+            let body = SlackReplyDraftService.syntheticClassicReply(french: french)
+            #expect(try SlackReplyContract.reply(body) == body)
+            #expect(body.hasPrefix("SYNTHETIC "))
+            #expect(body.contains(french ? "rendez-vous" : "meeting"))
+        }
+    }
+
+    @Test("Classic fixture refuses unrelated sources, instructions and revisions before generation")
+    func classicDraftAllowlistDoesNotPrepareOrdinaryContent() async throws {
+        let flags = ["--ui-testing", "--fixture-mode", "--ui-testing-slack-reply", "--ui-testing-workspace=\(UUID())"]
+        let drafts = try #require(SlackReplyDraftService.syntheticClassicJourneyIfRequested(arguments: flags))
+        for field in ["connection", "tool", "arguments", "privacy", "channel", "author", "timestamp", "thread", "text"] {
+            await #expect(throws: SlackReplyError.unsupportedSource) {
+                try await drafts.draft(source: classicSource(changed: field), intention: "SYNTHETIC please confirm the meeting")
+            }
+        }
+        await #expect(throws: SlackReplyError.unsupportedSource) {
+            try await drafts.draft(source: source(), intention: "SYNTHETIC please confirm the meeting")
+        }
+        for intention in ["Please confirm the meeting", "SYNTHETIC send now", "SYNTHETIC please confirm the meeting\n"] {
+            await #expect(throws: SlackReplyError.unsupportedSource) {
+                try await drafts.draft(source: classicSource(), intention: intention)
+            }
+        }
+        await #expect(throws: SlackReplyError.unsupportedSource) {
+            try await drafts.draft(source: classicSource(), intention: "SYNTHETIC please confirm the meeting", previousReply: "An earlier draft")
+        }
+    }
+
+    private func classicSource(index: Int = 0, changed: String = "") -> SlackReplySource {
+        let texts = ["Can we meet tomorrow?", "The draft is ready to review.", "Thanks for the update."]
+        let timestamp = "179210000\(index).000001"
+        return .init(executionID: context(), origin: .init(
+            tool: changed == "tool" ? "SLACK_SEND_MESSAGE" : "SLACK_FETCH_CONVERSATION_HISTORY",
+            connectionID: changed == "connection" ? "ca_other" : "synthetic-slack",
+            arguments: ["channel": .string("CSYNTHETIC"), "limit": .number(changed == "arguments" ? 4 : 3)],
+            privacyGeneration: changed == "privacy" ? nil : UUID()), receivedAt: instant,
+            channelID: changed == "channel" ? "COTHER" : "CSYNTHETIC",
+            messageTS: changed == "timestamp" ? "1792100099.000001" : timestamp,
+            threadTS: changed == "thread" ? "1792100099.000001" : timestamp,
+            authorID: changed == "author" ? "UOTHER" : "USYNTHETIC",
+            text: changed == "text" ? "Ordinary content" : "SYNTHETIC: " + texts[index])
+    }
+
     @Test("The deterministic mixed-journey draft requires its private flags and isolated workspace")
     func integratedDraftCannotEnterAnOrdinaryLaunch() async throws {
         let flags = ["--ui-testing", "--ui-testing-integrated-three-moments", "--ui-testing-slack-setup",
