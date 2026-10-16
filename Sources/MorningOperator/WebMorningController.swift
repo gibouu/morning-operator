@@ -88,7 +88,10 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 mediaPlaybackSuspended = suspended
                 webView.setAllMediaPlaybackSuspended(suspended, completionHandler: nil)
             }
-            if enabled { resumeExecutionIfNeeded() } else { suspendExecution() }
+            if enabled {
+                if executionFinished { publishExecution(.finished) }
+                else { resumeExecutionIfNeeded() }
+            } else { suspendExecution() }
         }
     }
     var learningAllowed = false {
@@ -1018,6 +1021,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func beginConversationReply(authorized: @MainActor () -> Bool) async -> Bool {
+        guard !conversationBusy else { return false }
         let offered = conversationSnapshot
         guard let result = await observeConversation(authorized: authorized), let snapshot = result.snapshot,
               !conversationIsActive || conversationDraft.snapshot == snapshot else { return false }
@@ -1031,6 +1035,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 : "Check the previous send in the conversation before preparing another reply."
             return false
         }
+        guard !conversationBusy else { return false }
         return conversationDraft.begin(snapshot)
     }
 
@@ -1110,6 +1115,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 guard conversationOperation == operation, conversationAccess(authorized) else { break }
                 if let receipt = await conversationResult(.verify, snapshot: source, body: body, authorized: authorized),
                    receipt.status == .verified, let receiptID = receipt.receiptID {
+                    guard conversationOperation == operation, conversationAccess(authorized) else { return }
                     try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
                         guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
                         try journal.confirm(id: id, receiptID: receiptID)

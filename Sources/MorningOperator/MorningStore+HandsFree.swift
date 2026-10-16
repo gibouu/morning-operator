@@ -344,7 +344,7 @@ extension MorningStore {
             .map(\.text).joined(separator: " ")
     }
 
-    private func speakHandsFree(french: String, english: String) {
+    func speakHandsFree(french: String, english: String) {
         guard !privacyBlocksWork else { return }
         speech.speak(handsFreeUsesFrench ? french : english)
     }

@@ -99,7 +99,7 @@ extension MorningStore {
             let line = controller.conversationMessage ?? (AppLanguage.isFrench
                 ? "Relisez le texte avant de demander l’envoi." : "Review the text before asking to send.")
             if controller.conversationDraft.phase == .completed {
-                try? await speech.speakAndWait(line)
+                do { try await speech.speakAndWait(line) } catch { return true }
                 if authorized(), controller.conversationDraft.phase == .completed { resume() }
             } else { speech.speak(line) }
         }
