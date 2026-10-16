@@ -8,7 +8,7 @@ import MorningCore
     /// movie inference. Language is forced only in this app's argument domain.
     func testFrenchLargestNightReplyIsCorrectedReviewedAndSentOnceFromManualDraft() throws {
         continueAfterFailure = false
-        executionTimeAllowance = 420
+        executionTimeAllowance = 900
         let title = "SYNTHETIC — Mes mails et ma réponse"
         let stepID = "91000000-0000-4000-8000-000000000001"
         let portable = #"{"format":"morning-operator.routine","formatVersion":1,"detail":"includeDetails","sourceRoutineID":"91000000-0000-4000-8000-000000000100","sourceRoutineVersion":1,"sourceCreatedAt":1792129500,"approvalAtExport":false,"sourceIsSynthetic":true,"sourceLabel":"SYNTHETIC — Brouillon manuel privé, sans analyse vidéo","steps":[{"id":"91000000-0000-4000-8000-000000000001","title":"SYNTHETIC — Mes mails et ma réponse","kind":"messages","durationMinutes":5,"isRequired":false,"detail":"SYNTHETIC — Examiner le mail de Maïa, préparer et corriger une réponse, relire puis demander un seul envoi simulé."}]}"#
@@ -63,6 +63,32 @@ import MorningCore
         if playback.label == "Continuer" { replyControl("morning.playback", app).tap() }
         let running = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Pause"), object: playback)
         XCTAssertEqual(XCTWaiter.wait(for: [running], timeout: 10), .completed)
+        // XXXL scrolling consumes real wall time. Keep the imported five-minute
+        // budget, then use the same +2 min command available to the owner.
+        let beforeExtensionAt = Date()
+        let beforeExtension = MorningUITestNavigation.sessionSnapshot(in: app)
+        let identity = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String)
+        let identityFields = identity.components(separatedBy: "|")
+        XCTAssertEqual(identityFields.count, 2)
+        XCTAssertEqual(identityFields[1], stepID)
+        let remainingBefore = try XCTUnwrap(beforeExtension["remaining"].flatMap(Int.init))
+        XCTAssertGreaterThan(remainingBefore, 0)
+        revealReplyControls(app); replyTap("morning.settings", app); replyTap("morning.extend", app)
+        replyHome(app)
+        let afterExtension = MorningUITestNavigation.sessionSnapshot(in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        XCTAssertEqual(afterExtension["state"], beforeExtension["state"])
+        let remainingAfter = try XCTUnwrap(afterExtension["remaining"].flatMap(Int.init))
+        let elapsed = Int(ceil(Date().timeIntervalSince(beforeExtensionAt)))
+        XCTAssertGreaterThanOrEqual(remainingAfter, remainingBefore + 120 - elapsed - 2)
+        XCTAssertLessThanOrEqual(remainingAfter, remainingBefore + 122)
+        let budgetProof = XCTAttachment(string: String(decoding: try JSONSerialization.data(withJSONObject:
+            ["identity": identity, "remainingBefore": String(remainingBefore), "remainingAfter": String(remainingAfter),
+             "elapsedSecondsCeiling": String(elapsed), "command": "morning.extend", "extensionSeconds": "120"],
+            options: [.sortedKeys]), as: UTF8.self))
+        budgetProof.name = "gmail-reply-french-largest-night-real-budget-extension"
+        budgetProof.lifetime = .keepAlways; add(budgetProof)
+        attach("gmail-reply-french-largest-night-owner-extended-two-real-minutes", app)
         revealReplyControls(app); replyTap("morning.settings", app); replyTap("morning.details", app)
         XCTAssertTrue(app.buttons["morning.closeDetails"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["mail.attention.explanation"].waitForExistence(timeout: 20))
@@ -70,6 +96,7 @@ import MorningCore
         XCTAssertEqual(initialProof["simulatedSendAttempts"], "0")
         XCTAssertNil(initialProof["body"])
         XCTAssertEqual(initialProof["inboxReads"], "1"); XCTAssertEqual(initialProof["bodyReads"], "5")
+        XCTAssertEqual(initialProof["sessionID"], identityFields[0])
         XCTAssertEqual(initialProof["stepID"], stepID)
         for key in ["sessionID", "routineVersionID"] { XCTAssertNotNil(initialProof[key].flatMap(UUID.init(uuidString:))) }
         replyTap("mail.attention.choose.3", app)
@@ -111,8 +138,9 @@ import MorningCore
         // local speech. The private memory receipt remains tied to its exact IDs.
         replyHome(app); revealReplyControls(app); replyTap("morning.settings", app)
         let receipt = app.staticTexts["qa.gmailReplyReceipt"]
-        XCTAssertTrue(receipt.waitForExistence(timeout: 25))
+        // Settings is a lazy List: materialize its actual receipt row first.
         _ = replyControl("qa.gmailReplyReceipt", app)
+        XCTAssertTrue(receipt.exists)
         let proof = try replyProof("qa.gmailReplyReceipt", app)
         XCTAssertEqual(proof["simulatedSendAttempts"], "1")
         XCTAssertEqual(proof["inboxReads"], "1"); XCTAssertEqual(proof["bodyReads"], "5")
@@ -333,6 +361,13 @@ import MorningCore
                 let edit = app.buttons["routine.edit"]
                 let routineForeground = !details && !editorForeground && routine.exists &&
                     ((approval.exists && approval.isHittable) || (edit.exists && edit.isHittable))
+                let foregroundBar = app.navigationBars.allElementsBoundByIndex.last(where: {
+                    $0.exists && !$0.frame.isEmpty && $0.frame.intersects(app.frame)
+                })
+                let settings = app.collectionViews["settings.appearance"].firstMatch
+                let settingsForeground = !details && !editorForeground && !routineForeground &&
+                    foregroundBar.map { ["Settings", "Réglages"].contains($0.identifier) &&
+                        $0.buttons.allElementsBoundByIndex.contains { $0.exists && $0.isHittable } } == true && settings.exists
                 let holder: XCUIElement?
                 if details {
                     // Mail is in a non-lazy ScrollView. This ancestry selects the
@@ -342,7 +377,7 @@ import MorningCore
                 } else {
                     // The List supplies geometry; its visible approval/edit
                     // controls establish foreground ownership, not isHittable.
-                    holder = editorForeground ? editor : routineForeground ? routine
+                    holder = settingsForeground ? settings : editorForeground ? editor : routineForeground ? routine
                         : app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
                             ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable)
                 }
@@ -368,7 +403,22 @@ import MorningCore
                        !title.frame.isEmpty, safe.contains(title.frame) { return title }
                 }
                 if let control = matches.allElementsBoundByIndex.first(where: { candidate in
-                    candidate.exists && candidate.isHittable && !candidate.frame.isEmpty && app.frame.contains(candidate.frame) &&
+                    guard candidate.exists, !candidate.frame.isEmpty,
+                          !candidate.frame.isNull, !candidate.frame.isInfinite,
+                          [candidate.frame.minX, candidate.frame.minY, candidate.frame.maxX, candidate.frame.maxY]
+                            .allSatisfy({ $0.isFinite }) else { return false }
+                    if candidate.elementType == .staticText,
+                       details || editorForeground || routineForeground || settingsForeground, let holder {
+                        // A readonly proof may be taller than the viewport. It
+                        // must belong to this exact foreground container.
+                        let scoped = holder.descendants(matching: .staticText).matching(
+                            NSPredicate(format: "identifier == %@ OR label == %@", id, id))
+                        return safe.intersects(candidate.frame) && scoped.allElementsBoundByIndex.contains {
+                            $0.exists && $0.frame == candidate.frame && $0.label == candidate.label &&
+                                String(describing: $0.value) == String(describing: candidate.value)
+                        }
+                    }
+                    return candidate.isHittable && app.frame.contains(candidate.frame) &&
                         (safe.contains(candidate.frame) || bars.contains { $0.frame.contains(candidate.frame) } ||
                          (routineForeground && id == "routine.approve" && candidate.identifier == id))
                 }) { return control }
