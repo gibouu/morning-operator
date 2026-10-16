@@ -46,6 +46,20 @@ struct WeatherDeviceLocationTests {
         #expect(controller.currentWeatherLocation == nil)
         #expect(controller.locationIssue != nil)
     }
+    @Test func permissionPreparationDoesNotWaitForGPSAndTheLaterRefreshReadsNormally() async throws {
+        let fixture = DeviceLocationFixture(); fixture.authorizationAfterRequest = .authorized
+        let directory = temporaryDirectory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let controller = MorningBriefingController(directory: directory, deviceLocation: fixture)
+        #expect(await controller.enableCurrentLocation(resolveLocation: false))
+        #expect(fixture.permissionRequests == 1)
+        #expect(fixture.reads == 0)
+        #expect(controller.settings.usesCurrentLocation)
+        #expect(controller.currentWeatherLocation == nil)
+        await controller.resolveCurrentLocationIfNeeded()
+        #expect(fixture.permissionRequests == 1)
+        #expect(fixture.reads == 1)
+        #expect(controller.currentWeatherLocation == fixture.location)
+    }
     @Test func currentCoordinatesStayOutOfSettingsAndPrivacyClearRemovesThem() async throws {
         let fixture = DeviceLocationFixture(); fixture.authorization = .authorized
         let directory = temporaryDirectory(); defer { try? FileManager.default.removeItem(at: directory) }
@@ -137,6 +151,7 @@ struct WeatherDeviceLocationTests {
 @MainActor
 private final class DeviceLocationFixture: WeatherDeviceLocationProviding {
     var authorization: WeatherLocationAuthorization = .notDetermined
+    var authorizationAfterRequest: WeatherLocationAuthorization?
     var permissionRequests = 0
     var reads = 0
     var cancellations = 0
@@ -144,7 +159,11 @@ private final class DeviceLocationFixture: WeatherDeviceLocationProviding {
     var error: WeatherDeviceLocationError?
     let location = try! WeatherLocation(latitude: 48.12345, longitude: 2.54321, displayName: "SYNTHETIC current fix")
     private var continuation: CheckedContinuation<Void, Never>?
-    func requestAuthorization() async throws -> Bool { permissionRequests += 1; return authorization == .authorized }
+    func requestAuthorization() async throws -> Bool {
+        permissionRequests += 1
+        if let authorizationAfterRequest { authorization = authorizationAfterRequest }
+        return authorization == .authorized
+    }
     func currentLocation() async throws -> WeatherLocation {
         reads += 1
         if suspend { await withCheckedContinuation { continuation = $0 } }

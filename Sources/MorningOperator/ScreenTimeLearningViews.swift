@@ -171,6 +171,7 @@ struct MorningRoutinePreparationView: View {
                             .accessibilityIdentifier("routinePreparation.later")
                     }.frame(maxWidth: 560, alignment: .leading).padding(28).frame(maxWidth: .infinity)
                 }.scrollBounceBehavior(.basedOnSize)
+                    .accessibilityIdentifier("routinePreparation.content")
             }
         }
         .background { MorningEntryBackdrop() }
@@ -178,7 +179,6 @@ struct MorningRoutinePreparationView: View {
         .font(MorningTheme.Typography.body)
         .navigationTitle("Your morning").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .accessibilityIdentifier("routinePreparation.content")
         .task {
             guard !checkedExistingAccess else { return }
             checkedExistingAccess = true

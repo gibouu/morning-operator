@@ -217,12 +217,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
             let skip = app.buttons["onboarding.skipForNow"]
             XCTAssertEqual(skip.label, french ? "Passer pour le moment" : "Skip for now")
             tap("onboarding.skipForNow", in: app)
-            XCTAssertTrue(app.staticTexts["permissions.title.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertFalse(app.buttons["permissions.option.screenTime"].exists, "Filming opens the sequential card rather than the independent Settings list.")
-            XCTAssertEqual(app.alerts.count, 0, "Showing an explanation never grants or requests access.")
-            skipFilmingAccessExplanations(in: app)
-            tap("routinePreparation.later", in: app)
-            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+            skipAccessSetupAndRoutinePreparation(in: app, french: french)
             XCTAssertFalse(control("onboarding.preview", in: app).exists)
             XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
             let prefix = "--ui-testing-workspace="
@@ -266,22 +261,25 @@ final class MorningWelcomeFlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(skip.frame.minX, app.frame.minX - 1)
         XCTAssertLessThanOrEqual(skip.frame.maxX, app.frame.maxX + 1)
         skip.tap()
-        XCTAssertTrue(app.staticTexts["permissions.title.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(app.buttons["permissions.allow"].exists, "Each real access choice still needs an explicit action.")
-        XCTAssertEqual(app.buttons["permissions.skip"].label, "Plus tard")
-        XCTAssertEqual(app.alerts.count, 0)
+        skipAccessSetupAndRoutinePreparation(in: app, french: true)
         app.terminate()
     }
 
-    private func skipFilmingAccessExplanations(in app: XCUIApplication) {
-        // Isolated test workspace: skip every explanation, request no real grant.
-        for permission in ["screenTime", "location", "calendar", "reminders", "speech", "notifications", "alarms"] {
-            XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(app.buttons["permissions.option.screenTime"].exists)
-            tap("permissions.skip", in: app)
-            XCTAssertEqual(app.alerts.count, 0)
-        }
-        XCTAssertTrue(app.buttons["routinePreparation.later"].waitForExistence(timeout: 5), app.debugDescription)
+    private func skipAccessSetupAndRoutinePreparation(in app: XCUIApplication, french: Bool) {
+        XCTAssertTrue(app.staticTexts["permissions.title.summary"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+        XCTAssertEqual(app.buttons["permissions.skip"].label, french ? "Plus tard" : "Not now")
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].exists)
+        XCTAssertFalse(app.buttons["permissions.option.screenTime"].exists)
+        XCTAssertEqual(app.alerts.count, 0, "Opening the summary never requests access automatically.")
+        tap("permissions.skip", in: app)
+        XCTAssertTrue(app.staticTexts["routinePreparation.heading"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+        XCTAssertFalse(app.buttons["routine.approve"].exists, "Passing access setup must not approve a routine.")
+        tap("routinePreparation.later", in: app)
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["morning.playback"].exists, "Completing setup never starts a session.")
+        XCTAssertEqual(app.alerts.count, 0)
     }
 
     private func launch(phase: String = "day", french: Bool = false, languages: [String]? = nil,
@@ -333,8 +331,8 @@ final class MorningWelcomeFlowTests: XCTestCase {
         XCTAssertEqual(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.count, 0)
         XCTAssertFalse(app.buttons["morning.actions"].exists, "A failed or absent purchase must keep the paywall visible.")
         XCTAssertFalse(app.buttons["learn.screenTime"].exists)
-        XCTAssertFalse(app.staticTexts["permissions.title.speech"].exists,
-                       "The single voice explanation must stay behind verified subscription access.")
+        XCTAssertFalse(app.staticTexts["permissions.title.summary"].exists,
+                       "The access summary must stay behind verified subscription access.")
         XCTAssertFalse(app.buttons["permissions.option.speech"].exists,
                        "Optional access choices belong in Settings after the paywall.")
     }

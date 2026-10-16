@@ -34,7 +34,7 @@ struct MorningOperatorApp: App {
                     // It never fabricates a StoreKit transaction or source access.
                     developerAccess = true
                     showingOnboardingPreview = false
-                    // Replay real access explanations in order; no grant is assumed.
+                    // Reopen the access overview; each iPhone choice remains explicit.
                     store.permissionSetup.presentForFilming()
                 })
             } else if let site = Self.webMorningLaunchSite, showingWebPreview {
