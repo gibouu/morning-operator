@@ -167,6 +167,15 @@ extension MorningStore {
             }
             if let explanation { connectedActionStatus = explanation; speech.speak(explanation) }
         }
+        if event.state == .needsSignIn, session?.status == .running, let context = handsFreeContext {
+            pause()
+            browserSignInPause = (context, dataGeneration, handsFreePauseRevision)
+            if readAloud {
+                speech.speak(AppLanguage.isFrench ? "Connectez-vous ici. MORE gardera votre session et reprendra ce moment."
+                    : "Sign in here. MORE will keep your session and resume this moment.")
+            }
+            return
+        }
         if event.state == .needsChoice, session?.status == .running {
             pause()
             if readAloud {

@@ -1,14 +1,15 @@
 import Foundation
 
-/// Only the Instagram browser opts into this rule. Account authorization and
-/// explicit native routes elsewhere keep their own navigation policy.
+/// Keeps supported interactive browser destinations in WebKit. Account API
+/// authorization and explicit native routes keep their separate policies.
 public struct InstagramBrowserNavigation: Sendable {
     public enum Kind: Sendable { case other, link, form, history }
     public enum Decision: Equatable, Sendable { case allow, cancel, load(URL) }
+    private let site: WebMorningSite
     private var pendingLoad: URL?
     private var replayCount = 0
 
-    public init() {}
+    public init(site: WebMorningSite = .instagram) { self.site = site }
 
     /// A public WKWebView.load request does not try universal app links. Replay
     /// web-initiated GETs in the Instagram browser through that API, accepting its next callback
@@ -19,7 +20,7 @@ public struct InstagramBrowserNavigation: Sendable {
                                 isDownload: Bool = false) -> Decision {
         guard url.user == nil, url.password == nil, !isDownload else { return .cancel }
         if url.scheme?.lowercased() == "instagram" {
-            guard isTopLevel, method == "GET", let destination = Self.webURL(for: url) else { return .cancel }
+            guard site == .instagram, isTopLevel, method == "GET", let destination = Self.webURL(for: url) else { return .cancel }
             return load(destination)
         }
         guard url.scheme?.lowercased() == "https" else { return .cancel }
@@ -35,6 +36,7 @@ public struct InstagramBrowserNavigation: Sendable {
             // Same-host forms cannot trigger WebKit's app-link route. A
             // cross-host form can, and its credential body may be unavailable
             // for a safe replay, so leave the current page in place.
+            if site == .linkedin || site == .slack { return .allow }
             guard let host = url.host?.lowercased(), committedURL?.host?.lowercased() == host else { return .cancel }
             return .allow
         }

@@ -318,6 +318,7 @@ extension MorningStore {
             if handleGoogleCalendarDayUtterance(request) { return }
             if handleCalendlyDayUtterance(request) { return }
             if handleOutlookInboxUtterance(request) { return }
+            if await handleWebConversationUtterance(request) { return }
             if await handleSlackUtterance(request) { return }
             if await handleNativeMomentUtterance(request) { return }
             if let handler = handsFreeUtteranceHandler, await handler(request) { return }
@@ -352,6 +353,10 @@ extension MorningStore {
               UIApplication.shared.applicationState == .active else { throw CancellationError() }
         switch action {
         case .pause:
+            speech.stop()
+            currentConversationController?.cancelConversationWork()
+            browserSignInPause = nil
+            handsFreePauseRevision = UUID()
             if session?.status == .running { pause() }
             guard session?.status == .paused, notice == nil else { throw MorningCloudVoiceError.unavailable }
         case .resume:

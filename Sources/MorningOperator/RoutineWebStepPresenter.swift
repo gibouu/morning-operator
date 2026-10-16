@@ -56,6 +56,9 @@ private struct RoutineWebStepPresenter: ViewModifier {
                             }
                         }
                     },
+                    onConversation: { text in Task { await store.handleWebConversationUtterance(text) } },
+                    onReconcileConversation: { sent in Task { await store.reconcileBrowserSend(sent: sent) } },
+                    onBrowserSignedIn: { store.resumeAfterBrowserSignIn() },
                     onClose: closePage)
                     .id(ObjectIdentifier(controller))
                     .task(id: ObjectIdentifier(controller)) {
@@ -135,6 +138,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
         }
     }
     private func closePage() {
+        store.browserSignInPause = nil
         if store.webExecutionPlan != nil, store.session?.status == .running { store.pause() }
         store.pendingWebTarget = nil
     }

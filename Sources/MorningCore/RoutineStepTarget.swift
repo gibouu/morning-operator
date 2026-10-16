@@ -153,8 +153,8 @@ public enum RoutineStepTarget: Codable, Hashable, Sendable {
     case calendlyDay(CalendlyDayTarget)
     case outlookInbox(OutlookInboxTarget)
 
-    /// The executable route for an approved routine. Old Instagram app choices keep
-    /// their saved identity, but use MORE's browser without granting browser actions.
+    /// Saved app choices keep their identity; supported web pages use MORE's
+    /// browser without granting browser actions or resetting their destination.
     public var routineExecutionTarget: RoutineStepTarget {
         switch self {
         case let .externalApp(.instagram, detail):
@@ -166,13 +166,12 @@ public enum RoutineStepTarget: Codable, Hashable, Sendable {
             return .inAppWeb(site: WebMorningSite.instagram.table.startURL)
         case let .externalApp(.safari, detail):
             guard let url = StepApp.webURL(detail ?? ""),
-                  let host = url.host?.lowercased(), WebMorningSite.instagram.table.allowedHosts.contains(host),
                   var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   url.port == nil || (url.scheme?.lowercased() == "https" && url.port == 443) ||
                     (url.scheme?.lowercased() == "http" && url.port == 80) else { return self }
             components.scheme = "https"
             if components.port == 80 { components.port = nil }
-            guard let secureURL = components.url else { return self }
+            guard let secureURL = components.url, WebMorningSite(url: secureURL) != nil else { return self }
             return .inAppWeb(site: secureURL)
         default: return self
         }
