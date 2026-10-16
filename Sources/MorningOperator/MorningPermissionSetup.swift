@@ -12,7 +12,7 @@ import UserNotifications
 final class MorningPermissionSetup {
     var isPresented = false
     private(set) var isRevisiting = false
-    private var learnAfterDismiss = false
+    private var routineAfterDismiss = false
     private(set) var remaining: [MorningPermission] = []
     private(set) var isRequesting = false
     private enum Outcome { case skipped, allowed, denied, unavailable }
@@ -71,7 +71,7 @@ final class MorningPermissionSetup {
     }
 
     var screenTimeUnavailableNote: String? {
-        supported.contains(.screenTime) ? nil : Self.text("Screen Time needs a compatible iPhone and app capability. You can review its availability later from Learn or Settings.", "Temps d’écran nécessite un iPhone compatible et un accès disponible dans cette version. Retrouvez son état plus tard dans Apprendre ou Réglages.")
+        supported.contains(.screenTime) ? nil : Self.text("Screen Time needs a compatible iPhone and app capability. You can review its availability later in Settings.", "Temps d’écran nécessite un iPhone compatible et un accès disponible dans cette version. Retrouvez son état plus tard dans Réglages.")
     }
     var supported: [MorningPermission] {
         var values: [MorningPermission] = [.location, .calendar, .reminders]
@@ -83,7 +83,7 @@ final class MorningPermissionSetup {
     func presentIfNeeded() {
         guard needsInitialSetup, !isPresented else { return }
         remaining = [.speech]
-        isRevisiting = false; learnAfterDismiss = false
+        isRevisiting = false; routineAfterDismiss = false
         if !isolated, SFSpeechRecognizer.authorizationStatus() == .authorized,
            AVAudioApplication.shared.recordPermission == .granted {
             resolve(.speech, outcome: .allowed)
@@ -95,7 +95,7 @@ final class MorningPermissionSetup {
     func revisit() {
         guard !isRequesting else { return }
         remaining = []; outcome = nil
-        isRevisiting = true; learnAfterDismiss = false
+        isRevisiting = true; routineAfterDismiss = false
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { isPresented = true }
     }
@@ -172,16 +172,16 @@ final class MorningPermissionSetup {
         }
     }
 
-    func finish(learn: Bool = false) {
+    func finish(reviewRoutine: Bool = false) {
         guard !isRequesting, remaining.isEmpty else { return }
-        learnAfterDismiss = learn && !isRevisiting
+        routineAfterDismiss = reviewRoutine && !isRevisiting
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { isPresented = false }
     }
 
-    func takeLearningRequest() -> Bool {
-        defer { learnAfterDismiss = false }
-        return learnAfterDismiss
+    func takeRoutineReviewRequest() -> Bool {
+        defer { routineAfterDismiss = false }
+        return routineAfterDismiss
     }
 
     func cancelForBackground() {
@@ -194,11 +194,11 @@ final class MorningPermissionSetup {
         activeVoiceAccess?.cancel(); activeVoiceAccess = nil
         attempt = nil; requestTask?.cancel(); requestTask = nil
         isRequesting = false; isPresented = false; remaining = []; outcome = nil
-        learnAfterDismiss = false
+        routineAfterDismiss = false
     }
     func resetAfterPrivacy() {
         progress = MorningPermissionProgress(); generation = try? control.status().generation
-        canSave = true; issue = nil; isRevisiting = false; learnAfterDismiss = false
+        canSave = true; issue = nil; isRevisiting = false; routineAfterDismiss = false
     }
 
     private func resolve(_ permission: MorningPermission, outcome: Outcome) {
@@ -218,7 +218,7 @@ final class MorningPermissionSetup {
             progress = next
         }
         remaining.removeFirst(); self.outcome = outcome
-        if !isRevisiting, remaining.isEmpty { finish() }
+        if !isRevisiting, remaining.isEmpty { finish(reviewRoutine: true) }
     }
 
     private static var screenTimeCapabilityAvailable: Bool {
