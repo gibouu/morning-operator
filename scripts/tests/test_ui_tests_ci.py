@@ -1,6 +1,10 @@
 import importlib.util
+import os
 import pathlib
+import re
+import subprocess
 import tempfile
+import textwrap
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "ui-tests-ci.py"
@@ -75,6 +79,16 @@ class SelectTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 ci.select("only", classes, self.directory.name)
 
+    def test_inline_main_actor_class_is_selectable_but_missing_names_still_fail(self):
+        pathlib.Path(self.directory.name, "Long.swift").write_text(
+            "@MainActor final class ImportedLongRoutineJourneyTests: XCTestCase {}\n"
+            "// @MainActor final class CommentedTests: XCTestCase {}\n")
+        self.assertEqual(ci.select("only", ["ImportedLongRoutineJourneyTests"], self.directory.name),
+                         ["-only-testing:MorningOperatorUITests/ImportedLongRoutineJourneyTests"])
+        for name in ["CommentedTests", "ImportedLongRoutineJourneyTest"]:
+            with self.assertRaises(SystemExit):
+                ci.select("only", [name], self.directory.name)
+
     def test_every_class_named_in_the_workflow_exists(self):
         root = SCRIPT.parents[1]
         workflow = (root / ".github/workflows/ui-tests.yml").read_text()
@@ -83,6 +97,66 @@ class SelectTests(unittest.TestCase):
         self.assertGreater(len(names), 0)
         ci.select("only", names, root / "UITests")
         self.assertEqual(len(names), len(set(names)), "a class sits in two shards")
+
+
+class WorkflowShardTests(unittest.TestCase):
+    """Execute only the workflow's selection shell, never a simulator or build."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root = SCRIPT.parents[1]
+        cls.workflow = (cls.root / ".github/workflows/ui-tests.yml").read_text()
+        cls.classes = dict(re.findall(r"^  (\w+_CLASSES): ([^\n]+)$", cls.workflow, re.M))
+        block = re.search(r"^      - name: Choose this shard's tests\n        run: \|\n((?:          [^\n]*\n)+)",
+                          cls.workflow, re.M)
+        if block is None:
+            raise AssertionError("The workflow must select tests before building them.")
+        cls.selection_script = textwrap.dedent(block[1])
+        cls.shards = [name.strip() for name in re.search(r"^        shard: \[([^\]]+)\]$", cls.workflow, re.M)[1].split(",")]
+        cls.outputs = {name: cls.selection(name) for name in cls.shards}
+
+    @classmethod
+    def selection(cls, shard):
+        with tempfile.TemporaryDirectory() as directory:
+            github_env = pathlib.Path(directory, "github-env")
+            environment = dict(os.environ, **cls.classes, SHARD=shard, GITHUB_ENV=str(github_env))
+            subprocess.run(["bash", "-e", "-c", cls.selection_script], cwd=cls.root,
+                           env=environment, check=True, capture_output=True, text=True)
+            return dict(line.split("=", 1) for line in github_env.read_text().splitlines())
+
+    def test_existing_selections_and_exactly_one_long_routine_shard(self):
+        morning = ["QuietMorningTests", "SunriseDockTests", "MorningEntryUITests", "FixtureJourneyTests",
+                   "MorningBriefingTests", "CompletionCaptureTests", "PrivacyTests", "RoutineTransferTests"]
+        proposals = ["RoutineEvidenceProposalTests", "ObservationReviewJourneyTests"]
+        long = ["ImportedLongRoutineJourneyTests"]
+        self.assertEqual(self.shards, ["morning", "proposals", "everything-else", "long-routine"])
+        for shard, names in [("morning", morning), ("proposals", proposals), ("long-routine", long)]:
+            self.assertEqual(self.outputs[shard]["SELECTION"].split(), ci.select("only", names, self.root / "UITests"))
+        self.assertEqual(self.outputs["everything-else"]["SELECTION"].split(),
+                         ci.select("skip", morning + proposals + long, self.root / "UITests"))
+        # Resolve the actual arguments over the real declared classes. A missing
+        # skip, a duplicate inclusion or an accidentally lost class fails here.
+        known = ci.declared_test_classes(self.root / "UITests")
+        selected_by = {name: [] for name in known}
+        for shard, output in self.outputs.items():
+            arguments = output["SELECTION"].split()
+            only = {arg.split("/", 1)[1] for arg in arguments if arg.startswith("-only-testing:")}
+            skipped = {arg.split("/", 1)[1] for arg in arguments if arg.startswith("-skip-testing:")}
+            for name in only if only else known - skipped:
+                selected_by[name].append(shard)
+        self.assertTrue(known)
+        self.assertEqual({name: shards for name, shards in selected_by.items() if len(shards) != 1}, {})
+        self.assertEqual(selected_by["ImportedLongRoutineJourneyTests"], ["long-routine"])
+
+    def test_only_long_routine_gets_45_minutes_and_run_bounds_stay_intact(self):
+        self.assertEqual({name: output["TEST_ALLOWANCE"] for name, output in self.outputs.items()},
+                         {"morning": "900", "proposals": "900", "everything-else": "900", "long-routine": "2700"})
+        run = re.search(r"^      - name: Run the UI tests\n((?:        [^\n]*\n|          [^\n]*\n)+)",
+                        self.workflow, re.M)[1]
+        self.assertIn("timeout-minutes: 80\n", run)
+        self.assertIn('-default-test-execution-time-allowance "$TEST_ALLOWANCE"', run)
+        self.assertIn('-maximum-test-execution-time-allowance "$TEST_ALLOWANCE"', run)
+        self.assertIn("    timeout-minutes: 100\n", self.workflow)
 
 
 class SummaryTests(unittest.TestCase):
