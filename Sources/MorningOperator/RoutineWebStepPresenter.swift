@@ -48,8 +48,8 @@ private struct RoutineWebStepPresenter: ViewModifier {
                         let context = store.handsFreeContext, privacy = store.dataGeneration
                         let generation = controller.syntheticNewsPageGeneration
                         Task {
-                            await store.handleWebReadingUtterance("repeat the article")
-                            if let context, store.handsFreeContext == context, store.dataGeneration == privacy {
+                            let handled = await store.handleWebReadingUtterance("repeat the article")
+                            if handled, let context, store.handsFreeContext == context, store.dataGeneration == privacy {
                                 controller.noteSyntheticNewsRepeatCompletion(context: context, privacy: privacy, pageGeneration: generation)
                             }
                         }

@@ -32,7 +32,8 @@ import MorningCore
         app.launch(); defer { app.terminate() }
         let marker = app.staticTexts["qa.testWorkspace"]
         XCTAssertTrue(marker.waitForExistence(timeout: 10)); XCTAssertEqual(marker.value as? String, workspace)
-        XCTAssertFalse(app.staticTexts["app.notice"].label.contains("SYNTHETIC QA input refused"))
+        let notice = app.staticTexts["app.notice"]
+        if notice.exists { XCTAssertFalse(notice.label.contains("SYNTHETIC QA input refused")) }
         reveal(app); tap("morning.settings", app); tap("setup.routine", app)
         XCTAssertTrue(button("routine.approve", app).isEnabled)
         tap("routine.step.0", app)
