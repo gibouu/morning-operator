@@ -60,6 +60,11 @@ struct VisibleTaskContrastProbeTests {
         var diagnostics: RoutineProposalDiagnostics?
     }
 
+    private struct ValidatedProposalRecord: Encodable {
+        let contrast: String
+        let proposal: EvidenceRoutineProposal
+    }
+
     private func observations(for contrast: Contrast) throws -> [ObservationAcquisition] {
         let instant = Date(timeIntervalSince1970: 1_792_123_200)
         let day = try ObservationObservedDate(date: instant, timeZoneIdentifier: "UTC", provenance: .userAssigned)
@@ -142,6 +147,13 @@ struct VisibleTaskContrastProbeTests {
                   proposal.isCurrent(archive: try ObservationArchive(entries: sources), baseRoutine: nil) else {
                 throw ProbeFailure.invalidResult
             }
+            // This separate semantic-review payload contains only a natively
+            // validated proposal from the constant synthetic inputs above.
+            // It is not the SDK response and never enters the diagnostic DTO.
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(ValidatedProposalRecord(contrast: contrast.label, proposal: proposal))
+            print("VISUAL_EVIDENCE_CONTRAST_VALIDATED_PROPOSAL \(String(decoding: data, as: UTF8.self))")
             record.result = .proposedDraft; record.proposedStepCount = proposal.routine.steps.count
         } catch RoutineEvidenceProposalError.insufficientEvidence {
             // A valid empty model result reaches assemble only after every batch
