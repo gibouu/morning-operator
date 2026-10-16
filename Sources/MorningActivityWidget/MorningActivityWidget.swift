@@ -42,12 +42,9 @@ struct MorningActivityWidget: Widget {
                     Text("!").font(.caption.weight(.semibold)).foregroundStyle(.white)
                         .accessibilityLabel(activityText("Update needed. Open MORE.", locale: context.state.locale))
                 } else if let timer = context.state.stepTimer {
-                    StepCountdown(timer: timer, state: context.state)
+                    MorningActivityCompactTimer(timer: timer, state: context.state)
                         .environment(\.locale, context.state.locale)
                         .environment(\.layoutDirection, .leftToRight)
-                        .font(.caption2.monospacedDigit()).foregroundStyle(.white)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .frame(maxWidth: 52)
                 } else {
                     Text(presentation.shortProgress).font(.caption2.monospacedDigit())
                         .foregroundStyle(.white).accessibilityLabel(presentation.progress)
@@ -205,6 +202,63 @@ private struct MorningActivityIslandDetail: View {
                              accent: MorningActivityPalette.islandAccent, locale: presentation.state.locale)
             .fixedSize()
     }
+}
+
+/// Landscape on iOS 27 can offer only a 28-point circle. Use the timer's
+/// graphical progress there; the full countdown remains in the expanded view
+/// and in the accessibility representation.
+private struct MorningActivityCompactTimer: View {
+    let timer: MorningActivityStepTimer
+    let state: MorningActivityContentState
+
+    var body: some View {
+        #if os(iOS)
+        if #available(iOS 27.0, *) {
+            LimitedWidthTimer(timer: timer, state: state)
+        } else {
+            countdown
+        }
+        #else
+        countdown
+        #endif
+    }
+
+    private var countdown: some View {
+        StepCountdown(timer: timer, state: state)
+            .font(.caption2.monospacedDigit()).foregroundStyle(.white)
+            .lineLimit(1).minimumScaleFactor(0.7)
+            .frame(maxWidth: 52)
+    }
+
+    #if os(iOS)
+    @available(iOS 27.0, *)
+    private struct LimitedWidthTimer: View {
+        let timer: MorningActivityStepTimer
+        let state: MorningActivityContentState
+        @Environment(\.isDynamicIslandLimitedInWidth) private var limitedWidth
+
+        var body: some View {
+            if limitedWidth {
+                Group {
+                    if state.status == .paused {
+                        Image(systemName: "pause.fill")
+                    } else {
+                        ProgressView(timerInterval: min(state.updatedAt, timer.endsAt)...timer.endsAt, countsDown: true)
+                            .progressViewStyle(.circular).labelsHidden()
+                    }
+                }
+                .font(.caption2).tint(MorningActivityPalette.islandAccent)
+                .foregroundStyle(.white).frame(width: 22, height: 22)
+                .accessibilityRepresentation {
+                    Text(state.status.displayName(locale: state.locale))
+                    StepCountdown(timer: timer, state: state)
+                }
+            } else {
+                MorningActivityCompactTimer(timer: timer, state: state).countdown
+            }
+        }
+    }
+    #endif
 }
 
 private struct MorningActivityPresentation {
