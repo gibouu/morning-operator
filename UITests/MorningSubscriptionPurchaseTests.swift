@@ -6,20 +6,18 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
-    private var sessionForCleanup: SKTestSession?
+    nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
 
-    override func tearDown() async throws {
-        await MainActor.run {
-            let app = XCUIApplication()
-            if app.state != .notRunning { app.terminate() }
-            if let sessionForCleanup {
-                attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
-            }
-            sessionForCleanup?.clearTransactions()
-            sessionForCleanup?.resetToDefaultState()
-            sessionForCleanup = nil
+    override func tearDown() {
+        let app = XCUIApplication()
+        if app.state != .notRunning { app.terminate() }
+        if let sessionForCleanup {
+            attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
         }
-        try await super.tearDown()
+        sessionForCleanup?.clearTransactions()
+        sessionForCleanup?.resetToDefaultState()
+        sessionForCleanup = nil
+        super.tearDown()
     }
 
     /// Run against the ordinary Release executable with a clean simulator app
@@ -363,7 +361,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 20), app.debugDescription)
     }
 
-    private func attachTransactions(_ session: SKTestSession, name: String) {
+    nonisolated private func attachTransactions(_ session: SKTestSession, name: String) {
         let details = session.allTransactions().map {
             "id=\($0.identifier) state=\($0.state.rawValue) pending=\($0.pendingAskToBuyConfirmation) expires=\(String(describing: $0.expirationDate))"
         }.joined(separator: "\n")
