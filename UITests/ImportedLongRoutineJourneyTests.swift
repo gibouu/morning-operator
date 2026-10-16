@@ -181,7 +181,7 @@ import MorningCore
         XCTAssertEqual(trace.map(\.index), Array(0..<10))
         XCTAssertEqual(Set(trace.map(\.step)).count, 10)
         XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: Double(minutes[9] * 60 + 45)))
-        try requireRecap(app)
+        try requireRecap(app, trace: trace, titles: titles)
         attach("long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
         let evidence = try JSONSerialization.data(withJSONObject: [
             "scope": "Manual oracle downstream only; Calendar/Gmail simulated reads, Slack one uncertain simulated post, seven real-minute budgets. No video inference, live effect, browser or acoustic proof.",
@@ -192,7 +192,7 @@ import MorningCore
         let attachment = XCTAttachment(string: String(decoding: evidence, as: UTF8.self))
         attachment.name = "long-ten-actual-session-order-and-budget-instants"; attachment.lifetime = .keepAlways; add(attachment)
         app.terminate(); app.launch(); try requireWorkspace(workspace, app)
-        try requireRecap(app)
+        try requireRecap(app, trace: trace, titles: titles)
         attach("long-ten-honest-recap-restored", app)
     }
 
@@ -347,15 +347,34 @@ import MorningCore
             throw DiagnosticFailure.invalid
         }
     }
-    private func requireRecap(_ app: XCUIApplication) throws {
+    private func requireRecap(_ app: XCUIApplication, trace: [Identity], titles: [String]) throws {
         home(app); reveal(app); tap("morning.settings", app)
         XCTAssertTrue(element("morning.completeSummary", app).label.hasPrefix("10 moments"))
-        let expected = "Timed moments finished: 7. Verified operations: 2. Results to check: 1."
-        XCTAssertEqual(element("morning.executionSummary", app).label, expected,
-                       "Calendar/Gmail are reads; Slack remains uncertain; seven budgets certify no effects.")
+        XCTAssertTrue(element("morning.executionSummary", app).label.contains("Timed moments finished: 7."))
+        XCTAssertEqual(trace.count, 10); XCTAssertEqual(titles.count, 10)
         tap("setup.history", app)
-        XCTAssertEqual(element("recap.execution", app).label, expected)
-        XCTAssertTrue(element("recap.completed", app).label.hasPrefix("10 moments completed"))
+        XCTAssertEqual(element("recap.completed", app).label, "10 moments reached")
+        for index in 0..<10 {
+            let id = "recap.execution." + trace[index].step
+            let row = element(id, app)
+            scroll(row, id: id, in: app)
+            XCTAssertTrue(row.label.contains(titles[index]), row.label)
+            switch index {
+            case 0, 1:
+                XCTAssertTrue(row.label.contains("Operation verified."), row.label)
+                XCTAssertFalse(row.label.contains("presentation unavailable") || row.label.contains("presentation interrupted"),
+                               "Calendar/Gmail must actually finish their readings, not merely receive source facts.")
+            case 2:
+                let readStatuses = ["Operation verified.", "Service response received; presentation unavailable.",
+                                    "Service response received; presentation interrupted."]
+                XCTAssertTrue(readStatuses.contains(where: { row.label.contains($0) }), row.label)
+                XCTAssertTrue(row.label.contains("Slack replies to check: 1."), row.label)
+                XCTAssertFalse(row.label.contains("Slack replies confirmed:"), row.label)
+            default:
+                XCTAssertTrue(row.label.contains("Timed budget finished."), row.label)
+                XCTAssertFalse(row.label.contains("Operation verified."), "A budget certifies no provider effect.")
+            }
+        }
         XCTAssertEqual(element("recap.slackRepliesUnconfirmed", app).label, "Slack replies to check: 1")
         XCTAssertFalse(app.staticTexts["recap.slackReplies"].exists)
         XCTAssertFalse(app.staticTexts["recap.nativeActions"].exists)

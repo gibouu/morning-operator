@@ -73,9 +73,8 @@ final class BudgetAndRecapTests: XCTestCase {
         MorningUITestNavigation.selectTab("Review", in: app)
         reveal("recap.completed", in: app)
         XCTAssertEqual(element("recap.ending", in: app).label, "You reached the end of the routine.")
-        XCTAssertTrue(element("recap.completed", in: app).label.hasPrefix("4 moments completed"))
-        XCTAssertFalse(element("recap.skipped", in: app).exists)
-        XCTAssertFalse(element("recap.unfinished", in: app).exists)
+        XCTAssertEqual(element("recap.completed", in: app).label, "4 moments reached")
+        let rowIDs = assertAttributedRecap(Array(repeating: "No verified operation recorded.", count: 4), in: app)
         XCTAssertTrue(element("recap.saved", in: app).exists)
         XCTAssertFalse(element("recap.notSaved", in: app).exists)
         XCTAssertFalse(app.buttons["recap.retrySave"].exists)
@@ -88,6 +87,8 @@ final class BudgetAndRecapTests: XCTestCase {
         app.launch()
         MorningUITestNavigation.selectTab("Review", in: app)
         reveal("recap.completed", in: app)
+        XCTAssertEqual(element("recap.completed", in: app).label, "4 moments reached")
+        XCTAssertEqual(assertAttributedRecap(Array(repeating: "No verified operation recorded.", count: 4), in: app), rowIDs)
         XCTAssertTrue(element("recap.saved", in: app).exists)
         XCTAssertFalse(element("recap.feedbackSaved", in: app).exists)
         XCTAssertFalse(app.buttons["recap.useful.yes"].isSelected)
@@ -112,11 +113,12 @@ final class BudgetAndRecapTests: XCTestCase {
         let app = launch(approved: true)
         stopAfterOneMoment(in: app)
         MorningUITestNavigation.selectTab("Review", in: app)
-        reveal("recap.unfinished", in: app)
+        reveal("recap.completed", in: app)
         XCTAssertEqual(element("recap.ending", in: app).label, "You stopped before the end.")
-        XCTAssertTrue(element("recap.completed", in: app).label.hasPrefix("1 moment completed"))
-        XCTAssertTrue(element("recap.unfinished", in: app).label.hasPrefix("3 moments not reached"))
-        XCTAssertFalse(element("recap.skipped", in: app).exists)
+        // The second moment was reached before Stop, but no operation completed.
+        XCTAssertEqual(element("recap.completed", in: app).label, "2 moments reached")
+        _ = assertAttributedRecap(["No verified operation recorded.", "Operation interrupted.",
+                                  "Moment not reached.", "Moment not reached."], in: app)
         XCTAssertTrue(element("recap.saved", in: app).exists)
         attach("recap-stopped-morning", app)
 
@@ -125,6 +127,28 @@ final class BudgetAndRecapTests: XCTestCase {
         XCTAssertTrue(app.buttons["routine.step.3"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["routine.step.4"].exists)
         XCTAssertFalse(app.buttons["routine.approve"].exists, "A stopped run must leave the approved routine approved.")
+    }
+
+    /// Manual Next reaches a moment without verifying its action. Each status
+    /// stays with the exact named row instead of being inferred from a total.
+    @discardableResult
+    private func assertAttributedRecap(_ statuses: [String], in app: XCUIApplication) -> [String] {
+        let titles = ["Your morning", "People and messages", "Make room for the day", "A little time to play"]
+        XCTAssertEqual(statuses.count, titles.count)
+        var rowIDs: [String] = []
+        for (title, status) in zip(titles, statuses) {
+            let row = app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "recap.execution.", title)).firstMatch
+            scrollUntilVisible(row, in: app)
+            XCTAssertTrue(row.label.contains(status), row.label)
+            XCTAssertFalse(row.label.contains("Operation verified.") || row.label.contains("Timed budget finished."),
+                           "Manual navigation must not certify a provider operation or an elapsed budget.")
+            let id = row.identifier
+            XCTAssertNotNil(UUID(uuidString: String(id.dropFirst("recap.execution.".count))))
+            rowIDs.append(id)
+        }
+        XCTAssertEqual(Set(rowIDs).count, 4)
+        return rowIDs
     }
 
     // Named screenshots of both screens for a visual read; no wording is asserted.
