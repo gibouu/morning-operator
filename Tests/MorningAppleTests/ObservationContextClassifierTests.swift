@@ -417,9 +417,92 @@ struct ObservationContextClassifierTests {
     }
 
     #if canImport(FoundationModels)
-    @Test("The visible-context guided-generation schema resolves without model inference")
+    @Test("The batch-specific guided schema resolves supplied IDs and the exact row count without inference")
     func schemaResolves() throws {
-        #expect(try JSONEncoder().encode(ObservationContextGenerationSchema.make()).count > 100)
+        let frames = try [frame("Cedar Mail\nInbox", at: 0), frame("Lumen Calendar\nToday", at: 1)]
+        let batch = try #require(prepared(frames).batches.first)
+        let encoded = try JSONEncoder().encode(ObservationContextGenerationSchema.make(batch: batch, catalog: catalog))
+        let object = try JSONSerialization.jsonObject(with: encoded)
+        func objects(_ value: Any) -> [[String: Any]] {
+            if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
+            if let array = value as? [Any] { return array.flatMap(objects) }
+            return []
+        }
+        let schemas = objects(object)
+        #expect(schemas.contains { ($0["minItems"] as? Int) == frames.count && ($0["maxItems"] as? Int) == frames.count })
+        #expect(schemas.contains { ($0["enum"] as? [String]) == frames.map { $0.id.uuidString } })
+        #expect(schemas.contains { ($0["enum"] as? [String]) == ["identified", "ambiguous", "unknown"] })
+    }
+
+    @Test("Guided source candidates retain whole-line punctuation, Unicode bytes and exact multi-line ambiguity")
+    func schemaCandidatesKeepSourceBytes() throws {
+        let composed = "Atelier Édition"
+        let decomposed = "Atelier E\u{301}dition"
+        let raw = "  Cedar News • Browser SIMULATED  \r\n\tGarden Calendar — Shared\t\r\n" + composed + "\r\n" + decomposed
+        let source = try frame(raw, at: 0)
+        let batch = try #require(ObservationContextValidation.prepare(frames: [source], catalog: []).batches.first)
+        let choices = ObservationContextGenerationSchema.candidates(batch: batch, catalog: [])
+        #expect(choices.sampleIDs == [source.id.uuidString])
+        #expect(choices.contextLabels.contains("Cedar News • Browser SIMULATED"))
+        #expect(!choices.contextLabels.contains("Cedar News"), "No shortened brand is invented.")
+        #expect(choices.evidenceQuotes.contains { $0.contains("\r\n") })
+        for quote in choices.evidenceQuotes where !quote.isEmpty {
+            #expect(Data(raw.utf8).range(of: Data(quote.utf8)) != nil)
+        }
+        for literal in [composed, decomposed] {
+            #expect(choices.evidenceQuotes.filter { Data($0.utf8) == Data(literal.utf8) }.count == 1)
+        }
+        _ = try ObservationContextGenerationSchema.make(batch: batch, catalog: [])
+        let multiLine = try #require(choices.evidenceQuotes.first { $0.contains("\r\n") })
+        let validated = ObservationContextValidation.validate(json: try json([
+            proposal(source, label: "", quote: multiLine, outcome: "ambiguous")
+        ]), batch: batch, catalog: [])
+        #expect(validated.decisions[0].evidence == .ambiguous(reference: source.evidenceReference))
+        #expect(validated.decisions[0].evidenceQuote == multiLine)
+    }
+
+    @Test("Batch enum membership never replaces same-frame grounding or catalog competition")
+    func schemaCandidatesDoNotWeakenValidation() throws {
+        let first = try frame("Cedar Mail\nInbox", at: 0)
+        let second = try frame("Lumen Calendar\nToday", at: 1)
+        let batch = try #require(prepared([first, second]).batches.first)
+        let choices = ObservationContextGenerationSchema.candidates(batch: batch, catalog: catalog)
+        #expect(choices.contextLabels == [""] + catalog.map(\.label))
+        #expect(choices.evidenceQuotes.contains("Lumen Calendar"))
+        let borrowed = ObservationContextValidation.validate(json: try json([
+            proposal(first, label: "Lumen Calendar"), proposal(second, label: "", quote: "", outcome: "unknown")
+        ]), batch: batch, catalog: catalog)
+        #expect(borrowed.decisions.allSatisfy { $0.evidence == .unknown })
+        #expect(borrowed.diagnostics.contains { $0.kind == .invalidEvidence })
+        let competing = try frame("Cedar Mail\nLumen Calendar\nChoose an app", at: 2)
+        let competingBatch = try #require(prepared([competing]).batches.first)
+        let competition = ObservationContextValidation.validate(json: try json([
+            proposal(competing, label: "Cedar Mail")
+        ]), batch: competingBatch, catalog: catalog)
+        #expect(competition.decisions[0].evidence == .unknown)
+        #expect(competition.diagnostics.contains { $0.kind == .unsupportedIdentity })
+    }
+
+    @Test("Guided candidates exclude omitted body and retain bounded schema and prompt byte measurements")
+    @MainActor
+    func schemaBudgetAndOmittedContent() throws {
+        let line = String(repeating: "É", count: 48) + " • qualifier"
+        let sources = try (0..<4).map { try frame(Array(repeating: line, count: 6).joined(separator: "\n") + "\nHidden body brand", at: Double($0)) }
+        let input = try ObservationContextValidation.prepare(frames: sources, catalog: [])
+        #expect(input.batches.flatMap(\.frames).count == sources.count)
+        for batch in input.batches {
+            let choices = ObservationContextGenerationSchema.candidates(batch: batch, catalog: [])
+            #expect(!choices.contextLabels.contains("Hidden body brand"))
+            #expect(!choices.evidenceQuotes.contains("Hidden body brand"))
+            let sourceBytes = batch.excerpts.reduce(0) { $0 + $1.text.utf8.count }
+            let candidateBytes = (choices.contextLabels + choices.evidenceQuotes).reduce(0) { $0 + $1.utf8.count }
+            #expect(candidateBytes <= 3 * sourceBytes)
+            #expect(choices.contextLabels.count <= 1 + batch.frames.count * ObservationContextLimits.maximumExcerptNonemptyLines)
+            #expect(choices.evidenceQuotes.count <= 1 + batch.frames.count * (ObservationContextLimits.maximumExcerptNonemptyLines + 1))
+            let encoded = try JSONEncoder().encode(ObservationContextGenerationSchema.make(batch: batch, catalog: []))
+            print("CONTEXT_SCHEMA_BYTES schema=\(encoded.count) prompt=\(batch.prompt.utf8.count) instructions=\(ObservationContextClassifier.instructions.utf8.count); not token counts or actual model calls")
+            #expect(batch.prompt.count <= ObservationContextLimits.maximumPromptCharacters)
+        }
     }
     #endif
 
@@ -492,13 +575,21 @@ struct ObservationContextClassifierTests {
 
     @Test("Optional saved-evidence replay measures preparation only, with no model inference",
           .enabled(if: ProcessInfo.processInfo.environment["MO_OBSERVATION_REPLAY_PATH"] != nil))
+    @MainActor
     func replaySavedEvidencePreparation() throws {
         let environment = ProcessInfo.processInfo.environment
         let path = try #require(environment["MO_OBSERVATION_REPLAY_PATH"])
         let artifact = try JSONDecoder().decode(ReplayArtifact.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
         let input = try ObservationContextValidation.prepare(frames: artifact.evidence.frames, catalog: artifact.catalog)
         var possibilities: [ReplayPossibility] = []
+        var schemaBudgets: [ReplaySchemaBudget] = []
         for batch in input.batches {
+            #if canImport(FoundationModels)
+            let schema = try ObservationContextGenerationSchema.make(batch: batch, catalog: artifact.catalog)
+            schemaBudgets.append(.init(frameCount: batch.frames.count,
+                schemaUTF8Bytes: try JSONEncoder().encode(schema).count, promptUTF8Bytes: batch.prompt.utf8.count,
+                instructionUTF8Bytes: ObservationContextClassifier.instructions.utf8.count))
+            #endif
             for frame in batch.frames {
                 let excerpt = try #require(batch.excerpts.first { $0.sampleID == frame.id })
                 for line in excerpt.text.split(whereSeparator: { $0.isNewline }).map({ $0.trimmingCharacters(in: .whitespaces) }) {
@@ -516,13 +607,14 @@ struct ObservationContextClassifierTests {
             }
         }
         let report = ReplayPreparationReport(
-            scope: "Pure preparation/validation replay. Possibilities are deterministic lexical candidates, not model outputs or foreground-app verification. No model was invoked.",
+            scope: "Pure preparation/validation replay. Possibilities are deterministic lexical candidates, not model outputs or foreground-app verification. UTF-8 byte measurements are not token counts, submittedCharacterCount or actual model calls. No model was invoked.",
             sourceFrameCount: artifact.evidence.frames.count,
             selectedFrameCount: input.inputSelection.excerpts.count,
             selectedCharacterCount: input.inputSelection.excerpts.reduce(0) { $0 + $1.text.count },
             excludedSampleIDs: input.initialDecisions.filter { decision in
                 !input.inputSelection.excerpts.contains { $0.sampleID == decision.sampleID }
             }.map { $0.sampleID },
+            schemaBudgetMeasurements: schemaBudgets,
             catalogValidationPossibilities: possibilities,
             inputSelection: input.inputSelection)
         #expect(report.selectedFrameCount <= ObservationContextLimits.maximumFrames)
@@ -550,12 +642,19 @@ struct ObservationContextClassifierTests {
         let catalogLabel: String
         let rawEvidenceQuote: String
     }
+    private struct ReplaySchemaBudget: Encodable {
+        let frameCount: Int
+        let schemaUTF8Bytes: Int
+        let promptUTF8Bytes: Int
+        let instructionUTF8Bytes: Int
+    }
     private struct ReplayPreparationReport: Encodable {
         let scope: String
         let sourceFrameCount: Int
         let selectedFrameCount: Int
         let selectedCharacterCount: Int
         let excludedSampleIDs: [UUID]
+        let schemaBudgetMeasurements: [ReplaySchemaBudget]
         let catalogValidationPossibilities: [ReplayPossibility]
         let inputSelection: ObservationContextInputSelection
     }

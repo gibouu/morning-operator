@@ -65,20 +65,22 @@ public final class ObservationContextClassifier {
         defer { isClassifying = false }
 
         #if canImport(FoundationModels)
-        let schema: GenerationSchema
-        do { schema = try ObservationContextGenerationSchema.make() }
-        catch {
-            for frame in input.batches.flatMap(\.frames) {
-                decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: String(localized: "The local model schema could not be prepared.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))
-            }
-            return result(.failed, diagnostics: [.init(kind: .invalidResponse, nativeError: ObservationContextErrorSanitizer.map(error))])
-        }
         var attempted = 0; var responded = 0; var failed = 0
         var diagnostics: [ObservationContextDiagnostic] = []
         // Independent short sessions avoid carrying one frame's proposed identity into the
         // next batch as model memory. Repeated evidence remains repeated, ordered samples.
         for batch in input.batches {
             try Task.checkCancellation()
+            let schema: GenerationSchema
+            do { schema = try ObservationContextGenerationSchema.make(batch: batch, catalog: input.catalog) }
+            catch {
+                failed += 1
+                diagnostics.append(.init(kind: .invalidResponse, nativeError: ObservationContextErrorSanitizer.map(error)))
+                for frame in batch.frames {
+                    decisions[frame.id] = ObservationContextValidation.unknown(frame, reason: String(localized: "The local model schema could not be prepared.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))
+                }
+                continue
+            }
             attempted += 1
             do {
                 let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: Self.instructions)
@@ -139,13 +141,16 @@ public final class ObservationContextClassifier {
     an OCR-damaged header, return ambiguous or unknown; do not select a presumed current app.
     If the catalog is empty, an identified contextLabel must be an exact short visible header line,
     not a paraphrase or a guessed app name. Generic visual contexts are permitted only as literal text.
-    Copy the complete chosen header into BOTH contextLabel and evidenceQuote, including visible
+    With an empty catalog, copy the complete chosen header into BOTH contextLabel and evidenceQuote, including visible
     separators and qualifiers. Do not shorten it to a familiar brand, remove a subtitle from that
     same line, substitute punctuation or invent a cleaner header.
     Copy evidenceQuote exactly from the same supplied excerpt: the complete raw matching header line
     INCLUDING decorations for catalog identities, or the identical literal header line for generic
     contexts. Generic labels are not normalized by removing decorations. Never invent a cleaned quote
     or borrow evidence from another frame or omitted body content.
+    Schema string choices constrain exact source membership only; a candidate line may be metadata
+    or body content, not an app header. Never borrow another frame's candidate. Return unknown rather
+    than omit a sample, and use each supplied sampleID exactly once.
     An identified label is only visual-context evidence, never an OS-verified bundle identifier.
     Never output bundle IDs, app launch/switch/gesture counts, taps, scrolling, read intent, likes,
     durations, routines or totals. No controller truth is present and none should be inferred.
@@ -218,20 +223,55 @@ enum ObservationContextErrorSanitizer {
 #if canImport(FoundationModels)
 // Native guided generation without the FoundationModelsMacros plugin requirement.
 enum ObservationContextGenerationSchema {
-    static func make() throws -> GenerationSchema {
+    /// Membership constraints only. Use the validator's lexical lines (newline split,
+    /// surrounding whitespace removed), never normalize punctuation or source UTF-8.
+    /// These candidates do not decide which line is a supported header.
+    static func candidates(batch: ObservationContextBatch, catalog: [ObservationContextCatalogEntry])
+        -> (sampleIDs: [String], contextLabels: [String], evidenceQuotes: [String]) {
+        let lines = batch.excerpts.flatMap { excerpt in
+            excerpt.text.split(whereSeparator: \.isNewline).map(String.init)
+                .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+        // One bounded contiguous source prefix also permits a multi-line ambiguity
+        // quote. Do not join cleaned lines or rewrite their original newline bytes.
+        let multiLineQuotes = batch.excerpts.compactMap { excerpt -> String? in
+            var prefix = ""
+            for line in excerpt.text.split(whereSeparator: \.isNewline) {
+                let candidate = String(excerpt.text[..<line.endIndex])
+                guard candidate.count <= 240 else { break }
+                prefix = candidate
+            }
+            let quote = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+            return quote.contains(where: \.isNewline) ? quote : nil
+        }
+        let labels = catalog.isEmpty ? lines.filter { (2...80).contains($0.count) } : catalog.map(\.label)
+        return (batch.frames.map { $0.id.uuidString }, exactUnique([""] + labels),
+                exactUnique([""] + lines.filter { $0.count <= 240 } + multiLineQuotes))
+    }
+
+    private static func exactUnique(_ values: [String]) -> [String] {
+        var seen = Set<Data>()
+        return values.filter { seen.insert(Data($0.utf8)).inserted }
+    }
+
+    static func make(batch: ObservationContextBatch, catalog: [ObservationContextCatalogEntry]) throws -> GenerationSchema {
+        let choices = candidates(batch: batch, catalog: catalog)
+        let sampleID = DynamicGenerationSchema(name: "SuppliedVisibleSample", anyOf: choices.sampleIDs)
         let outcome = DynamicGenerationSchema(name: "VisibleContextOutcome", anyOf: ["identified", "ambiguous", "unknown"])
+        let label = DynamicGenerationSchema(name: "SuppliedContextLabel", anyOf: choices.contextLabels)
+        let quote = DynamicGenerationSchema(name: "SuppliedExactQuote", anyOf: choices.evidenceQuotes)
         let frame = DynamicGenerationSchema(name: "VisibleContextFrame", properties: [
-            .init(name: "sampleID", description: "Copy exactly one supplied sampleID.", schema: .init(type: String.self)),
+            .init(name: "sampleID", description: "Copy exactly one supplied sampleID, each once.", schema: .init(referenceTo: "SuppliedVisibleSample")),
             .init(name: "outcome", schema: .init(referenceTo: "VisibleContextOutcome")),
-            .init(name: "contextLabel", description: "Exact catalog label or literal visible header; empty for ambiguous/unknown. Never a bundle identifier.", schema: .init(type: String.self)),
-            .init(name: "evidenceQuote", description: "Exact header text from this frame, or an exact ambiguity quote. Empty for unknown.", schema: .init(type: String.self))
+            .init(name: "contextLabel", description: "Exact catalog label or literal visible header; empty for ambiguous/unknown. Candidates alone do not establish identity.", schema: .init(referenceTo: "SuppliedContextLabel")),
+            .init(name: "evidenceQuote", description: "Exact complete source line or multi-line source prefix from this frame, including decorations. Empty for unknown.", schema: .init(referenceTo: "SuppliedExactQuote"))
         ])
         let root = DynamicGenerationSchema(name: "VisibleContextResponse", properties: [
             .init(name: "frames", description: "One independent context result per supplied frame; never infer events or counts.",
-                  schema: .init(arrayOf: .init(referenceTo: "VisibleContextFrame"), minimumElements: 0,
-                                maximumElements: ObservationContextLimits.maximumBatchFrames))
+                  schema: .init(arrayOf: .init(referenceTo: "VisibleContextFrame"), minimumElements: batch.frames.count,
+                                maximumElements: batch.frames.count))
         ])
-        return try GenerationSchema(root: root, dependencies: [outcome, frame])
+        return try GenerationSchema(root: root, dependencies: [sampleID, outcome, label, quote, frame])
     }
 }
 #endif
