@@ -12,7 +12,7 @@ struct StepTargetEditor: View {
         guard case let .externalApp(_, detail) = target else { return "" }; return detail ?? ""
     }
     private var selectedChoice: String {
-        switch target {
+        switch target?.routineExecutionTarget {
         case let .externalApp(app, _): "app.\(app.rawValue)"
         case let .inAppWeb(url): WebMorningSite(url: url).map { "web.\($0.rawValue)" } ?? "web.saved"
         case .shortcut: "shortcut"
@@ -40,7 +40,7 @@ struct StepTargetEditor: View {
                     if selectedChoice == "web.saved" { Text("Saved page").tag("web.saved") }
                 }
                 Section("Another app") {
-                    ForEach(StepApp.allCases, id: \.self) { app in Text(app.displayName).tag("app.\(app.rawValue)") }
+                    ForEach(StepApp.allCases.filter { $0 != .instagram }, id: \.self) { app in Text(app.displayName).tag("app.\(app.rawValue)") }
                 }
                 if selectedChoice == "api.saved" {
                     Section("From your accounts") { Text("Saved service action").tag("api.saved") }

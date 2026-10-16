@@ -267,7 +267,7 @@ struct StepNavigationTests {
         let session = try running([insta, tea])
         let own = StepTimer(sessionID: session.id, stepID: insta.id, minutes: 5, at: Date())
         let snapshot = MorningActivityProjection.snapshot(session: session, timer: own)
-        #expect(snapshot?.state.stepTimer?.destination == .app(.instagram))
+        #expect(snapshot?.state.stepTimer?.destination == .inMORE(.instagram))
         #expect(snapshot?.state.stepTimer?.hasNextStep == true)
         #expect(snapshot?.state.stepTimer?.nextDestination == nil)
         let foreign = StepTimer(sessionID: session.id, stepID: tea.id, minutes: 5, at: Date())

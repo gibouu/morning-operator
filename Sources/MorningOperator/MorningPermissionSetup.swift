@@ -92,13 +92,26 @@ final class MorningPermissionSetup {
         isPresented = true
     }
 
-    func revisit(asOnboarding: Bool = false) {
+    func revisit() {
         guard !isRequesting else { return }
-        remaining = asOnboarding ? supported : []; outcome = nil
-        isRevisiting = !asOnboarding; routineAfterDismiss = false
+        remaining = []; outcome = nil
+        isRevisiting = true; routineAfterDismiss = false
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { isPresented = true }
     }
+
+    #if DEBUG
+    /// Reopens the access overview, never resets or assumes iOS grants.
+    /// Permission requests below still use each source's real authorization.
+    func presentForFilming() {
+        guard !isRequesting else { return }
+        let choices = supported
+        remaining = choices.filter { $0 == .screenTime } + choices.filter { $0 != .screenTime }
+        isRevisiting = false; routineAfterDismiss = false; outcome = nil
+        var transaction = Transaction(); transaction.disablesAnimations = true
+        withTransaction(transaction) { isPresented = true }
+    }
+    #endif
 
     func choose(_ permission: MorningPermission) {
         guard isRevisiting, !isRequesting, supported.contains(permission) else { return }
