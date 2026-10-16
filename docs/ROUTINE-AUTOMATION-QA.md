@@ -206,6 +206,34 @@ On this combined source, v38's current/historical own-interface wording suite
 passes32 tests in72.486s against the actual bilingual app sources/catalogue,
 using the unchanged v37 shared test products. All60 Python checks also pass.
 
+Main then advances to `b1986fed`, adding browser login and LinkedIn/Slack
+conversation behavior, including changed Core logic/tests. The two source
+conflicts are resolved in `02e857f`: the private origin remains exclusive and
+precedes the new ordinary HTTPS host policy; target help retains Save and
+describes login only for browser targets. Independent source review accepts the
+composition. V37 is historical evidence, not validation of this changed Core.
+Build9ac had already passed on `0b93422` before its proposed stop; no signal or
+runtime is performed. Its365 archived entries preserve bytes/size/mode.
+
+The owner's next priority is immediate ordinary-iPhone delivery. Source
+`02e857f` builds, is signed with the existing valid identity/profiles and passes
+strict/deep verification. **MORE0.1.1(2026101631) is installed in place and
+opened**, with its ordinary process confirmed. All six workspace/preference
+files match before/after installation; backend URL, namespace, Google client,
+callbacks and subscription configuration match the previous installation.
+Actual signed WeatherKit, Family Controls and app/website usage capabilities
+are retained. No fixture arguments, UI test or external action is used. This
+delivery does not certify a microphone dialogue, a send or the full simulator
+routine. Private delivery/signature/configuration receipts stay outside Git.
+
+The remaining solar-filming work from PR228 is combined separately: its explicit
+DEBUG-only visual timeline uses the existing global lifecycle, retaining the
+ordinary30-second refresh. Routine/provider clocks remain real. The four tests,
+Debug/Release build and short filming smoke still need their own results; no
+filming flag is used by the complete routine. Main's subsequent `0d562f2`
+change is documentation only. The owner defers Apple reauthentication until
+after the iPhone installation; TestFlight submission remains unverified.
+
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
 seven validated outcomes. Five abstain; two yield four synthetic unapproved
