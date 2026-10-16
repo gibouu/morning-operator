@@ -51,15 +51,29 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private let syntheticNewsRequested: Bool
     #if DEBUG
     @ObservationIgnored private let syntheticNewsHandler: SyntheticNewsSchemeHandler?
+    private(set) var syntheticNewsRepeatCompletions = 0
     #endif
     var sourceLabel: String { syntheticNews == nil ? site.displayName : "SYNTHETIC Cedar News" }
     var isSyntheticNews: Bool { syntheticNews != nil }
+    var syntheticNewsPageGeneration: Int? { syntheticNews == nil ? nil : pageGeneration }
     var syntheticNewsDiagnostic: String {
         guard syntheticNews != nil, let context = routineContext else { return "" }
         #if DEBUG
-        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0)"
+        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0) newsRepeatCompleted=\(syntheticNewsRepeatCompletions)"
         #else
         return ""
+        #endif
+    }
+
+    /// Observation only, called after the ordinary async Repeat callback returns.
+    /// It certifies neither audible speech nor a successful TTS completion.
+    func noteSyntheticNewsRepeatCompletion(context: MorningVoiceCommandContext, privacy: UUID, pageGeneration: Int?) {
+        #if DEBUG
+        guard syntheticNews != nil, let pageGeneration, pageGeneration == self.pageGeneration,
+              routineContext == context, privacyAtCreation?.generation == privacy, privacyIsCurrent,
+              needsArticleReturn, articleText != nil, !articleBusy,
+              UIApplication.shared.applicationState == .active else { return }
+        syntheticNewsRepeatCompletions += 1
         #endif
     }
     /// The presenting view revokes this whenever it leaves the foreground.

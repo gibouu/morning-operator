@@ -32,9 +32,15 @@ choice through MORE's native second-title control, which enters the existing
 article utterance route. XCTest does not tap a DOM link, scroll the article for
 the agent, change the session or call Store methods. MORE reobserves the links,
 navigates, verifies the local destination and extracts rendered article text.
-The test checks the independent exact paragraph, retained-body repeat without
-another resource load, and return/resume with the same session/version/step
-and exact paused timer instants. EN/FR are explicitly forced in the test
+The test checks the independent exact paragraph and waits for a private receipt
+emitted after the ordinary asynchronous Repeat callback returns. Only then does
+it compare local resource deliveries and the retained body. That receipt is
+bound to the same page generation, session, step and privacy generation; it is
+not an acoustic or successful-TTS receipt. Return/resume checks the same
+session/version/step, exact paused timer instants and the actually observed list
+offset within two points of rounding tolerance. The compact list may have a
+zero offset; this does not certify restoration from a nonzero scroll position.
+EN/FR are explicitly forced in the test
 argument domain; these are not first-launch language tests or acoustic tests.
 
 Core contracts cover missing flags, duplicate/wrong workspace, unregistered

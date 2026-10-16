@@ -44,7 +44,16 @@ private struct RoutineWebStepPresenter: ViewModifier {
                     retainedController: controller,
                     onNewsArticle: { ordinal in Task { await store.handleWebReadingUtterance("read article \(ordinal)") } },
                     onNewsReturn: { Task { await store.handleWebReadingUtterance("back to headlines") } },
-                    onNewsRepeat: { Task { await store.handleWebReadingUtterance("repeat the article") } },
+                    onNewsRepeat: {
+                        let context = store.handsFreeContext, privacy = store.dataGeneration
+                        let generation = controller.syntheticNewsPageGeneration
+                        Task {
+                            await store.handleWebReadingUtterance("repeat the article")
+                            if let context, store.handsFreeContext == context, store.dataGeneration == privacy {
+                                controller.noteSyntheticNewsRepeatCompletion(context: context, privacy: privacy, pageGeneration: generation)
+                            }
+                        }
+                    },
                     onClose: closePage)
                     .id(step.id)
                     .sheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }

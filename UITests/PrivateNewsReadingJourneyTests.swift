@@ -66,6 +66,9 @@ import MorningCore
         for field in fields { XCTAssertNotNil(UUID(uuidString: field)) }
         XCTAssertEqual(running["resource"], "/headlines"); XCTAssertEqual(running["pausedAtBits"], "none")
         Thread.sleep(forTimeInterval: 5)
+        let beforeSelection = try diagnostic(app)
+        XCTAssertEqual(beforeSelection["newsContext"], context); XCTAssertEqual(beforeSelection["resource"], "/headlines")
+        let listOffset = try XCTUnwrap(beforeSelection["viewportY"].flatMap(Int.init))
         // This product ordinal button conveys the user's intention through
         // handleWebReadingUtterance. XCTest never taps a link inside the DOM.
         XCTAssertTrue(second.isHittable); second.tap()
@@ -77,6 +80,7 @@ import MorningCore
                       "The actual second document must render its exact independent source paragraph.")
         let paused = try diagnostic(app)
         let localLoads = try XCTUnwrap(paused["localLoads"].flatMap(Int.init))
+        let repeatCompletions = try XCTUnwrap(paused["newsRepeatCompleted"].flatMap(Int.init))
         XCTAssertGreaterThanOrEqual(localLoads, 2, "The list and chosen article must actually be delivered by the local handler.")
         XCTAssertEqual(paused["newsContext"], context); XCTAssertEqual(paused["resource"], "/article/two")
         XCTAssertEqual(paused["articleParagraphs"], "1"); XCTAssertEqual(paused["endsAtBits"], running["endsAtBits"])
@@ -84,13 +88,23 @@ import MorningCore
         let budget = app.staticTexts["web.remaining"].label
         attach("private-news-second-observed-body-\(language)", app)
         tap("web.articleRepeat", app)
-        XCTAssertEqual(try diagnostic(app)["localLoads"], String(localLoads), "Repeat reads the retained body, without another document request.")
+        // The private receipt is emitted only after the real asynchronous
+        // handler returns, on this exact page/context/privacy generation.
+        // A timeout or elapsed delay is not a successful completion signal.
+        wait(app.staticTexts["web.result"], predicate: NSPredicate(format: "value MATCHES %@",
+            ".*\\bnewsRepeatCompleted=\(repeatCompletions + 1)\\b.*"), timeout: 90)
+        let repeated = try diagnostic(app)
+        XCTAssertEqual(repeated["localLoads"], String(localLoads), "Repeat reads the retained body, without another document request.")
+        for key in ["newsContext", "resource", "articleParagraphs", "endsAtBits", "pausedAtBits"] { XCTAssertEqual(repeated[key], paused[key]) }
+        XCTAssertTrue(app.webViews.staticTexts.matching(NSPredicate(format: "label == %@", paragraph)).firstMatch.exists)
         tap("web.articleReturn", app)
         XCTAssertTrue(app.buttons["web.articleReturn"].waitForNonExistence(timeout: 25))
         XCTAssertTrue(second.waitForExistence(timeout: 10)); XCTAssertEqual(second.label, "2. " + secondTitle)
         let returned = try diagnostic(app)
         for key in ["newsContext", "endsAtBits", "pausedAtBits"] { XCTAssertEqual(returned[key], paused[key]) }
         XCTAssertEqual(returned["resource"], "/headlines"); XCTAssertEqual(app.staticTexts["web.remaining"].label, budget)
+        let returnedOffset = try XCTUnwrap(returned["viewportY"].flatMap(Int.init))
+        XCTAssertLessThanOrEqual(abs(returnedOffset - listOffset), 2, "Return must restore the actually observed list offset, within rounding tolerance.")
         XCTAssertFalse(app.buttons["web.articleRepeat"].exists)
         attach("private-news-return-same-paused-budget-\(language)", app)
         let pausedAt = try instant(paused, "pausedAtBits"), end = try instant(paused, "endsAtBits")
