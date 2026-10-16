@@ -16,11 +16,14 @@ struct AppleIntelligenceCitationTests {
     private func prepared(_ text: String) throws -> ModelCitationPreparation {
         try ModelCitationPreparation.prepare(LearningEvidencePreparation.prepare(acquisitions: [source(text)]))
     }
-    private func response(_ ids: [String], outcome: String = "supportedActivities", kind: String = "custom") throws -> EvidenceModelRoutineProposal {
-        // An unexpected generated quote cannot replace the application's anchor.
-        let json: [String: Any] = ["outcome": outcome, "steps": [["title": "Review the supported activity",
-            "detail": "A tentative activity, not a performed action.", "kind": kind, "durationMinutes": 2,
-            "citationIDs": ids, "quote": "Fabricated quotation must never be retained."]]]
+    private func response(_ ids: [String], outcome: String = "supportedActivities", kind: String = "custom",
+                          detail: String? = "A tentative activity, not a performed action.") throws -> EvidenceModelRoutineProposal {
+        // Older generated detail/quote fields cannot replace the application's
+        // neutral rendering or selected anchor. Current responses omit both.
+        var step: [String: Any] = ["title": "Review the supported activity", "kind": kind, "durationMinutes": 2,
+            "citationIDs": ids, "quote": "Fabricated quotation must never be retained."]
+        if let detail { step["detail"] = detail }
+        let json: [String: Any] = ["outcome": outcome, "steps": [step]]
         return try JSONDecoder().decode(EvidenceModelRoutineProposal.self, from: JSONSerialization.data(withJSONObject: json))
     }
 
@@ -142,6 +145,68 @@ struct AppleIntelligenceCitationTests {
         #expect(proposal.support[0].citations[0].sampleID == frame.id && proposal.support[0].citations[0].sourceLayer == .videoFrame)
     }
 
+    @Test("A grounded model detail cannot borrow the date or room from uncited lines", arguments: [
+        "10:40 Project review meeting\n", "10:40 Réunion de revue du projet\n"
+    ])
+    func nativeDetailPublishesOnlyTheSelectedExcerpt(_ quote: String) throws {
+        // Reproduces the semantic failure of the real contrast: date/place
+        // exist in this same frame, but the selected citation contains neither.
+        let text = "Calendar\nFriday, 16 October 2026\n" + quote + "Place: West room."
+        let frame = try ObservationFrameEvidence(requestedTimeSeconds: 0, actualTimeSeconds: 0, outcome: .observed, text: text)
+        let video = try ObservationVideoEvidence(durationSeconds: 1, frames: [frame])
+        let entry = try ObservationAcquisition(observedDate: source("I read the project notes.").observedDate,
+            origin: .synthetic, sourceKind: .video, sourceLabel: "SYNTHETIC selected-excerpt regression",
+            originalText: video.renderedText, videoEvidence: video)
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let prepared = try ModelCitationPreparation.prepare(evidence)
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let anchor = try #require(batch.anchors.first { $0.citation.quote.utf8.elementsEqual(quote.utf8) })
+        let unsupported = "The calendar shows a meeting on Friday, 16 October 2026 in the West room."
+        for legacyDetail in [unsupported, nil] {
+            let steps = try response([anchor.id], kind: "calendar", detail: legacyDetail).resolvedSteps(in: batch)
+            #expect(steps[0].detail.isEmpty)
+            try LearningEvidencePreparation.validateBatchResult(steps, units: batch.units)
+            let proposal = try LearningEvidencePreparation.assemble(evidence: evidence, steps: steps, preserving: nil)
+            let shown = try #require(proposal.routine.steps.first)
+            #expect(!shown.detail.contains("Friday") && !shown.detail.contains("16 October 2026") && !shown.detail.contains("West room"))
+            #expect(shown.detail.contains(EvidenceDetailText.tentativeNote) && shown.detail.contains(EvidenceDetailText.line(quote)))
+            #expect(proposal.support[0].citations[0].quote.utf8.elementsEqual(quote.utf8))
+            #expect(EvidenceDetailText.description(of: shown.detail, citing: [quote]) == "")
+            #expect(shown.automation == nil && shown.target == nil && !proposal.routine.isApproved)
+            #expect(proposal.isCurrent(archive: try ObservationArchive(entries: [entry]), baseRoutine: nil))
+        }
+        #expect(throws: RoutineEvidenceProposalError.invalidCitation) {
+            try response(["not-supplied"], detail: unsupported).resolvedSteps(in: batch)
+        }
+    }
+
+    @Test("Native grounded rendering does not erase manual Keep wording, actions or duration choices")
+    func nativeDetailLeavesPersonalChoicesIntact() throws {
+        let entry = try source("I review the project agenda after breakfast.\n")
+        let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
+        let prepared = try ModelCitationPreparation.prepare(evidence)
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let anchor = try #require(batch.anchors.first)
+        let steps = try response([anchor.id], detail: "An unsupported model description.").resolvedSteps(in: batch)
+        let ritual = RoutineStep(title: "My personal ritual", detail: "SYNTHETIC manual words: Friday in the West room.",
+            kind: .wellbeing, durationMinutes: 7, isRequired: true, automation: .spokenNote)
+        let durationChoice = RoutineStep(title: steps[0].title, kind: steps[0].kind, durationMinutes: 9)
+        let base = RoutineVersion(sourceLabel: "Personal reviewed routine", steps: [ritual, durationChoice], isApproved: true)
+        var preferences = RoutinePreferenceJournal()
+        try preferences.upsert(RoutinePreference(target: ritual, presence: .keep))
+        try preferences.upsert(RoutinePreference(target: durationChoice, durationMinutes: 9))
+        let savedPreferences = preferences
+        let proposal = try LearningEvidencePreparation.assemble(evidence: evidence, steps: steps,
+            preserving: base, preferences: preferences)
+        #expect(proposal.routine.steps.first { $0.id == ritual.id } == ritual)
+        let inferred = try #require(proposal.routine.steps.first { $0.title == steps[0].title })
+        #expect(inferred.durationMinutes == 9 && inferred.automation == nil && inferred.target == nil)
+        #expect(!inferred.detail.contains("unsupported model description"))
+        #expect(inferred.detail.contains(EvidenceDetailText.line(anchor.citation.quote)))
+        #expect(preferences == savedPreferences && base.isApproved && !proposal.routine.isApproved)
+        #expect(proposal.isCurrent(archive: try ObservationArchive(entries: [entry]), baseRoutine: base, preferences: preferences))
+    }
+
     @Test func annotationOverheadNeverSilentlyRemovesSourceToFitTheBudget() throws {
         let entry = try source(String(repeating: "I read.\n", count: 130))
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: [entry])
@@ -186,7 +251,7 @@ struct AppleIntelligenceCitationTests {
         let schema = try EvidenceRoutineGenerationSchema.make(citationIDs: ["q1", "q2"])
         let data = try JSONEncoder().encode(schema)
         let encoded = String(decoding: data, as: UTF8.self)
-        #expect(encoded.contains("citationIDs") && encoded.contains("q1") && !encoded.contains("unitID") && !encoded.contains("\"quote\""))
+        #expect(encoded.contains("citationIDs") && encoded.contains("q1") && !encoded.contains("unitID") && !encoded.contains("\"quote\"") && !encoded.contains("\"detail\""))
         func objects(_ value: Any) -> [[String: Any]] {
             if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
             if let array = value as? [Any] { return array.flatMap(objects) }

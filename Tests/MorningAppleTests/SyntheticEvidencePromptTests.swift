@@ -78,7 +78,7 @@ struct SyntheticEvidencePromptTests {
         let batch = try #require(prepared.batchesByFirstUnitID.values.first)
         let anchor = try #require(batch.anchors.first { $0.citation.quote.trimmingCharacters(in: .whitespacesAndNewlines) == task })
         let generated = EvidenceModelRoutineProposal(outcome: "supportedActivities", steps: [
-            .init(title: "Review visible task content", detail: "A tentative synthetic activity.", kind: "custom",
+            .init(title: "Review visible task content", kind: "custom",
                   durationMinutes: 2, citationIDs: [anchor.id])
         ])
         let steps = try generated.resolvedSteps(in: batch)
