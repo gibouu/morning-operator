@@ -11277,6 +11277,23 @@
         }
       }
     },
+    "Live conversation is unavailable in this beta. Local voice commands and reading aloud remain available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live conversation is unavailable in this beta. Local voice commands and reading aloud remain available."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation en direct est indisponible dans cette bêta. Les commandes vocales locales et la lecture à voix haute restent disponibles."
+          }
+        }
+      }
+    },
     "Local data removal needs attention. Open Privacy to finish it.": {
       "localizations": {
         "en": {
@@ -27226,6 +27243,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vos premiers moments du matin"
+          }
+        }
+      }
+    },
+    "Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Day"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour"
+          }
+        }
+      }
+    },
+    "Night": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Night"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuit"
           }
         }
       }

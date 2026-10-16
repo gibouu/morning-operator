@@ -32,7 +32,7 @@ struct NativeConnectionsView: View {
         .background(MorningPaper(showsSun: false))
         .foregroundStyle(MorningStyle.ink)
         .disabled(store.privacyBlocksWork)
-        .sheet(isPresented: $showingBriefing) { MorningBriefingView(store: store) }
+        .morningSheet(isPresented: $showingBriefing) { MorningBriefingView(store: store) }
         .task { service.refreshAccess() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { service.refreshAccess() } }
         .onChange(of: store.dataGeneration) { _, _ in showingBriefing = false }
@@ -272,7 +272,7 @@ private struct NativeShortcutCard: View {
             }.tint(MorningStyle.accent)
         }.nativeConnectionCard()
         .onAppear { name = service.shortcutNames[operation] ?? "" }
-        .sheet(isPresented: $showingGuide) { NativeShortcutGuide(example: example) }
+        .morningSheet(isPresented: $showingGuide) { NativeShortcutGuide(example: example) }
     }
 
     private func run() {

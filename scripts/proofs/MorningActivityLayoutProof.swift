@@ -45,6 +45,7 @@ private struct MorningActivityLayoutProof {
         var remaining: TimeInterval? = 278
         var destination: StepDestination = .app(.instagram)
         var hasNextStep = true
+        var appearance: MorningBrandAppearance = .day
     }
     private struct Result: Codable {
         let name: String
@@ -76,6 +77,7 @@ private struct MorningActivityLayoutProof {
         try verifyProgressDotsGeometry()
         let allCases: [Case] = [
             Case(name: "running", status: .running),
+            Case(name: "running-night", status: .running, appearance: .night),
             Case(name: "attention", status: .needsAttention),
             Case(name: "running-maximum-finish", status: .running, remaining: 1_500 * 60,
                  destination: .connectedService, hasNextStep: false),
@@ -116,11 +118,11 @@ private struct MorningActivityLayoutProof {
         let notes = """
         # Native macOS Live Activity component proof
 
-        This renders the current production MorningActivityIslandDetail and all of its private child views, copied at run time. The app-bound AddStepTimeIntent is inert. A proof-only exact-type Button initializer replaces its remote action host with an empty action because macOS ImageRenderer can omit that host. The running Text(timerInterval:) and ProgressView(timerInterval:) providers are frozen at the captured state date because their live invalidations cause incomplete offscreen renders. The production label, font, style, frame, accessibility and layout stay unchanged. The two real string catalogs are compiled. Each activity language is tested while the app language is set to the opposite choice.
+        This renders the current production MorningActivityIslandDetail and all of its private child views, including the shared brand views, copied at run time. The app-bound AddStepTimeIntent is inert. A proof-only exact-type Button initializer replaces its remote action host with an empty action because macOS ImageRenderer can omit that host. The running Text(timerInterval:) and ProgressView(timerInterval:) providers are frozen at the captured state date because their live invalidations cause incomplete offscreen renders. The production label, font, style, frame, accessibility and layout stay unchanged. The two real string catalogs are compiled. Each activity language is tested while the app language is set to the opposite choice. Brand clocks explicitly pin day for the ordinary cases and night for running-night, independently of the host clock.
 
         Selected cases: \(cases.map(\.name).joined(separator: ", ")). Set MO_ACTIVITY_PROOF_CASES to a comma-separated list to choose a focused run; omit it for the full matrix.
 
-        Rendered \(results.count) expanded cases selected above, in French/English, at content widths 315/352pt and requested Dynamic Type large/xxxLarge. Timer fixtures use 4:38 or the maximum 1500 minutes. A 36pt camera reserve and 14pt bottom reserve are added to measured natural component height. The component images are unmasked so clipping cannot conceal overflow. Native Vision OCR checks full status, destination and action labels. Additional images render the real compact timer at 52x22pt with its complete maximum running/paused countdown, plus the 22x22pt minimal mark.
+        Rendered \(results.count) expanded cases selected above, in French/English, at content widths 315/352pt and requested Dynamic Type large/xxxLarge. Timer fixtures use 4:38 or the maximum 1500 minutes. A 36pt camera reserve and 14pt bottom reserve are added to measured natural component height. The component images are unmasked so clipping cannot conceal overflow. Native Vision OCR checks full status, destination and action labels. Additional images render the real compact timer at 52x22pt with its complete maximum running/paused countdown, plus the day and night 22x22pt minimal marks.
 
         Maximum height including the reserves: \(String(format: "%.1f", maximumHeight))pt. Failing expanded cases: \(failures.count). Failing compact countdown cases: \(smallFailures.count).
 
@@ -165,7 +167,8 @@ private struct MorningActivityLayoutProof {
                 startedAt: now.addingTimeInterval(-22))
         }
         let state = try MorningActivityContentState(category: .entertainment, status: item.status,
-            completedSteps: 1, totalSteps: 4, updatedAt: now, stepTimer: timer, languageIdentifier: language)
+            completedSteps: 1, totalSteps: 4, updatedAt: now, stepTimer: timer, languageIdentifier: language,
+            brandClock: MorningActivityBrandClock(solar: .fixed, pinnedAppearance: item.appearance))
         let presentation = MorningActivityPresentation(state: state, isStale: item.stale)
         let view = MorningActivityIslandDetail(presentation: presentation, sessionID: sessionID)
             .environment(\.locale, state.locale).environment(\.layoutDirection, .leftToRight)
@@ -258,11 +261,14 @@ private struct MorningActivityLayoutProof {
             }
           }
         }
-        let minimal = ImageRenderer(content: MorningWidgetLivingMark(fraction: 0.4)
-            .foregroundStyle(MorningActivityPalette.islandAccent).frame(width: 22, height: 22).background(.black))
-        minimal.scale = 6
-        guard let image = minimal.cgImage else { throw CocoaError(.fileWriteUnknown) }
-        try save(image, to: output.appendingPathComponent("minimal-mark-22.png"))
+        for appearance in MorningBrandAppearance.allCases {
+            let minimal = ImageRenderer(content: MorningBrandSymbol(appearance: appearance, contrasting: true)
+                .frame(width: 22, height: 22).background(.black))
+            minimal.scale = 6
+            guard let image = minimal.cgImage else { throw CocoaError(.fileWriteUnknown) }
+            let filename = appearance == .day ? "minimal-mark-22.png" : "minimal-mark-night-22.png"
+            try save(image, to: output.appendingPathComponent(filename))
+        }
         return results
     }
 

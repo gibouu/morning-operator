@@ -160,7 +160,8 @@ import UserNotifications
             endsAt: timer.endsAt, nextDestination: current.nextDestination, hasNextStep: current.hasNextStep,
             pausedRemaining: timer.pausedAt == nil ? nil : timer.remaining(at: Date()), startedAt: timer.startedAt)
         guard let state = try? MorningActivityContentState(category: old.category, status: old.status,
-            completedSteps: old.completedSteps, totalSteps: old.totalSteps, updatedAt: Date(), stepTimer: stepTimer) else { return }
+            completedSteps: old.completedSteps, totalSteps: old.totalSteps, updatedAt: Date(), stepTimer: stepTimer,
+            languageIdentifier: old.languageIdentifier, brandClock: old.brandClock) else { return }
         let staleDate = timeIsUp ? Date().addingTimeInterval(MorningLiveActivityCoordinator.staleAfter * 15)
             : state.staleDate(staleAfter: MorningLiveActivityCoordinator.staleAfter)
         let alert = timeIsUp ? AlertConfiguration(

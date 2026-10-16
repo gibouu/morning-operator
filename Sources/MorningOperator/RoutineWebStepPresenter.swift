@@ -9,7 +9,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
     @State private var showingNativeRequest = false
 
     func body(content: Content) -> some View {
-        content.fullScreenCover(isPresented: Binding(
+        content.morningFullScreenCover(isPresented: Binding(
             get: { store.pendingWebTarget != nil },
             set: { if !$0 { closePage() } }
         )) {
@@ -73,7 +73,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
                                 store.pendingWebTarget == url
                         })
                     }
-                    .sheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }
+                    .morningSheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }
                     .onChange(of: store.nativeMoment.context) { _, context in
                         if context == nil { showingNativeRequest = false }
                     }

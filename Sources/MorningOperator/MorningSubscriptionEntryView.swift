@@ -38,13 +38,6 @@ struct MorningSubscriptionEntryView: View {
         .onChange(of: store.privacyBlocksWork ? nil : store.briefing.currentWeatherLocation, initial: true) { _, location in
             MorningThemeClock.shared.setLocation(location)
         }
-        .task(id: scenePhase) {
-            guard scenePhase == .active else { return }
-            while !Task.isCancelled {
-                MorningThemeClock.shared.refresh()
-                do { try await Task.sleep(for: .seconds(30)) } catch { return }
-            }
-        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 if store.briefing.settings.includesHealth { store.speech.stop() }
@@ -124,7 +117,7 @@ struct MorningSubscriptionLegalSheet: View {
     @State private var exportSnapshot: RoutineVersion?
     private var french: Bool { AppLanguage.isFrench }
     private func text(_ fr: String, _ en: String) -> String { french ? fr : en }
-    private var night: Bool { MorningThemeClock.shared.celestial.moon.opacity > 0.57 }
+    private var night: Bool { MorningThemeClock.shared.brandAppearance == .night }
 
     var body: some View {
         NavigationStack {
@@ -174,8 +167,8 @@ struct MorningSubscriptionLegalSheet: View {
                 }
             }
         }
-        .preferredColorScheme(night ? .dark : .light)
-        .sheet(item: $exportSnapshot) { RoutineExportView(routine: $0) }
+        .morningBrandSurface()
+        .morningSheet(item: $exportSnapshot) { RoutineExportView(routine: $0) }
     }
 }
 

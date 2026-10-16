@@ -130,7 +130,7 @@ struct MorningConnectionsView: View {
         .navigationTitle(text("Apps & accounts", "Apps et comptes"))
         .navigationBarTitleDisplayMode(.inline)
         .disabled(store.privacyBlocksWork)
-        .sheet(isPresented: $choosingBriefing) { MorningBriefingView(store: store) }
+        .morningSheet(isPresented: $choosingBriefing) { MorningBriefingView(store: store) }
         .navigationDestination(item: $website) { site in
             WebMorningView(site: site, minutes: 1, isStepActive: false,
                 onSignInReady: learningWebsite ? nil : {
