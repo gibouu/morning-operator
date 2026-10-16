@@ -22,6 +22,18 @@ enum ObservedTextRolePolicy {
             markers.contains($0) || qualifiers.contains($0) || $0.allSatisfy(\.isNumber)
         }) { return true }
 
+        // Fictional-content notices with only absent media/services describe
+        // provenance. Any additional task or name keeps the line eligible.
+        let fiction: Set<String> = ["invented", "fictional", "fictitious", "invente", "inventee", "inventes", "inventees",
+            "fictif", "fictifs", "fictive", "fictives"]
+        let content: Set<String> = ["content", "data", "contenu", "contenus", "donnees"]
+        let absence: Set<String> = ["no", "without", "sans", "aucun", "aucune"]
+        let media: Set<String> = ["audio", "sound", "son", "external", "externe", "externes", "service", "services", "network", "reseau"]
+        let disclosure = fiction.union(content).union(absence).union(media).union(["and", "or", "et", "ni", "ou"])
+        if (4...20).contains(tokens.count), tokens.contains(where: fiction.contains), tokens.contains(where: content.contains),
+           tokens.contains(where: absence.contains), tokens.contains(where: media.contains),
+           tokens.allSatisfy(disclosure.contains) { return true }
+
         // An explicit negative inventory of real effects is a disclaimer, not
         // evidence that those effects occurred. Extra task words preserve a line.
         let disclaimer: Set<String> = ["no", "real", "account", "accounts", "send", "sending", "sent", "sends",

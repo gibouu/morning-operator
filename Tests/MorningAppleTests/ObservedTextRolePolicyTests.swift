@@ -5,7 +5,8 @@ import Testing
 
 @Suite("Observed provenance never substitutes for task evidence")
 struct ObservedTextRolePolicyTests {
-    @Test(arguments: ["No real account, send, write or like", "OFFLINE STORYBOARD • NOT NATIVE CAPTURE"])
+    @Test(arguments: ["No real account, send, write or like", "OFFLINE STORYBOARD • NOT NATIVE CAPTURE",
+        "Invented content · no audio · no external service", "Contenu fictif · sans audio · aucun service externe"])
     func visibleDisclaimerDoesNotEraseTheTaskOnTheSameFrame(_ disclaimer: String) throws {
         let task = "09:15 Prepare eight green cards in the Cedar Room"
         let text = disclaimer + "\nHarbor Calendar\n" + task
@@ -18,7 +19,8 @@ struct ObservedTextRolePolicyTests {
         #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) { try LearningEvidencePolicy.prepare(frames: [disclaimer]) }
     }
 
-    @Test(arguments: ["No real account, send, write or like", "OFFLINE STORYBOARD • NOT NATIVE CAPTURE"])
+    @Test(arguments: ["No real account, send, write or like", "OFFLINE STORYBOARD • NOT NATIVE CAPTURE",
+        "Invented content · no audio · no external service", "Contenu fictif · sans audio · aucun service externe"])
     func preparedAnchorsAndFinalValidationShareTheNegativeRole(_ disclaimer: String) throws {
         let task = "09:15 Prepare eight green cards in the Cedar Room"
         let text = disclaimer + "\nHarbor Calendar\n" + task
@@ -32,12 +34,31 @@ struct ObservedTextRolePolicyTests {
         let anchored = try ModelCitationPreparation.prepare(evidence)
         let batch = try #require(anchored.batchesByFirstUnitID.values.first)
         #expect(batch.units[0].text == unit.text && unit.text == text)
+        #expect(batch.prompt.contains(disclaimer) && batch.anchors.count == 1)
         #expect(!batch.anchors.contains { $0.citation.quote.trimmingCharacters(in: .whitespacesAndNewlines) == disclaimer })
         #expect(batch.anchors.contains { $0.citation.quote == task })
         let forged = EvidenceRoutineStepInput(title: "Review the calendar", detail: "Tentative review of visible calendar content.",
             kind: .calendar, durationMinutes: 2, citations: [.init(unitID: unit.id, quote: disclaimer)])
         #expect(throws: RoutineEvidenceProposalError.invalidCitation) { try LearningEvidencePreparation.validateBatchResult([forged], units: [unit]) }
         #expect(throws: RoutineEvidenceProposalError.invalidCitation) { try LearningEvidencePreparation.assemble(evidence: evidence, steps: [forged], preserving: nil) }
+    }
+
+    @Test func fictionalDisclosureKeepsNearbyTaskTextAndWrittenReports() {
+        for line in ["Invented content · no audio · no external service",
+                     "Fictional data — without sound or network", "Contenu inventé · sans son ni service externe"] {
+            #expect(ObservedTextRolePolicy.isPureProvenance(line))
+            let text = line + "\n09:15 Review the workshop materials"
+            #expect(!ObservedTextRolePolicy.isPureProvenance(text))
+            #expect(LearningEvidencePolicy.supports(quote: text, source: text, context: text,
+                kind: .visibleTaskContent, claimedKind: LearningEvidenceKind.visibleTaskContent.rawValue))
+            #expect(LearningEvidencePolicy.supports(quote: line, source: line, context: line,
+                kind: .userReportedActivity, claimedKind: LearningEvidenceKind.userReportedActivity.rawValue))
+        }
+        for text in ["Invented Content Studio", "Fictional data reader without audio",
+                     "Invented content · no audio · review the budget report",
+                     "Contenu fictif · sans audio · relire le message du projet"] {
+            #expect(!ObservedTextRolePolicy.isPureProvenance(text))
+        }
     }
 
     @Test func ordinaryNamesAndCloseTaskSentencesAreNotBlacklisted() {
