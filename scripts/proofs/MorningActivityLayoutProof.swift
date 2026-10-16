@@ -73,6 +73,7 @@ private struct MorningActivityLayoutProof {
         let output = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
         // Initialize AppKit without opening a window or taking the foreground.
         _ = NSApplication.shared
+        try verifyProgressDotsGeometry()
         let allCases: [Case] = [
             Case(name: "running", status: .running),
             Case(name: "attention", status: .needsAttention),
@@ -131,6 +132,27 @@ private struct MorningActivityLayoutProof {
         }
         print("\(results.count) expanded native macOS component renders and \(smallResults.count) small component renders; maximum height \(String(format: "%.1f", maximumHeight))pt; \(failures.count + smallFailures.count) failures. Output: \(output.path)")
         if !failures.isEmpty || !smallFailures.isEmpty { exit(1) }
+    }
+
+    private static func verifyProgressDotsGeometry() throws {
+        let invalid: [CGRect] = [
+            .zero, .null, .infinite,
+            CGRect(x: 0, y: 0, width: CGFloat.nan, height: 4),
+            CGRect(x: 0, y: 0, width: 100, height: CGFloat.infinity),
+            CGRect(x: CGFloat.infinity, y: 0, width: 100, height: 4),
+            CGRect(x: CGFloat.greatestFiniteMagnitude, y: 0,
+                   width: CGFloat.greatestFiniteMagnitude, height: 4)
+        ]
+        guard invalid.allSatisfy({ MorningWidgetProgressDots().path(in: $0).isEmpty }) else {
+            throw CocoaError(.validationMissingMandatoryProperty)
+        }
+        for width: CGFloat in [1, 315, 352, .greatestFiniteMagnitude] {
+            let path = MorningWidgetProgressDots().path(in: CGRect(x: 0, y: 0, width: width, height: 4))
+            guard !path.isEmpty, path.boundingRect.width.isFinite, path.boundingRect.height.isFinite else {
+                throw CocoaError(.validationMissingMandatoryProperty)
+            }
+        }
+        print("Progress mask: 7 invalid and 4 finite geometry regression cases passed.")
     }
 
     @MainActor private static func render(_ item: Case, language: String, width: Double,

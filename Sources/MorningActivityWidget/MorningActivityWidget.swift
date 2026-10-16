@@ -482,11 +482,17 @@ private struct MorningWidgetBudgetProgress: View {
 
 private struct MorningWidgetProgressDots: Shape {
     func path(in rect: CGRect) -> Path {
-        let count = max(2, Int(rect.width / 10))
+        // ActivityKit can ask a mask for its path during an unconstrained layout
+        // pass. Wait for finite geometry before converting the dot count to Int.
+        guard !rect.isEmpty, rect.width.isFinite, rect.height.isFinite,
+              rect.origin.x.isFinite, rect.origin.y.isFinite,
+              rect.maxX.isFinite, rect.maxY.isFinite else { return Path() }
+        let count = Int(min(256, max(2, rect.width / 10)))
         let radius = min(1.7, rect.height / 2)
         var path = Path()
         for index in 0..<count {
-            let x = radius + (rect.width - radius * 2) * CGFloat(index) / CGFloat(count - 1)
+            let fraction = CGFloat(index) / CGFloat(count - 1)
+            let x = radius + (rect.width - radius * 2) * fraction
             path.addEllipse(in: CGRect(x: x - radius, y: rect.midY - radius,
                                       width: radius * 2, height: radius * 2))
         }
