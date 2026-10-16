@@ -410,6 +410,7 @@ struct SetupView: View {
     @State private var choosingBriefing = false
     @State private var choosingHealth = false
     @State private var choosingConversation = false
+    @State private var showingMembership = false
     @Environment(\.colorScheme) private var colorScheme
     private var french: Bool { AppLanguage.isFrench }
 
@@ -534,6 +535,8 @@ struct SetupView: View {
                     .accessibilityIdentifier("setup.permissions")
                 settingsButton(String(localized: "Privacy & data", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), symbol: "lock.shield") { showingPrivacy = true }
                     .accessibilityIdentifier("setup.privacy")
+                settingsButton(french ? "Abonnement et achats" : "Membership & purchases", symbol: "creditcard") { showingMembership = true }
+                    .accessibilityIdentifier("setup.membership")
                 DisclosureGroup("Availability & device details") {
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 8) {
@@ -559,6 +562,7 @@ struct SetupView: View {
         .sheet(isPresented: $choosingVoice) { VoicePickerView(store: store) }
         .sheet(isPresented: $preparingVoiceAccess) { MorningVoicePreparationView(store: store) }
         .sheet(isPresented: $choosingInvitation) { MorningInvitationView(service: store.invitation) }
+        .sheet(isPresented: $showingMembership) { MorningSubscriptionEntryView(store: store, offerOnly: true) }
         .onAppear { store.voiceAccess.refresh(language: store.voicePreparationLanguage) }
     }
 

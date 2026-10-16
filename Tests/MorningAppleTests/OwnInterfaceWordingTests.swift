@@ -201,6 +201,13 @@ private enum OwnScreenFixtures {
         "Your current routine stays ready until you approve. Approving replaces it with the moments you keep here.",
         "Let MORE take care of this morning"
     ]
+    static let screenTimeMornings = [
+        "Your first moments of the morning",
+        "MORE finds your first app use after a long break and uses recorded sleep when Health is connected.",
+        "Connect Screen Time",
+        "Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown.",
+        "What Screen Time can show"
+    ]
     static let browserLearningResult = [
         "Only known page categories and gestures here. Review MORE’s proposed actions in Learn before approval.",
         "Save to Learn"
@@ -245,6 +252,7 @@ private enum OwnScreenFixtures {
     ]
     static let all = [("Learn", learn), ("Review", review), ("Settings", settings),
                       ("Routine", routine), ("Delegated routine", delegatedRoutine), ("Screen Time review", screenTimeReview),
+                      ("Screen Time mornings", screenTimeMornings),
                       ("Browser learning result", browserLearningResult),
                       ("Recording", recording), ("Voice", voice),
                       ("Step", step), ("Privacy", privacy)]
@@ -844,6 +852,28 @@ struct OwnInterfaceWordingTests {
         let ordinary = "Outlook\nInbox\nUnread messages\nRead this again\n\(mail)"
         #expect(!isOwnInterface(ordinary))
         #expect(try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + ordinary, as: .recording).count == 1)
+    }
+
+    @Test("Current and earlier Screen Time results cannot teach MORE the activity they display", arguments: ["en", "fr"])
+    func screenTimeMorningResultsAreOwnInterface(language: String) throws {
+        let catalogs = try ShippedCatalogs.load()
+        let sources = try ShippedCatalogs.appSources()
+        for key in OwnScreenFixtures.screenTimeMornings {
+            #expect(sources.contains("\"\(key)\""), "The recognized Screen Time wording must remain live: \(key)")
+        }
+        let activity = "Instagram · 8 min\nGmail · 5 min"
+        let current = try OwnScreenFixtures.lines(OwnScreenFixtures.screenTimeMornings, language, from: catalogs)
+            .joined(separator: "\n") + "\n" + activity
+        let earlierKeys = ["Start with your app use", "Connect Screen Time, then show MORE a moment of your morning.", "Connect Screen Time"]
+        let historical = try OwnScreenFixtures.lines(earlierKeys, language, from: catalogs).joined(separator: "\n") + "\n" + activity
+        for screen in [current, historical] {
+            #expect(isOwnInterface(screen))
+            #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
+                try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
+            }
+        }
+        let footer = try catalogs.text(OwnScreenFixtures.screenTimeMornings[3], language)
+        #expect(!isOwnInterface("Screen Time\n\(footer)\n\(activity)"))
     }
 
     @Test("Screen Time app choices are MORE only with their two exact live anchors", arguments: ["en", "fr"])

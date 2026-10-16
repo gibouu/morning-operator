@@ -51,8 +51,16 @@ public struct ScreenTimeMorning: Equatable, Sendable {
     public let end: Date
     public let endReason: DetectedMorning.EndReason
     public let timeZone: TimeZone
+    /// A recorded Health sleep window used to choose this morning; never inferred from missing app use.
+    public let sleepWindow: DateInterval?
     /// In likely order: the first-pickup app, then by hour of first use, then by minutes.
     public let apps: [AppUse]
+
+    public init(start: Date, end: Date, endReason: DetectedMorning.EndReason, timeZone: TimeZone,
+                apps: [AppUse], sleepWindow: DateInterval? = nil) {
+        self.start = start; self.end = end; self.endReason = endReason; self.timeZone = timeZone
+        self.apps = apps; self.sleepWindow = sleepWindow
+    }
 
     /// Local minutes after midnight of the start, in the morning's own time zone.
     public var startMinuteOfDay: Int {
@@ -139,7 +147,7 @@ public struct ScreenTimeObservationEvidence: Codable, Equatable, Sendable {
     }
 
     public static func make(hours: [ScreenTimeHour], queryStart: Date, now: Date, calendar: Calendar,
-                            ownBundleIdentifiers: Set<String> = []) throws -> [Self] {
+                            ownBundleIdentifiers: Set<String> = [], sleepWindows: [DateInterval] = []) throws -> [Self] {
         guard hours.count <= 208, queryStart.timeIntervalSince1970.isFinite, now.timeIntervalSince1970.isFinite,
               queryStart < now, now.timeIntervalSince(queryStart) <= 9 * 86_400,
               hours.allSatisfy({ hour in
@@ -152,7 +160,7 @@ public struct ScreenTimeObservationEvidence: Codable, Equatable, Sendable {
         }
         let relevant = hours.filter { $0.interval.end > queryStart && $0.interval.start < now }
         let learning = ScreenTimeMorningLearner.learn(hours: relevant, queryStart: queryStart, now: now,
-            calendar: calendar, ownBundleIdentifiers: ownBundleIdentifiers)
+            calendar: calendar, ownBundleIdentifiers: ownBundleIdentifiers, sleepWindows: sleepWindows)
         // Only dates with an actually returned interval become saved sources.
         // Requested but unanswered days are unknown, not new observations.
         var days = Set<Date>()
@@ -231,7 +239,7 @@ public enum ScreenTimeMorningLearner {
     ///     with no morning use would otherwise make its evening the "morning").
     public static func learn(hours rawHours: [ScreenTimeHour], queryStart: Date, now: Date,
                              calendar: Calendar = .current, ownBundleIdentifiers: Set<String> = [],
-                             latestStartHour: Int = 14,
+                             sleepWindows: [DateInterval] = [], latestStartHour: Int = 14,
                              policy: MorningDetectionPolicy = MorningDetectionPolicy()) -> ScreenTimeLearning {
         let hours = cleaned(rawHours, ownBundleIdentifiers: ownBundleIdentifiers, now: now)
         // Coverage comes from what the API returned, even hours later filtered as noise.
@@ -287,8 +295,15 @@ public enum ScreenTimeMorningLearner {
         let lastDay = calendar.startOfDay(for: now)
         while day <= lastDay, days < 60 {
             days += 1
+            // Health contributes only a recorded local-night hint. Missing sleep stays unknown.
+            let sleepWindow = sleepWindows.filter {
+                $0.start.timeIntervalSinceReferenceDate.isFinite && $0.duration > 0 && $0.duration <= 86_400
+                    && $0.end <= now && calendar.isDate($0.end, inSameDayAs: day)
+                    && calendar.component(.hour, from: $0.end) < latestStartHour
+            }.max { $0.duration < $1.duration }
             let result = MorningStartDetector.detect(uses: uses, on: day, coveredFrom: coveredFrom, now: now,
-                                                     policy: policy, calendar: calendar, useInside: useInside)
+                                                     sleepEnd: sleepWindow?.end, policy: policy,
+                                                     calendar: calendar, useInside: useInside)
             switch result {
             case .found(let found) where calendar.component(.hour, from: found.start) >= latestStartHour
                 || calendar.startOfDay(for: found.start) != day:
@@ -302,11 +317,12 @@ public enum ScreenTimeMorningLearner {
                 let timedOnly = uses.filter { $0.source != .screenTimeBound }
                 var measuredUntil = found.start
                 if case .found(let timed) = MorningStartDetector.detect(uses: timedOnly, on: day, coveredFrom: coveredFrom,
-                                                                        now: now, policy: policy, calendar: calendar, useInside: useInside),
+                                                                        now: now, sleepEnd: sleepWindow?.end, policy: policy, calendar: calendar, useInside: useInside),
                    timed.start == found.start {
                     measuredUntil = min(timed.end, found.end)
                 }
-                mornings.append(morning(detected, hours: hours, calendar: calendar, measuredUntil: measuredUntil))
+                mornings.append(morning(detected, hours: hours, calendar: calendar, measuredUntil: measuredUntil,
+                    sleepWindow: detected.usedSleepHint ? sleepWindow : nil))
             case .noData, .noSleepGapCovered: missing += 1
             }
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -393,14 +409,14 @@ public enum ScreenTimeMorningLearner {
     /// the minutes the morning spent in that hour, in proportion, and are marked estimated.
     /// - Parameter measuredUntil: minutes after this (an end moved by `extended`) are never measured.
     static func morning(_ detected: DetectedMorning, hours: [ScreenTimeHour], calendar: Calendar,
-                        measuredUntil: Date? = nil) -> ScreenTimeMorning {
+                        measuredUntil: Date? = nil, sleepWindow: DateInterval? = nil) -> ScreenTimeMorning {
         let start = detected.start, end = detected.end
         let inside = hours.filter { hour in
             end > start ? hour.interval.end > start && hour.interval.start < end
                 : hour.interval.start <= start && start < hour.interval.end
         }
         guard let firstHour = inside.first else {
-            return ScreenTimeMorning(start: start, end: end, endReason: detected.endReason, timeZone: calendar.timeZone, apps: [])
+            return ScreenTimeMorning(start: start, end: end, endReason: detected.endReason, timeZone: calendar.timeZone, apps: [], sleepWindow: sleepWindow)
         }
         struct Total { var seconds: TimeInterval = 0; var measured = true; var firstHour: Date; var category: String? }
         var totals: [String: Total] = [:]
@@ -431,7 +447,7 @@ public enum ScreenTimeMorningLearner {
                 firstHourIndex: max(0, Int((total.firstHour.timeIntervalSince(firstHour.interval.start) / 3600).rounded(.down))),
                 isFirstPickupApp: id == firstApp, categoryName: total.category)
         }.sorted(by: likelyOrder)
-        return ScreenTimeMorning(start: start, end: end, endReason: detected.endReason, timeZone: calendar.timeZone, apps: apps)
+        return ScreenTimeMorning(start: start, end: end, endReason: detected.endReason, timeZone: calendar.timeZone, apps: apps, sleepWindow: sleepWindow)
     }
 
     private static func likelyOrder(_ lhs: ScreenTimeMorning.AppUse, _ rhs: ScreenTimeMorning.AppUse) -> Bool {

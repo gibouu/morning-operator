@@ -59,17 +59,18 @@ extension MorningStore {
                 guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 var own: Set<String> = []
                 if let id = Bundle.main.bundleIdentifier { own.insert(id) }
+                let sleepWindows = try await self.briefing.morningSleepWindows(at: end, calendar: calendar)
+                guard !Task.isCancelled, self.dataGeneration == generation, !self.privacyBlocksWork else { return }
                 let evidence = try ScreenTimeObservationEvidence.make(hours: hours, queryStart: queryStart,
-                    now: end, calendar: calendar, ownBundleIdentifiers: own)
+                    now: end, calendar: calendar, ownBundleIdentifiers: own, sleepWindows: sleepWindows)
                 guard self.saveScreenTimeEvidence(evidence) else {
                     self.screenTimeMessage = AppLanguage.isFrench
                         ? "Les agrégats n’ont pas pu être enregistrés. Les sources et la routine précédentes sont conservées."
                         : "The aggregates could not be saved. Your previous sources and routine are retained."
                     return
                 }
-                self.screenTimeDailyUsage = ScreenTimeDailyUsage.summarize(hours: hours, calendar: calendar, ownBundleIdentifiers: own)
                 let learning = ScreenTimeMorningLearner.learn(hours: hours, queryStart: queryStart, now: end,
-                                                              calendar: calendar, ownBundleIdentifiers: own)
+                                                              calendar: calendar, ownBundleIdentifiers: own, sleepWindows: sleepWindows)
                 self.screenTimeLearning = learning
                 let nextMorning = calendar.component(.hour, from: end) < 12 ? end
                     : calendar.date(byAdding: .day, value: 1, to: end) ?? end

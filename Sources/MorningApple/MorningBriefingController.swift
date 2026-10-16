@@ -337,7 +337,7 @@ public final class MorningBriefingController {
     }
 
     /// Permission is requested only from an explained, explicit action.
-    @discardableResult public func enableCurrentLocation(requestPermission: Bool = true) async -> Bool {
+    @discardableResult public func enableCurrentLocation(requestPermission: Bool = true, resolveLocation: Bool = true) async -> Bool {
         guard prepareForAccess() else { return false }
         do {
             if requestPermission, deviceLocation.authorization == .notDetermined {
@@ -346,8 +346,8 @@ public final class MorningBriefingController {
             try Task.checkCancellation()
             var next = settings; next.usesCurrentLocation = true
             try updateSettings(next)
-            await resolveCurrentLocationIfNeeded(force: true)
-            return currentWeatherLocation != nil
+            if resolveLocation { await resolveCurrentLocationIfNeeded(force: true) }
+            return resolveLocation ? currentWeatherLocation != nil : deviceLocation.authorization == .authorized
         } catch {
             if !(error is CancellationError) { locationError = error }
             return false
@@ -793,6 +793,59 @@ public final class MorningBriefingController {
         } catch is CancellationError { throw CancellationError() }
         catch let error as WeatherObservationError { return error == .permissionDenied ? .denied : .unavailable }
         catch { return .unavailable }
+    }
+
+    /// Reuses the person's Health choice for morning learning, without asking for access.
+    /// Samples stay in memory; missing/unreadable sleep leaves Screen Time's own rule in use.
+    public func morningSleepWindows(at instant: Date, calendar: Calendar) async throws -> [DateInterval] {
+        guard settings.includesHealth else { return [] }
+        let expectedRevision = revision, service = sleep
+        let input: SleepBriefingInput
+        do {
+            input = try await BriefingSourceDeadline<SleepBriefingInput>(clock: clock).run(timeout: sourceTimeout) { [weak self] in
+                guard let self, self.revision == expectedRevision, self.settings.includesHealth else {
+                    throw CancellationError()
+                }
+                return try await service.read(at: instant)
+            }
+        } catch is CancellationError { throw CancellationError() }
+        catch { return [] }
+        try Task.checkCancellation()
+        guard revision == expectedRevision, settings.includesHealth else { throw CancellationError() }
+        guard case .snapshot(let snapshot) = input else { return [] }
+        let asleep = snapshot.samples.filter {
+            $0.stage.isAsleep && $0.start.timeIntervalSinceReferenceDate.isFinite
+                && $0.end.timeIntervalSinceReferenceDate.isFinite && $0.end > $0.start
+                && $0.end <= instant && $0.end.timeIntervalSince($0.start) <= SleepNight.maximumSampleSpan
+        }.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
+        var episodes: [(window: DateInterval, asleepSeconds: TimeInterval)] = []
+        for sample in asleep {
+            // Keep short overnight interruptions together; a later nap is a separate episode.
+            if let previous = episodes.last, sample.start.timeIntervalSince(previous.window.end) <= 3_600 {
+                let added = max(0, sample.end.timeIntervalSince(max(sample.start, previous.window.end)))
+                episodes[episodes.count - 1] = (DateInterval(start: previous.window.start,
+                    end: max(previous.window.end, sample.end)), previous.asleepSeconds + added)
+            } else {
+                episodes.append((DateInterval(start: sample.start, end: sample.end), sample.end.timeIntervalSince(sample.start)))
+            }
+        }
+        var windows: [DateInterval] = []
+        var day = calendar.startOfDay(for: instant.addingTimeInterval(-SleepObservationService.lookback))
+        let lastDay = calendar.startOfDay(for: instant)
+        while day <= lastDay {
+            // Compare recorded asleep time, never duplicated source totals or awake gaps.
+            let candidates = episodes.filter {
+                calendar.isDate($0.window.end, inSameDayAs: day)
+                    && calendar.component(.hour, from: $0.window.end) < 14
+                    && $0.window.duration <= SleepNight.maximumSampleSpan && $0.asleepSeconds >= 30
+            }
+            if let longest = candidates.max(by: {
+                $0.asleepSeconds != $1.asleepSeconds ? $0.asleepSeconds < $1.asleepSeconds : $0.window.end < $1.window.end
+            }) { windows.append(longest.window) }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day), next > day else { break }
+            day = next
+        }
+        return windows
     }
 
     /// The sleep part of one refresh. Excluded means the reader is not called at all.

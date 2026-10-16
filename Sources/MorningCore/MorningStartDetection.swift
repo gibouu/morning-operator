@@ -26,7 +26,7 @@ public struct PhoneUse: Equatable, Sendable {
 /// The owner's rule (14 October 2026): the morning starts at the first phone use after at
 /// least three hours without use, and ends when use stops for a while or at a cap.
 public struct MorningDetectionPolicy: Equatable, Sendable {
-    /// No use for at least this long counts as sleep.
+    /// An inactivity gap used to locate a candidate; it does not establish recorded sleep.
     public var sleepGap: TimeInterval = 3 * 3600
     /// Use separated by less than this is one session; a longer pause ends the morning.
     public var sessionGap: TimeInterval = 20 * 60
@@ -94,20 +94,22 @@ public enum MorningStartDetector {
             let previousEnd = index > 0 ? sessions[index - 1].end : coveredFrom
             if session.start.timeIntervalSince(previousEnd) >= policy.sleepGap { candidates.append((index, session)) }
         }
-        guard !candidates.isEmpty else { return .noSleepGapCovered }
-
         var skipped: [DateInterval] = []
         var chosen: (index: Int, session: DateInterval)?
         var usedHint = false
-        if let sleepEnd, dayInterval.contains(sleepEnd) {
+        if let sleepEnd, dayInterval.contains(sleepEnd), sleepEnd <= now {
             let earliest = sleepEnd.addingTimeInterval(-policy.sleepEndTolerance)
-            if let match = candidates.first(where: { $0.session.start >= earliest }) {
-                chosen = match
-                usedHint = true
-                skipped = candidates.filter { $0.session.start < earliest }.map(\.session)
-            }
+            // Recorded sleep supplies the wake-up anchor even if Screen Time's first
+            // returned hour does not cover the preceding inactivity gap.
+            guard let match = sessions.enumerated().first(where: {
+                dayInterval.contains($0.element.start) && $0.element.start >= earliest
+            }) else { return .noData }
+            chosen = (match.offset, match.element)
+            usedHint = true
+            skipped = sessions.filter { dayInterval.contains($0.start) && $0.start < earliest }
         }
         if chosen == nil {
+            guard !candidates.isEmpty else { return .noSleepGapCovered }
             for (position, candidate) in candidates.enumerated() {
                 let hour = calendar.component(.hour, from: candidate.session.start)
                 let isNightCheck = hour < policy.nightCheckLatestHour

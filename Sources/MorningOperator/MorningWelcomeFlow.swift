@@ -26,6 +26,9 @@ struct MorningWelcomeFlow: View {
     let restore: () -> Void
     let retry: () -> Void
     let showLegal: (MorningSubscriptionLegalDocument) -> Void
+    let continueFree: () -> Void
+    var startsWithOffer = false
+    var showsFreeContinue = true
     #if DEBUG
     var developerAccess: (() -> Void)? = nil
     var developerAccessIsPreviewSkip = false
@@ -121,6 +124,7 @@ struct MorningWelcomeFlow: View {
         .font(MorningTheme.Typography.body)
         .tint(ink)
         .preferredColorScheme(night ? .dark : .light)
+        .onAppear { if startsWithOffer { page = 3 } }
         .onChange(of: page) { _, _ in headingFocused = true }
     }
 
@@ -258,8 +262,8 @@ struct MorningWelcomeFlow: View {
                     benefit("calendar", text("Après 7 jours · \(offer.monthlyPrice) par mois", "After 7 days · \(offer.monthlyPrice) per month"))
                 }
             }
-            Text(text("Après l’abonnement, vous choisirez les accès utiles à votre routine. Chaque accès vous sera expliqué avant de l’autoriser.",
-                      "After subscribing, choose the access your routine needs. Each request will be explained before you allow it."))
+            Text(text("Vous pouvez utiliser MORE gratuitement, sans achat ni essai. Choisissez ensuite les accès utiles à votre routine. Chaque accès est expliqué avant votre accord.",
+                      "You can use MORE for free, without a purchase or trial. Then choose the access your routine needs. Each request is explained before you allow it."))
                 .font(.system(.subheadline)).foregroundStyle(muted).lineSpacing(3)
             if let offer {
                 Text(offer.includesFreeTrial
@@ -305,6 +309,12 @@ struct MorningWelcomeFlow: View {
             .modifier(MorningEntryPrimaryStyle(prefersOpaque: strongInk))
             .disabled(isPaywall && (purchaseState.isBusy || purchaseState == .pending))
             .accessibilityIdentifier(isPaywall ? "paywall.subscribe" : "onboarding.next")
+            if showsFreeContinue {
+                Button(text("Continuer gratuitement", "Continue for free"), action: continueFree)
+                    .font(.system(.subheadline, weight: .semibold)).frame(minHeight: 44)
+                    .accessibilityHint(text("Ouvrir MORE sans achat ni essai.", "Open MORE without a purchase or trial."))
+                    .accessibilityIdentifier("entry.continueFree")
+            }
             Text(isPaywall ? paymentSummary
                           : text("À votre rythme. Vous gardez la main.", "At your pace. You stay in control."))
                 .font(.system(.caption)).foregroundStyle(muted)
@@ -373,10 +383,10 @@ struct MorningWelcomeFlow: View {
     }
     private var notice: String? {
         switch purchaseState {
-        case .pending: text("Votre achat attend la confirmation de l’App Store. Vous pourrez continuer dès qu’il sera validé.",
-                            "Your purchase is awaiting App Store confirmation. You can continue once it is approved.")
-        case .unavailable: text("L’App Store est indisponible pour le moment. Réessayez dans un instant.",
-                                "The App Store is unavailable right now. Please try again shortly.")
+        case .pending: text("Votre achat attend la confirmation de l’App Store. Vous pouvez continuer gratuitement dès maintenant.",
+                            "Your purchase is awaiting App Store confirmation. You can continue for free now.")
+        case .unavailable: text("L’App Store est indisponible pour le moment. Vous pouvez continuer gratuitement ou réessayer plus tard.",
+                                "The App Store is unavailable right now. You can continue for free or try again later.")
         case .failed(let message): message
         default: nil
         }

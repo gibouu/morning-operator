@@ -94,6 +94,12 @@ struct MorningStartDetectionTests {
         #expect(morning.skippedSessions.count == 1)
     }
 
+    @Test func recordedSleepDoesNotFallBackToANightCheckWhenWakingUseIsMissing() {
+        #expect(detect([use(at(2), at(2, 40))], sleepEnd: at(7)) == .noData)
+        // A hint on a different day cannot establish this day's wake-up.
+        #expect(detect([use(at(7), at(7, 30))], sleepEnd: at(7, day: 13), coveredFrom: at(7)) == .noSleepGapCovered)
+    }
+
     @Test func noDataAndUncoveredGapsAreNotGuessed() {
         #expect(detect([]) == .noData)
         // Coverage starts at 06:00: the 06:30 use cannot be shown to follow three idle hours.
