@@ -416,6 +416,7 @@ struct SetupView: View {
 
     var body: some View {
         MorningForm {
+            waitingNotice
             if store.sessionActive {
                 Section(french ? "Matin en cours" : "Current morning") {
                     MorningRoutineControlsView(store: store)
@@ -582,6 +583,28 @@ struct SetupView: View {
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(MorningStyle.muted)
             }.frame(maxWidth: .infinity, minHeight: 32, alignment: .leading).contentShape(Rectangle())
         }.buttonStyle(.plain)
+    }
+
+    /// Home arrives as the landscape alone, so a waiting message is kept here.
+    @ViewBuilder private var waitingNotice: some View {
+        if let notice = store.notice, !notice.isEmpty {
+            Section {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "info.circle").font(.body).frame(width: 24)
+                        .foregroundStyle(MorningStyle.muted).accessibilityHidden(true)
+                    Text(notice).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        .accessibilityIdentifier("settings.notice")
+                    Spacer(minLength: 8)
+                    Button { store.notice = nil } label: {
+                        Image(systemName: "xmark").font(.caption.weight(.semibold)).foregroundStyle(MorningStyle.muted)
+                            .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss message")
+                    .accessibilityIdentifier("settings.dismissNotice")
+                }
+            }
+        }
     }
 
     @ViewBuilder private var completion: some View {

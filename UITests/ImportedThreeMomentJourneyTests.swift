@@ -205,7 +205,7 @@ import MorningCore
         let proof = XCTAttachment(string: "started/ends/paused exact Date bits only\nrunning=\(runningTimer.raw)\npaused=\(pausedTimer.raw)\nresumed=\(resumedTimer.raw)\nreceived simulated body SHA256=\(correctedBodySHA256)")
         proof.name = "three-moments-retained-timer-and-received-body-digest"
         proof.lifetime = .keepAlways; add(proof)
-        XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: 90))
+        XCTAssertTrue(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: 90))
         try requireRecap(app)
         attach("three-moments-one-session-honest-recap", app)
         app.terminate(); app.launch(); try requireWorkspace(workspace, app)

@@ -191,7 +191,7 @@ import MorningCore
         }
         XCTAssertEqual(trace.map(\.index), Array(0..<10))
         XCTAssertEqual(Set(trace.map(\.step)).count, 10)
-        XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: Double(minutes[9] * 60 + 45)))
+        XCTAssertTrue(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: Double(minutes[9] * 60 + 45)))
         try requireRecap(app, trace: trace, titles: titles)
         attach("long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
         let evidence = try JSONSerialization.data(withJSONObject: [

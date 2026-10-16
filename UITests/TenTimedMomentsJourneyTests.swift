@@ -64,7 +64,7 @@ final class TenTimedMomentsJourneyTests: XCTestCase {
         XCTAssertEqual(observed.map(\.index), Array(0..<10))
         XCTAssertEqual(Set(observed.map(\.stepID)).count, 10)
         XCTAssertTrue(observed.allSatisfy { $0.sessionID == first.sessionID && $0.routineID == first.routineID })
-        XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: 15))
+        XCTAssertTrue(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: 15))
         try requireTimedRecap(app)
         attach("ten-timed-completed-recap-no-provider-effect", app)
 

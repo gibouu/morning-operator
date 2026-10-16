@@ -3,12 +3,12 @@ import XCTest
 /// Isolated sample routines and permission explanations; no external account effects.
 @MainActor
 final class MorningBrandingTests: XCTestCase {
-    func testWordmarkSurvivesNavigationAndVoiceSheetsInEnglishDayAndFrenchNight() {
+    func testHomeStaysFreeOfTheWordmarkWhileNavigationAndVoiceSheetsKeepItInEnglishDayAndFrenchNight() {
         for night in [false, true] {
             let app = launchFixture(night: night, french: night, largestText: night)
             let appearance = night ? "night" : "day"
-            assertBrand(appearance, in: app)
-            attach("brand-\(appearance)-home", app)
+            assertNoBrand(in: app)
+            attach("brand-\(appearance)-home-landscape-only", app)
 
             MorningUITestNavigation.openSettings(in: app)
             assertBrand(appearance, in: app)
@@ -30,12 +30,12 @@ final class MorningBrandingTests: XCTestCase {
             XCTAssertTrue(element("settings.appearance", in: app).waitForExistence(timeout: 5))
             assertBrand(appearance, in: app)
             MorningUITestNavigation.selectTab("Morning", in: app)
-            assertBrand(appearance, in: app)
+            assertNoBrand(in: app)
             app.terminate()
         }
     }
 
-    func testFrenchLargestNightBrandPersistsThroughPauseResumeAndHiddenControls() {
+    func testFrenchLargestNightPlaybackKeepsHomeFreeOfTheWordmarkThroughPauseResumeAndHiddenControls() {
         let app = launchFixture(night: true, french: true, largestText: true)
         defer { app.terminate() }
         // Tap the short-lived Home control directly; generic scroll helpers can
@@ -45,31 +45,29 @@ final class MorningBrandingTests: XCTestCase {
         XCTAssertTrue(begin.waitForExistence(timeout: 5))
         begin.tap()
         XCTAssertTrue(app.staticTexts["morning.caption"].waitForExistence(timeout: 8))
-        assertBrand("night", in: app)
-        let brandFrame = element("brand.wordmark", in: app).frame
+        assertNoBrand(in: app)
         MorningUITestNavigation.revealControls(in: app)
         let playback = app.buttons["morning.playback"]
         playback.tap()
         assertPlaybackLabel("Continuer", in: app)
-        XCTAssertFalse(brandFrame.intersects(playback.frame))
-        assertBrand("night", in: app)
-        attach("brand-night-french-largest-paused", app)
+        assertNoBrand(in: app)
+        attach("brand-night-french-largest-paused-without-logo", app)
         MorningUITestNavigation.revealControls(in: app)
         playback.tap()
         assertPlaybackLabel("Pause", in: app)
-        assertBrand("night", in: app)
+        assertNoBrand(in: app)
         XCTAssertTrue(playback.waitForNonExistence(timeout: 8), "Playback controls hide after inactivity.")
         XCTAssertFalse(app.buttons["morning.settings"].exists)
+        assertNoBrand(in: app)
+        attach("brand-night-french-largest-controls-hidden-without-logo", app)
+        MorningUITestNavigation.openSettings(in: app)
         assertBrand("night", in: app)
-        XCTAssertEqual(element("brand.wordmark", in: app).frame, brandFrame,
-                       "Pausing and hiding controls must not move the logo.")
-        attach("brand-night-french-largest-controls-hidden", app)
     }
 
-    func testForegroundReturnRefreshesTheSameBrandInAnOpenSheetSettingsAndHome() {
+    func testForegroundReturnRefreshesTheSameBrandInAnOpenSheetAndSettingsWhileHomeStaysBare() {
         let app = launchFixture(extra: ["--ui-testing-brand-night-on-return"])
         defer { app.terminate() }
-        assertBrand("day", in: app)
+        assertNoBrand(in: app)
         MorningUITestNavigation.openSettings(in: app)
         settingsButton("setup.voice", in: app).tap()
         XCTAssertTrue(app.buttons["voice.done"].waitForExistence(timeout: 5))
@@ -90,8 +88,8 @@ final class MorningBrandingTests: XCTestCase {
         assertBrand("night", in: app)
         XCTAssertEqual(element("settings.appearance", in: app).value as? String, "night")
         MorningUITestNavigation.selectTab("Morning", in: app)
-        assertBrand("night", in: app)
-        attach("brand-night-after-foreground-home", app)
+        assertNoBrand(in: app)
+        attach("brand-night-after-foreground-home-landscape-only", app)
     }
 
     func testOnboardingAndPermissionHeadersUseTheSameDayNightArtwork() {
@@ -164,6 +162,12 @@ final class MorningBrandingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(frame.minY, app.frame.minY, file: file, line: line)
         XCTAssertLessThanOrEqual(frame.maxX, app.frame.maxX, file: file, line: line)
         XCTAssertLessThanOrEqual(frame.maxY, app.frame.maxY, file: file, line: line)
+    }
+
+    /// Home is the landscape alone: its header keeps its space but carries no logo.
+    private func assertNoBrand(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(element("brand.wordmark", in: app).waitForNonExistence(timeout: 3),
+                      "Home shows no MORE logo.\n\(app.debugDescription)", file: file, line: line)
     }
 
     private func settingsButton(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

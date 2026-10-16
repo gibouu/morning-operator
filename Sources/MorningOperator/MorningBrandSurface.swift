@@ -3,10 +3,12 @@ import MorningCore
 
 /// Shared chrome sits outside navigation so screen titles and actions keep their space.
 struct MorningBrandHeader: View {
+    static let height: CGFloat = 32
+
     var body: some View {
         MorningBrandWordmark(appearance: MorningThemeClock.shared.brandAppearance)
             .frame(width: 112, height: 30)
-            .frame(maxWidth: .infinity, minHeight: 32)
+            .frame(maxWidth: .infinity, minHeight: Self.height)
             .padding(.horizontal, 20)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: "MORE"))
@@ -17,9 +19,16 @@ struct MorningBrandHeader: View {
 }
 
 extension View {
+    /// Over the Home landscape the header keeps its space but holds no wordmark:
+    /// arriving in MORE shows the landscape alone. Other screens carry the wordmark.
     func morningBrandSurface(overLandscape: Bool = false) -> some View {
         safeAreaInset(edge: .top, spacing: 0) {
-            MorningBrandHeader().background(overLandscape ? Color.clear : MorningStyle.background)
+            ZStack {
+                if !overLandscape { MorningBrandHeader().transition(.opacity) }
+            }
+            .frame(maxWidth: .infinity, minHeight: MorningBrandHeader.height)
+            .animation(.easeOut(duration: 0.2), value: overLandscape)
+            .background(overLandscape ? Color.clear : MorningStyle.background)
         }
         .preferredColorScheme(MorningThemeClock.shared.brandAppearance == .night ? .dark : .light)
     }

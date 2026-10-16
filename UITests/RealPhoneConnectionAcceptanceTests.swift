@@ -272,8 +272,7 @@ final class RealPhoneConnectionAcceptanceTests: XCTestCase {
         try revealRoutineControl(next)
         XCTAssertTrue(current.label == "A thought for later" && next.isEnabled, "The last moment changed before its single Next.")
         next.tap(); nextTaps += 1
-        let complete = app.staticTexts["morning.complete"]
-        XCTAssertTrue(complete.waitForExistence(timeout: 10), "The existing morning did not reach its completion screen.")
+        XCTAssertTrue(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: 10), "The existing morning did not reach its completion screen.")
         try refusePermissionOrFixtureScreens()
         XCTAssertTrue(app.staticTexts["morning.completeSummary"].exists, "The completion summary is missing.")
         XCTAssertTrue(app.staticTexts["morning.executionSummary"].exists, "The execution summary is missing.")

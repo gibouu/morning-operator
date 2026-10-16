@@ -174,7 +174,7 @@ final class OrdinaryRoutineAcceptanceTests: XCTestCase {
         try tap("web.resume", in: app)
         try require(app.buttons["web.pause"].waitForExistence(timeout: 5), "The same browser moment did not resume.")
         try require(observedCount(status.label) >= observedBeforePause, "Resume lost observed browser progress.")
-        try require(app.staticTexts["morning.complete"].waitForExistence(timeout: 170),
+        try require(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: 170),
                     "The real one-minute browser and timed moment did not complete automatically. No Next/skip was pressed.")
         try openSettings(app)
         try verifyExecutionSummary(app)
@@ -187,7 +187,7 @@ final class OrdinaryRoutineAcceptanceTests: XCTestCase {
         app.launch()
         try require(app.wait(for: .runningForeground, timeout: 15), "The ordinary app did not relaunch.")
         try refuseFixtures(app)
-        try require(app.staticTexts["morning.complete"].waitForExistence(timeout: 10), "The completed routine did not survive a cold relaunch.")
+        try require(MorningUITestNavigation.waitForCompletedMorning(in: app, timeout: 10), "The completed routine did not survive a cold relaunch.")
         try openSettings(app)
         try verifyExecutionSummary(app)
         try tap("setup.history", in: app)

@@ -223,6 +223,8 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertTrue(landscape.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["morning.begin"].exists)
         XCTAssertFalse(app.buttons["morning.settings"].exists)
+        assertBareLandscape(app)
+        attach("home-idle-arrival-landscape-only", app)
         landscape.tap()
         let play = app.buttons["morning.begin"]
         let settings = app.buttons["morning.settings"]
@@ -240,6 +242,7 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertFalse(app.buttons["morning.review"].exists)
         XCTAssertFalse(app.staticTexts["morning.readyQuestion"].exists)
         XCTAssertEqual(app.scrollViews.count, 0)
+        assertBareLandscape(app)
         attach("home-idle-only-glass-play-and-settings", app)
         XCTAssertTrue(play.waitForNonExistence(timeout: 7))
         XCTAssertFalse(settings.exists)
@@ -256,6 +259,41 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertTrue(app.buttons["routine.step.0"].exists)
         XCTAssertFalse(app.buttons["morning.playback"].exists)
         attach("home-idle-routine-reached-through-settings", app)
+    }
+
+    func testArrivingOnAPausedMorningShowsOnlyTheLandscapeAndATapRevealsContinueAndSettings() {
+        let app = launch()
+        defer { app.terminate() }
+        start(app)
+        MorningUITestNavigation.assertSession(state: "running", in: app)
+        // A cold launch pauses the interrupted morning and raises its notice.
+        relaunch(app)
+        let captions = app.scrollViews["morning.captions"]
+        XCTAssertTrue(captions.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["morning.playback"].exists)
+        XCTAssertFalse(app.buttons["morning.settings"].exists)
+        assertBareLandscape(app)
+        attach("home-paused-arrival-landscape-only", app)
+
+        captions.tap()
+        let playback = app.buttons["morning.playback"]
+        XCTAssertTrue(playback.waitForExistence(timeout: 5))
+        assertPlaybackLabel("Continue", in: app)
+        XCTAssertTrue(app.buttons["morning.settings"].isHittable)
+        // The landscape behind playback stays inert; only the two glyphs are controls.
+        XCTAssertEqual(Set(app.buttons.allElementsBoundByIndex.map(\.identifier)).subtracting(["morning.actions"]),
+                       Set(["morning.playback", "morning.settings"]))
+        assertBareLandscape(app)
+        attach("home-paused-arrival-continue-and-settings", app)
+
+        // The notice Home no longer shows waits at the top of Settings.
+        app.buttons["morning.settings"].tap()
+        let notice = app.staticTexts["settings.notice"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertEqual(notice.label, "Your previous morning is paused. Resume when you're ready.")
+        attach("settings-paused-arrival-notice", app)
+        app.buttons["settings.dismissNotice"].tap()
+        XCTAssertTrue(notice.waitForNonExistence(timeout: 5))
     }
 
     func testHomeShowsOnlyCurrentTextAndContinuesAutomatically() {
@@ -354,8 +392,11 @@ final class MorningHomePlaybackTests: XCTestCase {
         assertPlaybackLabel("Continue", in: app)
         assertRemainsVisible(playback, for: 3)
         XCTAssertTrue(playback.waitForNonExistence(timeout: 7), "Controls must disappear after inactivity.")
-        assertPureReading(app)
-        attach("home-playback-controls-hidden-after-inactivity", app)
+        // Paused with nothing spoken, Home no longer fills the silence with the step summary.
+        XCTAssertTrue(app.scrollViews["morning.captions"].exists)
+        XCTAssertFalse(app.buttons["morning.settings"].exists)
+        assertBareLandscape(app)
+        attach("home-playback-paused-controls-hidden-landscape-only", app)
         revealControls(app)
         assertPlaybackLabel("Continue", in: app)
     }
@@ -424,6 +465,27 @@ final class MorningHomePlaybackTests: XCTestCase {
         XCTAssertTrue(marker.waitForExistence(timeout: 5))
         XCTAssertEqual(marker.value as? String, workspace)
         return app
+    }
+
+    /// Cold launch on the same isolated workspace, as after the app was closed.
+    private func relaunch(_ app: XCUIApplication) {
+        let workspace = app.launchArguments.first { $0.hasPrefix("--ui-testing-workspace=") }?
+            .dropFirst("--ui-testing-workspace=".count)
+        app.terminate()
+        app.launch()
+        let marker = app.staticTexts["qa.testWorkspace"]
+        XCTAssertTrue(marker.waitForExistence(timeout: 10))
+        XCTAssertEqual(marker.value as? String, workspace.map(String.init))
+    }
+
+    /// Arrival shows the landscape alone: no logo and no text. The DEBUG fixture
+    /// label is the only text a test capture may carry.
+    private func assertBareLandscape(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertFalse(app.descendants(matching: .any)["brand.wordmark"].exists, "Home shows no MORE logo.", file: file, line: line)
+        let texts = app.staticTexts.allElementsBoundByIndex
+            .filter { $0.identifier != "qa.testWorkspace" && !$0.label.isEmpty }
+            .map { "\($0.identifier): \($0.label)" }
+        XCTAssertEqual(texts, [], "Home shows no text.\n\(app.debugDescription)", file: file, line: line)
     }
 
     private func start(_ app: XCUIApplication) {

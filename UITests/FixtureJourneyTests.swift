@@ -498,6 +498,15 @@ enum MorningUITestNavigation {
         app.buttons["morning.actions"].exists || app.scrollViews["morning.captions"].exists
     }
 
+    /// Home shows no completion text; the landscape's own status says the morning
+    /// is done, in ordinary and fixture launches alike.
+    static func waitForCompletedMorning(in app: XCUIApplication, timeout: TimeInterval) -> Bool {
+        let completed = XCTNSPredicateExpectation(predicate: NSPredicate(
+            format: "exists == true AND (value BEGINSWITH %@ OR value BEGINSWITH %@)", "Morning complete.", "Matin terminé."),
+            object: app.buttons["morning.actions"])
+        return XCTWaiter.wait(for: [completed], timeout: timeout) == .completed
+    }
+
     static func selectTab(_ title: String, in app: XCUIApplication,
                           file: StaticString = #filePath, line: UInt = #line) {
         switch title {

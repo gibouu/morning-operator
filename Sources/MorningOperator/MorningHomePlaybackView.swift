@@ -13,6 +13,9 @@ struct MorningHomePlaybackView: View {
     @State private var controlsVisible = false
     @State private var controlsInteraction = UUID()
     @State private var captionScrolling = false
+    /// Only the notice that answers Play or Pause here; any other one waits in
+    /// Settings, so arriving on a morning shows no text.
+    @State private var answer: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.scenePhase) private var scenePhase
@@ -111,8 +114,11 @@ struct MorningHomePlaybackView: View {
             if store.cloudVoice.isActive, let text = store.cloudVoice.caption, !text.isEmpty { return text }
             #endif
         }
-        if let notice = store.notice, !notice.isEmpty { return notice }
+        if let answer, !answer.isEmpty { return answer }
         if let displayedCaption { return displayedCaption }
+        // A paused morning reads nothing: no step summary fills the silence, so
+        // arriving on a paused morning shows the landscape alone.
+        if store.session?.status == .paused { return "" }
         let text = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.count > 110 else { return text }
         let preview = text.prefix(110)
@@ -241,12 +247,14 @@ struct MorningHomePlaybackView: View {
         .onChange(of: AppLanguage.code) { _, _ in clearCaption(); controlsVisible = false }
         .onChange(of: store.dataGeneration) { _, _ in clearCaption() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { clearCaption(); controlsVisible = false; captionScrolling = false }
+            if phase == .background { clearCaption(); answer = nil; controlsVisible = false; captionScrolling = false }
         }
         .onChange(of: store.briefing.settings.includesHealth) { wasIncluded, included in
             if wasIncluded && !included { clearCaption() }
         }
-        .onDisappear { clearCaption(); controlsVisible = false; captionScrolling = false }
+        // The answer lasts while its notice does: a cleared or newer one ends it.
+        .onChange(of: store.notice) { _, current in if current != answer { answer = nil } }
+        .onDisappear { clearCaption(); answer = nil; controlsVisible = false; captionScrolling = false }
         #if DEBUG
         .task { await playCaptionFixtureIfRequested() }
         #endif
@@ -320,9 +328,11 @@ struct MorningHomePlaybackView: View {
             let offersPlay = store.currentOpening != nil || store.session?.status == .paused
             Button {
                 keepControlsVisible()
+                let earlier = store.notice
                 if store.currentOpening != nil { store.chooseOpening(.ritual) }
                 else if store.session?.status == .paused { store.resume() }
                 else { store.pause() }
+                answer = store.notice == earlier ? nil : store.notice
             } label: {
                 MorningFloatingGlassSymbol(symbol: offersPlay ? .play : .pause, size: 48)
                     .frame(width: 88, height: 88).contentShape(Rectangle())

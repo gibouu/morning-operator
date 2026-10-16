@@ -84,13 +84,15 @@ struct MorningRootView: View {
                            testingSessionSnapshot: store.uiTestSessionSnapshot,
                            playback: store.sessionActive && !store.privacyBlocksWork ? AnyView(MorningHomePlaybackView(store: store, openSettings: { showingActions = false; showingSettings = true }).id(store.currentStep?.id)) : nil,
                            begin: {
-                               guard !store.sessionActive else { return }
+                               guard !store.sessionActive else { return nil }
                                // No saved routine: show the proposal path, not the learning toolbox.
-                               guard let routine = store.routine else { showingRoutinePreparation = true; return }
-                               guard routine.isApproved else { showingRoutineEditor = true; return }
-                               // A refused start leaves its notice on Home; it never sends a person
-                               // with a routine back to Learn.
-                               if store.start() { showingActions = false }
+                               guard let routine = store.routine else { showingRoutinePreparation = true; return nil }
+                               guard routine.isApproved else { showingRoutineEditor = true; return nil }
+                               // A refused start answers on Home with the notice it raised; it never
+                               // sends a person with a routine back to Learn.
+                               let earlier = store.notice
+                               if store.start() { showingActions = false; return nil }
+                               return store.notice == earlier ? nil : store.notice
                            })
                 // Light status bar text over the night sky.
                 .toolbarColorScheme(nightAppearance ? .dark : .light, for: .navigationBar)
@@ -1398,8 +1400,12 @@ private struct MorningSunHome: View {
     var testingSessionSnapshot = ""
     var playback: AnyView? = nil
     /// Plays the saved routine, or opens the onboarding when there is none yet.
-    var begin: () -> Void
+    /// Returns the notice a refused start raised.
+    var begin: () -> String?
     @State private var controlsInteraction = UUID()
+    /// Arriving shows the landscape alone. Only the notice that answers Play is
+    /// shown here; every other one waits in Settings.
+    @State private var answer: String?
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1407,10 +1413,6 @@ private struct MorningSunHome: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     private var isFrench: Bool { AppLanguage.isFrench }
-    private var finishedToday: Bool {
-        guard let done = session?.completedAt else { return false }
-        return Calendar.current.isDateInToday(done)
-    }
     private var still: Bool {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-reduce-motion") { return true }
@@ -1443,6 +1445,8 @@ private struct MorningSunHome: View {
             ZStack(alignment: .bottom) {
                 Button {
                     withAnimation(still ? .easeOut(duration: 0.12) : .easeOut(duration: 0.22)) {
+                        // A tap reveals Play and Settings, nothing else.
+                        answer = nil
                         actionsShown.toggle()
                     }
                     controlsInteraction = UUID()
@@ -1473,7 +1477,7 @@ private struct MorningSunHome: View {
                 } else if actionsShown {
                     Button {
                         actionsShown = false
-                        begin()
+                        answer = begin()
                     } label: {
                         MorningFloatingGlassSymbol(symbol: .play, size: 48, prefersOpaque: strongInk)
                             .frame(width: 88, height: 88).contentShape(Rectangle())
@@ -1497,23 +1501,23 @@ private struct MorningSunHome: View {
                     .padding(20)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .transition(.opacity)
-                } else if finishedToday {
-                    Text(isFrench ? "bonne journée" : "have a good day")
-                        .font(.raleway(.title2)).padding(28)
-                        .frame(maxWidth: 640, maxHeight: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("morning.complete")
                 }
-                if playback == nil, let notice, !notice.isEmpty {
-                    Text(notice).font(.raleway(.subheadline))
+                if playback == nil, let answer, !answer.isEmpty {
+                    Text(answer).font(.raleway(.subheadline))
                         .padding(28).frame(maxWidth: 540)
                         .accessibilityIdentifier("app.notice")
+                        .transition(.opacity)
                 }
             }
             .foregroundStyle(night > 0.5 ? Color(red: 0.91, green: 0.91, blue: 0.96) : MorningStyle.ink)
         }
+        .onDisappear { answer = nil }
+        // The answer lasts while its notice does: a cleared or newer one ends it.
+        .onChange(of: notice) { _, current in if current != answer { answer = nil } }
         .onChange(of: actionsShown) { _, _ in controlsInteraction = UUID() }
         .onChange(of: voiceOverEnabled) { _, _ in controlsInteraction = UUID() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { actionsShown = false } }
+        // Coming back to MORE is another arrival: the landscape alone.
+        .onChange(of: scenePhase) { _, phase in if phase != .active { actionsShown = false; answer = nil } }
         .task(id: controlsInteraction) {
             guard actionsShown, !voiceOverEnabled else { return }
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
