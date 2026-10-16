@@ -241,7 +241,7 @@ public struct NativeMomentActionCounts: Sendable, Equatable {
         } catch {
             guard isCurrent(token, context: context), reviewID == revision else { return }
             phase = .reviewing
-            message += Self.localized(" La lecture a été interrompue. Dites répète avant de confirmer.", " The reading was interrupted. Say repeat before confirming.")
+            message += Self.localized(" La lecture a été interrompue. Relisez les détails avant de confirmer.", " The reading was interrupted. Review the details before confirming.")
         }
     }
 
@@ -362,9 +362,9 @@ public struct NativeMomentActionCounts: Sendable, Equatable {
         switch action {
         case .reminder(let draft, let destination):
             return Self.localized("Ajouter le rappel « \(draft.title) » dans \(destination.title), compte \(destination.sourceTitle). ", "Add reminder “\(draft.title)” to \(destination.title), account \(destination.sourceTitle). ") +
-                (draft.dueDate.map { Self.localized("Échéance \($0.formatted(format)), fuseau \(draft.timeZoneIdentifier), avec alerte. ", "Due \($0.formatted(format)), time zone \(draft.timeZoneIdentifier), with alert. ") } ?? Self.localized("Sans date et sans alerte. ", "No date or alert. ")) + Self.localized("Dites ajoute pour confirmer, ou change le titre suivi du nouveau titre.", "Say add it to confirm, or change the title followed by the new title.")
+                (draft.dueDate.map { Self.localized("Échéance \($0.formatted(format)), fuseau \(draft.timeZoneIdentifier), avec alerte. ", "Due \($0.formatted(format)), time zone \(draft.timeZoneIdentifier), with alert. ") } ?? Self.localized("Sans date et sans alerte. ", "No date or alert. ")) + Self.localized("Après avoir relu les détails, confirmez l’ajout ou modifiez le titre.", "After reviewing the details, confirm the addition or change the title.")
         case .event(let draft, let destination):
-            return Self.localized("Ajouter « \(draft.title) » dans \(destination.title), compte \(destination.sourceTitle), le \(draft.startDate.formatted(format)) jusqu’au \(draft.endDate.formatted(format)), fuseau \(draft.timeZoneIdentifier). Aucun invité, aucune récurrence ni alerte. Dites ajoute pour confirmer.", "Add “\(draft.title)” to \(destination.title), account \(destination.sourceTitle), from \(draft.startDate.formatted(format)) until \(draft.endDate.formatted(format)), time zone \(draft.timeZoneIdentifier). No attendees, recurrence, or alert. Say add it to confirm.")
+            return Self.localized("Ajouter « \(draft.title) » dans \(destination.title), compte \(destination.sourceTitle), le \(draft.startDate.formatted(format)) jusqu’au \(draft.endDate.formatted(format)), fuseau \(draft.timeZoneIdentifier). Aucun invité, aucune récurrence ni alerte. Confirmez l’ajout après relecture des détails.", "Add “\(draft.title)” to \(destination.title), account \(destination.sourceTitle), from \(draft.startDate.formatted(format)) until \(draft.endDate.formatted(format)), time zone \(draft.timeZoneIdentifier). No attendees, recurrence, or alert. Confirm the addition after reviewing the details.")
         case .complete(let item):
             return Self.localized("Marquer « \(item.title) » comme terminé dans \(item.listTitle), compte \(item.sourceTitle). Dites marque terminé pour confirmer.", "Mark “\(item.title)” complete in \(item.listTitle), account \(item.sourceTitle). Say mark complete to confirm.")
         }
