@@ -26833,6 +26833,118 @@
           }
         }
       }
+    },
+    "Continue for free": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue for free"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuer gratuitement"
+          }
+        }
+      }
+    },
+    "Open MORE without a purchase or trial.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open MORE without a purchase or trial."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir MORE sans achat ni essai."
+          }
+        }
+      }
+    },
+    "You can use MORE for free, without a purchase or trial. Then choose the access your routine needs. Each request is explained before you allow it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can use MORE for free, without a purchase or trial. Then choose the access your routine needs. Each request is explained before you allow it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez utiliser MORE gratuitement, sans achat ni essai. Choisissez ensuite les accès utiles à votre routine. Chaque accès est expliqué avant votre accord."
+          }
+        }
+      }
+    },
+    "You choose which sources to share with MORE. After free entry or subscribing, permissions and connections are explained one by one.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You choose which sources to share with MORE. After free entry or subscribing, permissions and connections are explained one by one."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous choisissez les sources à partager avec MORE. Après votre entrée gratuite ou votre abonnement, les autorisations et les connexions sont expliquées une par une."
+          }
+        }
+      }
+    },
+    "Membership & purchases": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membership & purchases"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnement et achats"
+          }
+        }
+      }
+    },
+    "Your purchase is awaiting App Store confirmation. You can continue for free now.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your purchase is awaiting App Store confirmation. You can continue for free now."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre achat attend la confirmation de l’App Store. Vous pouvez continuer gratuitement dès maintenant."
+          }
+        }
+      }
+    },
+    "The App Store is unavailable right now. You can continue for free or try again later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The App Store is unavailable right now. You can continue for free or try again later."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’App Store est indisponible pour le moment. Vous pouvez continuer gratuitement ou réessayer plus tard."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
