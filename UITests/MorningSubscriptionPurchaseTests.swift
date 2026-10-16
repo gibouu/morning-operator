@@ -7,6 +7,53 @@ import XCTest
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
 
+    /// Run against the ordinary Release executable with a clean simulator app
+    /// container. The test runner's opt-in never reaches the application.
+    func testOrdinaryReleaseFreeEntryAndOnboardingPersist() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["MO_RUN_RELEASE_ENTRY_ACCEPTANCE"] == "1" else {
+            throw XCTSkip("Opt in with an ordinary Release target app and a clean simulator install.")
+        }
+        continueAfterFailure = false
+        let french = environment["MO_RELEASE_ENTRY_LANGUAGE"] == "fr"
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", french ? "(fr)" : "(en)",
+                               "-AppleLocale", french ? "fr_FR" : "en_US"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.buttons["entry.continueFree"].waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertFalse(app.buttons["onboarding.developerAccess"].exists)
+        XCTAssertFalse(app.staticTexts["qa.testWorkspace"].exists)
+        if environment["MO_RELEASE_ENTRY_OFFER"] == "1" { showOffer(in: app) }
+        continueFree(in: app, french: french)
+        let voice = app.staticTexts["permissions.title.speech"]
+        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+        XCTAssertEqual(app.alerts.count, 0)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["entry.continueFree"].exists)
+        tap("permissions.skip", in: app)
+        tap("routinePreparation.later", in: app)
+        assertHome(app)
+        app.terminate()
+        app.launch()
+        assertHome(app)
+        XCTAssertFalse(voice.exists)
+        tap("morning.actions", in: app)
+        tap("morning.settings", in: app)
+        tap("setup.membership", in: app)
+        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["paywall.restore"].exists)
+        continueFree(in: app, french: french)
+        XCTAssertTrue(app.buttons["setup.membership"].waitForExistence(timeout: 5), app.debugDescription)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "ordinary-release-free-entry-\(french ? "fr" : "en")"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     // These entry tests do not need a working StoreKit test service. They exercise
     // the ordinary app entry, including while StoreKit is still loading.
     func testFreeContinueFromIntroductionAndOfferPersistsInEnglishAndFrench() {
