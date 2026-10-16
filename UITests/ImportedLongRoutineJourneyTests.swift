@@ -260,9 +260,22 @@ import MorningCore
 
     private func replace(_ field: XCUIElement, with text: String, in app: XCUIApplication) {
         scroll(field, id: field.label, in: app)
-        let old = field.value as? String ?? ""
-        field.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + text)
+        // A long single-line value can leave the caret in its middle. Select
+        // the real field contents through iOS editing, without counting AX text.
+        field.tap()
+        field.press(forDuration: 1.2)
+        let choices = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Select All"))
+        guard choices.firstMatch.waitForExistence(timeout: 5),
+              let selectAll = choices.allElementsBoundByIndex.first(where: {
+                  ($0.elementType == .button || $0.elementType == .menuItem) && $0.exists && $0.isEnabled && $0.isHittable
+              }) else {
+            captureFailure("long-ten-native-select-all-unavailable", app)
+            XCTFail("The native Select All edit action must be visible before replacing the full field.")
+            return
+        }
+        selectAll.tap()
+        field.typeText(text)
+        if field.value as? String != text { captureFailure("long-ten-native-replacement-mismatch", app) }
         XCTAssertEqual(field.value as? String, text)
         // A normal swipe on the full Form can start inside the keyboard.
         // Drag only in its currently visible content, without changing focus.
