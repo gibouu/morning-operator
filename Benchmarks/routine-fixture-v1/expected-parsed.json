@@ -1,0 +1,709 @@
+{
+  "schemaVersion": 1,
+  "fixtureID": "more.synthetic.routine.v1",
+  "origin": "synthetic",
+  "authorship": "Hand-authored expected result fixed before extraction; never used to draw source pixels.",
+  "notAWorkspaceSnapshot": true,
+  "approvalExpected": false,
+  "effectPolicy": "All effects are simulated. No real account, network, provider, send, write or like.",
+  "steps": [
+    {
+      "id": "90000000-0000-4000-8000-000000000001",
+      "key": "agenda",
+      "title": {
+        "fr": "Mon agenda",
+        "en": "My agenda"
+      },
+      "kind": "calendar",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Consulter le calendrier principal fictif, sans confondre les homonymes.",
+        "en": "SYNTHETIC — Read the invented primary calendar without confusing namesakes."
+      },
+      "supportingScenes": [
+        "agenda-list",
+        "agenda-detail"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000002",
+      "key": "gmail",
+      "title": {
+        "fr": "Mes mails et ma réponse",
+        "en": "My mail and reply"
+      },
+      "kind": "messages",
+      "durationMinutes": 5,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Choisir le troisième mail, corriger six cartes bleues en huit cartes vertes, relire puis simuler un seul envoi.",
+        "en": "SYNTHETIC — Choose the third mail, correct six blue cards to eight green cards, review, then simulate exactly one send."
+      },
+      "supportingScenes": [
+        "gmail-list",
+        "gmail-choice",
+        "gmail-draft",
+        "gmail-correction",
+        "gmail-sent"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000003",
+      "key": "slack",
+      "title": {
+        "fr": "Mon équipe",
+        "en": "My team"
+      },
+      "kind": "messages",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Une réponse simulée incertaine ne doit jamais être relancée automatiquement.",
+        "en": "SYNTHETIC — An uncertain simulated reply must never be retried automatically."
+      },
+      "supportingScenes": [
+        "slack-thread",
+        "slack-review",
+        "slack-uncertain"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000004",
+      "key": "news",
+      "title": {
+        "fr": "Deuxième article et retour",
+        "en": "Second article and return"
+      },
+      "kind": "briefing",
+      "durationMinutes": 4,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Choisir le deuxième lien observé, lire le texte attribué, revenir aux titres avec le budget restant.",
+        "en": "SYNTHETIC — Select the second observed link, read attributed text, return to the headlines with remaining budget."
+      },
+      "supportingScenes": [
+        "news-list",
+        "news-article",
+        "news-return"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000005",
+      "key": "feed",
+      "title": {
+        "fr": "Mon fil à mon rythme",
+        "en": "My feed at my pace"
+      },
+      "kind": "entertainment",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Pause puis reprise. La durée personnelle de trois minutes prime sur les quatre minutes observées dans la source réaliste.",
+        "en": "SYNTHETIC — Pause, then resume. The personal three-minute choice overrides four minutes observed in the realistic source."
+      },
+      "supportingScenes": [
+        "feed-browse",
+        "feed-pause",
+        "feed-resume"
+      ],
+      "basis": "observed-sequence-with-personal-duration"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000006",
+      "key": "video",
+      "title": {
+        "fr": "Mes vidéos",
+        "en": "My videos"
+      },
+      "kind": "entertainment",
+      "durationMinutes": 3,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Deux contenus fictifs successifs. Aucun contrôle de vrai service n’est prouvé.",
+        "en": "SYNTHETIC — Two successive invented items. No real service control is proven."
+      },
+      "supportingScenes": [
+        "video-one",
+        "video-two"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000007",
+      "key": "reminder",
+      "title": {
+        "fr": "Mon rappel exact",
+        "en": "My exact reminder"
+      },
+      "kind": "custom",
+      "durationMinutes": 1,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Apporter le carnet bleu au studio Nord. 16 octobre 2026 à 09:25 Europe/Paris. Une seule écriture simulée.",
+        "en": "SYNTHETIC — Bring the blue notebook to North studio. 16 October 2026 at 09:25 Europe/Paris. One simulated write."
+      },
+      "supportingScenes": [
+        "reminder-edit",
+        "reminder-confirm"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000008",
+      "key": "reading",
+      "title": {
+        "fr": "Lire cinq pages",
+        "en": "Read five pages"
+      },
+      "kind": "wellbeing",
+      "durationMinutes": 3,
+      "isRequired": true,
+      "detail": {
+        "fr": "SYNTHETIC — Rituel personnel Garder conservé même si l’inférence l’omet. Le texte d’une page n’autorise aucun choix personnel.",
+        "en": "SYNTHETIC — Retain the personal Keep ritual even if inference omits it. Page text authorizes no personal preference."
+      },
+      "supportingScenes": [
+        "reading-kept"
+      ],
+      "basis": "explicit-personal-keep"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000009",
+      "key": "music",
+      "title": {
+        "fr": "Un peu de musique",
+        "en": "A little music"
+      },
+      "kind": "wellbeing",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Lecteur fictif. La vidéo de test ne contient aucune piste audio.",
+        "en": "SYNTHETIC — Invented player. The test movie contains no audio track."
+      },
+      "supportingScenes": [
+        "music"
+      ],
+      "basis": "observed-visible-sequence"
+    },
+    {
+      "id": "90000000-0000-4000-8000-000000000010",
+      "key": "recap",
+      "title": {
+        "fr": "La fin de mon matin",
+        "en": "The end of my morning"
+      },
+      "kind": "briefing",
+      "durationMinutes": 2,
+      "isRequired": false,
+      "detail": {
+        "fr": "SYNTHETIC — Récap ajouté explicitement : Gmail et rappel simulés, Slack incertain. Ne pas apprendre ce moment depuis les écrans MORE.",
+        "en": "SYNTHETIC — Explicitly added recap: simulated Gmail and reminder, Slack uncertain. Do not learn this moment from MORE screens."
+      },
+      "supportingScenes": [],
+      "basis": "explicit-user-added-closure"
+    }
+  ],
+  "expectedFacts": [
+    {
+      "id": "agenda.first",
+      "scene": "agenda-detail",
+      "field": "event",
+      "value": {
+        "title": {
+          "fr": "Préparer les cartes",
+          "en": "Prepare the cards"
+        },
+        "localStart": "2026-10-16T09:15:00+02:00",
+        "location": {
+          "fr": "Salle Cèdre",
+          "en": "Cedar room"
+        }
+      }
+    },
+    {
+      "id": "gmail.owner-choice",
+      "scene": "gmail-choice",
+      "field": "selected-message",
+      "value": {
+        "ordinal": 3,
+        "sender": "maia@morning-fixture.invalid"
+      }
+    },
+    {
+      "id": "gmail.corrected-body",
+      "scene": "gmail-correction",
+      "field": "draft-bytes",
+      "value": {
+        "fr": "Je viendrai avec huit cartes vertes à 09:15.",
+        "en": "I will bring eight green cards at 09:15."
+      }
+    },
+    {
+      "id": "gmail.simulated-receipt",
+      "scene": "gmail-sent",
+      "field": "effect",
+      "value": {
+        "isSimulated": true,
+        "attempts": 1,
+        "confirmed": true,
+        "realSendCount": 0
+      }
+    },
+    {
+      "id": "slack.uncertain",
+      "scene": "slack-uncertain",
+      "field": "effect",
+      "value": {
+        "isSimulated": true,
+        "attempts": 1,
+        "confirmed": null,
+        "outcome": "uncertain",
+        "automaticRetryCount": 0
+      }
+    },
+    {
+      "id": "news.observed-link",
+      "scene": "news-list",
+      "field": "article-selection",
+      "value": {
+        "ordinal": 2,
+        "url": "https://journal.morning-fixture.invalid/articles/reading-corner"
+      }
+    },
+    {
+      "id": "news.body",
+      "scene": "news-article",
+      "field": "article",
+      "value": {
+        "author": "Camille Vernet",
+        "title": {
+          "fr": "Un coin lecture au jardin Cèdre",
+          "en": "A reading corner at Cedar garden"
+        },
+        "exactSource": "scenario.pages.articleBody"
+      }
+    },
+    {
+      "id": "news.return",
+      "scene": "news-return",
+      "field": "runtime-assertion-not-proven-by-pixels",
+      "value": {
+        "sameSession": true,
+        "sameStep": true,
+        "sameRemainingBudget": true,
+        "sameListPosition": true
+      }
+    },
+    {
+      "id": "feed.pause-resume",
+      "scene": "feed-resume",
+      "field": "runtime-assertion-not-proven-by-pixels",
+      "value": {
+        "noActionsDuringPause": true,
+        "noBudgetRestart": true
+      }
+    },
+    {
+      "id": "video.two",
+      "scene": "video-two",
+      "field": "visible-title",
+      "value": {
+        "fr": "Vidéo 2 · Les érables du jardin",
+        "en": "Video 2 · The garden maples"
+      }
+    },
+    {
+      "id": "reminder.exact",
+      "scene": "reminder-confirm",
+      "field": "reminder",
+      "value": {
+        "title": {
+          "fr": "Apporter le carnet bleu au studio Nord",
+          "en": "Bring the blue notebook to North studio"
+        },
+        "due": "2026-10-16T09:25:00+02:00",
+        "timeZoneIdentifier": "Europe/Paris",
+        "isSimulated": true,
+        "realWriteCount": 0
+      }
+    },
+    {
+      "id": "reading.keep",
+      "scene": "reading-kept",
+      "field": "personal-choice-not-authorized-by-pixels",
+      "value": {
+        "stepID": "90000000-0000-4000-8000-000000000008",
+        "presence": "keep"
+      }
+    },
+    {
+      "id": "recap.configured",
+      "scene": null,
+      "field": "explicit-configuration-not-video-inference",
+      "value": {
+        "stepKey": "recap",
+        "slackOutcome": "uncertain",
+        "allEffectsSimulated": true
+      }
+    }
+  ],
+  "dateSemantics": {
+    "fictionalObservedDate": "2026-10-16",
+    "timeZoneIdentifier": "Europe/Paris",
+    "captureDateProven": false,
+    "sourceWallClockIsScenarioFiction": true
+  },
+  "personalChoices": [
+    {
+      "kind": "keep",
+      "stepID": "90000000-0000-4000-8000-000000000008",
+      "retainedStepKey": "reading",
+      "mustSurviveOmissionAndSourceRevision": true
+    },
+    {
+      "kind": "duration",
+      "stepID": "90000000-0000-4000-8000-000000000005",
+      "durationMinutes": 3,
+      "realisticObservedSeconds": 240
+    },
+    {
+      "kind": "exclude",
+      "exactIdentity": "qa.synthetic.accessory-shopping",
+      "title": {
+        "fr": "Acheter des accessoires",
+        "en": "Shop for accessories"
+      },
+      "mustNotReappearFromAdvert": true
+    }
+  ],
+  "homonyms": {
+    "displayName": "Journal",
+    "exactIdentities": [
+      "qa.synthetic.journal.one",
+      "qa.synthetic.journal.two"
+    ],
+    "verifiedHumanDisambiguation": null,
+    "expectedChoice": "disabled-until-source-correction",
+    "noFuzzyMerge": true
+  },
+  "expectedRejections": [
+    {
+      "scene": "more-front",
+      "outcome": "own-interface-not-personal-activity",
+      "unknownIfNotSampled": true
+    },
+    {
+      "scene": "more-end",
+      "outcome": "own-interface-not-personal-activity",
+      "unknownIfNotSampled": true
+    },
+    {
+      "scene": "login",
+      "outcome": "sign-in-required-no-credentials",
+      "unknownIfNotSampled": true
+    },
+    {
+      "scene": "ambiguous",
+      "outcome": "unknown-app-and-time",
+      "unknownIfNotSampled": true
+    },
+    {
+      "scene": "homonyms",
+      "outcome": "unresolved-exact-identity-no-name-merge",
+      "unknownIfNotSampled": true
+    }
+  ],
+  "invalidationCases": [
+    {
+      "mutation": "source bytes or revision change",
+      "expected": "reject stale proposal; require fresh review"
+    },
+    {
+      "mutation": "personal choices change after app confirmation",
+      "expected": "invalidate confirmation; preserve approved routine"
+    },
+    {
+      "mutation": "article href changes before open",
+      "expected": "refuse stale observed link"
+    },
+    {
+      "mutation": "article redirect or non2xx",
+      "expected": "do not read another body under selected title"
+    },
+    {
+      "mutation": "privacy reset during pending work",
+      "expected": "no late source, draft, speech or effect"
+    },
+    {
+      "mutation": "repeat after uncertain Slack result",
+      "expected": "no new send claim; reconcile first"
+    },
+    {
+      "mutation": "new source omits reading or adds shopping advert",
+      "expected": "Keep and Exclude remain sovereign"
+    }
+  ],
+  "timing": {
+    "sourceRealisticSeconds": 1680,
+    "sourceAcceleratedSeconds": 180,
+    "candidateMinutes": 28,
+    "executionProfiles": {
+      "realisticBudgetSeconds": [
+        120,
+        300,
+        180,
+        240,
+        180,
+        180,
+        60,
+        180,
+        120,
+        120
+      ],
+      "acceleratedQABudgetSeconds": [
+        8,
+        20,
+        15,
+        15,
+        15,
+        10,
+        10,
+        10,
+        7,
+        10
+      ]
+    },
+    "warning": "Different source and execution clocks. Never infer realistic minutes by stretching accelerated timestamps. Negative scenes are not app-use minutes. Recap is explicit configuration."
+  },
+  "stageAssertions": {
+    "sourceRendering": "Script-generated pixels, not native capture.",
+    "realExtraction": "MediaObservationService must run separately on movie only; retain actual times and omissions.",
+    "realClassification": "Actual model calls/failures are separate; never fall back to this oracle.",
+    "directOracle": "Portable synthetic draft tests downstream review only; no extraction/model proof or imported action authority.",
+    "runtime": "No runtime assertion has executed just because this file exists."
+  },
+  "ocrChecks": [
+    {
+      "id": "literal.more-front",
+      "scene": "more-front",
+      "literal": {
+        "fr": "Votre routine actuelle reste en place",
+        "en": "Your current routine stays in place"
+      }
+    },
+    {
+      "id": "literal.agenda-list",
+      "scene": "agenda-list",
+      "literal": {
+        "fr": "11:00",
+        "en": "11:00"
+      }
+    },
+    {
+      "id": "literal.agenda-detail",
+      "scene": "agenda-detail",
+      "literal": {
+        "fr": "Apporter le carnet bleu",
+        "en": "Bring the blue notebook"
+      }
+    },
+    {
+      "id": "literal.gmail-list",
+      "scene": "gmail-list",
+      "literal": {
+        "fr": "5 messages fictifs",
+        "en": "5 invented messages"
+      }
+    },
+    {
+      "id": "literal.gmail-choice",
+      "scene": "gmail-choice",
+      "literal": {
+        "fr": "six cartes bleues",
+        "en": "six blue cards"
+      }
+    },
+    {
+      "id": "literal.gmail-draft",
+      "scene": "gmail-draft",
+      "literal": {
+        "fr": "six cartes bleues",
+        "en": "six blue cards"
+      }
+    },
+    {
+      "id": "literal.gmail-correction",
+      "scene": "gmail-correction",
+      "literal": {
+        "fr": "huit cartes vertes",
+        "en": "eight green cards"
+      }
+    },
+    {
+      "id": "literal.gmail-sent",
+      "scene": "gmail-sent",
+      "literal": {
+        "fr": "Envoi SIMULÉ confirmé",
+        "en": "SIMULATED send confirmed"
+      }
+    },
+    {
+      "id": "literal.slack-thread",
+      "scene": "slack-thread",
+      "literal": {
+        "fr": "Combien de cartes apportes-tu",
+        "en": "How many cards will you bring"
+      }
+    },
+    {
+      "id": "literal.slack-review",
+      "scene": "slack-review",
+      "literal": {
+        "fr": "huit cartes vertes",
+        "en": "eight green cards"
+      }
+    },
+    {
+      "id": "literal.slack-uncertain",
+      "scene": "slack-uncertain",
+      "literal": {
+        "fr": "Résultat inconnu",
+        "en": "Unknown outcome"
+      }
+    },
+    {
+      "id": "literal.news-list",
+      "scene": "news-list",
+      "literal": {
+        "fr": "Un coin lecture au jardin Cèdre",
+        "en": "A reading corner at Cedar garden"
+      }
+    },
+    {
+      "id": "literal.news-article",
+      "scene": "news-article",
+      "literal": {
+        "fr": "six bancs",
+        "en": "six benches"
+      }
+    },
+    {
+      "id": "literal.news-return",
+      "scene": "news-return",
+      "literal": {
+        "fr": "Les titres du journal",
+        "en": "News headlines"
+      }
+    },
+    {
+      "id": "literal.feed-browse",
+      "scene": "feed-browse",
+      "literal": {
+        "fr": "Croquis du banc Cèdre",
+        "en": "Sketch of the Cedar bench"
+      }
+    },
+    {
+      "id": "literal.feed-pause",
+      "scene": "feed-pause",
+      "literal": {
+        "fr": "consultation est suspendue",
+        "en": "Browsing is paused"
+      }
+    },
+    {
+      "id": "literal.feed-resume",
+      "scene": "feed-resume",
+      "literal": {
+        "fr": "trois pots et deux pousses",
+        "en": "three pots and two sprouts"
+      }
+    },
+    {
+      "id": "literal.video-one",
+      "scene": "video-one",
+      "literal": {
+        "fr": "La rivière au crayon",
+        "en": "Drawing the river"
+      }
+    },
+    {
+      "id": "literal.video-two",
+      "scene": "video-two",
+      "literal": {
+        "fr": "Les érables du jardin",
+        "en": "The garden maples"
+      }
+    },
+    {
+      "id": "literal.reminder-edit",
+      "scene": "reminder-edit",
+      "literal": {
+        "fr": "09:25",
+        "en": "09:25"
+      }
+    },
+    {
+      "id": "literal.reminder-confirm",
+      "scene": "reminder-confirm",
+      "literal": {
+        "fr": "studio Nord",
+        "en": "North studio"
+      }
+    },
+    {
+      "id": "literal.reading-kept",
+      "scene": "reading-kept",
+      "literal": {
+        "fr": "cinq feuilles",
+        "en": "five sheets"
+      }
+    },
+    {
+      "id": "literal.music",
+      "scene": "music",
+      "literal": {
+        "fr": "Lumière sur le jardin",
+        "en": "Light in the garden"
+      }
+    },
+    {
+      "id": "literal.login",
+      "scene": "login",
+      "literal": {
+        "fr": "Champ vide",
+        "en": "Empty field"
+      }
+    },
+    {
+      "id": "literal.ambiguous",
+      "scene": "ambiguous",
+      "literal": {
+        "fr": "Aucun nom d’app vérifiable",
+        "en": "No verifiable app name"
+      }
+    },
+    {
+      "id": "literal.homonyms",
+      "scene": "homonyms",
+      "literal": {
+        "fr": "Deux sources distinctes",
+        "en": "Two distinct sources"
+      }
+    },
+    {
+      "id": "literal.more-end",
+      "scene": "more-end",
+      "literal": {
+        "fr": "Suggérer une mise à jour",
+        "en": "Suggest an update"
+      }
+    }
+  ]
+}

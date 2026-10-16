@@ -5258,6 +5258,38 @@
         }
       }
     },
+    "Apple Health step count, compared with your 7-day average. Enabled separately from sleep.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Health step count, compared with your 7-day average. Enabled separately from sleep."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de Santé Apple, comparés à votre moyenne sur 7 jours. Activation distincte du sommeil."
+          }
+        }
+      }
+    },
+    "Apple Health, read-only: asleep stages or explicitly labelled time in bed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Health, read-only: asleep stages or explicitly labelled time in bed."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Santé Apple, en lecture seule : sommeil enregistré ou temps au lit clairement indiqué."
+          }
+        }
+      }
+    },
     "Apple Intelligence": {
       "localizations": {
         "fr": {
@@ -13309,16 +13341,16 @@
     },
     "Off": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Off"
-          }
-        },
         "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Désactivé"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
           }
         }
       }
@@ -13683,23 +13715,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open"
-          }
-        }
-      }
-    },
-    "Open iPhone Settings": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open iPhone Settings"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir les réglages de l’iPhone"
           }
         }
       }
@@ -16653,6 +16668,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Review"
+          }
+        }
+      }
+    },
+    "Review Health access for enabled extras": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review Health access for enabled extras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoir l’accès Santé des compléments activés"
           }
         }
       }
@@ -26194,84 +26225,19 @@
         }
       }
     },
-    "Review Health access for enabled extras": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review Health access for enabled extras"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revoir l’accès Santé des compléments activés"
-          }
-        }
-      }
-    },
-    "Apple Health, read-only: asleep stages or explicitly labelled time in bed.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Health, read-only: asleep stages or explicitly labelled time in bed."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Santé Apple, en lecture seule : sommeil enregistré ou temps au lit clairement indiqué."
-          }
-        }
-      }
-    },
-    "Apple Health step count, compared with your 7-day average. Enabled separately from sleep.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Health step count, compared with your 7-day average. Enabled separately from sleep."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas de Santé Apple, comparés à votre moyenne sur 7 jours. Activation distincte du sommeil."
-          }
-        }
-      }
-    },
-    "Your messages, stories and feed, in MORE.": {
+    "Open iPhone Settings": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your messages, stories and feed, in MORE."
+            "value": "Open iPhone Settings"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vos messages, vos stories et votre fil, dans MORE."
-          }
-        }
-      }
-    },
-    "Read your unread email and prepare replies.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Read your unread email and prepare replies."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lisez vos e-mails non lus et préparez vos réponses."
+            "value": "Ouvrir les réglages de l’iPhone"
           }
         }
       }

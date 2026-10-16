@@ -251,7 +251,7 @@ struct MorningBriefingView: View {
                     }
                     if let outcome = controller.citySearchOutcome, !controller.isSearchingCities, controller.cityResults.isEmpty,
                        controller.citySuggestions.isEmpty, controller.errorMessage == nil {
-                        Text(outcome == .noMatch ? String(localized: "No matching cities. Try a nearby city or include the country.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        Text(outcome == .noMatch ? AppLanguage.localized("No matching cities. Try a nearby city or include the country.")
                              : WeatherObservationError.searchUnavailable.moreDescription)
                             .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                     }
@@ -377,9 +377,9 @@ struct MorningBriefingDocumentView: View {
             if !document.isCurrent(at: Date(), timeZoneIdentifier: TimeZone.current.identifier) {
                 Text("This recap needs an update before playback.").font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
             }
-            if document.calendar.status != .notConfigured { source(String(localized: "Calendar", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), section: document.calendar, isCalendar: true) }
+            if document.calendar.status != .notConfigured { source(AppLanguage.localized("Calendar"), section: document.calendar, isCalendar: true) }
             if operation != .todayCalendar, document.weather.status != .notConfigured {
-                source(String(localized: "Weather", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), section: document.weather, isCalendar: false)
+                source(AppLanguage.localized("Weather"), section: document.weather, isCalendar: false)
             }
             if operation != .todayCalendar, document.sleep.status != .notConfigured {
                 MorningSleepDetailsView(section: document.sleep)

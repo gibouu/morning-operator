@@ -101,6 +101,11 @@ extension MorningStore {
         performMailReviewAction { mail, context in await mail.respond("continuer", context: context) }
     }
 
+    func chooseReadMail(id: String) {
+        guard mailMorning.canChooseMessage else { return }
+        performMailReviewAction { mail, context in await mail.chooseMessage(id: id, context: context) }
+    }
+
     private var currentMailContext: MorningExecutionID? {
         guard !privacyBlocksWork, sessionActive, let session, let step = currentStep,
               step.automation == .gmailInbox else { return nil }

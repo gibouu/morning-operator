@@ -30,13 +30,13 @@ public enum LocalDataControlError: Error, LocalizedError, Sendable, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .fileURLRequired: String(localized: "Local privacy controls require a file location.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .unsafePath: String(localized: "The local privacy files could not be opened safely. Nothing was replaced.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .invalidControl: String(localized: "Local privacy status is unreadable. Ordinary access is paused until it is explicitly reset.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .unsupportedSchema: String(localized: "Local privacy status uses an unsupported format. Ordinary access is paused.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .forgetInProgress: String(localized: "Forgetting local data is still in progress.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .forgetNotPending: String(localized: "There is no pending local-data removal.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .staleGeneration: String(localized: "This removal request no longer matches the current privacy state.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .fileURLRequired: AppLanguage.localized("Local privacy controls require a file location.", bundle: .module)
+        case .unsafePath: AppLanguage.localized("The local privacy files could not be opened safely. Nothing was replaced.", bundle: .module)
+        case .invalidControl: AppLanguage.localized("Local privacy status is unreadable. Ordinary access is paused until it is explicitly reset.", bundle: .module)
+        case .unsupportedSchema: AppLanguage.localized("Local privacy status uses an unsupported format. Ordinary access is paused.", bundle: .module)
+        case .forgetInProgress: AppLanguage.localized("Forgetting local data is still in progress.", bundle: .module)
+        case .forgetNotPending: AppLanguage.localized("There is no pending local-data removal.", bundle: .module)
+        case .staleGeneration: AppLanguage.localized("This removal request no longer matches the current privacy state.", bundle: .module)
         }
     }
 }

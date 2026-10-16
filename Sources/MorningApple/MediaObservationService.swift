@@ -31,6 +31,8 @@ public enum MediaObservationError: LocalizedError, Sendable, Equatable {
     case invalidVideoDuration
     case videoTooLong(maximumMinutes: Int)
     case noRecognizableText
+    case ocrTimedOut
+    case ocrStillFinishing
 
     public var errorDescription: String? {
         switch self {
@@ -42,6 +44,8 @@ public enum MediaObservationError: LocalizedError, Sendable, Equatable {
         case .invalidVideoDuration: AppLanguage.localized("This video has no readable finite duration. Try another recording.", bundle: .module)
         case .videoTooLong(let maximum): AppLanguage.localized("Choose a recording shorter than \(maximum) minutes for this prototype.", bundle: .module)
         case .noRecognizableText: AppLanguage.localized("No readable screen text was found. The image may be blank, protected, or too small. You can describe the routine in your own words.", bundle: .module)
+        case .ocrTimedOut: AppLanguage.localized("Reading this image took too long. Your previous observations are unchanged. You can describe the routine instead. Try another import once the system finishes the current image.", bundle: .module)
+        case .ocrStillFinishing: AppLanguage.localized("The system is still finishing the previous image. Another image cannot be read yet. Your saved observations are unchanged; you can describe the routine instead.", bundle: .module)
         }
     }
 }
@@ -54,6 +58,79 @@ struct RecognizedFrameText: Sendable {
     let warnings: [String]
 }
 
+/// Shared by every public service instance, including callers that create a service per import.
+/// A deadline releases the caller, not a possibly non-cooperative native request or its image.
+actor MediaOCRLane {
+    static let shared = MediaOCRLane()
+    private let timeout: Duration
+    private let sleep: @Sendable (Duration) async throws -> Void
+    private var activeID: UUID?
+    private var continuation: CheckedContinuation<RecognizedFrameText, any Error>?
+    private var worker: Task<Void, Never>?
+    private var deadline: Task<Void, Never>?
+    var hasPendingRequest: Bool { activeID != nil }
+
+    init(timeout: Duration = .seconds(60),
+         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+        self.timeout = timeout
+        self.sleep = sleep
+    }
+
+    func perform(_ operation: @escaping @Sendable () async throws -> RecognizedFrameText) async throws -> RecognizedFrameText {
+        try Task.checkCancellation()
+        guard activeID == nil else { throw MediaObservationError.ocrStillFinishing }
+        let id = UUID()
+        activeID = id
+        let result: RecognizedFrameText = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { pending in
+                guard !Task.isCancelled else {
+                    activeID = nil
+                    pending.resume(throwing: CancellationError())
+                    return
+                }
+                continuation = pending
+                worker = Task.detached { [self] in
+                    let result: Result<RecognizedFrameText, any Error>
+                    do {
+                        try Task.checkCancellation()
+                        result = .success(try await operation())
+                    } catch { result = .failure(error) }
+                    await finished(id, result: result)
+                }
+                deadline = Task { [self] in
+                    do {
+                        try Task.checkCancellation()
+                        try await sleep(timeout)
+                    } catch { return }
+                    abandon(id, error: MediaObservationError.ocrTimedOut)
+                }
+            }
+        } onCancel: {
+            Task { await self.abandon(id, error: CancellationError()) }
+        }
+        try Task.checkCancellation()
+        return result
+    }
+
+    private func abandon(_ id: UUID, error: any Error) {
+        guard activeID == id else { return }
+        deadline?.cancel(); deadline = nil
+        worker?.cancel()
+        let pending = continuation; continuation = nil
+        pending?.resume(throwing: error)
+        // Keep the slot occupied until the native worker really returns.
+    }
+
+    private func finished(_ id: UUID, result: Result<RecognizedFrameText, any Error>) {
+        guard activeID == id else { return }
+        activeID = nil
+        worker = nil
+        deadline?.cancel(); deadline = nil
+        let pending = continuation; continuation = nil
+        pending?.resume(with: result)
+    }
+}
+
 /// Reads only the explicitly supplied file. Nothing is uploaded. The caller owns returned evidence.
 public actor MediaObservationService {
     public typealias ProgressHandler = @MainActor @Sendable (Double) -> Void
@@ -61,8 +138,19 @@ public actor MediaObservationService {
     // Allow a minute of writer/stop finalization around the longest 30-minute recording preset.
     public static let maximumVideoSeconds = ObservationVideoEvidence.maximumDurationSeconds
     public static let maximumFrames = ObservationVideoEvidence.maximumFrames
+    private let ocr: MediaOCRLane
+    private let recognize: @Sendable (CGImage) async throws -> RecognizedFrameText
 
-    public init() {}
+    public init() {
+        ocr = .shared
+        recognize = Self.recognizeNativeFrame
+    }
+
+    init(ocr: MediaOCRLane,
+         recognize: @escaping @Sendable (CGImage) async throws -> RecognizedFrameText = MediaObservationService.recognizeNativeFrame) {
+        self.ocr = ocr
+        self.recognize = recognize
+    }
 
     public func extractText(from url: URL, progress: ProgressHandler? = nil) async throws -> String {
         let observation = try await extract(from: url, progress: progress)
@@ -157,6 +245,8 @@ public actor MediaObservationService {
                 recognized = try await recognizeFrame(in: decoded.image)
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error as MediaObservationError where error == .ocrTimedOut || error == .ocrStillFinishing {
+                throw error
             } catch {
                 try Task.checkCancellation()
                 try builder.append(id: sampleID, requestedTimeSeconds: seconds,
@@ -187,6 +277,11 @@ public actor MediaObservationService {
 
     /// Internal so a synthetic-image test can inspect the exact native result used by video extraction.
     func recognizeFrame(in image: CGImage) async throws -> RecognizedFrameText {
+        let recognize = self.recognize
+        return try await ocr.perform { try await recognize(image) }
+    }
+
+    static func recognizeNativeFrame(in image: CGImage) async throws -> RecognizedFrameText {
         try Task.checkCancellation()
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate

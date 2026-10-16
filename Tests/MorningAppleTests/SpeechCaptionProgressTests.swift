@@ -72,6 +72,79 @@ struct SpeechCaptionProgressTests {
         #expect(progress.revision == UInt(chunks.count))
     }
 
+    @Test("A long initial title is omitted across real system and duplex passage boundaries", arguments: [false, true])
+    func omitsLongInitialTitle(duplex: Bool) throws {
+        let title = String(repeating: "MÉTADONNÉE 🌅 e\u{301} du matin ", count: 15)
+        let prefix = title + "."
+        let body = "À neuf heures, votre premier rendez-vous commence. "
+            + String(repeating: "Voici uniquement le contenu à lire. ", count: 8)
+        let text = prefix + " " + body
+        let chunks = try SpeechCaptionProgress.chunks(text)
+        let id = UUID()
+        var progress = SpeechCaptionProgress()
+        progress.begin(text, requestID: id)
+        var visible: [String] = []
+        var metadataOnlyPassages = 0
+        var offset = 0
+        for chunk in chunks {
+            if duplex { progress.showChunk(chunk, requestID: id) }
+            else { progress.advance(to: NSRange(location: offset, length: 1), requestID: id) }
+            #expect(progress.currentCaption == chunk.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "The original spoken text must stay unchanged.")
+            if let caption = progress.caption(omittingInitialPrefix: prefix) {
+                #expect(!caption.contains("MÉTADONNÉE"))
+                visible.append(caption)
+            } else { metadataOnlyPassages += 1 }
+            offset += chunk.utf16.count
+        }
+        #expect(metadataOnlyPassages >= 2)
+        #expect(visible.joined(separator: " ").split(whereSeparator: \.isWhitespace)
+            == body.split(whereSeparator: \.isWhitespace))
+        #expect(chunks.joined().utf8.elementsEqual(text.utf8), "Prefix omission never edits TTS input.")
+    }
+
+    @Test("Prefix omission uses only the exact initial text, preserving later mentions")
+    func exactInitialPrefixOnly() throws {
+        let prefix = "🌅 Café e\u{301}."
+        let body = "Votre passage cite 🌅 Café e\u{301}. dans son contenu."
+        let text = prefix + " " + body
+        let id = UUID()
+        var progress = SpeechCaptionProgress()
+        progress.begin(text, requestID: id)
+        progress.advance(to: NSRange(location: 0, length: 2), requestID: id)
+        #expect(progress.caption(omittingInitialPrefix: prefix) == body)
+        #expect(progress.caption(omittingInitialPrefix: "🌅 Café é.") == text,
+                "An equivalent-looking prefix with different UTF-16 cannot supply a source offset.")
+        #expect(progress.caption(omittingInitialPrefix: "Different title.") == text)
+        #expect(progress.caption(omittingInitialPrefix: "") == text)
+
+        let next = UUID()
+        progress.begin(body, requestID: next)
+        progress.showChunk(body, requestID: next)
+        #expect(progress.caption(omittingInitialPrefix: prefix) == body,
+                "A title mentioned later is ordinary content, not initial metadata.")
+    }
+
+    @Test("Unmapped duplex text and metadata-only speech never guess a visible fragment")
+    func unknownChunkDoesNotGuessPrefix() throws {
+        let prefix = String(repeating: "Private title 🌅 ", count: 20) + "."
+        let id = UUID()
+        var progress = SpeechCaptionProgress()
+        progress.begin(prefix, requestID: id)
+        for chunk in try SpeechCaptionProgress.chunks(prefix) {
+            progress.showChunk(chunk, requestID: id)
+            #expect(progress.caption(omittingInitialPrefix: prefix) == nil)
+        }
+        progress.begin(prefix + " Body.", requestID: id)
+        progress.showChunk("An unexpected fragment.", requestID: id)
+        #expect(progress.currentCaption == "An unexpected fragment.")
+        #expect(progress.caption(omittingInitialPrefix: prefix) == nil)
+        progress.reset()
+        #expect(progress.caption(omittingInitialPrefix: prefix) == nil)
+        progress.showChunk("Body.", requestID: id)
+        #expect(progress.caption(omittingInitialPrefix: prefix) == nil)
+    }
+
     @Test("Stop and replacement clear private captions and reject stale callbacks")
     func replacementAndReset() {
         let old = UUID(), current = UUID()
@@ -80,6 +153,7 @@ struct SpeechCaptionProgressTests {
         progress.showChunk("Old reading.", requestID: old)
         progress.begin("New reading.", requestID: current)
         #expect(progress.currentCaption == nil)
+        #expect(progress.caption(omittingInitialPrefix: "Old") == nil)
         let replacedRevision = progress.revision
         progress.advance(to: NSRange(location: 0, length: 3), requestID: old)
         progress.showChunk("Late old audio.", requestID: old)
@@ -87,8 +161,10 @@ struct SpeechCaptionProgressTests {
         #expect(progress.revision == replacedRevision)
 
         progress.showChunk("New reading.", requestID: current)
+        #expect(progress.caption(omittingInitialPrefix: "New") == "reading.")
         progress.reset()
         #expect(progress.currentCaption == nil)
+        #expect(progress.caption(omittingInitialPrefix: "New") == nil)
         let stoppedRevision = progress.revision
         progress.showChunk("Late new audio.", requestID: current)
         #expect(progress.currentCaption == nil)

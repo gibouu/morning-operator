@@ -56,26 +56,87 @@ extension MorningStore {
 
     func clearNativeMoment(forPrivacy: Bool = false) {
         if forPrivacy { nativeActionCountCache = [:] } else { refreshNativeActionCount() }
+        #if DEBUG
+        if forPrivacy, ProcessInfo.processInfo.arguments.contains(NativeMomentUITestProvider.exactFlag) { nativeUITestProvider.clear() }
+        #endif
         if nativeMoment.context != nil { speech.stop() }
         nativeMomentTask?.cancel(); nativeMomentTask = nil
         nativeMoment.clear()
     }
+
+    #if DEBUG
+    var exactReminderUITestDiagnostic: String? {
+        guard !privacyBlocksWork,
+              nativeUITestProvider.exactDiagnosticEnabled,
+              sessionActive, let session, let step = currentStep else { return nil }
+        let context = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
+        var proof = nativeUITestProvider.diagnostic
+        proof["sessionID"] = context.sessionID.uuidString
+        proof["routineVersionID"] = context.routineVersionID.uuidString
+        proof["stepID"] = context.stepID.uuidString
+        proof["nativeContextMatches"] = String(nativeMoment.context == context)
+        if let counts = nativeActionCounts(for: session) {
+            proof["confirmed"] = String(counts.confirmed); proof["unconfirmed"] = String(counts.unconfirmed)
+        }
+        guard let bytes = try? JSONSerialization.data(withJSONObject: proof, options: [.sortedKeys]) else { return nil }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+    #endif
 }
 
 #if DEBUG
 /// Explicit simulator fixture: no EventKit permission request or Apple write is performed.
 @MainActor final class NativeMomentUITestProvider: NativeMomentProviding {
+    static let exactFlag = "--ui-testing-private-exact-reminder"
+    static func exactWorkspace(directory: URL, arguments: [String] = ProcessInfo.processInfo.arguments) -> UUID? {
+        let workspaces = arguments.filter { $0.hasPrefix("--ui-testing-workspace=") }
+        guard arguments.contains("--ui-testing"), arguments.contains("--fixture-mode"), arguments.contains(exactFlag),
+              arguments.contains("--ui-testing-native-actions"), workspaces.count == 1,
+              let id = UUID(uuidString: String(workspaces[0].dropFirst("--ui-testing-workspace=".count))) else { return nil }
+        let expected = FileManager.default.temporaryDirectory.appendingPathComponent("MorningOperatorUITests-\(id.uuidString)", isDirectory: true)
+        return directory.standardizedFileURL == expected.standardizedFileURL ? id : nil
+    }
     private var writes = 0
+    private var received: [String: String] = [:]
+    private let exactRequested: Bool
+    private let exactEnabled: Bool
+    private let context: @MainActor () -> MorningExecutionID?
+    init(directory: URL, context: @escaping @MainActor () -> MorningExecutionID?) {
+        exactRequested = ProcessInfo.processInfo.arguments.contains(Self.exactFlag)
+        exactEnabled = Self.exactWorkspace(directory: directory) != nil
+        self.context = context
+    }
+    var diagnostic: [String: String] {
+        var result = received; result["simulatedWrites"] = String(writes); return result
+    }
+    var exactDiagnosticEnabled: Bool { exactRequested && exactEnabled }
+    func clear() { received = [:]; writes = 0 }
     func destination(for kind: CaptureDestination) throws -> NativeMomentDestination {
-        .init(id: "synthetic-list", sourceID: "synthetic-account", title: "SYNTHETIC QA", sourceTitle: "SYNTHETIC local fixture", kind: kind)
+        guard !exactRequested || exactEnabled && kind == .reminder else { throw NativeMomentError.destinationChanged }
+        return .init(id: "synthetic-list", sourceID: "synthetic-account", title: "SYNTHETIC QA", sourceTitle: "SYNTHETIC local fixture", kind: kind)
     }
     func validateDestination(_ destination: NativeMomentDestination) throws {
         guard try self.destination(for: destination.kind) == destination else { throw NativeMomentError.destinationChanged }
     }
     func upcomingReminders() async throws -> [ReminderSummary] {
-        [.init(id: "synthetic-reminder", title: (AppLanguage.isFrench ? "EXEMPLE SIMULÉ : appeler le garage" : "SYNTHETIC: call the garage"), notes: "", dueDate: Date().addingTimeInterval(3_600), listTitle: "SYNTHETIC QA", listID: "synthetic-list", sourceID: "synthetic-account", sourceTitle: "SYNTHETIC local fixture")]
+        guard !exactRequested else { throw NativeMomentError.staleSource }
+        return [.init(id: "synthetic-reminder", title: (AppLanguage.isFrench ? "EXEMPLE SIMULÉ : appeler le garage" : "SYNTHETIC: call the garage"), notes: "", dueDate: Date().addingTimeInterval(3_600), listTitle: "SYNTHETIC QA", listID: "synthetic-list", sourceID: "synthetic-account", sourceTitle: "SYNTHETIC local fixture")]
     }
     func perform(_ action: NativeMomentAction) throws -> String {
+        guard writes < 24 else { throw NativeMomentError.unavailableJournal }
+        if exactRequested {
+            guard exactEnabled, let current = context(), case let .reminder(draft, destination) = action else { throw NativeMomentError.destinationChanged }
+            try draft.validate(); try validateDestination(destination)
+            // Actual received values only. No expected title, date or oracle is
+            // present in the provider, and this bounded record stays in memory.
+            received = ["kind": "reminder", "title": draft.title, "notes": draft.notes,
+                "dueReferenceBits": draft.dueDate.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none",
+                "timeZoneIdentifier": draft.timeZoneIdentifier, "notifyAtDueTime": String(draft.notifyAtDueTime),
+                "destinationID": destination.id, "destinationSourceID": destination.sourceID,
+                "destinationTitle": destination.title, "destinationSourceTitle": destination.sourceTitle,
+                "destinationKind": destination.kind.rawValue, "receivedSessionID": current.sessionID.uuidString,
+                "receivedRoutineVersionID": current.routineVersionID.uuidString, "receivedStepID": current.stepID.uuidString]
+        }
         writes += 1
         return "synthetic-receipt-\(writes)"
     }

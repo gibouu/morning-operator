@@ -10,7 +10,7 @@ struct MediaObservationLayoutTests {
     @Test("Real Vision extraction preserves exact joined spans and lower-left image bounds")
     func nativeTextAndBoundsFromSyntheticImage() async throws {
         let image = try makeSyntheticImage()
-        let result = try await MediaObservationService().recognizeFrame(in: image)
+        let result = try await MediaObservationService(ocr: MediaOCRLane()).recognizeFrame(in: image)
         #expect(result.text.contains("Cedar Mail"))
         #expect(result.text.contains("Lumen Calendar"))
         let upper = try #require(result.lines.first { $0.text.contains("Cedar Mail") })

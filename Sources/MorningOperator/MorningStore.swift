@@ -160,33 +160,49 @@ final class MorningStore {
     let invitation: MorningInvitationService
     let permissionSetup: MorningPermissionSetup
     let briefing: MorningBriefingController
-    let composio = OutlookInboxUITestFixture.serviceIfRequested() ?? CalendlyDayUITestFixture.serviceIfRequested() ?? GoogleCalendarDayUITestFixture.serviceIfRequested() ?? SlackSetupUITestFixture.serviceIfRequested() ?? ComposioService()
+    let composio = SlackSetupUITestFixture.integratedServiceIfRequested() ?? GmailAttentionUITestFixture.connectionsIfRequested() ?? OutlookInboxUITestFixture.serviceIfRequested() ?? CalendlyDayUITestFixture.serviceIfRequested() ?? GoogleCalendarDayUITestFixture.serviceIfRequested() ?? SlackSetupUITestFixture.serviceIfRequested() ?? ComposioService()
     let nativeConnections = NativeConnectionsService()
     var selectedSlackMessageTS: String?
     @ObservationIgnored var slackReplyTask: Task<Void, Never>?
     @ObservationIgnored lazy var slackReply: SlackThreadReplyConversation = {
         let provider: any SlackThreadReplyProviding
+        let drafts: SlackReplyDraftService
         #if DEBUG
         if usesSyntheticSlack { provider = SlackReplyUITestProvider() }
         else { provider = SlackComposioReplyProvider(service: composio) }
+        drafts = SlackSetupUITestFixture.integratedDraftsIfRequested()
+            ?? SlackReplyDraftService.syntheticClassicJourneyIfRequested() ?? SlackReplyDraftService()
         #else
         provider = SlackComposioReplyProvider(service: composio)
+        drafts = SlackReplyDraftService()
         #endif
-        return SlackThreadReplyConversation(provider: provider, directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
+        return SlackThreadReplyConversation(provider: provider,
+            drafts: drafts,
+            directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
             guard let self, !privacyBlocksWork else { throw CancellationError() }
             #if DEBUG
-            if usesSyntheticSlack { throw CancellationError() }
+            if usesSyntheticSlack || SlackSetupUITestFixture.integratedJourneyRequested { throw CancellationError() }
             #endif
             try await speech.speakAndWait(text)
         })
     }()
     var nativeActionCountCache: [UUID: (routineVersionID: UUID, generation: UUID, counts: NativeMomentActionCounts)] = [:]
     @ObservationIgnored var nativeMomentTask: Task<Void, Never>?
+    #if DEBUG
+    @ObservationIgnored lazy var nativeUITestProvider = NativeMomentUITestProvider(directory: snapshot.url.deletingLastPathComponent(), context: { [weak self] in
+        guard let self, !privacyBlocksWork, sessionActive, let session, let step = currentStep else { return nil }
+        let current = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
+        return nativeMoment.context == current ? current : nil
+    })
+    #endif
     @ObservationIgnored lazy var nativeMoment: NativeMomentConversation = {
         let provider: any NativeMomentProviding
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions") {
-            provider = NativeMomentUITestProvider()
+        if ProcessInfo.processInfo.arguments.contains(NativeMomentUITestProvider.exactFlag) ||
+            (ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions")) {
+            // Even an invalid private activation stays on a refusing local
+            // provider; it must never fall back to EventKit.
+            provider = nativeUITestProvider
         } else { provider = reminders }
         #else
         provider = reminders
@@ -194,7 +210,8 @@ final class MorningStore {
         return NativeMomentConversation(provider: provider, directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
             guard let self, !self.privacyBlocksWork else { throw CancellationError() }
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing"), ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions") {
+            if ProcessInfo.processInfo.arguments.contains(NativeMomentUITestProvider.exactFlag) ||
+                (ProcessInfo.processInfo.arguments.contains("--ui-testing") && ProcessInfo.processInfo.arguments.contains("--ui-testing-native-actions")) {
                 // Synthetic UI fixtures use the explicit screen-review fallback, never fake acoustic success.
                 throw CancellationError()
             }
@@ -241,10 +258,14 @@ final class MorningStore {
     @ObservationIgnored var voiceLanguageGeneration = UUID()
     @ObservationIgnored var appliedLanguageCode = AppLanguage.code
     @ObservationIgnored var handsFreeUtteranceHandler: (@MainActor (String) async -> Bool)?
-    @ObservationIgnored lazy var mailMorning = GmailMorningConversation(speak: { [weak self] text in
-        guard let self else { throw CancellationError() }
-        if self.readAloud { try await self.speech.speakAndWait(text) }
-    })
+    @ObservationIgnored lazy var mailMorning: GmailMorningConversation = {
+        let speak: @MainActor (String) async throws -> Void = { [weak self] text in
+            guard let self else { throw CancellationError() }
+            if self.readAloud { try await self.speech.speakAndWait(text) }
+        }
+        return GmailAttentionUITestFixture.conversationIfRequested(privacy: privacyControl, speak: speak)
+            ?? GmailMorningConversation(attention: GmailAttentionService(), speak: speak)
+    }()
     let usesSyntheticBriefing: Bool
     private(set) var consumedMorningEntryIDs: [UUID] = []
     // The opening of a morning (issue #28). The logic is in MorningStore+Opening.swift;
@@ -327,6 +348,29 @@ final class MorningStore {
     var evidenceRemovalInProgress = false
     var privacyInventoryIsReadable: Bool { snapshotRecoveryError == nil && !privacyBlocksWork }
 
+    #if DEBUG
+    /// Development-only injection of a portable *draft*, never action authority.
+    /// The document lives in the UI-test runner; no corpus is bundled in the app.
+    private static func parsedUITestRoutine(directory: URL, arguments: [String]) throws -> RoutineVersion {
+        let workspacePrefix = "--ui-testing-workspace=", documentPrefix = "--ui-testing-parsed-routine="
+        let workspaces = arguments.filter { $0.hasPrefix(workspacePrefix) }
+        let documents = arguments.filter { $0.hasPrefix(documentPrefix) }
+        let temporary = FileManager.default.temporaryDirectory.standardizedFileURL.resolvingSymlinksInPath()
+        guard arguments.contains("--ui-testing"), workspaces.count == 1, documents.count == 1,
+              let workspace = UUID(uuidString: String(workspaces[0].dropFirst(workspacePrefix.count))),
+              directory.standardizedFileURL.resolvingSymlinksInPath() == temporary
+                .appendingPathComponent("MorningOperatorUITests-\(workspace.uuidString)", isDirectory: true),
+              documents[0].utf8.count <= 65_536,
+              let data = Data(base64Encoded: String(documents[0].dropFirst(documentPrefix.count))) else {
+            throw PortableRoutineDocumentError.invalidDocument
+        }
+        let document = try PortableRoutineDocument.decode(data)
+        guard document.sourceIsSynthetic, !document.approvalAtExport else {
+            throw PortableRoutineDocumentError.invalidDocument
+        }
+        return try document.importedDraft(replacing: nil)
+    }
+    #endif
     @ObservationIgnored lazy var cloudVoice = MorningCloudVoiceSession(
         tokenProvider: { [weak self] in
             guard let self else { throw CancellationError() }
@@ -357,6 +401,11 @@ final class MorningStore {
 
     init() {
         let fixtureMode = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+        #if DEBUG
+        let parsedRoutineFixtureRequested = ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--ui-testing-parsed-routine=") })
+        #else
+        let parsedRoutineFixtureRequested = false
+        #endif
         let directory = LocalDataControl.defaultDirectory
         permissionSetup = MorningPermissionSetup(directory: directory, isolated: fixtureMode)
         privacyControl = LocalDataControl(directory: directory)
@@ -377,7 +426,7 @@ final class MorningStore {
             healthMetrics: HealthMetricsObservationService(provider: HealthKitMetricsReader()))
         #endif
         #if DEBUG
-        repairPrivacyFixtureIfRequested(directory: directory)
+        if !parsedRoutineFixtureRequested { repairPrivacyFixtureIfRequested(directory: directory) }
         #endif
         defer { if !privacyBlocksWork { connectRecordingRecovery() } }
         do {
@@ -398,27 +447,48 @@ final class MorningStore {
         do {
             pendingRecordingURL = try recordingRecovery.recover()
             if pendingRecordingURL != nil {
-                observationIssue = String(localized: "Your saved recording is still on this device. Retry understanding it, or discard it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                observationIssue = AppLanguage.localized("Your saved recording is still on this device. Retry understanding it, or discard it.")
                 do {
                     let metadata = try recordingRecovery.recoveredMetadata()
                     pendingRecordingInterruption = metadata?.interruptionNote
                     pendingRecordingContext = metadata?.recordingContext
                 }
                 catch {
-                    observationIssue = String(localized: "Your recording is kept on this device, but its saved information could not be read. It has not been analyzed or discarded. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    observationIssue = AppLanguage.localized("Your recording is kept on this device, but its saved information could not be read. It has not been analyzed or discarded. \(error.moreDescription)")
                 }
             }
         } catch {
-            observationIssue = String(localized: "Recording recovery needs attention: \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            observationIssue = AppLanguage.localized("Recording recovery needs attention: \(error.moreDescription)")
         }
         let seedFixture = fixtureMode && !ProcessInfo.processInfo.arguments.contains("--ui-testing-empty-workspace")
         if seedFixture && !FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
+            // Display and audio preferences do not grant import approval. Set
+            // them before ordinary seeders can persist their own fixture state.
+            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
+            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
+            // Parsed input is an exclusive draft path. Other test seeders must
+            // neither approve/replace it nor rescue a malformed payload.
+            if parsedRoutineFixtureRequested {
+                #if DEBUG
+                do { routine = try Self.parsedUITestRoutine(directory: directory, arguments: ProcessInfo.processInfo.arguments) }
+                catch {
+                    routine = nil
+                    notice = "SYNTHETIC QA input refused. No routine was installed."
+                }
+                #endif
+            } else {
             routine = DemoFixtures.candidateRoutine
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-automation") {
                 routine = RoutineVersion(sourceLabel: "Demo fixture — synthetic automation journey", steps: [
                     RoutineStep(title: "A quiet moment", detail: "Take a breath.", durationMinutes: 1, automation: .timedMoment),
                     RoutineStep(title: "Get ready", detail: "Your next moment.", durationMinutes: 1, automation: .timedMoment)
+                ])
+            }
+            if GmailAttentionUITestFixture.isRequested {
+                routine = RoutineVersion(sourceLabel: "Demo fixture — SYNTHETIC Gmail attention", steps: [
+                    RoutineStep(title: "SYNTHETIC Gmail attention", detail: "Local invented mail, deterministic test selection. No account, network, or sending.", durationMinutes: 3, automation: .gmailInbox),
+                    RoutineStep(title: "A quiet moment", durationMinutes: 1, automation: .timedMoment)
                 ])
             }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-native-unavailable") {
@@ -482,13 +552,11 @@ final class MorningStore {
                 routine = RoutineVersion(sourceLabel: "Demo fixture — synthetic ten-moment morning", steps:
                     titles.enumerated().map { index, title in
                         RoutineStep(title: title, detail: "Synthetic layout example.",
-                                    kind: kinds[index], durationMinutes: 2)
+                                    kind: kinds[index], durationMinutes: 2,
+                                    automation: ProcessInfo.processInfo.arguments.contains("--ui-testing-automation") ? .timedMoment : nil)
                     })
             }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
-            // Off unless a test asks: a hands-free or spoken morning (issue #99).
-            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
-            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
             seedObservationArchiveIfRequested()
             #if DEBUG
             seedPrivacyFixtureIfRequested(directory: directory)
@@ -510,11 +578,12 @@ final class MorningStore {
                 try? session?.start(); try? session?.advance(); try? session?.stop(); archiveTerminalSession(); persist()
             }
             #endif
+            }
         } else if FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
             do {
                 let saved = try snapshot.load()
                 guard saved.schemaVersion == 1 else {
-                    snapshotRecoveryError = String(localized: "This saved routine uses a newer format. Your file has been kept intact.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    snapshotRecoveryError = AppLanguage.localized("This saved routine uses a newer format. Your file has been kept intact.")
                     notice = snapshotRecoveryError
                     return
                 }
@@ -530,7 +599,7 @@ final class MorningStore {
                     if let value = stored.value { routinePreferences = value }
                     else {
                         unreadablePreferences = stored
-                        routinePreferencesIssue = String(localized: "Your saved choices couldn't be read. Your routine and observations are intact. Reset them in Settings → Saved choices before making new suggestions.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        routinePreferencesIssue = AppLanguage.localized("Your saved choices couldn't be read. Your routine and observations are intact. Reset them in Settings → Saved choices before making new suggestions.")
                     }
                 } else {
                     // Only established personal required steps migrate. Durations,
@@ -542,8 +611,8 @@ final class MorningStore {
                             }
                         }
                     } catch {
-                        unreadablePreferences = .init(unreadable: String(localized: "Legacy required choices need explicit repair.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
-                        routinePreferencesIssue = String(localized: "Your previous choices need review. Your routine is intact. Reset saved choices before making new suggestions.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        unreadablePreferences = .init(unreadable: AppLanguage.localized("Legacy required choices need explicit repair."))
+                        routinePreferencesIssue = AppLanguage.localized("Your previous choices need review. Your routine is intact. Reset saved choices before making new suggestions.")
                     }
                 }
                 if let proposal = pendingScreenTimeProposal, !proposal.isCurrent(preferences: routinePreferences) {
@@ -599,7 +668,7 @@ final class MorningStore {
                    proposal.isCurrent(archive: observationArchive, baseRoutine: routine, preferences: routinePreferences) {
                     pendingRoutineProposal = proposal
                 } else if saved.pendingRoutineProposal != nil {
-                    notice = String(localized: "A saved suggestion no longer matches its sources or routine. Your current morning and observations are intact. Choose mornings to suggest a fresh update.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    notice = AppLanguage.localized("A saved suggestion no longer matches its sources or routine. Your current morning and observations are intact. Choose mornings to suggest a fresh update.")
                 }
                 sessionTimingInterrupted = saved.sessionTimingInterrupted ?? false
                 pendingCaptures = saved.pendingCaptures ?? [:]
@@ -676,15 +745,15 @@ final class MorningStore {
 
     var morningActivityStatusText: String {
         if let morningActivityIssue { return morningActivityIssue }
-        if !showMorningOnLockScreen { return String(localized: "Off. Your morning stays inside MORE.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if !morningActivity.authorizationEnabled { return String(localized: "Live Activities are unavailable or turned off in iPhone Settings.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if morningActivity.status == .failed { return String(localized: "Lock Screen progress couldn't update. Turn it off and on to try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if morningActivity.status == .dismissed { return String(localized: "Hidden from the Lock Screen. Your morning is still in MORE.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
-        if morningActivity.status == .stale { return String(localized: "Progress may be out of date. Open Morning to check.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        if !showMorningOnLockScreen { return AppLanguage.localized("Off. Your morning stays inside MORE.") }
+        if !morningActivity.authorizationEnabled { return AppLanguage.localized("Live Activities are unavailable or turned off in iPhone Settings.") }
+        if morningActivity.status == .failed { return AppLanguage.localized("Lock Screen progress couldn't update. Turn it off and on to try again.") }
+        if morningActivity.status == .dismissed { return AppLanguage.localized("Hidden from the Lock Screen. Your morning is still in MORE.") }
+        if morningActivity.status == .stale { return AppLanguage.localized("Progress may be out of date. Open Morning to check.") }
         if let state = morningActivity.currentSnapshot?.state {
-            return String(localized: "\(state.status.displayName) · Moment \(state.completedSteps + 1) of \(state.totalSteps)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("\(state.status.displayName) · Moment \(state.completedSteps + 1) of \(state.totalSteps)")
         }
-        return String(localized: "Ready for the next morning you start.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        return AppLanguage.localized("Ready for the next morning you start.")
     }
 
     #if DEBUG
@@ -742,7 +811,7 @@ final class MorningStore {
                 self.morningActivityIssue = nil
             } catch {
                 guard self.dataGeneration == generation else { return }
-                self.morningActivityIssue = String(localized: "Lock Screen progress couldn't update. Open MORE to check your morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                self.morningActivityIssue = AppLanguage.localized("Lock Screen progress couldn't update. Open MORE to check your morning.")
             }
         }
     }
@@ -765,12 +834,12 @@ final class MorningStore {
     func loadSample() {
         guard !privacyBlocksWork else { return }
         guard !sessionActive, !busy else {
-            notice = String(localized: "Finish or stop this morning before changing the routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Finish or stop this morning before changing the routine.")
             return
         }
         installCandidate(PhoneMorningSample.routine())
         tab = .today
-        notice = String(localized: "Sample routine loaded. Review and edit it before starting. This is demo data, not learned behavior.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Sample routine loaded. Review and edit it before starting. This is demo data, not learned behavior.")
         persist()
     }
 
@@ -787,13 +856,13 @@ final class MorningStore {
         }
         catch { notice = error.moreDescription; return false }
         guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
-        guard !routine.steps.isEmpty else { notice = String(localized: "Add at least one step before approving.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return false }
+        guard !routine.steps.isEmpty else { notice = AppLanguage.localized("Add at least one step before approving."); return false }
         let savedPrevious = previousRoutine
         let savedSession = session
         self.routine = routine.approved()
         previousRoutine = nil
         session = self.routine.map { RoutineSession(routine: $0) }
-        notice = String(localized: "Routine approved. You're ready for your first morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Routine approved. You're ready for your first morning.")
         guard persist() else {
             self.routine = routine
             previousRoutine = savedPrevious
@@ -814,11 +883,11 @@ final class MorningStore {
     func addConnectedStep(_ step: RoutineStep) -> Bool {
         guard !privacyBlocksWork, storageIsAvailable, !sessionActive, !busy else { return false }
         guard (routine?.steps.count ?? 0) < 10 else {
-            notice = String(localized: "Keep your routine within ten moments before adding another action.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Keep your routine within ten moments before adding another action.")
             return false
         }
         if let routine { return updateSteps(routine.steps + [step]) }
-        self.routine = RoutineVersion(sourceLabel: String(localized: "Your connected routine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), steps: [step])
+        self.routine = RoutineVersion(sourceLabel: AppLanguage.localized("Your connected routine"), steps: [step])
         guard persist() else { self.routine = nil; return false }
         return true
     }
@@ -854,9 +923,14 @@ final class MorningStore {
         let byID = Dictionary(uniqueKeysWithValues: current.steps.map { ($0.id, $0) })
         let steps = orderedIDs.compactMap { byID[$0] }
         guard steps.count == current.steps.count else { return false }
-        // The common edit transaction preserves an approved predecessor,
-        // invalidates pending proposals, and rolls all routine state back if saving fails.
-        return saveRoutineEdit(steps: steps, preferences: routinePreferences)
+        guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
+        do {
+            var preferences = routinePreferences
+            try preferences.rememberOrder(of: steps)
+            // The common transaction saves both the reviewed order and draft,
+            // preserving the approved predecessor and rolling back on failure.
+            return saveRoutineEdit(steps: steps, preferences: preferences)
+        } catch { notice = error.localizedDescription; return false }
     }
 
     func savedPreference(for step: RoutineStep) -> RoutinePreference? {
@@ -864,10 +938,12 @@ final class MorningStore {
     }
 
     @discardableResult
-    func saveStep(_ edited: RoutineStep, keepInSuggestions: Bool, keepDuration: Bool) -> Bool {
+    func saveStep(_ edited: RoutineStep, keepInSuggestions: Bool, keepDuration: Bool,
+                  assignmentContext: RoutineStepAssignmentContext? = nil) -> Bool {
         guard !privacyBlocksWork else { return false }
         guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
         do {
+            try assignmentContext?.validate(routine: routine, generation: dataGeneration)
             var preferences = routinePreferences
             // A model row can have a fresh ID matched to an older saved title.
             // Resolve its standing choice before a rename/category edit changes that key.
@@ -881,9 +957,14 @@ final class MorningStore {
                     presence: keepInSuggestions ? .keep : nil,
                     durationMinutes: keepDuration ? step.durationMinutes : nil))
             }
-            var steps = routine?.steps ?? []
-            if let index = steps.firstIndex(where: { $0.id == step.id }) { steps[index] = step }
-            else { steps.append(step) }
+            var steps: [RoutineStep]
+            if let assignmentContext {
+                steps = try assignmentContext.replacing(step, in: routine, generation: dataGeneration)
+            } else {
+                steps = routine?.steps ?? []
+                if let index = steps.firstIndex(where: { $0.id == step.id }) { steps[index] = step }
+                else { steps.append(step) }
+            }
             return saveRoutineEdit(steps: steps, preferences: preferences)
         } catch { notice = error.moreDescription; return false }
     }
@@ -912,7 +993,22 @@ final class MorningStore {
         guard routinePreferences.remove(targetID: targetID) else { return true }
         pendingRoutineProposal = nil
         guard persist() else { routinePreferences = old; pendingRoutineProposal = oldProposal; return false }
-        notice = String(localized: "Saved choice cleared. Your current routine is unchanged; future suggestions can reconsider it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Saved choice cleared. Your current routine is unchanged; future suggestions can reconsider it.")
+        return true
+    }
+
+    @discardableResult
+    func clearSavedRoutineOrder() -> Bool {
+        guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive,
+              routinePreferencesIssue == nil else { return false }
+        let old = routinePreferences
+        let oldProposal = pendingRoutineProposal
+        guard routinePreferences.clearOrder() else { return true }
+        pendingRoutineProposal = nil
+        guard persist() else { routinePreferences = old; pendingRoutineProposal = oldProposal; return false }
+        notice = AppLanguage.isFrench
+            ? "L’ordre enregistré a été oublié. Vos autres choix et la routine actuelle sont conservés."
+            : "Saved order forgotten. Your other choices and current routine are unchanged."
         return true
     }
 
@@ -933,7 +1029,7 @@ final class MorningStore {
             routinePreferences = oldJournal; pendingRoutineProposal = oldProposal
             return false
         }
-        notice = String(localized: "Saved choices reset. Your routine and observations are unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Saved choices reset. Your routine and observations are unchanged.")
         return true
     }
 
@@ -955,7 +1051,7 @@ final class MorningStore {
             routinePreferences = oldPreferences; pendingRoutineProposal = oldProposal
             return false
         }
-        notice = String(localized: "Changes saved as a new draft. Review and approve when ready.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Changes saved as a new draft. Review and approve when ready.")
         return true
     }
 
@@ -1094,6 +1190,7 @@ final class MorningStore {
     func resume() {
         guard !privacyBlocksWork else { return }
         guard !voiceInputBlocksPlayback else { return }
+        if resumeWebArticleIfNeeded() { return }
         guard !slackReply.isActive else {
             notice = AppLanguage.isFrench ? "Terminez la réponse Slack ou fermez cette demande avant de reprendre."
                 : "Finish the Slack reply or close this request before resuming."
@@ -1138,7 +1235,7 @@ final class MorningStore {
             speech.stop()
             notice = nil
             if session?.status == .completed {
-                notice = String(localized: "Morning complete. Your progress is saved on this device.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("Morning complete. Your progress is saved on this device.")
             }
             archiveTerminalSession()
             guard persist() else { pauseAfterSaveFailure(); return }
@@ -1221,7 +1318,7 @@ final class MorningStore {
                 }
             } catch {
                 guard repeatAttempt == attempt, !Task.isCancelled, !privacyBlocksWork else { return }
-                presentNativeStepFailure(context: context, reason: String(localized: "This moment could not finish. You can retry or continue your morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                presentNativeStepFailure(context: context, reason: AppLanguage.localized("This moment could not finish. You can retry or continue your morning."))
             }
         }
     }
@@ -1296,35 +1393,35 @@ final class MorningStore {
         guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
         guard let current = try? ObservationNarrationComposer.resolve(reference: prepared.reference, archive: observationArchive),
               current.spokenText.utf8.elementsEqual(prepared.spokenText.utf8) else {
-            notice = String(localized: "This observation changed. Choose the excerpt again before adding it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This observation changed. Choose the excerpt again before adding it.")
             return false
         }
         guard (routine?.steps.count ?? 0) < 10 else {
-            notice = String(localized: "Adding this excerpt needs room in your routine. Remove a moment in Routine first.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Adding this excerpt needs room in your routine. Remove a moment in Routine first.")
             return false
         }
         if routine?.steps.contains(where: { $0.automation == .savedObservation && $0.observationReference == prepared.reference }) == true {
-            notice = String(localized: "This excerpt is already in your morning.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This excerpt is already in your morning.")
             return false
         }
-        let step = RoutineStep(title: String(localized: "A saved moment", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: current.spokenText,
+        let step = RoutineStep(title: AppLanguage.localized("A saved moment"), detail: current.spokenText,
             kind: .briefing, durationMinutes: 1, automation: .savedObservation,
             observationReference: current.reference)
         let containsSample = observationArchive.entry(id: current.reference.acquisitionID)?.origin == .synthetic
-        let sourceLabel = containsSample ? String(localized: "Demo fixture — includes a synthetic saved observation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : nil
+        let sourceLabel = containsSample ? AppLanguage.localized("Demo fixture — includes a synthetic saved observation") : nil
         if let routine {
             return saveRoutineEdit(steps: [step] + routine.steps, preferences: routinePreferences, sourceLabel: sourceLabel)
         }
         let oldSession = session
         let oldProposal = pendingRoutineProposal
-        self.routine = RoutineVersion(sourceLabel: sourceLabel ?? String(localized: "Your selected saved observation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), steps: [step])
+        self.routine = RoutineVersion(sourceLabel: sourceLabel ?? AppLanguage.localized("Your selected saved observation"), steps: [step])
         session = nil
         pendingRoutineProposal = nil
         guard persist() else {
             self.routine = nil; session = oldSession; pendingRoutineProposal = oldProposal
             return false
         }
-        notice = String(localized: "Saved as a new draft. Review and approve when ready.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Saved as a new draft. Review and approve when ready.")
         return true
     }
 
@@ -1403,7 +1500,7 @@ final class MorningStore {
                 archiveTerminalSession()
                 guard persist() else { pauseAfterSaveFailure(); return }
                 if command == .resume { synchronizeMorningActivity(allowStart: true) }
-                voiceCommandFeedback = String(localized: "Heard: \(result.transcript)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                voiceCommandFeedback = AppLanguage.localized("Heard: \(result.transcript)")
                 voiceCommandPresented = false
                 if session?.status == .completed { completedMorningSaved(wasCompleted: wasCompleted) }
                 if command == .repeatStep { readCurrent() }
@@ -1412,7 +1509,7 @@ final class MorningStore {
             } catch {
                 guard voiceCommandAttempt == attempt else { return }
                 voiceCommandFeedback = error is CancellationError
-                    ? String(localized: "Listening stopped. Your morning is still paused.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : error.moreDescription
+                    ? AppLanguage.localized("Listening stopped. Your morning is still paused.") : error.moreDescription
             }
         }
     }
@@ -1592,7 +1689,7 @@ final class MorningStore {
             } catch {
                 guard completionCaptureAttempt == attempt else { return }
                 completionCaptureFeedback = error is CancellationError
-                    ? String(localized: "Listening stopped. Nothing was saved.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : error.moreDescription
+                    ? AppLanguage.localized("Listening stopped. Nothing was saved.") : error.moreDescription
             }
         }
     }
@@ -1781,19 +1878,19 @@ final class MorningStore {
     /// validation still run through the shared preparation policy before inference.
     var currentObservationSuggestionIssue: String? {
         guard !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return String(localized: "Add notes or import a readable observation before suggesting a routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("Add notes or import a readable observation before suggesting a routine.")
         }
         guard let entry = selectedObservation else {
-            return String(localized: "Save this observation before suggesting a routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("Save this observation before suggesting a routine.")
         }
         if entry.observedDate == nil {
-            return String(localized: "Confirm the observed day before using this observation. Import time doesn't establish when it happened.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("Confirm the observed day before using this observation. Import time doesn't establish when it happened.")
         }
         if entry.origin == .unknown {
-            return String(localized: "Confirm whether this observation is your morning or a sample before using it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("Confirm whether this observation is your morning or a sample before using it.")
         }
         if entry.origin == .automated {
-            return String(localized: "Automated observations aren't used to suggest a personal morning. Choose your own observation or a separate sample.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            return AppLanguage.localized("Automated observations aren't used to suggest a personal morning. Choose your own observation or a separate sample.")
         }
         return nil
     }
@@ -1828,7 +1925,7 @@ final class MorningStore {
         do {
             let acquisitions = observationArchive.entries.filter { observationIDs.contains($0.id) }
             guard acquisitions.count == observationIDs.count else {
-                notice = String(localized: "An observation was removed. Choose the mornings again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("An observation was removed. Choose the mornings again.")
                 return
             }
             let evidence = try LearningEvidencePreparation.prepare(acquisitions: acquisitions, screenTimeSelection: screenTimeSelection)
@@ -1836,7 +1933,7 @@ final class MorningStore {
             let preferences = routinePreferences
             let attempt = beginAnalysis()
             analysisStatus = usesSyntheticProposalFixture
-                ? String(localized: "Preparing a synthetic suggestion test…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Finding a routine in your saved mornings…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                ? AppLanguage.localized("Preparing a synthetic suggestion test…") : AppLanguage.localized("Finding a routine in your saved mornings…")
             analysisTask = Task { [weak self] in
                 guard let self else { return }
                 do {
@@ -1865,15 +1962,15 @@ final class MorningStore {
                             guard let self, self.acceptsAnalysis(attempt), !Task.isCancelled, total > 0 else { return }
                             self.progress = Double(completed) / Double(total)
                             self.analysisStatus = completed < total
-                                ? String(localized: "Understanding part \(completed + 1) of \(total)…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-                                : String(localized: "Bringing your morning together…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                                ? AppLanguage.localized("Understanding part \(completed + 1) of \(total)…")
+                                : AppLanguage.localized("Bringing your morning together…")
                         }
                     }
                     try Task.checkCancellation()
                     guard acceptsAnalysis(attempt) else { return }
                     guard proposal.isCurrent(archive: observationArchive, baseRoutine: routine, preferences: routinePreferences) else {
                         busy = false
-                        notice = String(localized: "The observations or routine changed while the suggestion was being prepared. Choose mornings to try again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                        notice = AppLanguage.localized("The observations or routine changed while the suggestion was being prepared. Choose mornings to try again.")
                         return
                     }
                     let previousProposal = pendingRoutineProposal
@@ -1885,7 +1982,7 @@ final class MorningStore {
                     }
                     busy = false
                     progress = 1
-                    notice = String(localized: "An update is ready to review. Your current morning is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    notice = AppLanguage.localized("An update is ready to review. Your current morning is unchanged.")
                 } catch { finishAnalysis(error: error, attempt: attempt) }
             }
         } catch { notice = error.moreDescription }
@@ -1901,7 +1998,7 @@ final class MorningStore {
             draft = try proposal.draftForEditing(archive: observationArchive, baseRoutine: routine,
                 preferences: routinePreferences, session: session)
         } catch {
-            notice = String(localized: "This suggestion no longer matches the saved observations or routine. Choose mornings to prepare a fresh one.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This suggestion no longer matches the saved observations or routine. Choose mornings to prepare a fresh one.")
             return false
         }
         let oldRoutine = routine
@@ -1933,7 +2030,7 @@ final class MorningStore {
         guard !busy, !sessionActive, !voiceInputBlocksPlayback, storageIsAvailable,
               saveObservationEdits(), let proposal = pendingRoutineProposal else { return false }
         guard proposal.isCurrent(archive: observationArchive, baseRoutine: routine, preferences: routinePreferences) else {
-            notice = String(localized: "This suggestion no longer matches the saved observations or routine. Choose mornings to prepare a fresh one.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This suggestion no longer matches the saved observations or routine. Choose mornings to prepare a fresh one.")
             return false
         }
         guard mayApproveExecution(in: proposal.routine) else { return false }
@@ -1955,7 +2052,7 @@ final class MorningStore {
             return false
         }
         approvalCount += 1
-        notice = String(localized: "Update approved. Your next morning will use this routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Update approved. Your next morning will use this routine.")
         return true
     }
 
@@ -1965,7 +2062,7 @@ final class MorningStore {
         guard !busy, let proposal = pendingRoutineProposal else { return false }
         pendingRoutineProposal = nil
         guard persist() else { pendingRoutineProposal = proposal; return false }
-        notice = String(localized: "Suggestion discarded. Your current morning is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Suggestion discarded. Your current morning is unchanged.")
         return true
     }
 
@@ -1997,7 +2094,7 @@ final class MorningStore {
         guard !busy, !screenTimeBusy, !sessionActive, !voiceInputBlocksPlayback, storageIsAvailable,
               let proposal = pendingScreenTimeProposal else { return false }
         guard proposal.baseRoutineID == routine?.id else {
-            notice = String(localized: "Your routine changed since this suggestion was made. Learn from Screen Time again for a fresh one.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Your routine changed since this suggestion was made. Learn from Screen Time again for a fresh one.")
             return false
         }
         guard proposal.isCurrent(preferences: routinePreferences) else {
@@ -2006,7 +2103,7 @@ final class MorningStore {
         }
         let draft: RoutineVersion
         do { draft = try proposal.draft(preserving: routine) }
-        catch { notice = String(localized: "Keep at least one app to approve this suggestion.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return false }
+        catch { notice = AppLanguage.localized("Keep at least one app to approve this suggestion."); return false }
         guard mayApproveExecution(in: draft) else { return false }
         let oldRoutine = routine
         let oldPrevious = previousRoutine
@@ -2028,7 +2125,7 @@ final class MorningStore {
             return false
         }
         approvalCount += 1
-        notice = String(localized: "Update approved. Your next morning will use this routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Update approved. Your next morning will use this routine.")
         return true
     }
 
@@ -2039,7 +2136,7 @@ final class MorningStore {
         guard !privacyBlocksWork, let proposal = pendingScreenTimeProposal else { return false }
         pendingScreenTimeProposal = nil
         guard persist() else { pendingScreenTimeProposal = proposal; return false }
-        notice = String(localized: "Suggestion discarded. Your current morning is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Suggestion discarded. Your current morning is unchanged.")
         return true
     }
 
@@ -2054,8 +2151,8 @@ final class MorningStore {
             RoutineEvidenceCitationInput(unitID: $0.id, quote: String($0.text.prefix(220)))
         }
         return try LearningEvidencePreparation.assemble(evidence: evidence, steps: [
-            EvidenceRoutineStepInput(title: String(localized: "A morning to review", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
-                detail: String(localized: "Synthetic review fixture from the selected observations. No Apple model call.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale),
+            EvidenceRoutineStepInput(title: AppLanguage.localized("A morning to review"),
+                detail: AppLanguage.localized("Synthetic review fixture from the selected observations. No Apple model call."),
                 kind: .custom, durationMinutes: 3, citations: citations)
         ], preserving: base, preferences: preferences, at: Date())
     }
@@ -2118,17 +2215,17 @@ final class MorningStore {
         }
         guard !busy, !sessionActive else {
             if ownedRecording {
-                observationIssue = String(localized: "Your recording is saved. Finish the current activity, then retry understanding it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                observationIssue = AppLanguage.localized("Your recording is saved. Finish the current activity, then retry understanding it.")
                 return true
             }
-            notice = String(localized: "Finish the current activity before importing another observation.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Finish the current activity before importing another observation.")
             return false
         }
         // Save current corrections before a new import can replace the latest observation.
         // An app-owned recording has already been retained even if this write fails.
         guard saveObservationEdits() else { return ownedRecording }
         let attempt = beginAnalysis()
-        analysisStatus = String(localized: "Reading your selected observation…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        analysisStatus = AppLanguage.localized("Reading your selected observation…")
         let interruptionNote = ownedRecording ? pendingRecordingInterruption : nil
         let recordingContext = ownedRecording ? pendingRecordingContext : nil
         analysisTask = Task { [weak self] in
@@ -2152,7 +2249,7 @@ final class MorningStore {
                     guard persist() else { busy = false; observationIssue = notice; return }
                     guard finishOwnedRecordingImport(ownedRecording) else { return }
                     busy = false
-                    notice = String(localized: "This observation is already saved. Your corrections and its date have been kept. Your routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    notice = AppLanguage.localized("This observation is already saved. Your corrections and its date have been kept. Your routine is unchanged.")
                     return
                 }
                 let observation = try await media.extract(from: selectedURL) { [weak self] fraction in
@@ -2170,8 +2267,8 @@ final class MorningStore {
                     // an owned recording stays in recovery for retry or explicit discard.
                     busy = false
                     let sampleCount = observation.videoEvidence?.frames.count ?? observation.sampledFrameCount
-                    observationIssue = String(localized: "No readable text was found in \(sampleCount) samples. Your previous observation is unchanged. ", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) +
-                        (ownedRecording ? String(localized: "The recording is kept for retry or discard.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Try a clearer or shorter recording.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                    observationIssue = AppLanguage.localized("No readable text was found in \(sampleCount) samples. Your previous observation is unchanged. ") +
+                        (ownedRecording ? AppLanguage.localized("The recording is kept for retry or discard.") : AppLanguage.localized("Try a clearer or shorter recording."))
                     notice = observationIssue
                     return
                 }
@@ -2182,7 +2279,7 @@ final class MorningStore {
                 guard fingerprint.sha256 == finalFingerprint.sha256,
                       fingerprint.byteCount == finalFingerprint.byteCount else {
                     busy = false
-                    observationIssue = String(localized: "The selected file changed during analysis. Your previous observation is unchanged. Choose the file again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    observationIssue = AppLanguage.localized("The selected file changed during analysis. Your previous observation is unchanged. Choose the file again.")
                     return
                 }
                 try Task.checkCancellation()
@@ -2197,7 +2294,7 @@ final class MorningStore {
                     fileSHA256: fingerprint.sha256, observedDate: observedDate,
                     origin: ProcessInfo.processInfo.arguments.contains("--ui-testing") ? .synthetic : .unknown,
                     sourceKind: ObservationAcquisitionSourceKind(rawValue: observation.kind.rawValue) ?? .unknown,
-                    sourceLabel: ownedRecording ? String(localized: "Your explicitly shared screen recording", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(String(localized: "Selected file: \(selectedURL.lastPathComponent)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale).prefix(256)),
+                    sourceLabel: ownedRecording ? AppLanguage.localized("Your explicitly shared screen recording") : String(AppLanguage.localized("Selected file: \(selectedURL.lastPathComponent)").prefix(256)),
                     originalText: extracted, videoEvidence: observation.videoEvidence,
                     recordingContext: recordingContext, appSignals: appSignals)
                 let id = try observationArchive.insert(entry)
@@ -2206,12 +2303,12 @@ final class MorningStore {
                 progress = 1
                 guard persist() else {
                     busy = false
-                    observationIssue = notice ?? String(localized: "The extracted text could not be saved. Your recording is kept for retry.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    observationIssue = notice ?? AppLanguage.localized("The extracted text could not be saved. Your recording is kept for retry.")
                     return
                 }
                 guard finishOwnedRecordingImport(ownedRecording) else { return }
                 busy = false
-                notice = String(localized: "Observation saved. Review the text and its observed day before asking for a routine suggestion. Your routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("Observation saved. Review the text and its observed day before asking for a routine suggestion. Your routine is unchanged.")
             } catch {
                 guard acceptsAnalysis(attempt) else { return }
                 finishAnalysis(error: error, attempt: attempt)
@@ -2240,7 +2337,7 @@ final class MorningStore {
                                  automaticallyProcess: Bool) -> Bool {
         guard !privacyBlocksWork else { return false }
         if let pendingRecordingURL, pendingRecordingURL.standardizedFileURL != url.standardizedFileURL {
-            observationIssue = String(localized: "Retry or discard your saved recording before adding another one.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            observationIssue = AppLanguage.localized("Retry or discard your saved recording before adding another one.")
             return false
         }
         var readyContext: ObservationRecordingContext?
@@ -2271,7 +2368,7 @@ final class MorningStore {
             observationIssue = nil
             return true
         } catch {
-            observationIssue = String(localized: "Your recording has not been imported or discarded. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            observationIssue = AppLanguage.localized("Your recording has not been imported or discarded. \(error.moreDescription)")
             return false
         }
     }
@@ -2303,9 +2400,9 @@ final class MorningStore {
             pendingRecordingInterruption = nil
             pendingRecordingContext = nil
             observationIssue = nil
-            notice = String(localized: "Saved recording discarded. Any previously saved observation text remains available.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Saved recording discarded. Any previously saved observation text remains available.")
         } catch {
-            observationIssue = String(localized: "The saved recording could not be removed. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            observationIssue = AppLanguage.localized("The saved recording could not be removed. \(error.moreDescription)")
         }
     }
 
@@ -2326,7 +2423,7 @@ final class MorningStore {
             return true
         } catch {
             busy = false
-            observationIssue = String(localized: "Your extracted text is saved, but the temporary recording could not be removed. You can discard it below. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            observationIssue = AppLanguage.localized("Your extracted text is saved, but the temporary recording could not be removed. You can discard it below. \(error.moreDescription)")
             return false
         }
     }
@@ -2397,7 +2494,7 @@ final class MorningStore {
         guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive,
               saveObservationEdits() else { return false }
         guard observationArchive.entry(id: expected.id) == expected else {
-            notice = String(localized: "This observation changed. Reopen the sampled screen before saving its label.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This observation changed. Reopen the sampled screen before saving its label.")
             return false
         }
         return changeObservationArchive(selecting: selectedObservationID) {
@@ -2410,7 +2507,7 @@ final class MorningStore {
         guard !privacyBlocksWork, storageIsAvailable, !busy, !sessionActive,
               saveObservationEdits() else { return false }
         guard observationArchive.entry(id: expected.id) == expected else {
-            notice = String(localized: "This observation changed. Reopen the sampled screen before removing its label.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This observation changed. Reopen the sampled screen before removing its label.")
             return false
         }
         return changeObservationArchive(selecting: selectedObservationID) {
@@ -2481,7 +2578,7 @@ final class MorningStore {
         let entry = id.flatMap { observationArchive.entry(id: $0) }
         selectedObservationID = entry?.id
         notes = entry?.effectiveText ?? ""
-        notesSourceLabel = entry?.sourceLabel ?? String(localized: "Your written observation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notesSourceLabel = entry?.sourceLabel ?? AppLanguage.localized("Your written observation")
         // Original video evidence remains inspectable in the observation detail.
         // Edited notes must never masquerade as its unmodified OCR interpretation.
         observationVideoEvidence = entry?.correctedText == nil ? entry?.videoEvidence : nil
@@ -2525,7 +2622,7 @@ final class MorningStore {
                 observationContextClassification = previousClassification
                 notesSourceLabel = previousSource
                 observationEditsNeedSave = previousDirty
-                notice = String(localized: "The observation change could not be saved. Your previous observations are unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("The observation change could not be saved. Your previous observations are unchanged.")
                 observationSaveIssue = notice
                 return false
             }
@@ -2646,7 +2743,7 @@ final class MorningStore {
         analysisTask?.cancel()
         // Keep the owner so privacy cleanup can await its actual completion.
         // Retain busy until the worker acknowledges cancellation, so a second model run cannot overlap.
-        analysisStatus = String(localized: "Stopping analysis…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        analysisStatus = AppLanguage.localized("Stopping analysis…")
     }
 
     /// Separate, explicit interpretation of the latest sampled screens. This never treats
@@ -2657,7 +2754,7 @@ final class MorningStore {
               evidence.frames.contains(where: \.canSupportIdentity), saveObservationEdits() else { return }
         let attempt = beginAnalysis()
         let acquisitionID = selectedObservationID
-        analysisStatus = String(localized: "Recognizing the screens we sampled…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        analysisStatus = AppLanguage.localized("Recognizing the screens we sampled…")
         analysisTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -2671,16 +2768,16 @@ final class MorningStore {
                 observationEditsNeedSave = true
                 busy = false
                 progress = 1
-                if persist() { notice = String(localized: "Screen observations updated. Review what was recognized and what remains unknown.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+                if persist() { notice = AppLanguage.localized("Screen observations updated. Review what was recognized and what remains unknown.") }
             } catch { finishAnalysis(error: error, attempt: attempt) }
         }
     }
 
     func useManualRoutine() {
         guard !privacyBlocksWork else { return }
-        guard !sessionActive, !busy else { notice = String(localized: "Stop this morning before creating another routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return }
-        installCandidate(RoutineVersion(number: 1, sourceLabel: String(localized: "Created by you", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), steps: [
-            RoutineStep(title: String(localized: "Your morning", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), detail: String(localized: "Review what matters today.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale), kind: .briefing, durationMinutes: 3, isRequired: true, automation: .spokenNote)
+        guard !sessionActive, !busy else { notice = AppLanguage.localized("Stop this morning before creating another routine."); return }
+        installCandidate(RoutineVersion(number: 1, sourceLabel: AppLanguage.localized("Created by you"), steps: [
+            RoutineStep(title: AppLanguage.localized("Your morning"), detail: AppLanguage.localized("Review what matters today."), kind: .briefing, durationMinutes: 3, isRequired: true, automation: .spokenNote)
         ], isApproved: false))
         tab = .today
         persist()
@@ -2693,11 +2790,11 @@ final class MorningStore {
     func useImportedRoutine(_ document: PortableRoutineDocument, replacing expectedBase: RoutineVersion?) -> Bool {
         guard !privacyBlocksWork else { return false }
         guard !busy, !sessionActive, !voiceInputBlocksPlayback, storageIsAvailable else {
-            notice = String(localized: "Finish the current activity before importing a routine.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Finish the current activity before importing a routine.")
             return false
         }
         guard routine == expectedBase else {
-            notice = String(localized: "Your routine changed while this file was open. Cancel and open the file again to review it.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Your routine changed while this file was open. Cancel and open the file again to review it.")
             return false
         }
         do {
@@ -2713,10 +2810,10 @@ final class MorningStore {
             guard persist() else {
                 routine = oldRoutine; previousRoutine = oldPrevious; session = oldSession
                 pendingRoutineProposal = oldProposal
-                notice = String(localized: "The imported draft could not be saved. Your current routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                notice = AppLanguage.localized("The imported draft could not be saved. Your current routine is unchanged.")
                 return false
             }
-            notice = String(localized: "Imported as a draft. Review and approve it when ready. Your saved choices still apply to future suggestions.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Imported as a draft. Review and approve it when ready. Your saved choices still apply to future suggestions.")
             return true
         } catch {
             notice = error.moreDescription
@@ -2738,7 +2835,7 @@ final class MorningStore {
             self.previousRoutine = previousRoutine
             return
         }
-        notice = String(localized: "Your previous approved routine is restored. Saved choices still apply to future suggestions.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notice = AppLanguage.localized("Your previous approved routine is restored. Saved choices still apply to future suggestions.")
     }
 
     private func installCandidate(_ candidate: RoutineVersion) {
@@ -2757,7 +2854,7 @@ final class MorningStore {
         progress = 0
         notice = nil
         observationIssue = nil
-        analysisStatus = String(localized: "Finding the meaningful steps…", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        analysisStatus = AppLanguage.localized("Finding the meaningful steps…")
         return attempt
     }
 
@@ -2769,7 +2866,7 @@ final class MorningStore {
         guard acceptsAnalysis(attempt) else { return }
         busy = false
         progress = 0
-        notice = error is CancellationError ? String(localized: "Analysis stopped. Your existing routine is unchanged.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : error.moreDescription
+        notice = error is CancellationError ? AppLanguage.localized("Analysis stopped. Your existing routine is unchanged.") : error.moreDescription
         if hasPendingRecording || hasImportedObservation { observationIssue = notice }
     }
 
@@ -2815,7 +2912,7 @@ final class MorningStore {
         guard !privacyBlocksWork, !captureBusy else { return false }
         let generation = dataGeneration
         guard pendingCaptures[id.uuidString] == nil else {
-            notice = String(localized: "This save has an unconfirmed outcome. Check the Apple app before trying again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("This save has an unconfirmed outcome. Check the Apple app before trying again.")
             return false
         }
         captureBusy = true
@@ -2826,7 +2923,7 @@ final class MorningStore {
                 if kind == .reminder {
                     try ReminderDraft(title: text, dueDate: date, notifyAtDueTime: date != nil).validate()
                 } else if kind == .calendarIdea {
-                    guard let date else { notice = String(localized: "Choose a date and time for the calendar event.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return false }
+                    guard let date else { notice = AppLanguage.localized("Choose a date and time for the calendar event."); return false }
                     try CalendarEventDraft(title: text, startDate: date,
                         endDate: date.addingTimeInterval(Double(duration) * 60)).validate()
                 }
@@ -2838,37 +2935,37 @@ final class MorningStore {
                 case .reminder:
                     try await reminders.requestReminderAccess()
                     guard dataGeneration == generation, !privacyBlocksWork, !Task.isCancelled else { return false }
-                    pendingCaptures[id.uuidString] = String(localized: "Reminders", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    pendingCaptures[id.uuidString] = AppLanguage.localized("Reminders")
                     upsertCapture(capture)
                     guard persist() else { pendingCaptures[id.uuidString] = nil; return false }
                     receipt = try reminders.createReminder(from: ReminderDraft(title: text, dueDate: date,
                         notifyAtDueTime: date != nil))
                 case .calendarIdea:
-                    guard let date else { notice = String(localized: "Choose a date and time for the calendar event.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return false }
+                    guard let date else { notice = AppLanguage.localized("Choose a date and time for the calendar event."); return false }
                     try await reminders.requestCalendarWriteAccess()
                     guard dataGeneration == generation, !privacyBlocksWork, !Task.isCancelled else { return false }
-                    pendingCaptures[id.uuidString] = String(localized: "Calendar", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                    pendingCaptures[id.uuidString] = AppLanguage.localized("Calendar")
                     upsertCapture(capture)
                     guard persist() else { pendingCaptures[id.uuidString] = nil; return false }
                     receipt = try reminders.createCalendarEvent(from: CalendarEventDraft(title: text,
                         startDate: date, endDate: date.addingTimeInterval(Double(duration) * 60)))
-                default: notice = String(localized: "Choose a reminder or calendar event to save to Apple apps.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale); return false
+                default: notice = AppLanguage.localized("Choose a reminder or calendar event to save to Apple apps."); return false
                 }
                 receipts[id.uuidString] = receipt.id
                 pendingCaptures[id.uuidString] = nil
             }
             upsertCapture(capture)
-            notice = saveToSystem ? (kind == .reminder ? String(localized: "Saved in Apple Reminders and your notes.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Saved in Apple Calendar and your notes.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)) : String(localized: "Saved on this device.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = saveToSystem ? (kind == .reminder ? AppLanguage.localized("Saved in Apple Reminders and your notes.") : AppLanguage.localized("Saved in Apple Calendar and your notes.")) : AppLanguage.localized("Saved on this device.")
             let saved = persist()
             if !saved && saveToSystem {
-                notice = (kind == .reminder ? String(localized: "Apple saved this item, but the local receipt could not be saved. Check Apple Reminders before trying again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) : String(localized: "Apple saved this item, but the local receipt could not be saved. Check Apple Calendar before trying again.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
+                notice = (kind == .reminder ? AppLanguage.localized("Apple saved this item, but the local receipt could not be saved. Check Apple Reminders before trying again.") : AppLanguage.localized("Apple saved this item, but the local receipt could not be saved. Check Apple Calendar before trying again."))
             }
             // A completed external write dismisses the draft even if the local disk write failed.
             return saved || saveToSystem
         } catch {
             guard dataGeneration == generation, !privacyBlocksWork else { return false }
             notice = pendingCaptures[id.uuidString] == nil ? error.moreDescription :
-                String(localized: "The Apple app save could not be confirmed. Check it before retrying. \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+                AppLanguage.localized("The Apple app save could not be confirmed. Check it before retrying. \(error.moreDescription)")
             return false
         }
     }
@@ -2915,7 +3012,7 @@ final class MorningStore {
 
     func handleSpeechInterruption() {
         guard session?.status == .running, speech.state == .paused else { return }
-        let message = speech.lastError ?? String(localized: "Audio was interrupted. Continue when you're ready.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        let message = speech.lastError ?? AppLanguage.localized("Audio was interrupted. Continue when you're ready.")
         pause()
         notice = message
     }
@@ -2941,7 +3038,7 @@ final class MorningStore {
             history.upsert(try MorningRunRecord(session: session, timeZoneIdentifier: sessionTimeZone,
                 isSynthetic: isSynthetic,
                 timingInterrupted: sessionTimingInterrupted))
-        } catch { notice = String(localized: "This morning could not be added to history: \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale) }
+        } catch { notice = AppLanguage.localized("This morning could not be added to history: \(error.moreDescription)") }
     }
 
     @discardableResult
@@ -2950,7 +3047,7 @@ final class MorningStore {
         if let snapshotRecoveryError {
             morningActivitySaveBlocked = true
             synchronizeMorningActivity()
-            notice = String(localized: "\(snapshotRecoveryError) Your existing file is protected; new changes cannot be saved until it can be restored.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("\(snapshotRecoveryError) Your existing file is protected; new changes cannot be saved until it can be restored.")
             if observationEditsNeedSave { observationSaveIssue = notice }
             return false
         }
@@ -3000,7 +3097,7 @@ final class MorningStore {
         } catch {
             morningActivitySaveBlocked = true
             synchronizeMorningActivity()
-            notice = String(localized: "Your change is in memory, but saving failed: \(error.moreDescription)", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+            notice = AppLanguage.localized("Your change is in memory, but saving failed: \(error.moreDescription)")
             if observationEditsNeedSave { observationSaveIssue = notice }
             return false
         }
@@ -3087,7 +3184,7 @@ final class MorningStore {
             }
             guard screenTimeReadIsQuiescent else {
                 throw NSError(domain: "MORE.Privacy", code: 1, userInfo: [NSLocalizedDescriptionKey:
-                    String(localized: "Screen Time is still stopping. Try removal again in a moment.", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)])
+                    AppLanguage.localized("Screen Time is still stopping. Try removal again in a moment.")])
             }
             // Vision/file-provider work must finish before its source is removed.
             // Delayed callbacks are independently rejected by the attempt/epoch.
@@ -3123,7 +3220,7 @@ final class MorningStore {
                 // The sessions' observations go with the archive, which this forget clears.
                 // A package test (SegmentedSessionForgettingGuardTests) fails if the app
                 // starts using the store without calling `forgetAll`.
-                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json", "step-timer.json", "morning-alarm.json", "permission-setup.json", "browser-action-journal.json", "personal-memory.json", "gmail-send-journal.json", "native-moment-journal.json", "slack-reply-journal.json", EvidenceRemovalMarker.fileName, MorningExtrasPreferencesStore.fileName] {
+                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json", "step-timer.json", "morning-alarm.json", "permission-setup.json", "browser-action-journal.json", "personal-memory.json", "gmail-send-journal.json", "gmail-attention-preferences.json", "native-moment-journal.json", "slack-reply-journal.json", EvidenceRemovalMarker.fileName, MorningExtrasPreferencesStore.fileName] {
                     try removeOwnedPayload(snapshot.url.deletingLastPathComponent().appendingPathComponent(name))
                 }
                 let directory = snapshot.url.deletingLastPathComponent()
@@ -3185,7 +3282,7 @@ final class MorningStore {
     private func clearForgottenMemory() {
         endOpening(); greetingState.reset()
         routine = nil; session = nil; previousRoutine = nil
-        notes = ""; notesSourceLabel = String(localized: "Your written observation", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        notes = ""; notesSourceLabel = AppLanguage.localized("Your written observation")
         observationArchive = ObservationArchive(); selectedObservationID = nil
         observationVideoEvidence = nil; observationContextClassification = nil
         observationSaveIssue = nil; observationEditsNeedSave = false; observationIssue = nil

@@ -155,7 +155,8 @@ struct MorningExtrasProviderTests {
 
     @Test func readingNeverPromptsAndHealthIsNotReadBeforeItsPrompt() async throws {
         let health = SyntheticHealth(steps: [7_000, 6_000, 6_000, 6_000, 6_000, nil, nil, nil])
-        let provider = MorningExtrasProvider(store: MorningExtrasPreferencesStore(directory: try directory()), health: health)
+        let provider = MorningExtrasProvider(store: MorningExtrasPreferencesStore(directory: try directory()),
+                                             health: health, clock: ManualTestClock())
         #expect(!provider.hasReadableSources(weatherLocation: nil, calendarSelected: false))
         let silent = await prepare(provider)
         #expect(silent.items.isEmpty)
@@ -232,7 +233,8 @@ struct MorningExtrasProviderTests {
     @Test func choicesAndRotationAreSavedButNoValue() async throws {
         let folder = try directory()
         let health = SyntheticHealth(steps: [7_000, nil, nil, nil, nil, nil, nil, nil])
-        let provider = MorningExtrasProvider(store: MorningExtrasPreferencesStore(directory: folder), health: health)
+        let provider = MorningExtrasProvider(store: MorningExtrasPreferencesStore(directory: folder),
+                                             health: health, clock: ManualTestClock())
         try await provider.setEnabled(.steps, true)
         let selection = await prepare(provider)
         provider.recordSpoken(selection, now: morning, timeZone: paris)
@@ -307,7 +309,7 @@ struct MorningExtrasProviderTests {
             screenTime: SyntheticScreenTime(), weatherOutlook: { _, frame in
                 WeatherOutlook(yesterdayHighCelsius: 20, todayHighCelsius: 10, hours: [
                     .init(start: frame.now.addingTimeInterval(8 * 3_600), chance: 0.6, kind: .rain)])
-            })
+            }, clock: ManualTestClock())
         try await provider.setEnabled(.calendar, true)
         try await provider.setEnabled(.weatherChange, true)
         let location = try WeatherLocation(latitude: 48.85, longitude: 2.35, displayName: "Synthetic city")

@@ -85,9 +85,9 @@ struct MorningOpeningView: View {
 
     private func title(_ choice: MorningOpeningChoice) -> String {
         switch choice {
-        case .brief: String(localized: "Hear my recap", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .ritual: String(localized: "Start my routine", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
-        case .stop: String(localized: "Stop", bundle: AppLanguage.bundle(), locale: AppLanguage.locale)
+        case .brief: AppLanguage.localized("Hear my recap")
+        case .ritual: AppLanguage.localized("Start my routine")
+        case .stop: AppLanguage.localized("Stop")
         }
     }
 

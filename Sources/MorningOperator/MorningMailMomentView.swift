@@ -11,6 +11,39 @@ struct MorningMailMomentView: View {
     var body: some View {
         let mail = store.mailMorning
         VStack(alignment: .leading, spacing: 12) {
+            if GmailAttentionUITestFixture.isRequested {
+                Text("SYNTHETIC — Gmail attention test. No account, network, or sending.")
+                    .font(.caption).accessibilityIdentifier("mail.attention.synthetic")
+                    .accessibilityValue("HTTP list reads: \(GmailAttentionUITestFixture.inboxReadCount); body reads: \(GmailAttentionUITestFixture.bodyReadCount)")
+            }
+            if let selection = mail.attentionSelection, !mail.isComposingSelfMessage {
+                Text(french ? "Vos mails à examiner" : "Your messages to review").font(.headline)
+                Text(selection.explanation(french: french)).font(.caption)
+                    .accessibilityIdentifier("mail.attention.explanation")
+                if let priorities = selection.prioritiesUsed, !priorities.isEmpty {
+                    Text((french ? "Priorités utilisées : " : "Priorities used: ") + priorities).font(.caption)
+                        .accessibilityIdentifier("mail.attention.prioritiesUsed")
+                }
+                ForEach(mail.messageChoices) { choice in
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("\(choice.number). \(choice.sender)").font(.subheadline.weight(.medium))
+                        Text(verbatim: choice.subject.isEmpty ? (french ? "Sans objet" : "No subject") : choice.subject)
+                        if let date = choice.receivedAt { Text(date, format: .dateTime.day().month().hour().minute()).font(.caption) }
+                        if let proposed = choice.proposed {
+                            Text(verbatim: proposed.summary)
+                            Text((selection.mode == .localProposal ? (french ? "Proposition locale : " : "Local proposal: ") : "") + proposed.reason).font(.caption)
+                            if let quote = proposed.sourceQuote { Text((french ? "Extrait cité : « " : "Quoted excerpt: “") + quote + (french ? " »" : "”")).font(.caption) }
+                            if proposed.sourceWasAbbreviated { Text(french ? "La proposition utilise un contenu abrégé." : "This proposal uses abbreviated source text.").font(.caption) }
+                        } else { Text(french ? "Autre mail consulté, hors des trois propositions." : "Another read message, outside the three proposals.").font(.caption) }
+                        Button(mail.selectedMessageID == choice.id ? (french ? "Mail choisi" : "Selected message") : (french ? "Choisir ce mail" : "Choose this message")) {
+                            store.chooseReadMail(id: choice.id)
+                        }.disabled(!mail.canChooseMessage)
+                            .accessibilityIdentifier("mail.attention.choose.\(choice.number)")
+                    }.padding(.vertical, 6)
+                }
+                Text(french ? "Choisir un autre mail efface l’ancien brouillon. Son destinataire vient du message réellement lu ; la préparation et l’envoi restent des demandes distinctes."
+                    : "Choosing another message clears the previous draft. Its recipient comes from the read message; preparing and sending remain separate requests.").font(.caption)
+            }
             if mail.canComposeSelfMessage, !mail.isComposingSelfMessage {
                 Button(french ? "Note à moi-même" : "Note to myself") { store.beginSelfMail() }
                     .accessibilityIdentifier("mail.composeSelf")

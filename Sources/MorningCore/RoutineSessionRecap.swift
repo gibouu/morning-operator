@@ -11,8 +11,8 @@ public enum RoutineSessionRecapSaveState: String, Codable, Sendable {
     case saved, notSaved
     public var displayName: String {
         switch self {
-        case .saved: String(localized: "Saved", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .notSaved: String(localized: "Not saved", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .saved: AppLanguage.localized("Saved", bundle: .module)
+        case .notSaved: AppLanguage.localized("Not saved", bundle: .module)
         }
     }
 }
@@ -130,8 +130,8 @@ public enum HabitReductionGoalError: Error, LocalizedError, Equatable, Sendable 
     case invalidGoal, notActive
     public var errorDescription: String? {
         switch self {
-        case .invalidGoal: String(localized: "Choose an activity, an end on or after the start, and a daily target between 0 minutes and 24 hours.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .notActive: String(localized: "This period has ended or was cancelled. Start a new one to change it.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .invalidGoal: AppLanguage.localized("Choose an activity, an end on or after the start, and a daily target between 0 minutes and 24 hours.", bundle: .module)
+        case .notActive: AppLanguage.localized("This period has ended or was cancelled. Start a new one to change it.", bundle: .module)
         }
     }
 }
@@ -141,11 +141,11 @@ public enum HabitReductionDayStatus: String, Codable, Sendable {
     case noTarget, outsidePeriod, notRecorded, withinTarget, aboveTarget
     public var displayName: String {
         switch self {
-        case .noTarget: String(localized: "No target chosen", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .outsidePeriod: String(localized: "Outside the chosen period", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .notRecorded: String(localized: "Nothing recorded for this day", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .withinTarget: String(localized: "Within the target you chose", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
-        case .aboveTarget: String(localized: "Above the target you chose", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale)
+        case .noTarget: AppLanguage.localized("No target chosen", bundle: .module)
+        case .outsidePeriod: AppLanguage.localized("Outside the chosen period", bundle: .module)
+        case .notRecorded: AppLanguage.localized("Nothing recorded for this day", bundle: .module)
+        case .withinTarget: AppLanguage.localized("Within the target you chose", bundle: .module)
+        case .aboveTarget: AppLanguage.localized("Above the target you chose", bundle: .module)
         }
     }
 }

@@ -40,36 +40,34 @@ extension MorningStore {
         guard let session else { return nil }
         return executionSummary(for: session)
     }
+    func executionRecapRows(for session: RoutineSession) -> [RoutineStepExecutionRecap] {
+        guard !privacyBlocksWork else { return [] }
+        return RoutineStepExecutionRecap.make(session: session, records: executionRecords)
+    }
+
+    func executionRecapText(for row: RoutineStepExecutionRecap, in session: RoutineSession) -> String {
+        guard !privacyBlocksWork else { return "" }
+        let french = AppLanguage.isFrench
+        var text = row.summary(french: french)
+        guard let step = session.routine.steps.first(where: { $0.id == row.id }),
+              case .connectedAPI(let service, _, _, _) = step.target, service.lowercased() == "slack" else { return text }
+        // A Slack reply is a separate durable effect, never evidence that the
+        // read moment or its presentation succeeded. Query this exact context.
+        guard let replies = slackActionCounts(for: session, stepID: row.id) else {
+            return text + (french ? "\nÉtat des réponses Slack indisponible." : "\nSlack reply status unavailable.")
+        }
+        if replies.confirmed > 0 {
+            text += french ? "\nRéponses Slack confirmées : \(replies.confirmed)." : "\nSlack replies confirmed: \(replies.confirmed)."
+        }
+        if replies.unconfirmed > 0 {
+            text += french ? "\nRéponses Slack à vérifier : \(replies.unconfirmed)." : "\nSlack replies to check: \(replies.unconfirmed)."
+        }
+        return text
+    }
+
     func executionSummary(for session: RoutineSession) -> String? {
-        let records = executionRecords.filter { $0.sessionID == session.id }
-        guard !records.isEmpty else { return nil }
-        let done = records.filter { $0.outcome == .completed || $0.outcome == .budgetFinished }.count
-        let unavailable = records.filter { $0.outcome == .unavailable }.count
-        let uncertain = records.filter { $0.outcome == .uncertain }.count
-        let skipped = records.filter { $0.outcome == .skipped || $0.outcome == .interrupted }.count
-        let contents = records.reduce(0) { $0 + $1.observedContents }
-        let likes = records.reduce(0) { $0 + $1.confirmedLikes }
-        let timedIDs = Set(session.routine.steps.filter { $0.automation == .timedMoment }.map(\.id))
-        let timed = records.filter { timedIDs.contains($0.stepID) && $0.outcome == .budgetFinished }.count
-        let verified = done - timed
-        let confirmedWithoutPresentation = records.filter {
-            $0.confirmedExternalEffect == true && $0.outcome != .completed && $0.outcome != .budgetFinished
-        }.count
-        var parts: [String] = []
-        if timed > 0 { parts.append(AppLanguage.isFrench ? "Moments chronométrés terminés : \(timed)." : "Timed moments finished: \(timed).") }
-        if verified > 0 { parts.append(AppLanguage.isFrench ? "Opérations vérifiées : \(verified)." : "Verified operations: \(verified).") }
-        if confirmedWithoutPresentation > 0 {
-            parts.append(AppLanguage.isFrench
-                ? "Actions confirmées par le service, restitution incomplète : \(confirmedWithoutPresentation)."
-                : "Service-confirmed actions with incomplete presentation: \(confirmedWithoutPresentation).")
-        }
-        if skipped > 0 { parts.append(AppLanguage.isFrench ? "Moments passés : \(skipped)." : "Moments passed: \(skipped).") }
-        if unavailable > 0 { parts.append(AppLanguage.isFrench ? "Indisponibles : \(unavailable)." : "Unavailable: \(unavailable).") }
-        if uncertain > 0 { parts.append(AppLanguage.isFrench ? "Résultats à vérifier : \(uncertain)." : "Results to check: \(uncertain).") }
-        if session.routine.steps.contains(where: { $0.webBehavior != nil }) {
-            parts.append(AppLanguage.isFrench ? "Navigateur : \(contents) contenus observés, \(likes) likes confirmés." : "Browser: \(contents) contents observed, \(likes) likes confirmed.")
-        }
-        return parts.joined(separator: " ")
+        guard !privacyBlocksWork else { return nil }
+        return RoutineStepExecutionRecap.overview(session: session, records: executionRecords, french: AppLanguage.isFrench)
     }
     var currentExecutionRecord: RoutineExecutionRecord? {
         guard let session, let step = currentStep else { return nil }
@@ -158,7 +156,7 @@ extension MorningStore {
             let explanation: String?
             switch event.state {
             case .needsChoice:
-                explanation = (AppLanguage.isFrench ? "Ce site demande un choix de confidentialité, un abonnement ou une connexion. Votre matin est en pause. Faites votre choix dans la page. " : "This site needs a privacy, subscription or sign-in choice. Your morning is paused. Make your choice on the page. ") + nextMomentRecoveryInstruction
+                explanation = (AppLanguage.isFrench ? "Cette page attend votre choix. Votre matin est en pause. Faites votre choix dans la page. " : "This page needs your choice. Your morning is paused. Make your choice on the page. ") + nextMomentRecoveryInstruction
             case .needsSignIn:
                 explanation = (AppLanguage.isFrench ? "Ce compte demande une connexion. Connectez-vous dans MORE. " : "This account needs a sign-in. Sign in in MORE. ") + nextMomentRecoveryInstruction
             case .unavailable:
@@ -172,7 +170,7 @@ extension MorningStore {
         if event.state == .needsChoice, session?.status == .running {
             pause()
             if readAloud {
-                speech.speak((AppLanguage.isFrench ? "Ce site demande un choix de confidentialité ou un abonnement. Votre matin est en pause. " : "This site needs a privacy or subscription choice. Your morning is paused. ") + nextMomentRecoveryInstruction)
+                speech.speak((AppLanguage.isFrench ? "Cette page attend votre choix. Votre matin est en pause. " : "This page needs your choice. Your morning is paused. ") + nextMomentRecoveryInstruction)
             }
             return
         }
