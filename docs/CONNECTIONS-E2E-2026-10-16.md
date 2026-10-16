@@ -5,6 +5,43 @@ iPhone journey. A successful catalog or consent-link response is not a completed
 user connection. No private account content, bearer, authorization URL, provider
 identifier or credentials are included here.
 
+## Resumed ordinary iPhone acceptance — in progress
+
+The ordinary installed build is now **2026101622**, with a strict signature and
+HealthKit, WeatherKit, Family Controls and App and Website Usage entitlements
+verified independently. It is an in-place Debug installation, using the approved
+developer entry. It is not a StoreKit or TestFlight acceptance result.
+
+| Ordinary iPhone route | Resumed evidence |
+| --- | --- |
+| Reminders | Physical test08 passed in 13.518 seconds: a fresh local-read timestamp and no app-owned read error. No reminder was created or completed; no titles or counts were exported. |
+| Calendar | Real inventory is available. Test07 still failed its selection assertion after a 10-second wait (31.633 seconds total); a selected-day fresh read is not yet proved. A switch-thumb gesture correction preserves the strict selection, cleanup and fresh-read assertions and awaits a real rerun. |
+| Native Gmail, Health and Screen Time | Real grant/read acceptance remains pending. No permission or sample result is injected. |
+| Remaining API connections | Real consent must reconcile through this installation before ACTIVE status or provider reads can count. Catalog availability does not satisfy this gate. |
+| Full routine | A physical ordinary-UI journey is prepared for real browser learning, an explicit selected model, review/approval, automatic execution and a persisted recap. It has not yet passed. |
+
+The installation's UI now exposes an explicit support code derived from its
+existing private credential, without exporting that credential or enrolling a
+replacement installation. A private parameterized lookup found exactly one
+existing installation. Only this installation was added to the voice allowlist
+(one entry became two; the original entry was preserved). Worker deployment
+`35e47ab2-2e67-4c75-8787-2eb51b20ca52` retained the canonical speech source,
+16 services, three secrets and existing database bindings. No provider account
+ownership was changed. Health returned 200, unauthenticated voice requests 401,
+forbidden voice/agent overrides 400 and authenticated service inventory 200,
+all with `no-store`. These guard checks made no generation call and do not yet
+prove native speech playback on this installation.
+
+Both native and API authentication now permit the standard shared sign-in
+session while retaining their callback, PKCE/state and ownership checks. New
+physical-only opt-ins exercise real provider consent and explicit model setup;
+they never inject app workspaces, model output or system grants. The resumed
+targeted shared checks passed **29/29**, and resource/Python checks passed
+**34/34**. Raw device results, credentials and owner-state backups remain local
+and ignored. The earlier detailed checkpoints below retain their original proof
+boundaries; this resumed work does not yet certify every connection or the full
+routine.
+
 ## Live API checkpoint
 
 The deployed origin is `https://more-composio.more-gderamchi.workers.dev`.
