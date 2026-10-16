@@ -1,0 +1,9 @@
+{
+  "id" : "733aaee8-311b-4b64-b8e0-72f738950ba4",
+  "targets" : [
+    {
+      "id" : "58b1bc4f-96e2-464d-b0ba-5ff8296f4046",
+      "name" : "MorningOperator"
+    }
+  ]
+}
