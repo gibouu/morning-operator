@@ -1249,8 +1249,8 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["web.pause"].waitForExistence(timeout: 20))
         let status = app.staticTexts["web.result"]
         XCTAssertTrue(status.waitForExistence(timeout: 20))
-        let observed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label MATCHES %@", ".*· ([2-9]|[1-9][0-9]+) contents viewed.*"), object: status)
-        XCTAssertEqual(XCTWaiter.wait(for: [observed], timeout: 40), .completed)
+        let observed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label MATCHES %@", "(?s).*· ([2-9]|[1-9][0-9]+) contents viewed.*"), object: status)
+        XCTAssertEqual(XCTWaiter.wait(for: [observed], timeout: 40), .completed, "Observed: \(status.label); diagnostics: \(status.value ?? "none")")
         attach("automation-real-public-feed", app)
         let beforeExtension = remainingSeconds(app.staticTexts["web.remaining"].label)
         app.buttons["web.extend"].tap()
