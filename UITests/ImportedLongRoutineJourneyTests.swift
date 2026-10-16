@@ -115,9 +115,11 @@ import MorningCore
         // Assign through the existing editor. The imported moment remains the
         // same row; only explicit source selection and Save give it an action.
         tap("routine.step.2", app)
-        XCTAssertEqual(app.textFields["step.name"].value as? String, titles[2])
+        XCTAssertEqual(element("step.name", app).value as? String, titles[2])
         XCTAssertEqual(element("step.duration", app).value as? String, String(minutes[2]))
-        let originalNote = app.textFields["Step details"].value as? String
+        let detailsField = app.textFields["Step details"]
+        scroll(detailsField, id: "Step details", in: app)
+        let originalNote = detailsField.value as? String
         tap("step.chooseSlack", app)
         XCTAssertTrue(element("slack.setup.identity", app).exists)
         let channel = button("slack.setup.channel.0", app)
@@ -127,11 +129,15 @@ import MorningCore
         tap("slack.setup.use", app)
         let selectedSource = text("step.selectedSlackSource", app)
         XCTAssertTrue(selectedSource.label.contains("SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"))
-        XCTAssertEqual(app.textFields["step.name"].value as? String, titles[2])
+        XCTAssertEqual(element("step.name", app).value as? String, titles[2])
         XCTAssertEqual(element("step.duration", app).value as? String, String(minutes[2]))
         // API targets display the unchanged note as text instead of a text field.
         XCTAssertNotNil(originalNote)
-        if let originalNote { XCTAssertTrue(app.staticTexts[originalNote].exists) }
+        if let originalNote {
+            let retainedNote = app.staticTexts[originalNote]
+            scroll(retainedNote, id: "retained-personal-note", in: app)
+            XCTAssertTrue(retainedNote.exists)
+        }
         attach("long-ten-slack-source-selected-before-save", app)
         tap("step.save", app)
         XCTAssertTrue(button("routine.step.2", app).label.contains(titles[2]))
@@ -168,7 +174,7 @@ import MorningCore
         tap("routine.step.2", app)
         XCTAssertTrue(text("step.selectedSlackSource", app).label.contains("SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"),
                       "The human source remains reviewable after Save and relaunch, separately from the note.")
-        XCTAssertEqual(app.textFields["step.name"].value as? String, titles[2])
+        XCTAssertEqual(element("step.name", app).value as? String, titles[2])
         XCTAssertEqual(element("step.duration", app).value as? String, String(minutes[2]))
         tap("Cancel", app)
         tap("routine.step.7", app)
