@@ -6,7 +6,8 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
-    private var sessionForCleanup: SKTestSession?
+    // XCTest serializes each case and calls its synchronous cleanup directly.
+    nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
 
     override func tearDown() {
         // UI XCTest cleanup runs synchronously on the main thread, including
@@ -14,13 +15,13 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         MainActor.assumeIsolated {
             let app = XCUIApplication()
             if app.state != .notRunning { app.terminate() }
-            if let sessionForCleanup {
-                attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
-            }
-            sessionForCleanup?.clearTransactions()
-            sessionForCleanup?.resetToDefaultState()
-            sessionForCleanup = nil
         }
+        if let sessionForCleanup {
+            attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
+        }
+        sessionForCleanup?.clearTransactions()
+        sessionForCleanup?.resetToDefaultState()
+        sessionForCleanup = nil
         super.tearDown()
     }
 
