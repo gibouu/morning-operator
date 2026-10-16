@@ -165,7 +165,7 @@ import Synchronization
                 throw GmailAttentionError.invalidInput
             }
             if let reply {
-                return String(decoding: try JSONSerialization.data(withJSONObject: ["messages": [3, 2, 5].map { index in
+                return String(decoding: try JSONSerialization.data(withJSONObject: ["messages": [5, 2, 3].map { index in
                     let item = replyMessage(index, french: reply.french)
                     return ["id": "synthetic\(index)", "summary": item.subject,
                             "reason": reply.french ? "SYNTHETIC — proposition de test, à relire." : "SYNTHETIC — test proposal to review.", "quote": item.text]
