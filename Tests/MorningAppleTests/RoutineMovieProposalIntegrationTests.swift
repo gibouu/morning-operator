@@ -169,9 +169,20 @@ private struct RoutineMovieProposalReport: Encodable {
 private actor RoutineMovieOCRRecorder {
     struct Failure: Encodable, Sendable {
         enum Domain: String, Encodable { case vision, cocoa, posix, cancellation, other }
+        enum Category: String, Encodable, Sendable {
+            case dataUnavailable, internalError, invalidArgument, invalidFormat, invalidImage, invalidModel
+            case invalidOperation, ioError, operationFailed, outOfBoundsError, outOfMemory, pixelBufferCreationFailed
+            case requestCancelled, timeout, timeStampNotFound, unsupportedComputeDevice, unsupportedComputeStage
+            case unsupportedRequest, unsupportedRevision, unknownVisionCase
+        }
         let domain: Domain
         let code: Int?
+        let category: Category?
         init(_ error: any Error) {
+            if let vision = error as? VisionError {
+                domain = .vision; code = nil; category = Self.category(vision); return
+            }
+            category = nil
             if error is CancellationError { domain = .cancellation; code = nil; return }
             let native = error as NSError
             switch native.domain {
@@ -181,6 +192,32 @@ private actor RoutineMovieOCRRecorder {
             default: domain = .other
             }
             code = domain == .other ? nil : native.code
+        }
+
+        private static func category(_ error: VisionError) -> Category {
+            // Associated strings (and the pixel-buffer payload) are never read.
+            switch error {
+            case .dataUnavailable(_): .dataUnavailable
+            case .internalError(_): .internalError
+            case .invalidArgument(_): .invalidArgument
+            case .invalidFormat(_): .invalidFormat
+            case .invalidImage(_): .invalidImage
+            case .invalidModel(_): .invalidModel
+            case .invalidOperation(_): .invalidOperation
+            case .ioError(_): .ioError
+            case .operationFailed(_): .operationFailed
+            case .outOfBoundsError(_): .outOfBoundsError
+            case .outOfMemory(_): .outOfMemory
+            case .pixelBufferCreationFailed(_): .pixelBufferCreationFailed
+            case .requestCancelled(_): .requestCancelled
+            case .timeout(_): .timeout
+            case .timeStampNotFound(_): .timeStampNotFound
+            case .unsupportedComputeDevice(_): .unsupportedComputeDevice
+            case .unsupportedComputeStage(_): .unsupportedComputeStage
+            case .unsupportedRequest(_): .unsupportedRequest
+            case .unsupportedRevision(_): .unsupportedRevision
+            @unknown default: .unknownVisionCase
+            }
         }
     }
     struct Attempt: Encodable, Sendable {
@@ -215,20 +252,53 @@ struct RoutineMovieOCRDiagnosticTests {
                 userInfo: [NSLocalizedDescriptionKey: secret])),
             RoutineMovieOCRRecorder.Failure(NSError(domain: VNErrorDomain, code: 9,
                 userInfo: [NSLocalizedDescriptionKey: secret])),
-            RoutineMovieOCRRecorder.Failure(CancellationError())
+            RoutineMovieOCRRecorder.Failure(CancellationError()),
+            RoutineMovieOCRRecorder.Failure(NSError(domain: NSCocoaErrorDomain, code: 257,
+                userInfo: [NSLocalizedDescriptionKey: secret])),
+            RoutineMovieOCRRecorder.Failure(NSError(domain: NSPOSIXErrorDomain, code: 13,
+                userInfo: [NSLocalizedDescriptionKey: secret]))
         ]
         let encoded = String(decoding: try JSONEncoder().encode(values), as: UTF8.self)
         #expect(!encoded.contains(secret))
         #expect(values[0].domain == .other && values[0].code == nil)
         #expect(values[1].domain == .vision && values[1].code == 9)
         #expect(values[2].domain == .cancellation && values[2].code == nil)
+        #expect(values[3].domain == .cocoa && values[3].code == 257)
+        #expect(values[4].domain == .posix && values[4].code == 13)
+        #expect(values.allSatisfy { $0.category == nil })
+    }
+    @Test func swiftVisionCategoriesNeverSerializeAssociatedContents() throws {
+        let secret = "private-frame-path-and-recognized-content-must-not-appear"
+        let cases: [(VisionError, RoutineMovieOCRRecorder.Failure.Category)] = [
+            (.dataUnavailable(secret), .dataUnavailable), (.internalError(secret), .internalError),
+            (.invalidArgument(secret), .invalidArgument), (.invalidFormat(secret), .invalidFormat),
+            (.invalidImage(secret), .invalidImage), (.invalidModel(secret), .invalidModel),
+            (.invalidOperation(secret), .invalidOperation), (.ioError(secret), .ioError),
+            (.operationFailed(secret), .operationFailed), (.outOfBoundsError(secret), .outOfBoundsError),
+            (.outOfMemory(secret), .outOfMemory), (.pixelBufferCreationFailed(-666), .pixelBufferCreationFailed),
+            (.requestCancelled(secret), .requestCancelled), (.timeout(secret), .timeout),
+            (.timeStampNotFound(secret), .timeStampNotFound), (.unsupportedComputeDevice(secret), .unsupportedComputeDevice),
+            (.unsupportedComputeStage(secret), .unsupportedComputeStage), (.unsupportedRequest(secret), .unsupportedRequest),
+            (.unsupportedRevision(secret), .unsupportedRevision)]
+        let values = cases.map { RoutineMovieOCRRecorder.Failure($0.0) }
+        #expect(values.map(\.category) == cases.map { Optional($0.1) })
+        #expect(values.allSatisfy { $0.domain == .vision && $0.code == nil })
+        let encoded = String(decoding: try JSONEncoder().encode(values), as: UTF8.self)
+        #expect(!encoded.contains(secret) && !encoded.contains("-666"))
     }
     @Test func recordingIsBoundedAndDistinguishesPendingFromFinished() async {
         let recorder = RoutineMovieOCRRecorder()
         let first = await recorder.started()
         #expect(await recorder.snapshot().first?.completed == false)
-        await recorder.finished(first, since: .now, failure: nil)
-        #expect(await recorder.snapshot().first?.completed == true)
+        #expect(await recorder.snapshot().first?.failure == nil)
+        await recorder.finished(first, since: .now, failure: .init(VisionError.requestCancelled("private cancellation reason")))
+        let failed = await recorder.snapshot().first
+        #expect(failed?.completed == true && failed?.failure?.category == .requestCancelled)
+        #expect(failed?.elapsedSeconds != nil)
+        let second = await recorder.started()
+        await recorder.finished(second, since: .now, failure: nil)
+        let completed = await recorder.snapshot().last
+        #expect(completed?.completed == true && completed?.failure == nil)
         for _ in 0..<MediaObservationService.maximumFrames { _ = await recorder.started() }
         #expect(await recorder.snapshot().count == MediaObservationService.maximumFrames)
         #expect(await recorder.started() == nil)
