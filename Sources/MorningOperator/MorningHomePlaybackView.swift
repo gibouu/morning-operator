@@ -108,7 +108,15 @@ struct MorningHomePlaybackView: View {
                 SlackSetupUITestFixture.integratedJourneyRequested else {
             return identity
         }
-        return identity + "|\(store.session?.routine.id.uuidString ?? "")|\(store.session?.currentStepIndex ?? -1)"
+        let execution = identity + "|\(store.session?.routine.id.uuidString ?? "")|\(store.session?.currentStepIndex ?? -1)"
+        guard SlackSetupUITestFixture.integratedJourneyRequested else { return execution }
+        // Private mixed-journey proof only. No title, caption or message body;
+        // exact Date bits distinguish a retained remainder from a fresh budget.
+        guard let timer = store.activeStepTimer else { return execution + "|none|none|none" }
+        let start = String(timer.startedAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16)
+        let end = String(timer.endsAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16)
+        let paused = timer.pausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none"
+        return execution + "|\(start)|\(end)|\(paused)"
     }
     #endif
 

@@ -1,5 +1,8 @@
 import Foundation
 import MorningApple
+#if DEBUG
+import CryptoKit
+#endif
 
 /// Explicit synthetic UI data. The injected transport has no URLSession or live credential store.
 @MainActor enum SlackSetupUITestFixture {
@@ -23,7 +26,8 @@ import MorningApple
 
     static var integratedDiagnostic: String {
         #if DEBUG
-        "History reads: \(historyReads); simulated send attempts: \(sendAttempts)"
+        guard integratedJourneyRequested else { return "" }
+        return "History reads: \(historyReads); simulated send attempts: \(sendAttempts); received body SHA256: \(receivedBodySHA256 ?? "none")"
         #else
         ""
         #endif
@@ -40,7 +44,7 @@ import MorningApple
         guard flags.contains("--ui-testing"), flags.contains("--ui-testing-slack-setup") else { return nil }
         let empty = flags.contains("--ui-testing-slack-empty")
         let integrated = integratedJourneyRequested
-        if integrated { historyReads = 0; sendAttempts = 0 }
+        if integrated { historyReads = 0; sendAttempts = 0; receivedBodySHA256 = nil }
         let connection = "ca_slack_synthetic_setup", cursor = "opaque-fixture-page-two"
         return ComposioService(baseURL: URL(string: "https://synthetic-slack.invalid")!,
             tokenStore: Tokens("synthetic-slack-ui-installation-token"), executionStore: Tokens(nil)) { request in
@@ -123,6 +127,7 @@ import MorningApple
                       identity == ["revision": String(repeating: "a", count: 64), "teamID": "T12345678", "userID": "U12345678"] else { throw FixtureError.blocked }
                 // The ordinary service and conversation have durably claimed this
                 // dispatch. A lost simulated response must remain uncertain.
+                receivedBodySHA256 = SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
                 sendAttempts += 1
                 throw URLError(.timedOut)
             default: throw FixtureError.blocked
@@ -139,6 +144,7 @@ import MorningApple
     #if DEBUG
     private static var historyReads = 0
     private static var sendAttempts = 0
+    private static var receivedBodySHA256: String?
     private static var messages: [[String: Any]] {
         (0..<3).map { index in ["type": "message", "ts": "179210000\(index).000001", "user": "U12345678",
             "text": "SYNTHETIC invented meeting note \(index + 1)."] }

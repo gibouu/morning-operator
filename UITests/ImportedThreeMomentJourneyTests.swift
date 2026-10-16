@@ -101,13 +101,22 @@ import XCTest
         XCTAssertNotEqual(slack.step, placeholderID, "The exact connected moment was added through the ordinary setup.")
         interact(app)
         XCTAssertTrue(button("slackMoment.message.0", app).label.contains("SYNTHETIC invented meeting note 1"))
+        XCTAssertEqual(element("slackMoment.integratedSynthetic", app).value as? String,
+            "History reads: 1; simulated send attempts: 0; received body SHA256: none; confirmed replies: 0; unconfirmed replies: 0")
         prepareSlack(app, intention: "SYNTHETIC please review these notes")
         let destination = app.staticTexts["slackMoment.destination"]
         XCTAssertTrue(destination.waitForExistence(timeout: 10))
         XCTAssertTrue(destination.label.contains("SYNTHETIC équipe") && destination.label.contains("SYNTHETIC Camille"))
         XCTAssertTrue(destination.label.contains("#SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"))
         let body = element("slackMoment.body", app)
-        body.tap(); body.typeText(" Corrected before review.")
+        XCTAssertEqual(body.value as? String, "SYNTHETIC I will review the invented meeting notes.")
+        let correctedBody = "SYNTHETIC I will review the invented meeting notes. Corrected before review."
+        // Independent UTF-8 sample digest, never computed from the editor or
+        // returned by the transport under test.
+        let correctedBodySHA256 = "05b368822b213121ce393357bd425919506dfae91bd50028df9c407cd43028c9"
+        body.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
+        body.typeText(" Corrected before review.")
+        XCTAssertEqual(body.value as? String, correctedBody)
         dismissKeyboard(app)
         tap("slackMoment.review", app)
         XCTAssertFalse(button("slackMoment.send", app).isEnabled, "The interrupted synthetic speech is not a completed review.")
@@ -116,7 +125,7 @@ import XCTest
         tap("slackMoment.send", app)
         waitLabel(app.staticTexts["slackMoment.status"], contains: "Slack post is unconfirmed", timeout: 15)
         XCTAssertFalse(app.buttons["slackMoment.send"].exists)
-        let diagnostic = "History reads: 1; simulated send attempts: 1; confirmed replies: 0; unconfirmed replies: 1"
+        let diagnostic = "History reads: 1; simulated send attempts: 1; received body SHA256: \(correctedBodySHA256); confirmed replies: 0; unconfirmed replies: 1"
         XCTAssertEqual(element("slackMoment.integratedSynthetic", app).value as? String, diagnostic)
         // A new UI prepare after closing the failed request must hit the existing
         // durable claim, not dispatch a second simulated post.
@@ -133,18 +142,52 @@ import XCTest
         XCTAssertEqual(timed.step, timedID)
         XCTAssertEqual(timed.session, first.session); XCTAssertEqual(timed.version, first.version)
         XCTAssertEqual(Set([first.step, slack.step, timed.step]).count, 3)
+        let runningTimer = try timerSnapshot(app)
+        XCTAssertNil(runningTimer.pausedBits)
+        XCTAssertEqual(runningTimer.endsAt - runningTimer.startedAt, 60, accuracy: 0.001)
+        // Let an actual part of this real minute elapse. A fresh 60-second
+        // timer at resume must no longer satisfy the remainder assertions.
+        expectUnchanged(timed, timer: runningTimer, seconds: 20, in: app)
         reveal(app)
-        XCTAssertEqual(button("morning.playback", app).label, "Pause")
-        tap("morning.playback", app)
+        let pause = button("morning.playback", app)
+        XCTAssertEqual(pause.label, "Pause")
+        let pauseTapStart = Date().timeIntervalSinceReferenceDate
+        pause.tap()
+        let pauseTapEnd = Date().timeIntervalSinceReferenceDate
         XCTAssertEqual(button("morning.playback", app).label, "Continue")
         XCTAssertEqual(try identity(app, index: 2), timed)
+        let pausedTimer = try timerSnapshot(app)
+        let pausedAt = try XCTUnwrap(pausedTimer.pausedAt)
+        XCTAssertEqual(pausedTimer.startedBits, runningTimer.startedBits)
+        XCTAssertEqual(pausedTimer.endsBits, runningTimer.endsBits)
+        assertWithinTap(pausedAt, from: pauseTapStart, through: pauseTapEnd)
+        XCTAssertGreaterThanOrEqual(pausedAt - pausedTimer.startedAt, 20)
+        let remaining = pausedTimer.endsAt - pausedAt
+        XCTAssertGreaterThan(remaining, 0)
+        XCTAssertLessThanOrEqual(remaining, 40.001)
         app.terminate(); app.launch(); try requireWorkspace(workspace, app)
         XCTAssertEqual(try identity(app, index: 2), timed)
-        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false OR value != %@", timed.raw), object: app.scrollViews["morning.captions"])
-        changed.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 65), .completed, "Paused longer than this moment's complete one-minute budget.")
+        XCTAssertEqual(try timerSnapshot(app), pausedTimer, "Relaunch must preserve all three exact timer instants.")
+        expectUnchanged(timed, timer: pausedTimer, seconds: 65, in: app)
         XCTAssertEqual(try identity(app, index: 2), timed)
-        reveal(app); XCTAssertEqual(button("morning.playback", app).label, "Continue"); tap("morning.playback", app)
+        XCTAssertEqual(try timerSnapshot(app), pausedTimer, "A pause longer than the full budget cannot consume or reset its remainder.")
+        reveal(app)
+        let resume = button("morning.playback", app)
+        XCTAssertEqual(resume.label, "Continue")
+        let resumeTapStart = Date().timeIntervalSinceReferenceDate
+        resume.tap()
+        let resumeTapEnd = Date().timeIntervalSinceReferenceDate
+        let resumedTimer = try timerSnapshot(app)
+        XCTAssertEqual(try identity(app, index: 2), timed)
+        XCTAssertEqual(resumedTimer.startedBits, runningTimer.startedBits)
+        XCTAssertNil(resumedTimer.pausedBits)
+        let endShift = resumedTimer.endsAt - pausedTimer.endsAt
+        assertWithinTap(endShift, from: resumeTapStart - pausedAt, through: resumeTapEnd - pausedAt)
+        assertWithinTap(resumedTimer.endsAt - resumeTapEnd,
+            from: remaining - (resumeTapEnd - resumeTapStart), through: remaining)
+        let proof = XCTAttachment(string: "started/ends/paused exact Date bits only\nrunning=\(runningTimer.raw)\npaused=\(pausedTimer.raw)\nresumed=\(resumedTimer.raw)\nreceived simulated body SHA256=\(correctedBodySHA256)")
+        proof.name = "three-moments-retained-timer-and-received-body-digest"
+        proof.lifetime = .keepAlways; add(proof)
         XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: 90))
         try requireRecap(app)
         attach("three-moments-one-session-honest-recap", app)
@@ -157,16 +200,51 @@ import XCTest
         let session: String, step: String, version: String, index: Int
         var raw: String { "\(session)|\(step)|\(version)|\(index)" }
     }
+    private struct TimerSnapshot: Equatable {
+        let startedBits: UInt64, endsBits: UInt64, pausedBits: UInt64?
+        var startedAt: TimeInterval { Double(bitPattern: startedBits) }
+        var endsAt: TimeInterval { Double(bitPattern: endsBits) }
+        var pausedAt: TimeInterval? { pausedBits.map { Double(bitPattern: $0) } }
+        var raw: String {
+            String(startedBits, radix: 16) + "|" + String(endsBits, radix: 16) + "|" +
+                (pausedBits.map { String($0, radix: 16) } ?? "none")
+        }
+    }
     private func identity(_ app: XCUIApplication, index: Int) throws -> Identity {
         let captions = app.scrollViews["morning.captions"]
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND value ENDSWITH %@", "|\(index)"), object: captions)
+        let pattern = "^[^|]+\\|[^|]+\\|[^|]+\\|\(index)\\|[^|]+\\|[^|]+\\|[^|]+$"
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND value MATCHES %@", pattern), object: captions)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed)
-        let fields = try XCTUnwrap(captions.value as? String).components(separatedBy: "|")
-        XCTAssertEqual(fields.count, 4)
-        guard fields.count == 4 else { throw DiagnosticFailure.invalid }
+        let fields = try executionFields(app)
         for value in fields.prefix(3) { XCTAssertNotNil(UUID(uuidString: value)) }
         let result = Identity(session: fields[0], step: fields[1], version: fields[2], index: try XCTUnwrap(Int(fields[3])))
         XCTAssertEqual(result.index, index); return result
+    }
+    private func executionFields(_ app: XCUIApplication) throws -> [String] {
+        let fields = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String).components(separatedBy: "|")
+        XCTAssertEqual(fields.count, 7, "Only the gated mixed fixture appends timer Date bits.")
+        guard fields.count == 7 else { throw DiagnosticFailure.invalid }
+        return fields
+    }
+    private func timerSnapshot(_ app: XCUIApplication) throws -> TimerSnapshot {
+        let fields = try executionFields(app)
+        let timer = TimerSnapshot(startedBits: try XCTUnwrap(UInt64(fields[4], radix: 16)),
+            endsBits: try XCTUnwrap(UInt64(fields[5], radix: 16)),
+            pausedBits: fields[6] == "none" ? nil : try XCTUnwrap(UInt64(fields[6], radix: 16)))
+        XCTAssertTrue(timer.startedAt.isFinite && timer.endsAt.isFinite && (timer.pausedAt?.isFinite ?? true))
+        return timer
+    }
+    private func expectUnchanged(_ identity: Identity, timer: TimerSnapshot, seconds: TimeInterval, in app: XCUIApplication) {
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false OR value != %@", identity.raw + "|" + timer.raw), object: app.scrollViews["morning.captions"])
+        changed.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: seconds), .completed,
+                       "Real elapsed time must not change the pinned identity or timer instants.")
+    }
+    private func assertWithinTap(_ actual: TimeInterval, from start: TimeInterval, through end: TimeInterval) {
+        // Date arithmetic may round below a millisecond; the window itself is
+        // measured around the real UI tap, not an invented resume instant.
+        XCTAssertGreaterThanOrEqual(actual, start - 0.001)
+        XCTAssertLessThanOrEqual(actual, end + 0.001)
     }
     private func requireWorkspace(_ workspace: String, _ app: XCUIApplication) throws {
         let marker = app.staticTexts["qa.testWorkspace"]
