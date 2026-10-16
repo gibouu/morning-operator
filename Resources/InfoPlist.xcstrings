@@ -19,6 +19,24 @@
         }
       }
     },
+    "NSCameraUsageDescription": {
+      "comment": "Only the existing in-app web page camera choice; no app startup or routine camera request.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE uses your camera only when you choose to take a photo or video on a page in its in-app browser."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE utilise votre caméra uniquement lorsque vous choisissez de prendre une photo ou une vidéo sur une page de son navigateur intégré."
+          }
+        }
+      }
+    },
     "NSCalendarsFullAccessUsageDescription": {
       "comment": "Privacy usage description",
       "extractionState": "manual",
