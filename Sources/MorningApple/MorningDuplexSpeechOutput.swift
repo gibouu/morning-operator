@@ -65,9 +65,13 @@ final class MorningDuplexSpeechOutput {
         self.engine = engine
         self.format = format
         engine.attach(player)
+        #if compiler(>=6.4)
         if #available(iOS 27.0, macOS 27.0, *) {
             try engine.connectNode(player, to: engine.outputNode, format: format)
         } else { engine.connect(player, to: engine.outputNode, format: format) }
+        #else
+        engine.connect(player, to: engine.outputNode, format: format)
+        #endif
     }
 
     func play(data: Data, startPaused: Bool = false,
