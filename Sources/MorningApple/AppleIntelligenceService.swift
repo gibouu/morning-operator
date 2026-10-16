@@ -384,9 +384,13 @@ public final class AppleIntelligenceService {
 
     /// Titles and details are shown and spoken in the interface language; quotes stay verbatim.
     static var languageInstruction: String {
-        AppLanguage.isFrench
+        languageInstruction(french: AppLanguage.isFrench)
+    }
+
+    static func languageInstruction(french: Bool) -> String {
+        french
             ? "\nWrite every title and detail sentence in French. Keep evidence quotes exactly as they appear in the source."
-            : ""
+            : "\nWrite every title and detail sentence in English. Keep evidence quotes exactly as they appear in the source."
     }
 
     /// Only propose supplies native origin tags; the legacy text API does not.
@@ -430,6 +434,14 @@ public final class AppleIntelligenceService {
     activities just to fill a category. Durations are tentative planning estimates, not measured facts.
     Return no steps when there is no useful evidence. The person will review and approve the result later.
     """
+}
+
+/// Shared hints for grounded local and explicitly selected remote generation.
+/// These do not enforce semantic correctness or change native validation.
+enum EvidenceRoutineFieldGuidance {
+    static let kind = "The broad routine activity supported by the selected excerpt. For visibleTaskContent, classify reviewing the shown content, not performing the task it describes."
+    static let title = "A short, reusable routine activity title. For visibleTaskContent, name the broad review of the shown content, not each event, message or instruction as a task to carry out. For userReportedActivity, preserve the person's explicitly reported activity or intended routine."
+    static let duration = "A proposed planning budget, never a measured average. For visibleTaskContent without established usage duration, suggest a short 1–5 minute review budget, not an event's scheduled duration or the time needed to carry out its contents. For userReportedActivity, preserve an explicitly reported routine budget."
 }
 
 /// The model selects application-created anchors, never supplies quotation bytes.
@@ -613,14 +625,15 @@ enum EvidenceRoutineGenerationSchema {
         let kind = DynamicGenerationSchema(name: "EvidenceStepKind", anyOf: StepKind.allCases.map(\.rawValue))
         let outcome = DynamicGenerationSchema(name: "EvidenceProposalOutcome", anyOf: ["insufficientEvidence", "supportedActivities"])
         // Guided generation emits properties in declaration order. Select the
-        // native evidence before naming the candidate, then classify the result.
+        // native evidence and broad kind before naming the review candidate,
+        // then classify the result.
         // Empty steps and abstention remain permitted and validated as before.
         // https://developer.apple.com/documentation/foundationmodels/generating-swift-data-structures-with-guided-generation
         let step = DynamicGenerationSchema(name: "CitedRoutineStep", properties: [
             .init(name: "citationIDs", description: "Select exactly one inserted ID of actual supporting task content or reported activity; never generic controls or labels.", schema: .init(arrayOf: .init(referenceTo: "SuppliedCitationID"), minimumElements: 1, maximumElements: 1)),
-            .init(name: "title", description: "A short tentative activity title.", schema: .init(type: String.self)),
-            .init(name: "kind", schema: .init(referenceTo: "EvidenceStepKind")),
-            .init(name: "durationMinutes", description: "A proposed planning budget only; never a measured average.", schema: .init(type: Int.self, guides: [.range(1...60)]))
+            .init(name: "kind", description: EvidenceRoutineFieldGuidance.kind, schema: .init(referenceTo: "EvidenceStepKind")),
+            .init(name: "title", description: EvidenceRoutineFieldGuidance.title, schema: .init(type: String.self)),
+            .init(name: "durationMinutes", description: EvidenceRoutineFieldGuidance.duration, schema: .init(type: Int.self, guides: [.range(1...60)]))
         ])
         let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
             .init(name: "steps", description: "Empty when evidence is insufficient. Otherwise tentative, quoted activities only.", schema: .init(arrayOf: .init(referenceTo: "CitedRoutineStep"), minimumElements: 0, maximumElements: 4)),

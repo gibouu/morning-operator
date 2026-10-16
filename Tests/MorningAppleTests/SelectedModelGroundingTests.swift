@@ -96,6 +96,31 @@ struct SelectedModelGroundingTests {
         #expect(calls == 0)
     }
 
+    @Test("An absent captured privacy epoch cannot adopt the first Forget epoch before upload")
+    func absentPrivacySnapshotIsPinnedBeforeDispatch() async throws {
+        var epoch: UUID?
+        var calls = 0
+        let model = MoreLanguageModel(storage: GroundingModelStorage(), transport: { _ in
+            calls += 1
+            return try Self.response(citationID: "q1")
+        }, privacyEpoch: { epoch })
+        try model.configureOpenAI(apiKey: key, enabled: true)
+        let captured = try model.requestContext()
+        #expect(captured.privacyEpoch == nil)
+        epoch = UUID()
+        #expect(model.configurationID == captured.configurationID)
+        await #expect(throws: CancellationError.self) {
+            try await model.generate(instructions: "Synthetic", prompt: "Old synthetic source must not leave the caller",
+                maximumResponseTokens: 1, expectedConfigurationID: captured.configurationID,
+                expectedPrivacyGeneration: captured.privacyEpoch)
+        }
+        #expect(calls == 0, "Reject the old source before entering even the fake transport.")
+        // Legacy callers with no pinned context still capture the current epoch
+        // at entry; this API does not silently change their dispatch contract.
+        _ = try await model.generate(instructions: "Synthetic", prompt: "New synthetic request", maximumResponseTokens: 1)
+        #expect(calls == 1)
+    }
+
     @Test("Route replacement while a provider returns cannot publish a grounded proposal")
     func changedRouteCannotPublish() async throws {
         var model: MoreLanguageModel!
@@ -136,12 +161,31 @@ struct SelectedModelGroundingTests {
         #expect(Set(step.keys) == ["title", "kind", "durationMinutes", "citationIDs"])
         #expect(step["citationIDs"]?.objectValue?["maxItems"] == .number(1))
         #expect(step["citationIDs"]?.objectValue?["items"]?.objectValue?["enum"] == .array([.string("q1"), .string("q2")]))
+        #expect(step["durationMinutes"]?.objectValue?["minimum"] == .number(1))
+        #expect(step["durationMinutes"]?.objectValue?["maximum"] == .number(60))
+        #expect(step["title"]?.objectValue?["description"] == .string(EvidenceRoutineFieldGuidance.title))
+        #expect(step["kind"]?.objectValue?["description"] == .string(EvidenceRoutineFieldGuidance.kind))
+        #expect(step["durationMinutes"]?.objectValue?["description"] == .string(EvidenceRoutineFieldGuidance.duration))
         let empty = try #require(OpenAIRoutineSchema.make(citationIDs: []).objectValue?["properties"]?.objectValue)
         #expect(empty["steps"]?.objectValue?["maxItems"] == .number(0))
         #expect(empty["outcome"]?.objectValue?["enum"] == .array([.string("insufficientEvidence")]))
         let legacy = try #require(OpenAIRoutineSchema.make().objectValue?["properties"]?.objectValue?["steps"]?.objectValue?["items"]?.objectValue?["properties"]?.objectValue)
         #expect(legacy["detail"] != nil && legacy["evidenceQuote"] != nil && legacy["evidenceKind"] != nil)
         #expect(legacy["citationIDs"] == nil)
+        #expect(legacy["title"]?.objectValue?["description"] == nil)
+        #expect(legacy["durationMinutes"]?.objectValue?["description"] == nil)
+    }
+
+    @Test("Both interface languages explicitly constrain generated prose without changing source quotations")
+    func generatedLanguageIsExplicitWithoutChangingThePreference() {
+        let saved = AppLanguage.code
+        let english = AppleIntelligenceService.languageInstruction(french: false)
+        let french = AppleIntelligenceService.languageInstruction(french: true)
+        #expect(english.contains("in English") && french.contains("in French"))
+        for instruction in [english, french] {
+            #expect(instruction.contains("Keep evidence quotes exactly as they appear in the source."))
+        }
+        #expect(AppLanguage.code == saved)
     }
 
     private func source() throws -> ObservationAcquisition {

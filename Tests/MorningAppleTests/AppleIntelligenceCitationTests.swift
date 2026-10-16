@@ -261,6 +261,15 @@ struct AppleIntelligenceCitationTests {
         let citationArray = try #require(objects(object)
             .compactMap { $0["citationIDs"] as? [String: Any] }.first)
         #expect((citationArray["minItems"] as? Int) == 1 && (citationArray["maxItems"] as? Int) == 1)
+        let step = try #require(objects(object).first { ($0["citationIDs"] as? [String: Any]) != nil })
+        let remoteStep = try #require(OpenAIRoutineSchema.make(citationIDs: ["q1", "q2"])
+            .objectValue?["properties"]?.objectValue?["steps"]?.objectValue?["items"]?.objectValue?["properties"]?.objectValue)
+        for field in ["kind", "title", "durationMinutes"] {
+            let localDescription = try #require((step[field] as? [String: Any])?["description"] as? String)
+            #expect(remoteStep[field]?.objectValue?["description"]?.stringValue == localDescription)
+        }
+        let duration = try #require(step["durationMinutes"] as? [String: Any])
+        #expect((duration["minimum"] as? Int) == 1 && (duration["maximum"] as? Int) == 60)
         let outcome = try #require(objects(object).compactMap { $0["outcome"] as? [String: Any] }.first)
         let description = try #require(outcome["description"] as? String)
         #expect(description.contains("supportedActivities") && description.contains("insufficientEvidence"))

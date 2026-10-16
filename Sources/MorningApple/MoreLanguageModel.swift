@@ -251,7 +251,11 @@ public final class MoreLanguageModel {
         guard !credentialStorageFailed else { throw MoreLanguageModelError.credentialStorageUnavailable }
         if let expectedConfigurationID, expectedConfigurationID != generation { throw CancellationError() }
         let epoch = try accessEpoch()
-        if let expectedPrivacyGeneration, expectedPrivacyGeneration != epoch { throw CancellationError() }
+        // A pinned configuration also pins an absent privacy epoch. Forget may
+        // create the first epoch after the caller captured its source context.
+        if expectedConfigurationID != nil || expectedPrivacyGeneration != nil {
+            guard expectedPrivacyGeneration == epoch else { throw CancellationError() }
+        }
         guard instructions.utf8.count + prompt.utf8.count <= Self.maximumRequestBytes,
               maximumResponseTokens > 0, maximumResponseTokens <= 8_192 else {
             throw MoreLanguageModelError.inputTooLong
