@@ -648,7 +648,14 @@ private struct ModelRoutineProposal: Decodable {
 }
 
 enum EvidenceRoutineGenerationSchema {
-    static func make(citationIDs: [String]) throws -> GenerationSchema {
+    static func make(citationIDs: [String],
+                     assessment: (schema: DynamicGenerationSchema, dependencies: [DynamicGenerationSchema])? = nil) throws -> GenerationSchema {
+        // Internal opt-in diagnostics may precede the unchanged selection. The
+        // production caller supplies nil: no extra property or dependency.
+        let preceding: [DynamicGenerationSchema.Property] = assessment.map {
+            [.init(name: "assessment", schema: $0.schema)]
+        } ?? []
+        let extraDependencies = assessment?.dependencies ?? []
         let emptyOutcome = DynamicGenerationSchema(name: "InsufficientEvidenceOutcome", anyOf: ["insufficientEvidence"])
         let abstention = DynamicGenerationSchema(name: "InsufficientEvidenceSelection", properties: [
             .init(name: "outcome", schema: .init(referenceTo: "InsufficientEvidenceOutcome")),
@@ -657,10 +664,10 @@ enum EvidenceRoutineGenerationSchema {
         // A source made solely of short context lines still gets an honest
         // abstention response; no invented citation identifier is introduced.
         if citationIDs.isEmpty {
-            let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
+            let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: preceding + [
                 .init(name: "selection", schema: .init(referenceTo: "InsufficientEvidenceSelection"))
             ])
-            return try GenerationSchema(root: root, dependencies: [emptyOutcome, abstention])
+            return try GenerationSchema(root: root, dependencies: [emptyOutcome, abstention] + extraDependencies)
         }
         let citation = DynamicGenerationSchema(name: "SuppliedCitationID", anyOf: citationIDs)
         let kind = DynamicGenerationSchema(name: "EvidenceStepKind", anyOf: StepKind.allCases.map(\.rawValue))
@@ -681,10 +688,10 @@ enum EvidenceRoutineGenerationSchema {
         ])
         let selection = DynamicGenerationSchema(name: "EvidenceSelection", description: EvidenceRoutineFieldGuidance.selection,
             anyOf: [.init(referenceTo: "InsufficientEvidenceSelection"), .init(referenceTo: "SupportedActivitiesSelection")])
-        let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: [
+        let root = DynamicGenerationSchema(name: "CitedRoutineProposal", properties: preceding + [
             .init(name: "selection", schema: .init(referenceTo: "EvidenceSelection"))
         ])
-        return try GenerationSchema(root: root, dependencies: [kind, emptyOutcome, supportedOutcome, citation, step, abstention, supported, selection])
+        return try GenerationSchema(root: root, dependencies: [kind, emptyOutcome, supportedOutcome, citation, step, abstention, supported, selection] + extraDependencies)
     }
 }
 
