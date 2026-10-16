@@ -237,6 +237,34 @@ final class MorningWelcomeFlowTests: XCTestCase {
         }
     }
 
+    func testFrenchLargestTextKeepsPreviewSkipReachableWithoutPurchase() {
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = launch(phase: "night", french: true, extra: [
+            "--ui-testing-real-subscription", "--ui-testing-empty-workspace",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+        ])
+        for _ in 0..<3 {
+            reach(app.buttons["onboarding.skipForNow"], in: app)
+            tap("onboarding.next", in: app)
+        }
+        let skip = app.buttons["onboarding.skipForNow"]
+        reach(skip, in: app)
+        XCTAssertEqual(skip.label, "Passer pour le moment")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.frame.width > app.frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+        reach(skip, in: app)
+        XCTAssertGreaterThanOrEqual(skip.frame.minX, app.frame.minX - 1)
+        XCTAssertLessThanOrEqual(skip.frame.maxX, app.frame.maxX + 1)
+        skip.tap()
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.alerts.count, 0)
+        app.terminate()
+    }
+
     private func launch(phase: String = "day", french: Bool = false, languages: [String]? = nil,
                         localeIdentifier: String? = nil, extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
