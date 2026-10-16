@@ -2,6 +2,8 @@
 
 16 October 2026 · [#184](https://github.com/gibouu/morning-operator/issues/184), [#116](https://github.com/gibouu/morning-operator/issues/116).
 
+**Subsequent resolution:** the final ordinary build **2026101630** is now individually activated. All four French/English × Male/Female samples passed complete primary playback without Apple backup, persisted after relaunch and restored the original preferences; the owner confirmed all four audible and better. See [1630 acceptance](ELEVENLABS-1630-ACCEPTANCE-2026-10-16.md). The failed 1622 run below remains unchanged as historical evidence.
+
 ## Installed candidate and method
 
 MORE 0.1.0 **(2026101622)** was installed in place on the paired physical iPhone running iOS 27.2 beta. The ordinary app source is `786f1dd0f159ad4e0ed7a3a4bc3f36e8973f6eed`; the compiled UI runner is `f4ae83faebe81585aa429863ebf5787823d2fd34`. The frozen signed app remained byte-identical when only the runner was rebuilt. The installed version, ordinary launch and running executable were checked separately from compilation.

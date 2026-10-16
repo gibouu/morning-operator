@@ -2,6 +2,8 @@
 
 Guillaume · Recherche technique du 16 octobre 2026 · Dernier contrôle serveur : 10:54:19, heure de Paris.
 
+**Résolution ultérieure, 11:14 le même jour :** l'identité fraîche de l'installation finale 1630 a été activée côté serveur. Les quatre exemples FR/EN et Homme/Femme ont terminé sur ElevenLabs, sans secours Apple ; l'utilisateur a confirmé leur audibilité et leur meilleure qualité. Les contrôles de relance et la restauration des préférences passent. Voir la [preuve d'activation et de lecture sur 1630](ELEVENLABS-1630-ACCEPTANCE-2026-10-16.md). Le diagnostic horodaté ci-dessous conserve ses limites historiques.
+
 ## Réponse directe
 
 Une cause bloquante est confirmée pour la dernière identité mesurée dans MORE 0.1.0 (2026101622) : **notre serveur ne l'autorise pas à utiliser ElevenLabs**. Le code d'assistance effectivement affiché sur l'iPhone correspond à une seule installation dans la base. Cette installation est absente de la liste d'autorisations active ; l'ancienne identité, elle, est toujours autorisée. Une exécution locale de la garde de production avec cette identité et la liste réellement déployée retourne **503 / voice_not_configured**, avec **zéro appel à ElevenLabs**. Ce résultat établit un blocage d'autorisation dans MORE ; ce n'est pas une nouvelle capture HTTP provenant de l'iPhone. [S1, S2]
