@@ -33,7 +33,11 @@ final class MorningThemeClock {
     #if DEBUG
     @ObservationIgnored private let recordingTimeline = MorningSolarRecordingTimeline.from(arguments: ProcessInfo.processInfo.arguments)
     @ObservationIgnored private let recordingStartUptime = ProcessInfo.processInfo.systemUptime
+    @ObservationIgnored private var recordingFrozenElapsed: TimeInterval?
     var isRecordingSolarDay: Bool { recordingTimeline != nil }
+    private var recordingElapsed: TimeInterval {
+        recordingFrozenElapsed ?? (ProcessInfo.processInfo.systemUptime - recordingStartUptime)
+    }
     #endif
     var usesWeatherFixture: Bool { weatherPreview != nil }
     var weatherStatusDescription: String {
@@ -93,12 +97,24 @@ final class MorningThemeClock {
     }
 
     #if DEBUG
+    /// Keep the selected pose still even when ordinary refreshes occur. Removing
+    /// Reduce Motion rejoins the filming clock rather than restarting the take.
+    func setRecordingReducedMotion(_ reduced: Bool) {
+        guard recordingTimeline != nil else { return }
+        if reduced {
+            recordingFrozenElapsed = recordingFrozenElapsed ?? recordingElapsed
+        } else {
+            recordingFrozenElapsed = nil
+        }
+        refreshVisuals(now: .now)
+    }
+
     /// Called only while the filming build is active. Weather freshness and the
     /// separate real-time cloud/star clock retain their ordinary cadence.
     func refreshRecordingFrame() -> Bool {
-        guard let recordingTimeline else { return false }
+        guard let recordingTimeline, recordingFrozenElapsed == nil else { return false }
         refreshVisuals(now: .now)
-        return ProcessInfo.processInfo.systemUptime - recordingStartUptime < recordingTimeline.duration
+        return recordingElapsed < recordingTimeline.duration
     }
     #endif
 
@@ -112,7 +128,7 @@ final class MorningThemeClock {
         let art: MorningCelestialScene
         #if DEBUG
         if let recordingTimeline {
-            let minute = recordingTimeline.minute(atElapsed: ProcessInfo.processInfo.systemUptime - recordingStartUptime)
+            let minute = recordingTimeline.minute(atElapsed: recordingElapsed)
             next = MorningDayClock.blend(atMinute: minute, solar: day)
             art = MorningCelestialClock.scene(atMinute: minute, solar: day)
         } else {
@@ -465,6 +481,12 @@ struct MorningQuietLines: View {
 struct MorningBrandClockLifecycle: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
     @State private var enteredBackground = false
+    #if DEBUG
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var recordingMotionReduced: Bool {
+        reduceMotion || ProcessInfo.processInfo.arguments.contains("--ui-testing-reduce-motion")
+    }
+    #endif
 
     func body(content: Content) -> some View {
         content
@@ -476,8 +498,10 @@ struct MorningBrandClockLifecycle: ViewModifier {
                 }
             }
             #if DEBUG
-            .task(id: scenePhase) {
-                guard scenePhase == .active, MorningThemeClock.shared.isRecordingSolarDay else { return }
+            .task(id: [scenePhase == .active, recordingMotionReduced]) {
+                MorningThemeClock.shared.setRecordingReducedMotion(recordingMotionReduced)
+                guard scenePhase == .active, !recordingMotionReduced,
+                      MorningThemeClock.shared.isRecordingSolarDay else { return }
                 while !Task.isCancelled {
                     guard MorningThemeClock.shared.refreshRecordingFrame() else { return }
                     do { try await Task.sleep(for: .milliseconds(100)) } catch { return }

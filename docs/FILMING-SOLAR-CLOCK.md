@@ -36,6 +36,10 @@ background and disappearance cleanup still resets the app's idle-timer request;
 no device AutoLock or security setting is modified. An ordinary relaunch without
 these arguments restores normal visual time.
 
+Reduce Motion freezes the compressed solar pose and stops its frame updates,
+including across background/foreground changes. Turning it off rejoins the
+elapsed filming clock; it does not restart the take.
+
 Real provider dates, weather freshness and routine timers are unchanged. No
 permission, subscription, account data or cloud route is enabled by these
 arguments. The recording type/parser and refresh hook are excluded from Release.
