@@ -1,4 +1,5 @@
 import XCTest
+import MorningCore
 
 /// Private downstream seam only: imported manual plan, ordinary configuration,
 /// approval, then one session. No movie learning, microphone, browser, real account,
@@ -19,11 +20,23 @@ import XCTest
             "sourceCreatedAt": 1_792_129_500.0, "approvalAtExport": false, "sourceIsSynthetic": true,
             "sourceLabel": "SYNTHETIC three-moment manual import; no video/model result or operation authority",
             "steps": [
-                ["id": gmailID, "title": "SYNTHETIC mail review", "kind": "messages", "durationMinutes": 2, "isRequired": false],
-                ["id": placeholderID, "title": "SYNTHETIC team placeholder", "kind": "messages", "durationMinutes": 1, "isRequired": false],
-                ["id": timedID, "title": "SYNTHETIC quiet finish", "kind": "wellbeing", "durationMinutes": 1, "isRequired": false]
+                ["id": gmailID, "title": "SYNTHETIC mail review", "kind": "messages", "durationMinutes": 2, "isRequired": false,
+                 "detail": "SYNTHETIC manual mail review. No operation or approval is imported."],
+                ["id": placeholderID, "title": "SYNTHETIC team placeholder", "kind": "messages", "durationMinutes": 1, "isRequired": false,
+                 "detail": "SYNTHETIC manual team placeholder. Choose its destination in the app."],
+                ["id": timedID, "title": "SYNTHETIC quiet finish", "kind": "wellbeing", "durationMinutes": 1, "isRequired": false,
+                 "detail": "SYNTHETIC manual quiet finish. Choose its operation in the editor."]
             ]]
         let data = try JSONSerialization.data(withJSONObject: portable, options: [.sortedKeys])
+        // MorningCore is already linked by this UI-test target. Exercise the
+        // real import contract before launch; no Store state is installed here.
+        let decoded = try PortableRoutineDocument.decode(data)
+        XCTAssertTrue(decoded.sourceIsSynthetic)
+        XCTAssertFalse(decoded.approvalAtExport)
+        let manualDraft = try decoded.importedDraft(replacing: nil)
+        XCTAssertEqual(manualDraft.steps.count, 3)
+        XCTAssertFalse(manualDraft.isApproved)
+        XCTAssertTrue(manualDraft.steps.allSatisfy { $0.automation == nil && $0.target == nil })
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
             "--ui-testing-integrated-three-moments", "--ui-testing-gmail-attention", "--ui-testing-slack-setup",
             "--ui-testing-hands-free", "--light-preview", "--theme-phase=morning",
@@ -32,20 +45,22 @@ import XCTest
         app.launch()
         defer { app.terminate() }
         try requireWorkspace(workspace, app)
+        guard importWasAccepted(app) else { return }
         reveal(app); tap("morning.settings", app); tap("setup.routine", app)
+        guard importWasAccepted(app) else { return }
         XCTAssertTrue(button("routine.approve", app).isEnabled, "Import is never approval.")
         for index in 0..<3 {
             XCTAssertTrue(button("routine.step.\(index)", app).label.contains("Your own moment"),
                           "No imported title/category may install an executable action.")
         }
         let provenance = app.staticTexts["routine.source"]
-        scroll(provenance, app)
+        scroll(provenance, id: "routine.source", in: app)
         XCTAssertTrue(provenance.label.contains("Sample routine"))
 
         tap("routine.step.0", app)
         chooseAction("Read my mail and help me reply", app)
         let duration = app.steppers["step.duration"]
-        scroll(duration, app)
+        scroll(duration, id: "step.duration", in: app)
         XCTAssertEqual(duration.value as? String, "2")
         duration.buttons["step.duration-Increment"].tap()
         XCTAssertEqual(duration.value as? String, "3")
@@ -68,7 +83,7 @@ import XCTest
         XCTAssertTrue(button("routine.approve", app).isEnabled, "Choosing a service still leaves a draft.")
         tap("routine.edit", app)
         let handle = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS %@", "Reorder", "Slack")).firstMatch
-        scroll(handle, app)
+        scroll(handle, id: "native Slack reorder handle", in: app)
         let second = button("routine.step.1", app)
         handle.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.5))
             .press(forDuration: 0.5, thenDragTo: second.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.05)))
@@ -251,6 +266,14 @@ import XCTest
         if !marker.waitForExistence(timeout: 5) { app.terminate(); app.launch() }
         XCTAssertTrue(marker.waitForExistence(timeout: 8)); XCTAssertEqual(marker.value as? String, workspace)
     }
+    private func importWasAccepted(_ app: XCUIApplication) -> Bool {
+        let notice = app.staticTexts["app.notice"]
+        guard notice.exists, notice.label.contains("SYNTHETIC QA input refused") else { return true }
+        attach("three-moments-import-refused", app)
+        let state = XCTAttachment(string: app.debugDescription); state.lifetime = .keepAlways; add(state)
+        XCTFail("The app refused the synthetic manual import before configuration or approval.")
+        return false
+    }
     private func requireRecap(_ app: XCUIApplication) throws {
         home(app); reveal(app); tap("morning.settings", app)
         XCTAssertTrue(element("morning.completeSummary", app).label.hasPrefix("3 moments"))
@@ -264,8 +287,8 @@ import XCTest
     private func chooseAction(_ name: String, _ app: XCUIApplication) {
         tap("step.automation", app)
         let choice = app.buttons[name]
-        if choice.waitForExistence(timeout: 2) { scroll(choice, app); choice.tap() }
-        else { let text = app.staticTexts[name]; scroll(text, app); text.tap() }
+        if choice.waitForExistence(timeout: 2) { scroll(choice, id: name, in: app); choice.tap() }
+        else { let text = app.staticTexts[name]; scroll(text, id: name, in: app); text.tap() }
     }
     private func prepareSlack(_ app: XCUIApplication, intention: String) {
         tap("slackMoment.message.0", app)
@@ -300,14 +323,14 @@ import XCTest
         XCTAssertTrue(back.waitForExistence(timeout: 5)); XCTAssertTrue(back.isHittable); back.tap()
     }
     private func button(_ id: String, _ app: XCUIApplication) -> XCUIElement {
-        let value = app.buttons[id]; scroll(value, app); return value
+        let value = app.buttons[id]; scroll(value, id: id, in: app); return value
     }
     private func element(_ id: String, _ app: XCUIApplication) -> XCUIElement {
         let value = app.descendants(matching: .any).matching(identifier: id).firstMatch
-        scroll(value, app); return value
+        scroll(value, id: id, in: app); return value
     }
     private func tap(_ id: String, _ app: XCUIApplication) { button(id, app).tap() }
-    private func scroll(_ value: XCUIElement, _ app: XCUIApplication) {
+    private func scroll(_ value: XCUIElement, id: String, in app: XCUIApplication) {
         _ = value.waitForExistence(timeout: 6)
         for down in [false, true] {
             for _ in 0..<10 {
@@ -317,9 +340,9 @@ import XCTest
                 if down { scroll.swipeDown() } else { scroll.swipeUp() }
             }
         }
-        attach("three-moments-unreachable-\(value.identifier)", app)
+        attach("three-moments-unreachable-\(id)", app)
         let state = XCTAttachment(string: app.debugDescription); state.lifetime = .keepAlways; add(state)
-        XCTFail("Unreachable ordinary UI: \(value.identifier)")
+        XCTFail("Unreachable ordinary UI: \(id)")
     }
     private func waitLabel(_ value: XCUIElement, contains: String, timeout: TimeInterval) {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", contains), object: value)
