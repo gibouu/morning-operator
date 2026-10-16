@@ -63,7 +63,7 @@ targets:
       - path: Sources/MorningSharedActivity
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.activity
+        PRODUCT_BUNDLE_IDENTIFIER: com.gibouu.morningoperator.liveactivity
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Configuration/ActivityWidget-Info.plist
         APPLICATION_EXTENSION_API_ONLY: YES
