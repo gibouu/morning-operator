@@ -8,6 +8,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
     // XCTest serializes each case and calls its synchronous cleanup directly.
     nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
+    nonisolated(unsafe) private var fixtureDirectoryForCleanup: URL?
 
     override func tearDown() {
         // UI XCTest cleanup runs synchronously on the main thread, including
@@ -22,6 +23,8 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         sessionForCleanup?.clearTransactions()
         sessionForCleanup?.resetToDefaultState()
         sessionForCleanup = nil
+        if let fixtureDirectoryForCleanup { try? FileManager.default.removeItem(at: fixtureDirectoryForCleanup) }
+        fixtureDirectoryForCleanup = nil
         super.tearDown()
     }
 
@@ -297,7 +300,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testPendingPurchaseAllowsFreeContinueAndRelaunchWithoutApproval() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
         let app = launch()
@@ -321,7 +324,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testPendingPurchaseSurvivesForegroundUntilStoreKitApprovesIt() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
         let app = launch()
@@ -343,7 +346,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testDeclinedPendingPurchaseNeedsExplicitRetryBeforeAnotherRequest() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
         let app = launch()
@@ -381,7 +384,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         add(attachment)
     }
 
-    private func makeSession() throws -> SKTestSession {
+    private func makeSession(askToBuy: Bool = false) throws -> SKTestSession {
         continueAfterFailure = false
         #if targetEnvironment(simulator)
         let version = ProcessInfo.processInfo.operatingSystemVersion
@@ -394,7 +397,20 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         // test configuration. This launch never starts a purchase or restore.
         let registration = launch()
         registration.terminate()
-        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
+        var url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
+        if askToBuy {
+            // Keep the fixture defaults and session overrides consistent across launches.
+            var fixture = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+            var settings = try XCTUnwrap(fixture["settings"] as? [String: Any])
+            settings["_askToBuyEnabled"] = true
+            settings["_disableDialogs"] = true
+            fixture["settings"] = settings
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("MOREAskToBuy-\(UUID().uuidString)")
+            fixtureDirectoryForCleanup = directory
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            url = directory.appendingPathComponent("MOREAskToBuy.storekit")
+            try JSONSerialization.data(withJSONObject: fixture, options: [.sortedKeys]).write(to: url)
+        }
         let session = try SKTestSession(contentsOf: url)
         sessionForCleanup = session
         session.resetToDefaultState()
@@ -404,6 +420,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         session.locale = Locale(identifier: "fr_FR")
         session.timeRate = .realTime
         XCTAssertTrue(session.disableDialogs, "The local StoreKit test configuration was not accepted. Do not launch an App Store purchase flow.")
+        XCTAssertEqual(session.askToBuyEnabled, askToBuy)
         return session
     }
 
