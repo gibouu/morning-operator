@@ -41,6 +41,51 @@ struct WebArticleReadingTests {
         #expect(!snapshot.matches(context: pin, privacyGeneration: privacy, pageGeneration: 7, pageURL: links[0].href))
     }
 
+    @Test("Before the first Forget, a runtime nonce binds news without inventing a durable generation")
+    func initialPrivacyNonce() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("WebNewsPrivacy-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let control = LocalDataControl(directory: directory), nonce = UUID(), pin = context
+        let initial = try control.status()
+        #expect(initial.generation == nil && !initial.forgetPending)
+        let binding = try #require(WebReadingPrivacyBinding(runtimeGeneration: nonce, stateAtCreation: initial))
+        #expect(binding.persistedGeneration == nil)
+        #expect(binding.isCurrent(state: initial, runtimeGeneration: nonce))
+        #expect(!binding.isCurrent(state: initial, runtimeGeneration: UUID()))
+        #expect(!binding.isCurrent(state: nil, runtimeGeneration: nonce))
+        #expect(WebReadingPrivacyBinding(runtimeGeneration: nonce, stateAtCreation: nil) == nil)
+        let snapshot = try #require(WebNewsSnapshot(context: pin, privacyGeneration: try #require(binding.runtimeGeneration),
+            pageGeneration: 1, pageURL: page, fingerprint: "actual-list",
+            links: [.init(title: "SYNTHETIC observed headline", href: URL(string: "https://www.lemonde.fr/article/one")!)]))
+        #expect(snapshot.matches(context: pin, privacyGeneration: nonce, pageGeneration: 1, pageURL: page))
+        #expect(!snapshot.matches(context: pin, privacyGeneration: UUID(), pageGeneration: 1, pageURL: page))
+        #expect(try control.status() == initial, "Binding and snapshot creation must not write a Forget marker.")
+        let standalone = try #require(WebReadingPrivacyBinding(stateAtCreation: initial))
+        #expect(standalone.isCurrent(state: initial))
+        #expect(!standalone.isCurrent(state: initial, runtimeGeneration: nonce))
+    }
+
+    @Test("Forget blocks old news bindings while pending and after completion; a fresh binding still requires its nonce")
+    func forgetRevokesNewsBinding() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("WebNewsForget-\(UUID())", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let control = LocalDataControl(directory: directory), oldNonce = UUID(), newNonce = UUID()
+        let initial = try control.status()
+        let old = try #require(WebReadingPrivacyBinding(runtimeGeneration: oldNonce, stateAtCreation: initial))
+        let pending = try control.beginForget(), generation = try #require(pending.generation)
+        #expect(!old.isCurrent(state: pending, runtimeGeneration: oldNonce))
+        #expect(WebReadingPrivacyBinding(runtimeGeneration: newNonce, stateAtCreation: pending) == nil)
+        try control.finishForget(expectedGeneration: generation)
+        let ready = try control.status()
+        #expect(!old.isCurrent(state: ready, runtimeGeneration: oldNonce))
+        let fresh = try #require(WebReadingPrivacyBinding(runtimeGeneration: newNonce, stateAtCreation: ready))
+        #expect(fresh.persistedGeneration == generation)
+        #expect(fresh.isCurrent(state: ready, runtimeGeneration: newNonce))
+        #expect(!fresh.isCurrent(state: ready, runtimeGeneration: oldNonce))
+        #expect(!fresh.isCurrent(state: nil, runtimeGeneration: newNonce))
+        #expect(!fresh.isCurrent(state: try control.beginForget(), runtimeGeneration: newNonce))
+    }
+
     @Test("Only observed same-origin HTTPS article links can become choices")
     func destinations() {
         for text in ["http://www.lemonde.fr/article/one", "https://reader:secret@www.lemonde.fr/article/one",

@@ -19,7 +19,9 @@ private struct RoutineWebStepPresenter: ViewModifier {
                let timer = store.activeStepTimer,
                let session = store.session {
                 let executionID = MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: step.id)
-                let controller = store.routineWebMoment.controller(for: executionID, site: site, initialURL: url)
+                let privacyGeneration = store.dataGeneration
+                let controller = store.routineWebMoment.controller(for: executionID,
+                    privacyGeneration: privacyGeneration, site: site, initialURL: url)
                 WebMorningView(site: site, minutes: step.durationMinutes, initialURL: url,
                     isStepActive: store.session?.status == .running,
                     stepEndsAt: timer.endsAt, timerPausedAt: timer.pausedAt,
@@ -29,7 +31,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
                     onExecutionEvent: { [weak store] event in store?.receiveWebExecution(event) },
                     executionIsAuthorized: { [weak store] in
                         guard let store else { return false }
-                        return !store.privacyBlocksWork && store.session?.id == timer.sessionID &&
+                        return !store.privacyBlocksWork && store.dataGeneration == privacyGeneration && store.session?.id == timer.sessionID &&
                         store.currentStep?.id == timer.stepID && store.session?.status == .running && store.automatic
                     },
                     executionCanAdvance: { [weak store] in
@@ -55,7 +57,7 @@ private struct RoutineWebStepPresenter: ViewModifier {
                         }
                     },
                     onClose: closePage)
-                    .id(step.id)
+                    .id(ObjectIdentifier(controller))
                     .sheet(isPresented: nativeRequestBinding(for: executionID)) { nativeRequestSheet }
                     .onChange(of: store.nativeMoment.context) { _, context in
                         if context == nil { showingNativeRequest = false }

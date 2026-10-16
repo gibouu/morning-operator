@@ -263,7 +263,8 @@ extension MorningStore {
             return activeStepTimer != nil && connectedMoment.executionID == executionID && currentOutlookInbox != nil
         case .inAppWeb:
             guard !webArticleIsActive else { return false }
-            guard step.webBehavior != nil, activeStepTimer != nil, routineWebMoment.hasController(for: executionID) else { return false }
+            guard step.webBehavior != nil, activeStepTimer != nil,
+                  routineWebMoment.hasController(for: executionID, privacyGeneration: dataGeneration) else { return false }
             if let state = webExecutionEvent?.state,
                [.needsChoice, .needsSignIn, .unavailable, .uncertainAction, .performingAction].contains(state) { return false }
             return true

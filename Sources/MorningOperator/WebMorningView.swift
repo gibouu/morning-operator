@@ -352,8 +352,12 @@ struct WebMorningView: View {
         guard ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return "" }
         let source = controller.executionEvent?.contextText ?? []
         let position = Int(controller.webView.scrollView.contentOffset.y.rounded())
-        let news = controller.isSyntheticNews ? " \(controller.syntheticNewsDiagnostic) endsAtBits=\(stepEndsAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") pausedAtBits=\(timerPausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none")" : ""
-        return "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)\(news)"
+        let execution = "\(controller.executionDiagnostic) pageState=\(controller.executionEvent?.state.rawValue ?? "none") pageAccessRefusal=\(controller.pageAccessRefusal?.rawValue ?? "none") articleRefusal=\(controller.articleRefusal?.rawValue ?? "none") viewportY=\(position) sourceItems=\(source.count) sourceIdentity=\(source.hashValue)"
+        guard controller.isSyntheticNews else { return execution }
+        // Keep identity, budget and Repeat receipts ahead of admission detail
+        // so bounded accessibility snapshots retain the proof's essential fields.
+        let budget = "endsAtBits=\(stepEndsAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") pausedAtBits=\(timerPausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none")"
+        return "\(budget) viewportY=\(position) \(controller.syntheticNewsDiagnostic) \(execution)"
         #else
         return ""
         #endif

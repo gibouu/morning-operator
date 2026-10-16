@@ -1,5 +1,24 @@
 import Foundation
 
+/// A volatile Store nonce is not the durable Forget marker, whose generation
+/// legitimately starts nil. Neither value is written or repaired by browsing.
+public struct WebReadingPrivacyBinding: Sendable, Equatable {
+    public let runtimeGeneration: UUID?
+    private let stateAtCreation: LocalDataControlState
+    public var persistedGeneration: UUID? { stateAtCreation.generation }
+
+    public init?(runtimeGeneration: UUID? = nil, stateAtCreation: LocalDataControlState?) {
+        guard let stateAtCreation, !stateAtCreation.forgetPending else { return nil }
+        self.runtimeGeneration = runtimeGeneration
+        self.stateAtCreation = stateAtCreation
+    }
+
+    public func isCurrent(state: LocalDataControlState?, runtimeGeneration: UUID? = nil) -> Bool {
+        guard let state, !state.forgetPending, state.generation == stateAtCreation.generation else { return false }
+        return runtimeGeneration.map { $0 == self.runtimeGeneration } ?? true
+    }
+}
+
 /// Volatile observations, never model-provided destinations or saved routine actions.
 public struct WebArticleLink: Codable, Sendable, Equatable {
     public let title: String

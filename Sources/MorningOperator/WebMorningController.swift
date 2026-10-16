@@ -71,7 +71,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func noteSyntheticNewsRepeatCompletion(context: MorningVoiceCommandContext, privacy: UUID, pageGeneration: Int?) {
         #if DEBUG
         guard syntheticNews != nil, let pageGeneration, pageGeneration == self.pageGeneration,
-              routineContext == context, privacyAtCreation?.generation == privacy, privacyIsCurrent,
+              routineContext == context, isCurrentPrivacy(runtimeGeneration: privacy),
               needsArticleReturn, articleText != nil, !articleBusy,
               UIApplication.shared.applicationState == .active else { return }
         syntheticNewsRepeatCompletions += 1
@@ -127,7 +127,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var executionFinished = false
     @ObservationIgnored private var actionPending = false
     @ObservationIgnored private var pageGeneration = 0
-    @ObservationIgnored private let privacyAtCreation: LocalDataControlState?
+    @ObservationIgnored private let privacyBinding: WebReadingPrivacyBinding?
     @ObservationIgnored private let startURL: URL
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var executionContextText: [String] = []
@@ -137,13 +137,17 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var savedContentProgressIsAvailable: Bool { contentProgress.isAvailable }
 
     private var privacyIsCurrent: Bool {
-        guard !isRetired, let created = privacyAtCreation, !created.forgetPending,
-              let current = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
-              !current.forgetPending, current.generation == created.generation else { return false }
-        return true
+        isCurrentPrivacy()
     }
 
-    init(site: WebMorningSite, initialURL: URL? = nil, routineContext: MorningVoiceCommandContext? = nil) {
+    private func isCurrentPrivacy(runtimeGeneration: UUID? = nil) -> Bool {
+        !isRetired && privacyBinding?.isCurrent(
+            state: try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status(),
+            runtimeGeneration: runtimeGeneration) == true
+    }
+
+    init(site: WebMorningSite, initialURL: URL? = nil, routineContext: MorningVoiceCommandContext? = nil,
+         runtimePrivacyGeneration: UUID? = nil) {
         self.site = site
         self.routineContext = routineContext
         #if DEBUG
@@ -157,7 +161,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         #endif
         syntheticNews = source
         startURL = source?.startURL ?? initialURL.flatMap { WebMorningSite(url: $0) == site ? $0 : nil } ?? site.table.startURL
-        privacyAtCreation = try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status()
+        privacyBinding = WebReadingPrivacyBinding(runtimeGeneration: runtimePrivacyGeneration,
+            stateAtCreation: try? LocalDataControl(directory: LocalDataControl.defaultDirectory).status())
         Self.excludeWebDataFromBackup()
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = syntheticNewsRequested ? .nonPersistent() : WKWebsiteDataStore(forIdentifier: Self.storeIdentifier)
@@ -190,16 +195,24 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func articleAccess(context: MorningVoiceCommandContext, privacy: UUID, allowFailed: Bool = false, authorized: @MainActor () -> Bool) -> Bool {
-        privacyIsCurrent && site == .news && routineContext == context && privacyAtCreation?.generation == privacy &&
+        isCurrentPrivacy(runtimeGeneration: privacy) && site == .news && routineContext == context &&
             UIApplication.shared.applicationState == .active && !isClearing && (allowFailed || !loadFailed) && authorized() &&
             ((try? WebMorningLikeJournal(directory: LocalDataControl.defaultDirectory).unresolvedKeys().isEmpty) == true)
+    }
+
+    func retainedNewsArticle(context: MorningVoiceCommandContext, privacy: UUID,
+        authorized: @MainActor () -> Bool) -> WebArticleText? {
+        guard articleAccess(context: context, privacy: privacy, authorized: authorized),
+              needsArticleReturn, !articleBusy else { return nil }
+        return articleText
     }
 
     private func retainNewsSnapshot(_ observation: WebMorningPageObservation) {
         #if DEBUG
         defer { recordSyntheticNewsSnapshotObservation(observation) }
         #endif
-        guard site == .news, let context = routineContext, let privacy = privacyAtCreation?.generation,
+        guard site == .news, let context = routineContext, let privacy = privacyBinding?.runtimeGeneration,
+              isCurrentPrivacy(runtimeGeneration: privacy),
               let page = webView.url, let fingerprint = observation.fingerprint, let links = observation.articles else {
             newsSnapshot = nil; return
         }
@@ -222,7 +235,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         if articles == nil { result = "missingArticles" }
         else if articles?.isEmpty == true { result = "emptyArticles" }
         else { result = newsSnapshot == nil ? "invalidSnapshot" : "retained" }
-        syntheticNewsSnapshotObservation = "articlesParsed=\(articles?.count ?? -1) articlesAdmitted=\(admitted) articlesUnique=\(unique) snapshotContext=\(routineContext == nil ? 0 : 1) snapshotPrivacy=\(privacyAtCreation?.generation == nil ? 0 : 1) snapshotPage=\(page == nil ? 0 : 1) snapshotFingerprint=\(observation.fingerprint == nil ? 0 : 1) snapshotPageAllowed=\(page.map { WebArticlePolicy.isPage($0, syntheticNews: syntheticNews) } == true ? 1 : 0) lastSnapshotResult=\(result)"
+        syntheticNewsSnapshotObservation = "articlesParsed=\(articles?.count ?? -1) articlesAdmitted=\(admitted) articlesUnique=\(unique) snapshotContext=\(routineContext == nil ? 0 : 1) snapshotPrivacy=\(privacyBinding?.runtimeGeneration == nil ? 0 : 1) snapshotPage=\(page == nil ? 0 : 1) snapshotFingerprint=\(observation.fingerprint == nil ? 0 : 1) snapshotPageAllowed=\(page.map { WebArticlePolicy.isPage($0, syntheticNews: syntheticNews) } == true ? 1 : 0) lastSnapshotResult=\(result)"
     }
     #endif
 
@@ -363,7 +376,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
               !loadFailed, !isLearning, !isRunning, !isClearing, !webView.isLoading else { return .refused(.notOffered) }
         let generation = pageGeneration
         let page = webView.url
-        let privacyEpoch = privacyAtCreation?.generation
+        let privacyEpoch = privacyBinding?.persistedGeneration
         let result = await evaluate(task)
         // A navigation, opt-out or privacy reset may have happened during the
         // WebKit await. Return to the original caller without publishing its
@@ -802,7 +815,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                         publishExecution(.uncertainAction); return
                     }
                     try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
-                        guard state.generation == privacyAtCreation?.generation else { throw LocalDataControlError.staleGeneration }
+                        guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
                         try journal.confirm(unresolved[0])
                     }
                     actionPending = false
@@ -816,7 +829,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                    try journal.attemptCount(sessionID: plan.sessionID, stepID: plan.stepID) < plan.maximumLikes {
                     let key = WebMorningLikeJournal.key(site: site, contentID: contentID)
                     let reserved = try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
-                        guard state.generation == privacyAtCreation?.generation else { throw LocalDataControlError.staleGeneration }
+                        guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
                         return try journal.reserve(key, sessionID: plan.sessionID, stepID: plan.stepID)
                     }
                     if reserved {
@@ -829,7 +842,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                             if executionIsCurrent(nonce) { publishExecution(.uncertainAction) }; return
                         }
                         try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
-                            guard state.generation == privacyAtCreation?.generation else { throw LocalDataControlError.staleGeneration }
+                            guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
                             try journal.confirm(key)
                         }
                         actionPending = false
@@ -1053,22 +1066,29 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 /// sign-in/learning pages keep their independent controller lifetime.
 @MainActor
 final class RoutineWebMomentRetainer {
-    private var retained: (executionID: MorningExecutionID, site: WebMorningSite, initialURL: URL, controller: WebMorningController)?
+    private var retained: (executionID: MorningExecutionID, privacyGeneration: UUID, site: WebMorningSite, initialURL: URL, controller: WebMorningController)?
 
-    func controller(for executionID: MorningExecutionID, site: WebMorningSite, initialURL: URL) -> WebMorningController {
-        if let retained, retained.executionID == executionID, retained.site == site, retained.initialURL == initialURL {
+    func controller(for executionID: MorningExecutionID, privacyGeneration: UUID,
+                    site: WebMorningSite, initialURL: URL) -> WebMorningController {
+        if let retained, retained.executionID == executionID, retained.privacyGeneration == privacyGeneration,
+           retained.site == site, retained.initialURL == initialURL {
             return retained.controller
         }
         clear()
         let controller = WebMorningController(site: site, initialURL: initialURL,
-            routineContext: .init(sessionID: executionID.sessionID, routineVersionID: executionID.routineVersionID, stepID: executionID.stepID))
-        retained = (executionID, site, initialURL, controller)
+            routineContext: .init(sessionID: executionID.sessionID, routineVersionID: executionID.routineVersionID, stepID: executionID.stepID),
+            runtimePrivacyGeneration: privacyGeneration)
+        retained = (executionID, privacyGeneration, site, initialURL, controller)
         return controller
     }
 
-    func hasController(for executionID: MorningExecutionID) -> Bool { retained?.executionID == executionID }
-    func existingController(for executionID: MorningExecutionID) -> WebMorningController? {
-        retained?.executionID == executionID ? retained?.controller : nil
+    func hasController(for executionID: MorningExecutionID, privacyGeneration: UUID) -> Bool {
+        existingController(for: executionID, privacyGeneration: privacyGeneration) != nil
+    }
+    func existingController(for executionID: MorningExecutionID, privacyGeneration: UUID) -> WebMorningController? {
+        guard let retained else { return nil }
+        guard retained.privacyGeneration == privacyGeneration else { clear(); return nil }
+        return retained.executionID == executionID ? retained.controller : nil
     }
 
     func discardSourceContext() { retained?.controller.discardSourceContext() }
