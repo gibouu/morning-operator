@@ -238,9 +238,16 @@ private struct MorningActivityCompactTimer: View {
                 Group {
                     if state.status == .paused {
                         Image(systemName: "pause.fill")
-                    } else {
-                        ProgressView(timerInterval: min(timer.startedAt ?? state.updatedAt, timer.endsAt)...timer.endsAt, countsDown: true)
+                    } else if let start = timer.startedAt,
+                              start.timeIntervalSinceReferenceDate.isFinite,
+                              timer.endsAt.timeIntervalSinceReferenceDate.isFinite,
+                              start < timer.endsAt {
+                        ProgressView(timerInterval: start...timer.endsAt, countsDown: true)
                             .progressViewStyle(.circular).labelsHidden()
+                    } else {
+                        // Legacy snapshots have no budget origin. Keep the time
+                        // accessible without inventing an elapsed fraction.
+                        Image(systemName: "timer")
                     }
                 }
                 .font(.caption2).tint(MorningActivityPalette.islandAccent)
