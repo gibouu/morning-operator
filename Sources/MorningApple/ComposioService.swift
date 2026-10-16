@@ -193,6 +193,79 @@ public final class ComposioKeychainTokenStore: ComposioTokenStoring {
     }
 }
 
+/// Pins the existing token AND pending-journal accounts without moving either secret.
+private struct ComposioKeychainNamespace: Codable, Sendable, Equatable {
+    let version: Int
+    let bundleIdentifier: String
+    let directory: String
+
+    static func scope(bundleIdentifier: String, directory: URL) throws -> (scope: String, verify: (() throws -> Void)?) {
+        let currentPath = directory.standardizedFileURL.path
+        let currentScope = bundleIdentifier + "|" + currentPath
+        let process = ProcessInfo.processInfo
+        guard bundleIdentifier == "com.gibouu.morningoperator",
+              !process.arguments.contains(where: { $0.hasPrefix("--ui-testing") }),
+              process.environment["MORNING_OPERATOR_DATA_DIR"] == nil else { return (currentScope, nil) }
+        let file = AtomicJSONFile<Self>(url: directory.appendingPathComponent("composio-keychain-namespace.json"),
+                                       maximumBytes: 8_192)
+        let marker = try read(file) ?? Self(version: 1, bundleIdentifier: bundleIdentifier, directory: currentPath)
+        guard marker.version == 1, marker.bundleIdentifier == bundleIdentifier,
+              marker.directory.hasPrefix("/"), !marker.directory.contains("|"),
+              !marker.directory.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 }),
+              URL(fileURLWithPath: marker.directory).standardizedFileURL.path == marker.directory,
+              URL(fileURLWithPath: marker.directory).lastPathComponent == "MorningOperator" else {
+            throw ComposioServiceError.credentialsUnavailable
+        }
+        let verify: () throws -> Void = {
+            if let current = try read(file) {
+                guard current == marker else { throw ComposioServiceError.credentialsUnavailable }
+            } else {
+                // Removal can erase the file while this service is still alive.
+                // Reconnection must republish its exact pin before saving a bearer.
+                try file.save(marker)
+            }
+        }
+        try verify()
+        // Old sandbox namespaces not already pinned here are deliberately never searched.
+        return (bundleIdentifier + "|" + marker.directory, verify)
+    }
+
+    private static func read(_ file: AtomicJSONFile<Self>) throws -> Self? {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: file.url.path)
+            guard attributes[.type] as? FileAttributeType == .typeRegular else {
+                throw ComposioServiceError.credentialsUnavailable
+            }
+            return try file.load()
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain &&
+            [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(error.code) {
+            return nil
+        }
+    }
+}
+
+@MainActor
+private final class ComposioPinnedTokenStore: ComposioTokenStoring {
+    private let store: ComposioKeychainTokenStore
+    private let verify: (() throws -> Void)?
+
+    init(account: String, verify: (() throws -> Void)?) {
+        store = ComposioKeychainTokenStore(account: account)
+        self.verify = verify
+    }
+
+    func load() throws -> String? { try verify?(); return try store.load() }
+    func save(_ token: String) throws { try verify?(); try store.save(token) }
+    func clear() throws { try verify?(); try store.clear() }
+}
+
+@MainActor
+private final class ComposioUnavailableTokenStore: ComposioTokenStoring {
+    func load() throws -> String? { throw ComposioServiceError.credentialsUnavailable }
+    func save(_ token: String) throws { throw ComposioServiceError.credentialsUnavailable }
+    func clear() throws { throw ComposioServiceError.credentialsUnavailable }
+}
+
 private final class ComposioNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
@@ -226,9 +299,24 @@ public final class ComposioService {
                 tokenStore: (any ComposioTokenStoring)? = nil,
                 executionStore: (any ComposioTokenStoring)? = nil, transport: Transport? = nil) {
         self.baseURL = baseURL
-        let scope = (Bundle.main.bundleIdentifier ?? "MorningOperator") + "|" + LocalDataControl.defaultDirectory.standardizedFileURL.path
-        self.tokenStore = tokenStore ?? ComposioKeychainTokenStore(account: scope + "|" + (baseURL?.absoluteString ?? "unconfigured"))
-        self.executionStore = executionStore ?? ComposioKeychainTokenStore(account: scope + "|" + (baseURL?.absoluteString ?? "unconfigured") + "|pending-executions")
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "MorningOperator"
+        let directory = LocalDataControl.defaultDirectory
+        let endpoint = baseURL?.absoluteString ?? "unconfigured"
+        if tokenStore == nil, executionStore == nil {
+            do {
+                let pin = try ComposioKeychainNamespace.scope(bundleIdentifier: bundleIdentifier, directory: directory)
+                self.tokenStore = ComposioPinnedTokenStore(account: pin.scope + "|" + endpoint, verify: pin.verify)
+                self.executionStore = ComposioPinnedTokenStore(account: pin.scope + "|" + endpoint + "|pending-executions", verify: pin.verify)
+            } catch {
+                // A damaged/unwritable marker must never silently enroll a replacement identity.
+                self.tokenStore = ComposioUnavailableTokenStore()
+                self.executionStore = ComposioUnavailableTokenStore()
+            }
+        } else {
+            let scope = bundleIdentifier + "|" + directory.standardizedFileURL.path
+            self.tokenStore = tokenStore ?? ComposioKeychainTokenStore(account: scope + "|" + endpoint)
+            self.executionStore = executionStore ?? ComposioKeychainTokenStore(account: scope + "|" + endpoint + "|pending-executions")
+        }
         if let transport { self.transport = transport }
         else {
             let configuration = URLSessionConfiguration.ephemeral
