@@ -439,7 +439,17 @@ struct ObservationContextClassifierTests {
         #expect(!serialized.contains("sampleID") && !serialized.contains("\"frames\""))
         #expect(frames.allSatisfy { !serialized.contains($0.id.uuidString) })
         for slot in try ObservationContextFrameSlots.make(batch: batch, catalog: []) {
-            #expect(schemas.contains { ($0["enum"] as? [String]) == slot.options.map(\.id) })
+            let diagnostic: [String: Any] = [
+                "slot": slot.key, "expectedOptionIDs": slot.options.map(\.id),
+                "serializedEnums": schemas.compactMap { $0["enum"] },
+                "choiceShapes": schemas.filter { $0["const"] != nil || $0["anyOf"] != nil },
+                // This schema contains only the fixed synthetic fixture above.
+                // Keep its shape visible if a different SDK uses other keys.
+                "serializedSchema": object
+            ]
+            let message = try JSONSerialization.data(withJSONObject: diagnostic, options: [.sortedKeys])
+            #expect(schemas.contains { ($0["enum"] as? [String]) == slot.options.map(\.id) },
+                Comment(rawValue: "CONTEXT_SCHEMA_DIAGNOSTIC " + String(decoding: message, as: UTF8.self)))
         }
     }
 
