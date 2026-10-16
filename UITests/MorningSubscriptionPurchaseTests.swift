@@ -33,19 +33,21 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         separateWorkspace.terminate()
     }
 
-    func testFreeContinueKeepsOptionalVoiceAndRoutineSetupInEnglishAndFrench() {
+    func testFreeContinueKeepsOptionalAccessOverviewAndRoutineSetupInEnglishAndFrench() {
         for french in [false, true] {
             let app = launch(french: french, extra: ["--ui-testing-permissions"])
             continueFree(in: app, french: french)
-            let voice = app.staticTexts["permissions.title.speech"]
-            XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+            let overview = app.staticTexts["permissions.title.summary"]
+            XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+            XCTAssertTrue(app.staticTexts["permissions.title.calendar"].exists)
+            XCTAssertTrue(app.staticTexts["permissions.title.speech"].exists)
             XCTAssertEqual(app.alerts.count, 0)
             // An interrupted first setup must resume without returning to the offer.
             app.terminate()
             app.launch()
-            XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+            XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
             XCTAssertFalse(app.buttons["entry.continueFree"].exists)
             tap("permissions.skip", in: app)
             let later = app.buttons["routinePreparation.later"]
@@ -56,7 +58,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
             app.terminate()
             app.launch()
             assertHome(app)
-            XCTAssertFalse(voice.exists, "A saved setup choice must not repeat after free entry.")
+            XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
             XCTAssertFalse(later.exists)
             app.terminate()
         }
