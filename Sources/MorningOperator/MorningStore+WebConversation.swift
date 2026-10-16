@@ -75,7 +75,7 @@ extension MorningStore {
                 await reviewBrowserReply(controller, authorized: authorized)
             } else if await controller.beginConversationReply(authorized: authorized), authorized() {
                 speakHandsFree(french: "Que souhaitez-vous lui répondre ?", english: "What would you like to reply?")
-            }
+            } else if authorized(), let line = controller.conversationMessage { speech.speak(line) }
         case .reply(let intention), .revise(let intention):
             if controller.conversationDraft.snapshot == nil {
                 guard await controller.beginConversationReply(authorized: authorized), authorized() else {
@@ -99,7 +99,7 @@ extension MorningStore {
             let line = controller.conversationMessage ?? (AppLanguage.isFrench
                 ? "Relisez le texte avant de demander l’envoi." : "Review the text before asking to send.")
             if controller.conversationDraft.phase == .completed {
-                do { try await speech.speakAndWait(line) } catch { return true }
+                try? await speech.speakAndWait(line)
                 if authorized(), controller.conversationDraft.phase == .completed { resume() }
             } else { speech.speak(line) }
         }

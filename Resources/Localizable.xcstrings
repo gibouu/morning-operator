@@ -27734,6 +27734,38 @@
           }
         }
       }
+    },
+    "The displayed message changed. Read the conversation, then ask for a new reply.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The displayed message changed. Read the conversation, then ask for a new reply."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le message affiché a changé. Relisez la conversation, puis demandez une nouvelle réponse."
+          }
+        }
+      }
+    },
+    "MORE does not read passwords. Replies are sent only after review and your instruction to send. Likes run only when included in the approved behavior, up to three per moment. Sign-in stays in this browser.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE does not read passwords. Replies are sent only after review and your instruction to send. Likes run only when included in the approved behavior, up to three per moment. Sign-in stays in this browser."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE ne lit pas les mots de passe. Les réponses sont envoyées après relecture et votre instruction d’envoi. Les j’aime sont réalisés seulement s’ils font partie du comportement validé, au maximum trois par moment. La connexion reste dans ce navigateur."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -4,6 +4,41 @@ import XCTest
 /// signs in, reads an account, or opens a third-party native app.
 @MainActor
 final class WebRoutineJourneyTests: XCTestCase {
+    func testMessagingMomentsOpenDirectlyWithoutAConnectionChecklist() throws {
+        continueAfterFailure = false
+        for (language, service, host) in [("en", "LinkedIn", "www.linkedin.com"), ("fr", "Slack", "app.slack.com")] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved",
+                "--ui-testing-briefing-fixture", "--ui-testing-workspace=\(UUID().uuidString)",
+                "--light-preview", "--theme-phase=morning", "-more.appLanguage", language,
+                "-AppleLanguages", "(\(language))", "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"]
+            MorningUITestNavigation.launch(app)
+            defer { app.terminate() }
+            MorningUITestNavigation.openRoutine(in: app)
+            let first = app.buttons["routine.step.0"]
+            XCTAssertTrue(first.waitForExistence(timeout: 10), app.debugDescription)
+            first.tap()
+            let target = app.buttons["step.targetApp"]
+            reveal(target, in: app)
+            target.tap()
+            let site = app.buttons[service].firstMatch
+            XCTAssertTrue(site.waitForExistence(timeout: 5), app.debugDescription)
+            site.tap()
+            app.buttons["step.save"].tap()
+            let approve = app.buttons["routine.approve"]
+            XCTAssertTrue(approve.waitForExistence(timeout: 5), app.debugDescription)
+            approve.tap()
+            MorningUITestNavigation.tapButton("run.start", in: app)
+            XCTAssertTrue(app.buttons["web.close"].waitForExistence(timeout: 15), app.debugDescription)
+            // This asserts the ordinary route before any provider-specific redirect.
+            // No account is signed in and no external message is sent by this test.
+            XCTAssertTrue(app.staticTexts["web.host"].exists)
+            XCTAssertTrue(app.otherElements["web.conversation"].exists || app.scrollViews["web.conversation"].exists, app.debugDescription)
+            XCTAssertFalse(app.buttons["connections.confirmReady"].exists)
+            attach("browser-first-\(service)-\(language)-\(host)", app)
+        }
+    }
+
     func testSavedInstagramRoutesStartAdvanceAndReopenInsideMOREInBothLanguages() throws {
         continueAfterFailure = false
         for language in ["en", "fr"] {

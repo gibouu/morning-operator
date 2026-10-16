@@ -186,7 +186,7 @@ public enum WebConversationPolicy {
           const unique=list=>list.length===1?list[0]:null;
           const uniqueRoot=list=>unique(list.filter(e=>!list.some(other=>other!==e&&e.contains(other))));
           const uniqueLabel=(root,selectors)=>{const nodes=visibleAll(root,selectors),labels=new Set(nodes.map(e=>clean(e.innerText)).filter(Boolean));return labels.size===1?nodes[0]:null;};
-          if (visibleAll(document,['[role="dialog"]','[aria-modal="true"]']).length) return out({status:'choice'});
+          if (visibleAll(document,['[role="dialog"]','[aria-modal="true"]','#onetrust-banner-sdk','[data-testid="cookie-consent"]']).length) return out({status:'choice'});
           if(command==='openUnread') {
             if(Date.now()>\#(Int(expiresAt.timeIntervalSince1970*1000))) return out({status:'stale'});
             const selector=\#(json(site == .linkedin ? ".msg-conversation-listitem--unread a[href*='/messaging/thread/']" : "a[data-sidebar-link-id][data-is-unread='true'],.p-channel_sidebar__link--unread[href]"));

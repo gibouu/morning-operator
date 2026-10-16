@@ -1017,8 +1017,14 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func beginConversationReply(authorized: @MainActor () -> Bool) async -> Bool {
+        let offered = conversationSnapshot
         guard let result = await observeConversation(authorized: authorized), let snapshot = result.snapshot,
               !conversationIsActive || conversationDraft.snapshot == snapshot else { return false }
+        guard offered == nil || offered == snapshot else {
+            conversationMessage = AppLanguage.isFrench ? "Le message affiché a changé. Relisez la conversation, puis demandez une nouvelle réponse."
+                : "The displayed message changed. Read the conversation, then ask for a new reply."
+            return false
+        }
         guard (try? WebConversationJournal(directory: LocalDataControl.defaultDirectory).hasPending()) == false else {
             conversationMessage = AppLanguage.isFrench ? "Un envoi précédent doit être vérifié dans la conversation avant toute nouvelle réponse."
                 : "Check the previous send in the conversation before preparing another reply."

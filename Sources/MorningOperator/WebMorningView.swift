@@ -243,18 +243,18 @@ struct WebMorningView: View {
                     Button(text("Prepare reply", "Préparer la réponse")) {
                         onConversation?("reply " + replyIntention)
                         replyIntention = ""
-                    }.disabled(replyIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }.disabled(controller.conversationBusy || replyIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     TextEditor(text: Binding(get: { controller.conversationDraft.body }, set: { controller.editConversationReply($0) }))
-                        .frame(minHeight: 70, maxHeight: 120).accessibilityLabel(text("Reply text", "Texte de la réponse"))
+                        .frame(minHeight: 70, maxHeight: 120).disabled(controller.conversationBusy).accessibilityLabel(text("Reply text", "Texte de la réponse"))
                         .accessibilityIdentifier("web.replyBody")
                     HStack {
                         Button(text("Read reply", "Relire la réponse")) { onConversation?("read the reply") }
                         Button(text("I have reviewed this reply", "J’ai relu cette réponse")) { controller.markConversationReplyReviewed() }
-                            .disabled(!WebConversationDraft.validBody(controller.conversationDraft.body))
+                            .disabled(controller.conversationBusy || !WebConversationDraft.validBody(controller.conversationDraft.body))
                             .accessibilityIdentifier("web.replyReviewed")
                     }
                     Button(text("Send reply", "Envoyer la réponse")) { onConversation?("send") }
-                        .disabled(controller.conversationDraft.phase != .awaitingSend)
+                        .disabled(controller.conversationBusy || controller.conversationDraft.phase != .awaitingSend)
                         .accessibilityIdentifier("web.replySend")
                     Button(text("Cancel reply", "Annuler la réponse")) { onConversation?("cancel") }
                 }
@@ -271,13 +271,13 @@ struct WebMorningView: View {
                         .font(.footnote)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-                .disabled(controller.conversationBusy)
+                
         }.frame(maxHeight: 240).accessibilityIdentifier("web.conversation")
     }
 
     private var bottomBar: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if controller.awaitingSignIn {
+            if controller.awaitingSignIn || controller.isSignInPage {
                 Text(text("Sign in here. MORE keeps this website session for your next mornings, until the service asks you to sign in again.",
                     "Connectez-vous ici. MORE garde cette session pour vos prochains matins, jusqu’à ce que le service demande une nouvelle connexion."))
                     .font(.footnote).accessibilityIdentifier("web.inlineSignIn")

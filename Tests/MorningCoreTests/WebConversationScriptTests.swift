@@ -37,7 +37,7 @@ struct WebConversationScriptTests {
         root.selectors['button.msg-form__send-button']=[button];
         var document={hidden:false,
           querySelector(s){if(s.includes('input[type="password"]'))return credential?{}:null;contentReads++;return s==='.global-nav__me-photo'?me:null;},
-          querySelectorAll(s){if(s==='[role="dialog"]')return dialog?[element()]:[];if(s==='[aria-modal="true"]')return [];contentReads++;return s==='.msg-thread'?[root]:[];}};
+          querySelectorAll(s){if(s==='[role="dialog"]')return dialog?[element()]:[];if(s==='[aria-modal="true"]'||s==='#onetrust-banner-sdk'||s==='[data-testid="cookie-consent"]')return [];contentReads++;return s==='.msg-thread'?[root]:[];}};
         """#)
         if site == .slack {
             context.evaluateScript(#"""
@@ -49,7 +49,7 @@ struct WebConversationScriptTests {
             root.selectors['button[data-qa="texty_send_button"]']=[button];
             for(const e of messages){e.attributes['data-ts']=e.attributes['data-event-urn'];e.selectors['[data-qa="message-text"]']=e.selectors['.msg-s-event-listitem__body'];}
             document.querySelector=function(s){if(s.includes('input[type="password"]'))return credential?{}:null;contentReads++;return s==='[data-current-user-id]'?me:null;};
-            document.querySelectorAll=function(s){if(s==='[role="dialog"]')return dialog?[element()]:[];if(s==='[aria-modal="true"]')return [];contentReads++;return s==='[data-qa="channel_view"]'?[root]:[];};
+            document.querySelectorAll=function(s){if(s==='[role="dialog"]')return dialog?[element()]:[];if(s==='[aria-modal="true"]'||s==='#onetrust-banner-sdk'||s==='[data-testid="cookie-consent"]')return [];contentReads++;return s==='[data-qa="channel_view"]'?[root]:[];};
             """#)
         }
         #expect(context.exception == nil)
