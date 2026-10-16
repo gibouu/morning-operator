@@ -32,6 +32,8 @@ Les bornes sont des timecodes source alignés à 30 fps. Le mode aperçu peut in
 
 Les contrôles comprennent la compilation de l'exporteur Swift, la validation syntaxique Python, les vues de contrôle du jour, de la nuit et du transport de la lune, puis les assertions de durée, de nombre d'images et de conservation audio lors de l'export complet. Aucun test de l'application ou test sur iPhone n'est impliqué par ce travail de montage.
 
+Export du 16 octobre 2026 validé : H.264 1920 × 1080, 30 fps, 9 000 images et durée exacte de 300,000 s. La vérification indépendante confirme les 14 064 paquets AAC identiques, leurs PTS/DTS/durées/priming, la base `1/48000` et l'extradata. Le contrôle du détourage rejette l'étoile isolée repérée dans le crop du Duo ; le raccord final a une variation moyenne RGB inférieure à 1 niveau entre ses deux images voisines de contrôle. Les vues des raccords dans l'écran ont également été inspectées. La qualité artistique du son n'a pas fait l'objet d'une écoute dédiée.
+
 ## Propositions pour une passe suivante
 
 Ces ajouts ne sont pas inclus dans v4 :
@@ -40,4 +42,4 @@ Ces ajouts ne sont pas inclus dans v4 :
 2. **Autour de 02:25 :** accompagner l'apparition de la liste de courses d'une mise en évidence très discrète du texte. La synchroniser à la parole existante après une écoute dédiée.
 3. **03:00–03:40 :** exploiter ponctuellement la marge latérale pour un court message par chapitre « Market and competitors » et « First customers ». Le contenu doit venir du discours validé ; aucun chiffre ni bénéfice nouveau n'est inventé.
 
-Éviter un zoom continu, les marqueurs de tap répétés et les effets sur chaque alerte : le texte du téléphone est déjà petit, et la calme animation du paysage porte l'identité.
+Éviter un zoom continu, les marqueurs de tap répétés et les effets sur chaque alerte : le texte du téléphone est déjà petit, et l'animation calme du paysage porte l'identité.
