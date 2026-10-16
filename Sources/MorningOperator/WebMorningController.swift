@@ -963,7 +963,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func conversationAccess(_ authorized: @MainActor () -> Bool) -> Bool {
-        privacyIsCurrent && routineContext != nil && WebConversationPolicy.supports(site) &&
+        !Task.isCancelled && privacyIsCurrent && routineContext != nil && WebConversationPolicy.supports(site) &&
             webView.window != nil && UIApplication.shared.applicationState == .active &&
             !isClearing && !loadFailed && !webView.isLoading && authorized() &&
             WebMorningExecutionPolicy.permits(site: site, url: webView.url)

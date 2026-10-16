@@ -353,6 +353,9 @@ extension MorningStore {
               UIApplication.shared.applicationState == .active else { throw CancellationError() }
         switch action {
         case .pause:
+            currentConversationController?.cancelConversationWork()
+            browserSignInPause = nil
+            handsFreePauseRevision = UUID()
             if session?.status == .running { pause() }
             guard session?.status == .paused, notice == nil else { throw MorningCloudVoiceError.unavailable }
         case .resume:

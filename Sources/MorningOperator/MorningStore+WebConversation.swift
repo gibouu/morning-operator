@@ -28,14 +28,14 @@ extension MorningStore {
         let privacy = dataGeneration, revision = handsFreePauseRevision
         await controller.reconcileConversationSend(sent: sent, authorized: { [weak self] in
             guard let self else { return false }
-            return !self.privacyBlocksWork && self.handsFreeContext == context && self.dataGeneration == privacy &&
+            return !Task.isCancelled && !self.privacyBlocksWork && self.handsFreeContext == context && self.dataGeneration == privacy &&
                 self.handsFreePauseRevision == revision && self.session?.status == .paused
         })
     }
 
     @discardableResult
     func handleWebConversationUtterance(_ text: String) async -> Bool {
-        guard let controller = currentConversationController, let context = handsFreeContext else { return false }
+        guard !Task.isCancelled, let controller = currentConversationController, let context = handsFreeContext else { return false }
         let parsed = WebConversationIntent.parse(text)
         let intent: WebConversationIntent
         if let parsed { intent = parsed }
@@ -50,7 +50,7 @@ extension MorningStore {
         let privacy = dataGeneration, revision = handsFreePauseRevision
         let authorized: @MainActor () -> Bool = { [weak self] in
             guard let self else { return false }
-            return !self.privacyBlocksWork && self.handsFreeContext == context && self.dataGeneration == privacy &&
+            return !Task.isCancelled && !self.privacyBlocksWork && self.handsFreeContext == context && self.dataGeneration == privacy &&
                 self.handsFreePauseRevision == revision && self.session?.status == .paused &&
                 UIApplication.shared.applicationState == .active
         }
