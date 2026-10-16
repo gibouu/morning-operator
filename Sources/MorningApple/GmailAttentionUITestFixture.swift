@@ -146,7 +146,7 @@ import Synchronization
                     ["name": "Message-ID", "value": "<synthetic\(index)@synthetic.invalid>"]]]
                 if full {
                     payload["mimeType"] = "text/plain"
-                    payload["body"] = ["data": Data(text.utf8).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")]
+                    payload["body"] = ["size": text.utf8.count, "data": Data(text.utf8).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")]
                 }
                 body = ["id": "synthetic\(index)", "threadId": "synthetic-thread\(index)",
                     "internalDate": String(Int64(Date().addingTimeInterval(Double(-index * 60)).timeIntervalSince1970 * 1000)), "payload": payload]
