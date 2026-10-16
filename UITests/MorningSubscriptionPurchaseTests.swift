@@ -47,6 +47,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         XCTAssertTrue(app.buttons["paywall.subscribe"].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(app.buttons["paywall.restore"].exists)
         continueFree(in: app, french: french)
+        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForNonExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.buttons["setup.membership"].waitForExistence(timeout: 5), app.debugDescription)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "ordinary-release-free-entry-\(french ? "fr" : "en")"
@@ -340,6 +341,11 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
             throw XCTSkip("iOS 26.5 Simulator cannot connect SKTestSession to its local store (Apple FB22237318 / FB22500243). Run MORESubscriptions on iOS 26.6 or later; native purchases remain unverified here.")
         }
         #endif
+        // On a fresh CLI simulator, XCTest installs the target lazily at its
+        // first launch. StoreKit needs its registered bundle before loading a
+        // test configuration. This launch never starts a purchase or restore.
+        let registration = launch()
+        registration.terminate()
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
         session.resetToDefaultState()
