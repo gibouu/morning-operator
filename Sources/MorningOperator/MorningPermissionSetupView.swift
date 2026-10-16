@@ -74,7 +74,7 @@ struct MorningPermissionSetupView: View {
     }
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 18) {
             Text(text("Let's prepare your morning.", "Préparons votre matinée."))
                 .font(.system(.largeTitle, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
@@ -93,7 +93,7 @@ struct MorningPermissionSetupView: View {
                              : permission.accessName)
                             .font(.system(.subheadline, weight: .semibold))
                             .accessibilityIdentifier("permissions.title.\(permission.rawValue)")
-                        Text(permission.accessBenefit)
+                        Text(permission.accessPurpose)
                             .font(MorningTheme.Typography.note).foregroundStyle(muted)
                     }
                     .fixedSize(horizontal: false, vertical: true)
@@ -248,6 +248,18 @@ struct MorningPermissionSetupView: View {
 }
 
 private extension MorningPermission {
+    var accessPurpose: String {
+        switch self {
+        case .location: MorningPermissionSetup.text("For your local weather.", "Pour votre météo locale.")
+        case .calendar: MorningPermissionSetup.text("For your upcoming appointments.", "Pour vos prochains rendez-vous.")
+        case .reminders: MorningPermissionSetup.text("For your tasks and thoughts to keep.", "Pour vos tâches et vos idées à garder.")
+        case .screenTime: MorningPermissionSetup.text("To understand your morning habits.", "Pour comprendre vos habitudes du matin.")
+        case .speech, .microphone: MorningPermissionSetup.text("To talk to MORE and interrupt it.", "Pour parler à MORE et l’interrompre.")
+        case .notifications: MorningPermissionSetup.text("To remind you at the time you choose.", "Pour vous prévenir à l’heure choisie.")
+        case .alarms: MorningPermissionSetup.text("For your morning alarm.", "Pour votre réveil du matin.")
+        }
+    }
+
     var accessName: String {
         switch self {
         case .location: MorningPermissionSetup.text("Location & weather", "Position et météo")

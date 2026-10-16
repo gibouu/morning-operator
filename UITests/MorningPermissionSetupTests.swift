@@ -221,7 +221,9 @@ final class MorningPermissionSetupTests: XCTestCase {
         let reviewedTitle = firstStep.label
         XCTAssertFalse(app.buttons["learn.screenTime"].exists)
         XCTAssertFalse(app.buttons["routine.approve"].exists)
-        XCTAssertTrue(app.buttons["screenTimeProposal.approve"].exists)
+        let approve = app.buttons["screenTimeProposal.approve"]
+        XCTAssertTrue(approve.waitForExistence(timeout: 5), app.debugDescription)
+        reveal(approve, app)
         MorningUITestNavigation.tapButton("routinePreparation.later", in: app)
         assertHomeWithoutFurtherSetup(app)
         app.terminate(); launchConfirmedWorkspace(app)

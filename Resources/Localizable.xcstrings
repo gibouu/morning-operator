@@ -26918,6 +26918,125 @@
           }
         }
       }
+    },
+    "For your local weather.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your local weather."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour votre météo locale."
+          }
+        }
+      }
+    },
+    "For your upcoming appointments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your upcoming appointments."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vos prochains rendez-vous."
+          }
+        }
+      }
+    },
+    "For your tasks and thoughts to keep.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your tasks and thoughts to keep."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vos tâches et vos idées à garder."
+          }
+        }
+      }
+    },
+    "To understand your morning habits.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To understand your morning habits."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour comprendre vos habitudes du matin."
+          }
+        }
+      }
+    },
+    "To talk to MORE and interrupt it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To talk to MORE and interrupt it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour parler à MORE et l’interrompre."
+          }
+        }
+      }
+    },
+    "To remind you at the time you choose.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To remind you at the time you choose."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vous prévenir à l’heure choisie."
+          }
+        }
+      }
+    },
+    "For your morning alarm.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your morning alarm."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour votre réveil du matin."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
