@@ -50,15 +50,14 @@ import MorningCore
         reveal(app); tap("morning.settings", app); tap("setup.routine", app)
         XCTAssertFalse(app.buttons["routine.approve"].exists)
         home(app); reveal(app); tap("morning.begin", app)
-        // The first Play continues the ordinary opening; it is not an article action.
-        let continuation = app.buttons["morning.playback"]
-        reveal(app)
-        wait(continuation, predicate: NSPredicate(format: "label == %@", french ? "Continuer" : "Continue"), timeout: 20)
-        continuation.tap()
-        XCTAssertTrue(app.buttons["web.close"].waitForExistence(timeout: 25))
+        // This configured browser moment opens directly. Do not inspect or tap
+        // the underlying Home caption through the foreground browser sheet.
+        let close = app.buttons["web.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 25)); XCTAssertTrue(close.isHittable)
         let secondTitle = french ? "Un coin lecture au jardin Cèdre" : "A reading corner at Cedar garden"
         let second = app.buttons["web.article.2"]
         XCTAssertTrue(second.waitForExistence(timeout: 20)); XCTAssertEqual(second.label, "2. " + secondTitle)
+        XCTAssertTrue(second.isHittable, "The observed ordinal control must be in the foreground.")
         XCTAssertEqual(app.staticTexts["web.host"].label, "SYNTHETIC Cedar News")
         let running = try diagnostic(app)
         let context = try XCTUnwrap(running["newsContext"])
@@ -66,6 +65,7 @@ import MorningCore
         XCTAssertEqual(fields.count, 3); XCTAssertEqual(fields.last, stepID)
         for field in fields { XCTAssertNotNil(UUID(uuidString: field)) }
         XCTAssertEqual(running["resource"], "/headlines"); XCTAssertEqual(running["pausedAtBits"], "none")
+        attach("private-news-observed-headlines-\(language)", app)
         Thread.sleep(forTimeInterval: 5)
         let beforeSelection = try diagnostic(app)
         XCTAssertEqual(beforeSelection["newsContext"], context); XCTAssertEqual(beforeSelection["resource"], "/headlines")
