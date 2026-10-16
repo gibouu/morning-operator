@@ -9,7 +9,7 @@ struct StepTimerView: View {
             HStack {
                 Text(store.currentStep?.target?.destination.displayName ?? "MORE")
                     .font(.raleway(.subheadline, .semibold))
-                if case let .inAppWeb(url) = store.currentStep?.target {
+                if case let .inAppWeb(url) = store.currentStep?.target?.routineExecutionTarget {
                     Button { if canOperate() { store.pendingWebTarget = url } } label: {
                         MorningDottedIcon(systemName: "globe").frame(width: 23, height: 23).frame(width: 44, height: 44)
                     }.accessibilityLabel("Open page").accessibilityIdentifier("stepTimer.openPage")
