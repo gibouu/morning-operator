@@ -35,22 +35,34 @@ struct VisibleTaskContrastProbeTests {
         let stimulus: Stimulus
         let kind: ObservationAcquisitionSourceKind
         let banner: Bool
-        var label: String { "\(stimulus.rawValue)_\(kind.rawValue)_\(banner ? "banner" : "noBanner")" }
-        var texts: [String] { stimulus.texts.map { (banner ? "SYNTHETIC\n" : "") + $0 } }
+        var fullDisclosure = false
+        var label: String { "\(stimulus.rawValue)_\(kind.rawValue)_\(fullDisclosure ? "fullDisclosure" : (banner ? "banner" : "noBanner"))" }
+        var texts: [String] {
+            stimulus.texts.map { text in
+                guard fullDisclosure else { return (banner ? "SYNTHETIC\n" : "") + text }
+                // Literal disclosure lines drawn by make-routine-fixture.py,
+                // surrounding this independent stimulus, not extracted by Vision.
+                return "SYNTHETIC · \(stimulus.language.uppercased())\nNo real account, send, write or like\n" + text
+                    + "\nOFFLINE STORYBOARD · NOT NATIVE CAPTURE\nInvented content · no audio · no external service"
+            }
+        }
     }
 
     private static var contrasts: [Contrast] {
         [Stimulus.original, .explicitEnglish, .explicitFrench].flatMap { stimulus in
             [false, true].map { Contrast(stimulus: stimulus, kind: .video, banner: $0) }
         } + [false, true].map { Contrast(stimulus: .original, kind: .manual, banner: $0) }
+        + [Stimulus.explicitEnglish, .explicitFrench].map {
+            Contrast(stimulus: $0, kind: .video, banner: true, fullDisclosure: true)
+        }
     }
 
     private enum Result: String, Encodable { case proposedDraft, validatedEmpty, failed }
     private enum ProbeFailure: Error { case invalidResult }
     private struct Record: Encodable {
         let schemaVersion = 1
-        let scope = "Diagnostic only: no required positive result, semantic accuracy verdict, product acceptance or provider effect. SDK invocations are not backend calls."
-        let contrast: String, stimulusLanguage: String, sourceKind: String, bannerPresent: Bool
+        let scope = "Constructed synthetic text only, not new Vision extraction. No required positive result, semantic accuracy verdict, product acceptance or provider effect. SDK invocations are not backend calls."
+        let contrast: String, stimulusLanguage: String, sourceKind: String, bannerPresent: Bool, fullDisclosurePresent: Bool
         var sourceOrigins: [String] = [], evidenceKinds: [String] = []
         var acquisitionCount = 0, unitCount = 0, plannedBatchCount = 0
         var anchorCounts: [Int] = []
@@ -85,7 +97,22 @@ struct VisibleTaskContrastProbeTests {
 
     @Test("The diagnostic varies only its declared source-kind, stimulus language and banner factors")
     func contrastsKeepNativeOriginAndSourceBytes() throws {
-        #expect(Self.contrasts.count == 8)
+        #expect(Self.contrasts.count == 10)
+        #expect(Self.contrasts.filter(\.fullDisclosure).count == 2)
+        for contrast in Self.contrasts.prefix(8) {
+            #expect(!contrast.fullDisclosure)
+            let original = contrast.stimulus.texts.map { (contrast.banner ? "SYNTHETIC\n" : "") + $0 }
+            #expect(zip(contrast.texts, original).allSatisfy { pair in pair.0.utf8.elementsEqual(pair.1.utf8) })
+        }
+        for contrast in Self.contrasts.suffix(2) {
+            #expect(contrast.kind == .video && contrast.fullDisclosure)
+            for (text, body) in zip(contrast.texts, contrast.stimulus.texts) {
+                let prefix = "SYNTHETIC · \(contrast.stimulus.language.uppercased())\nNo real account, send, write or like\n"
+                let suffix = "\nOFFLINE STORYBOARD · NOT NATIVE CAPTURE\nInvented content · no audio · no external service"
+                #expect(text.utf8.elementsEqual((prefix + body + suffix).utf8))
+                #expect(text.dropFirst(prefix.count).dropLast(suffix.count).utf8.elementsEqual(body.utf8))
+            }
+        }
         for contrast in Self.contrasts {
             let sources = try observations(for: contrast)
             let evidence = try LearningEvidencePreparation.prepare(acquisitions: sources)
@@ -110,8 +137,15 @@ struct VisibleTaskContrastProbeTests {
     })
     @MainActor
     func realLocalContrastDiagnostic() async throws {
-        // One test and an awaited loop keep all eight probes serial.
-        for contrast in Self.contrasts {
+        // One test and an awaited loop keep probes serial. The optional selector
+        // allows only the two new cases without repeating the frozen eight.
+        let selection = ProcessInfo.processInfo.environment["MO_VISUAL_EVIDENCE_CONTRAST_VARIANT"]
+        guard selection == nil || selection == "fullDisclosure" else {
+            Issue.record("Unknown contrast variant; no model was invoked.")
+            return
+        }
+        let contrasts = selection == "fullDisclosure" ? Self.contrasts.filter(\.fullDisclosure) : Self.contrasts
+        for contrast in contrasts {
             try Task.checkCancellation()
             await probe(contrast)
         }
@@ -120,7 +154,7 @@ struct VisibleTaskContrastProbeTests {
     @MainActor private func probe(_ contrast: Contrast) async {
         let service = AppleIntelligenceService()
         var record = Record(contrast: contrast.label, stimulusLanguage: contrast.stimulus.language,
-            sourceKind: contrast.kind.rawValue, bannerPresent: contrast.banner)
+            sourceKind: contrast.kind.rawValue, bannerPresent: contrast.banner, fullDisclosurePresent: contrast.fullDisclosure)
         defer {
             record.diagnostics = service.proposalDiagnostics
             let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
