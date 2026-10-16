@@ -124,7 +124,7 @@ extension MorningStore {
                 case let .outlookInbox(target):
                     runOutlookInbox(target, sessionID: session.id, stepID: step.id)
                 case nil:
-                    if step.automation != .gmailInbox, readAloud { speech.speak(step.executionPresentationText()) }
+                    if step.automation != .gmailInbox, readAloud { speech.speak("\(step.title). \(step.executionPresentationText())") }
                 }
             }
             synchronizeMorningActivity()
