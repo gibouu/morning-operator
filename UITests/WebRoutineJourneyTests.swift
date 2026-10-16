@@ -4,6 +4,38 @@ import XCTest
 /// signs in, reads an account, or opens a third-party native app.
 @MainActor
 final class WebRoutineJourneyTests: XCTestCase {
+    func testSavedInstagramRoutesStartAdvanceAndReopenInsideMOREInBothLanguages() throws {
+        continueAfterFailure = false
+        for language in ["en", "fr"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved",
+                "--ui-testing-instagram-routing", "--ui-testing-briefing-fixture",
+                "--ui-testing-workspace=\(UUID().uuidString)", "--light-preview", "--theme-phase=morning",
+                "-more.appLanguage", language, "-AppleLanguages", "(\(language))",
+                "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"]
+            MorningUITestNavigation.launch(app)
+            defer { app.terminate() }
+            MorningUITestNavigation.tapButton("run.start", in: app)
+            let about = app.buttons["web.aboutDone"]
+            if about.waitForExistence(timeout: 5) { about.tap() }
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
+            XCTAssertEqual(app.state, .runningForeground)
+            app.buttons["web.nextMoment"].tap()
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
+            app.buttons["web.close"].tap()
+            XCTAssertTrue(app.buttons["web.close"].waitForNonExistence(timeout: 5))
+            MorningUITestNavigation.assertSession(state: "running", step: "SYNTHETIC Instagram profile", in: app)
+            MorningUITestNavigation.openSettings(in: app)
+            MorningUITestNavigation.tapButton("stepTimer.openPage", in: app)
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
+            XCTAssertEqual(app.state, .runningForeground)
+            attach("instagram-saved-routine-\(language)", app)
+        }
+    }
+
     func testWebMomentKeepsItsExtendedBudgetAcrossCloseAndReopen() async throws {
         continueAfterFailure = false
         let app = XCUIApplication()

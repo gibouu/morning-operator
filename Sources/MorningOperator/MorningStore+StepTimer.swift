@@ -48,11 +48,12 @@ extension MorningStore {
         }
         do {
             try step.target?.validateIntegration()
+            let target = step.target?.routineExecutionTarget
             var timer = activeStepTimer ?? StepTimer(sessionID: session.id, stepID: step.id,
                 minutes: step.durationMinutes, at: Date())
             #if DEBUG
             let isManualWeb: Bool = {
-                if case .inAppWeb = step.target { return step.webBehavior == nil }
+                if case .inAppWeb = target { return webExecutionPlan == nil }
                 return false
             }()
             if activeStepTimer == nil, ProcessInfo.processInfo.arguments.contains("--ui-testing"),
@@ -68,7 +69,7 @@ extension MorningStore {
             stepTimerRevision += 1
             armStepTimer()
             if currentExecutionRecord == nil { guard recordExecution(.running) else { pause(); return true } }
-            if !shouldOpen, step.webBehavior != nil, case let .inAppWeb(url) = step.target {
+            if !shouldOpen, webExecutionPlan != nil, case let .inAppWeb(url) = target {
                 pendingWebTarget = url
             }
             if !shouldOpen, case let .connectedAPI(service, connectionID, tool, arguments) = step.target {
@@ -85,7 +86,7 @@ extension MorningStore {
                 runOutlookInbox(target, sessionID: session.id, stepID: step.id)
             }
             if shouldOpen {
-                switch step.target {
+                switch target {
                 case let .externalApp(app, detail):
                     guard let url = app.url(detail: detail), UIApplication.shared.canOpenURL(url) else {
                         notice = externalAppOpenFailureNotice
@@ -153,7 +154,7 @@ extension MorningStore {
             guard let (alertedTimer, claimedAlert) = claimed, claimedAlert else { return }
             self.stepTimerRevision += 1
             if self.finishAutomatedBudget(alertedTimer) { return }
-            if self.automatic, case .inAppWeb = self.currentStep?.target, self.currentStep?.webBehavior == nil {
+            if self.automatic, case .inAppWeb = self.currentStep?.target?.routineExecutionTarget, self.webExecutionPlan == nil {
                 // A completed time allowance does not verify anything done on the page.
                 guard self.recordExecution(.skipped) else { self.pause(); return }
                 self.advance(commandID: timer.stepID)
