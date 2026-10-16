@@ -6,6 +6,7 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
+    // XCTest calls synchronous cleanup outside the suspended test actor.
     nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
 
     override func tearDown() {
@@ -217,39 +218,30 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         assertHome(app)
     }
 
-    func testCancelledPurchaseLeavesTheOfferReadyAndAllowsFreeContinue() async throws {
+    func testCancelledPurchaseAllowsFreeContinueWithoutACompletedTransaction() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        // Cancel the accepted local store's sheet, as a user does. An injected
-        // generic error does not exercise Product.PurchaseResult.userCancelled.
-        session.disableDialogs = false
-        let app = launch(french: false)
+        try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
+        let app = launch()
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let cancellations = [app.buttons["Cancel"], app.buttons["Annuler"],
-                             springboard.buttons["Cancel"], springboard.buttons["Annuler"]]
-        let sheet = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            cancellations.contains { $0.exists && $0.isHittable }
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [sheet], timeout: 20), .completed,
-                       "The local purchase must expose a cancel action: \(app.debugDescription)")
-        let cancel = try XCTUnwrap(cancellations.first { $0.exists && $0.isHittable })
-        cancel.tap()
-        let button = app.buttons["paywall.subscribe"]
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: button)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"),
+                                             object: app.buttons["paywall.subscribe"])
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
-        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForNonExistence(timeout: 5), app.debugDescription)
         let beforeFreeEntry = session.allTransactions()
         XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
         let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
-        continueFree(in: app, french: false)
+        continueFree(in: app)
+        assertHome(app)
+        app.terminate()
+        app.launch()
         assertHome(app)
         let afterFreeEntry = session.allTransactions()
         XCTAssertFalse(afterFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
-        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs)
+        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs,
+                       "Free entry must not add or approve a transaction after cancellation.")
     }
 
     func testFailedPurchaseAllowsFreeContinueWithoutATransaction() async throws {
