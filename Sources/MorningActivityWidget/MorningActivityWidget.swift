@@ -149,16 +149,12 @@ private struct MorningActivityIslandDetail: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let timer = presentation.state.stepTimer {
+                Text(timer.destination.displayName(locale: presentation.state.locale))
+                    .font(.caption.weight(.medium)).foregroundStyle(.white.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
                 ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: 12) {
-                        timerDetails(timer)
-                        Spacer(minLength: 4)
-                        controls(timer)
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        timerDetails(timer)
-                        controls(timer).frame(maxWidth: .infinity, alignment: .trailing)
-                    }
+                    timerRow(timer, font: .title2)
+                    timerRow(timer, font: .title3)
                 }
                 MorningWidgetBudgetProgress(timer: timer, state: presentation.state,
                                             tint: MorningActivityPalette.islandAccent).frame(height: 4)
@@ -185,15 +181,14 @@ private struct MorningActivityIslandDetail: View {
         .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: presentation.state.locale))
     }
 
-    private func timerDetails(_ timer: MorningActivityStepTimer) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(timer.destination.displayName(locale: presentation.state.locale)).font(.caption.weight(.medium))
-                .foregroundStyle(.white.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
+    private func timerRow(_ timer: MorningActivityStepTimer, font: Font) -> some View {
+        HStack(alignment: .center, spacing: 12) {
             StepCountdown(timer: timer, state: presentation.state)
-                .font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(.white)
+                .font(font.weight(.medium).monospacedDigit()).foregroundStyle(.white)
                 .fixedSize()
                 .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
+            Spacer(minLength: 4)
+            controls(timer)
         }
     }
 
@@ -226,6 +221,7 @@ private struct MorningActivityCompactTimer: View {
     private var countdown: some View {
         StepCountdown(timer: timer, state: state)
             .font(.caption2.monospacedDigit()).foregroundStyle(.white)
+            .dynamicTypeSize(...DynamicTypeSize.large)
             .lineLimit(1).minimumScaleFactor(0.7)
             .frame(maxWidth: 52)
     }
@@ -243,7 +239,7 @@ private struct MorningActivityCompactTimer: View {
                     if state.status == .paused {
                         Image(systemName: "pause.fill")
                     } else {
-                        ProgressView(timerInterval: min(state.updatedAt, timer.endsAt)...timer.endsAt, countsDown: true)
+                        ProgressView(timerInterval: min(timer.startedAt ?? state.updatedAt, timer.endsAt)...timer.endsAt, countsDown: true)
                             .progressViewStyle(.circular).labelsHidden()
                     }
                 }
