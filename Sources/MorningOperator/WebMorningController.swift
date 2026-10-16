@@ -68,7 +68,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard let syntheticRoutine, let context = routineContext else { return "" }
         let timer = StepTimerFile.load().flatMap { $0.belongs(to: context.sessionID, stepID: context.stepID) ? $0 : nil }
         let instants = "startedAtBits=\(timer.map { String($0.startedAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") endsAtBits=\(timer.map { String($0.endsAt.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none") pausedAtBits=\(timer?.pausedAt.map { String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16) } ?? "none")"
-        return "syntheticRoutine=1 browserContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(syntheticRoutine.path) localLoads=\(syntheticRoutineHandler?.deliveryCount ?? 0) observedContents=\(executionEvent?.observedContentCount ?? 0) \(instants)"
+        return "syntheticRoutine=1 browserContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(syntheticRoutine.path) localLoads=\(syntheticRoutineHandler?.deliveryCount ?? 0) observedContents=\(observedContentCount) \(instants)"
         #else
         return ""
         #endif
