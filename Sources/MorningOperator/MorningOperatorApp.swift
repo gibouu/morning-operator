@@ -8,6 +8,8 @@ struct MorningOperatorApp: App {
     @ViewState<MorningStore> private var store = MorningStore()
     #if DEBUG
     @State private var showingWebPreview = true
+    @State private var showingOnboardingPreview = true
+    @AppStorage(MorningDeveloperAccess.preferenceKey) private var developerAccess = false
     #endif
 
     init() {
@@ -26,8 +28,13 @@ struct MorningOperatorApp: App {
             #elseif DEBUG
             if ProcessInfo.processInfo.arguments.contains("--design-preview") {
                 HorizonDesignPreview()
-            } else if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
-                MorningWelcomePreview()
+            } else if ProcessInfo.processInfo.arguments.contains("--preview-onboarding"), showingOnboardingPreview {
+                MorningWelcomePreview(onSkip: {
+                    // This is the same local Debug access as the ordinary cross.
+                    // It never fabricates a StoreKit transaction or source access.
+                    developerAccess = true
+                    showingOnboardingPreview = false
+                })
             } else if let site = Self.webMorningLaunchSite, showingWebPreview {
                 WebMorningView(site: site, minutes: 10, onClose: { showingWebPreview = false })
                     .preferredColorScheme(.light)
@@ -57,7 +64,7 @@ struct MorningOperatorApp: App {
                         .accessibilityLabel(Text(verbatim: "\(Bundle.main.bundleIdentifier ?? "missing")|\(Bundle.main.object(forInfoDictionaryKey: "MorningURLScheme") as? String ?? "missing")"))
                         .allowsHitTesting(false)
                 } else if let workspace = Self.testWorkspace,
-                          !ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
+                          (!ProcessInfo.processInfo.arguments.contains("--preview-onboarding") || !showingOnboardingPreview) {
                     Text(verbatim: "Test routine")
                         .font(.raleway(.caption2)).padding(4)
                         .dynamicTypeSize(.medium)

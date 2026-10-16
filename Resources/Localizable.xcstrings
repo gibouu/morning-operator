@@ -26817,6 +26817,22 @@
           }
         }
       }
+    },
+    "Skip for now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip for now"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer pour le moment"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
