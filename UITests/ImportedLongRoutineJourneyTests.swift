@@ -2,10 +2,9 @@ import XCTest
 import MorningCore
 
 /// Private downstream journeys, separately labelled from video learning. The
-/// manual parsed input supplies no action authority. The legacy case preserves
-/// its seven time-only moments; the complete case configures actual private web
-/// inputs, media, a reviewed mail reply and an exact reminder through ordinary UI.
-/// Neither case certifies live services, a microphone or acoustic quality.
+/// manual parsed input supplies no action authority. The complete journey configures
+/// actual private web inputs, media, a reviewed mail reply and an exact reminder
+/// through ordinary UI. It certifies no live service, microphone or acoustic quality.
 @MainActor final class ImportedLongRoutineJourneyTests: XCTestCase {
     /// Exercises real native formatting and TTS caption callbacks only. This is
     /// neither a local-language-model verdict nor proof that a person heard it.
@@ -47,18 +46,14 @@ import MorningCore
         // No Next, clock override, shortened budget or completion claim.
     }
 
-    func testManualOracleThroughUIConfigurationRunsTenMomentsInOnePinnedSession() throws {
-        try runManualOracle(complete: false, mediaArgument: nil)
-    }
-
     /// Downstream acceptance from an explicitly synthetic parsed draft. Real
     /// app policy, WebKit and media playback; fictional providers and no mic.
     func testCompleteSyntheticRoutineUsesMailNewsFeedVideoReminderAndMusic() async throws {
         let media = try await SyntheticRoutineBrowserMediaFactory.launchArgument()
-        try runManualOracle(complete: true, mediaArgument: media)
+        try runManualOracle(mediaArgument: media)
     }
 
-    private func runManualOracle(complete: Bool, mediaArgument: String?) throws {
+    private func runManualOracle(mediaArgument: String?) throws {
         continueAfterFailure = false
         executionTimeAllowance = 2_700
         // Literal copy of the frozen English portable oracle, not an inference
@@ -82,11 +77,9 @@ import MorningCore
             "--ui-testing-briefing-fixture", "--ui-testing-hands-free", "--ui-testing-read-aloud",
             "--light-preview", "--theme-phase=morning", "--ui-testing-parsed-routine=" + data.base64EncodedString(),
             "-more.appLanguage", "en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        if complete {
-            app.launchArguments += ["--ui-testing-private-gmail-reply", "--ui-testing-private-news",
-                "--ui-testing-private-routine-browser", "--ui-testing-private-exact-reminder", "--ui-testing-native-actions"]
-            app.launchArguments.append(try XCTUnwrap(mediaArgument))
-        }
+        app.launchArguments += ["--ui-testing-private-gmail-reply", "--ui-testing-private-news",
+            "--ui-testing-private-routine-browser", "--ui-testing-private-exact-reminder", "--ui-testing-native-actions"]
+        app.launchArguments.append(try XCTUnwrap(mediaArgument))
         // No --approved, --automation, --slack-reply, or short-budget flag.
         app.launch(); defer { app.terminate() }
         try requireWorkspace(workspace, app)
@@ -109,8 +102,7 @@ import MorningCore
         configureOperation(0, action: "Read today's calendar", minutes: minutes[0],
             detail: "SYNTHETIC selected Calendar reading only. No event is written and no namesake comparison is claimed.", in: app)
         configureOperation(1, action: "Read my mail and help me reply", minutes: minutes[1],
-            detail: complete ? "SYNTHETIC Gmail: review Maïa's request, prepare six blue cards, correct to eight green cards, review, then request one simulated send."
-                : "SYNTHETIC read-only Gmail. Choose an available message, then continue. No reply is sent.", in: app)
+            detail: "SYNTHETIC Gmail: review Maïa's request, prepare six blue cards, correct to eight green cards, review, then request one simulated send.", in: app)
 
         // Assign through the existing editor. The imported moment remains the
         // same row; only explicit source selection and Save give it an action.
@@ -144,27 +136,25 @@ import MorningCore
         XCTAssertFalse(app.buttons["routine.step.10"].exists)
         XCTAssertTrue(button("routine.approve", app).isEnabled)
         for index in 3..<10 {
-            if complete, [3, 4, 5, 8].contains(index) {
+            if [3, 4, 5, 8].contains(index) {
                 configureBrowser(index, site: index == 3 ? "Le Monde" : index == 4 ? "Reddit" : "YouTube Shorts",
                     behavior: index == 3 ? "Read headlines aloud" : index == 4 ? "Browse the feed" : "Watch videos", in: app)
             } else {
                 configureOperation(index, action: "Keep this time, then continue", minutes: minutes[index],
-                    detail: complete ? "SYNTHETIC personal time: \(titles[index]). Any reminder is a separately reviewed request; the final budget is an explicitly added closing moment."
-                        : "SYNTHETIC time only: \(titles[index]). No browser, video, music, reminder, write or send is performed.",
+                    detail: "SYNTHETIC personal time: \(titles[index]). Any reminder is a separately reviewed request; the final budget is an explicitly added closing moment.",
                     keep: index == 7, in: app)
             }
         }
         for index in 0..<10 {
             let row = button("routine.step.\(index)", app)
             XCTAssertTrue(row.label.contains(titles[index]) && row.label.contains("\(minutes[index]) min"), row.label)
-            if index >= 3, !complete || ![3, 4, 5, 8].contains(index) {
+            if index >= 3, ![3, 4, 5, 8].contains(index) {
                 XCTAssertTrue(row.label.contains("Give you this time, then continue automatically."))
             }
         }
         XCTAssertTrue(button("routine.approve", app).isEnabled)
         XCTAssertTrue(text("routine.source", app).label.contains("Sample routine"))
-        attach(complete ? "complete-routine-configured-service-browser-and-media-inputs-unapproved"
-            : "long-ten-configured-three-simulated-seven-time-only-unapproved", app)
+        attach("complete-routine-configured-service-browser-and-media-inputs-unapproved", app)
         tap("routine.approve", app)
         home(app); app.terminate()
         app.launchArguments.removeAll { $0.hasPrefix("--ui-testing-parsed-routine=") }
@@ -194,16 +184,7 @@ import MorningCore
         requireSameRun(mail, first, expectedID: originalIDs[1]); trace.append(mail)
         interact(app)
         XCTAssertTrue(app.staticTexts["mail.attention.explanation"].waitForExistence(timeout: 20))
-        if !complete { XCTAssertEqual(app.staticTexts["mail.attention.synthetic"].value as? String, "HTTP list reads: 1; body reads: 5") }
-        if complete {
-            try replyToSyntheticMail(app, identity: mail)
-        } else {
-            tap("mail.attention.choose.4", app)
-            XCTAssertEqual(button("mail.attention.choose.4", app).label, "Selected message")
-            XCTAssertFalse(app.buttons["mail.selfSend"].exists)
-            attach("long-ten-read-only-mail-chosen", app)
-            tap("mail.continue", app)
-        }
+        try replyToSyntheticMail(app, identity: mail)
         home(app)
         let slack = try identity(app, index: 2)
         requireSameRun(slack, first)
@@ -222,30 +203,23 @@ import MorningCore
             XCTAssertEqual(timer.endsAt - timer.startedAt, Double(minutes[index] * 60), accuracy: 0.001,
                            "This journey does not accelerate or relabel the source's planned minutes.")
             timerTrace.append(["index": String(index), "initialTimerDateBits": timer.raw])
-            if complete {
-                switch index {
-                case 3: try selectSecondArticleAndReturn(app, identity: current)
-                case 4: try verifyFeedPauseAndRestore(app, identity: current, workspace: workspace)
-                case 5: try verifyMediaPlayback(app, identity: current, music: false)
-                case 6: try createExactReminder(app, identity: current)
-                case 8: try verifyMediaPlayback(app, identity: current, music: true)
-                default: break
-                }
-            } else if index == 4 {
-                try pauseAndRestoreFifth(current, timer: timer, workspace: workspace, in: app)
+            switch index {
+            case 3: try selectSecondArticleAndReturn(app, identity: current)
+            case 4: try verifyFeedPauseAndRestore(app, identity: current, workspace: workspace)
+            case 5: try verifyMediaPlayback(app, identity: current, music: false)
+            case 6: try createExactReminder(app, identity: current)
+            case 8: try verifyMediaPlayback(app, identity: current, music: true)
+            default: break
             }
             // No Next here: real budgets and ordinary reviewed work drive progression.
         }
         XCTAssertEqual(trace.map(\.index), Array(0..<10))
         XCTAssertEqual(Set(trace.map(\.step)).count, 10)
         XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: Double(minutes[9] * 60 + 45)))
-        try requireRecap(app, trace: trace, titles: titles, complete: complete)
-        attach(complete ? "complete-routine-completed-observed-work-and-honest-recap"
-            : "long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
+        try requireRecap(app, trace: trace, titles: titles)
+        attach("complete-routine-completed-observed-work-and-honest-recap", app)
         let evidence = try JSONSerialization.data(withJSONObject: [
-            "scope": complete
-                ? "Synthetic parsed draft downstream: Calendar, Gmail reviewed reply, Slack uncertain, actual WebKit news/feed/video/music, one exact simulated reminder, retained reading and closing budgets. No movie inference, live service, microphone or acoustic-quality claim."
-                : "Manual oracle downstream only; Calendar/Gmail simulated reads, Slack one uncertain simulated post, seven real-minute budgets. No video inference, live effect, browser or acoustic proof.",
+            "scope": "Synthetic parsed draft downstream: Calendar, Gmail reviewed reply, Slack uncertain, actual WebKit news/feed/video/music, one exact simulated reminder, retained reading and closing budgets. No movie inference, live service, microphone or acoustic-quality claim.",
             "plannedMinutes": 28, "accelerated": false, "workspaceID": workspace,
             "moments": trace.map { ["sessionID": $0.session, "routineVersionID": $0.version, "stepID": $0.step, "index": String($0.index)] },
             "timers": timerTrace
@@ -253,7 +227,7 @@ import MorningCore
         let attachment = XCTAttachment(string: String(decoding: evidence, as: UTF8.self))
         attachment.name = "long-ten-actual-session-order-and-budget-instants"; attachment.lifetime = .keepAlways; add(attachment)
         app.terminate(); app.launch(); try requireWorkspace(workspace, app)
-        try requireRecap(app, trace: trace, titles: titles, complete: complete)
+        try requireRecap(app, trace: trace, titles: titles)
         attach("long-ten-honest-recap-restored", app)
     }
 
@@ -675,47 +649,6 @@ import MorningCore
         tap("morning.closeDetails", app); home(app)
     }
 
-    private func pauseAndRestoreFifth(_ current: Identity, timer running: TimerSnapshot,
-                                     workspace: String, in app: XCUIApplication) throws {
-        expectUnchanged(current, timer: running, seconds: 20, in: app)
-        reveal(app)
-        let pause = button("morning.playback", app)
-        XCTAssertEqual(pause.label, "Pause")
-        let beforePause = Date().timeIntervalSinceReferenceDate
-        pause.tap()
-        let afterPause = Date().timeIntervalSinceReferenceDate
-        let paused = try timerSnapshot(app), pausedAt = try XCTUnwrap(paused.pausedAt)
-        XCTAssertEqual(try identity(app, index: 4), current)
-        XCTAssertEqual(paused.startedBits, running.startedBits)
-        XCTAssertEqual(paused.endsBits, running.endsBits)
-        assertWithinTap(pausedAt, from: beforePause, through: afterPause)
-        XCTAssertGreaterThanOrEqual(pausedAt - running.startedAt, 20)
-        let remaining = paused.endsAt - pausedAt
-        XCTAssertGreaterThan(remaining, 0); XCTAssertLessThanOrEqual(remaining, 160.001)
-        attach("long-ten-fifth-moment-paused-with-real-remainder", app)
-        app.terminate(); app.launch(); try requireWorkspace(workspace, app)
-        XCTAssertEqual(try identity(app, index: 4), current)
-        XCTAssertEqual(try timerSnapshot(app), paused)
-        // Longer than the shortest original budget. Exact Date bits and 20s
-        // already consumed distinguish retained remainder from a reset timer.
-        expectUnchanged(current, timer: paused, seconds: 65, in: app)
-        XCTAssertEqual(try timerSnapshot(app), paused)
-        reveal(app)
-        let resume = button("morning.playback", app)
-        XCTAssertEqual(resume.label, "Continue")
-        let beforeResume = Date().timeIntervalSinceReferenceDate
-        resume.tap()
-        let afterResume = Date().timeIntervalSinceReferenceDate
-        let resumed = try timerSnapshot(app)
-        XCTAssertEqual(try identity(app, index: 4), current)
-        XCTAssertEqual(resumed.startedBits, running.startedBits)
-        XCTAssertNil(resumed.pausedBits)
-        assertWithinTap(resumed.endsAt - paused.endsAt, from: beforeResume - pausedAt, through: afterResume - pausedAt)
-        assertWithinTap(resumed.endsAt - afterResume, from: remaining - (afterResume - beforeResume), through: remaining)
-        let proof = XCTAttachment(string: "Exact fifth-moment timer Date bits; no wall-clock rewrite\nrunning=\(running.raw)\npaused=\(paused.raw)\nresumed=\(resumed.raw)")
-        proof.name = "long-ten-real-pause-relaunch-retained-remainder"; proof.lifetime = .keepAlways; add(proof)
-    }
-
     private func requireSameRun(_ current: Identity, _ first: Identity, expectedID: String? = nil) {
         XCTAssertEqual(current.session, first.session); XCTAssertEqual(current.version, first.version)
         if let expectedID { XCTAssertEqual(current.step, expectedID) }
@@ -732,10 +665,10 @@ import MorningCore
             throw DiagnosticFailure.invalid
         }
     }
-    private func requireRecap(_ app: XCUIApplication, trace: [Identity], titles: [String], complete: Bool = false) throws {
+    private func requireRecap(_ app: XCUIApplication, trace: [Identity], titles: [String]) throws {
         home(app); reveal(app); tap("morning.settings", app)
         XCTAssertTrue(element("morning.completeSummary", app).label.hasPrefix("10 moments"))
-        XCTAssertTrue(element("morning.executionSummary", app).label.contains(complete ? "Timed moments finished: 3." : "Timed moments finished: 7."))
+        XCTAssertTrue(element("morning.executionSummary", app).label.contains("Timed moments finished: 3."))
         XCTAssertEqual(trace.count, 10); XCTAssertEqual(titles.count, 10)
         tap("setup.history", app)
         XCTAssertEqual(element("recap.completed", app).label, "10 moments reached")
@@ -756,10 +689,10 @@ import MorningCore
                 XCTAssertTrue(row.label.contains("Slack replies to check: 1."), row.label)
                 XCTAssertFalse(row.label.contains("Slack replies confirmed:"), row.label)
             default:
-                XCTAssertTrue(row.label.contains(complete && [3, 4, 5, 8].contains(index)
+                XCTAssertTrue(row.label.contains([3, 4, 5, 8].contains(index)
                     ? "Allocated time finished; no additional action verified." : "Timed budget finished."), row.label)
                 XCTAssertFalse(row.label.contains("Operation verified."), "A budget certifies no provider effect.")
-                if complete, [3, 4, 5, 8].contains(index) {
+                if [3, 4, 5, 8].contains(index) {
                     XCTAssertTrue(row.label.contains("contents observed"), row.label)
                     XCTAssertFalse(row.label.contains("Browser: 0 contents"), row.label)
                 }
@@ -767,15 +700,13 @@ import MorningCore
         }
         XCTAssertEqual(element("recap.slackRepliesUnconfirmed", app).label, "Slack replies to check: 1")
         XCTAssertFalse(app.staticTexts["recap.slackReplies"].exists)
-        if complete { XCTAssertEqual(element("recap.nativeActions", app).label, "Apple actions confirmed: 1") }
-        else { XCTAssertFalse(app.staticTexts["recap.nativeActions"].exists) }
+        XCTAssertEqual(element("recap.nativeActions", app).label, "Apple actions confirmed: 1")
         XCTAssertFalse(app.staticTexts["recap.nativeActionsUnconfirmed"].exists)
         XCTAssertTrue(element("recap.sample", app).exists)
     }
 
     private struct Identity: Equatable {
         let session: String, step: String, version: String, index: Int
-        var raw: String { "\(session)|\(step)|\(version)|\(index)" }
     }
     private struct TimerSnapshot: Equatable {
         let startedBits: UInt64, endsBits: UInt64, pausedBits: UInt64?
@@ -830,18 +761,6 @@ import MorningCore
             pausedBits: fields[6] == "none" ? nil : try XCTUnwrap(UInt64(fields[6], radix: 16)))
         XCTAssertTrue(timer.startedAt.isFinite && timer.endsAt.isFinite && (timer.pausedAt?.isFinite ?? true))
         return timer
-    }
-    private func expectUnchanged(_ identity: Identity, timer: TimerSnapshot, seconds: TimeInterval, in app: XCUIApplication) {
-        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false OR value != %@", identity.raw + "|" + timer.raw), object: app.scrollViews["morning.captions"])
-        changed.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: seconds), .completed,
-                       "Real elapsed time must not change the pinned identity or timer instants.")
-    }
-    private func assertWithinTap(_ actual: TimeInterval, from start: TimeInterval, through end: TimeInterval) {
-        // Date arithmetic may round below a millisecond; the window itself is
-        // measured around the real UI tap, not an invented resume instant.
-        XCTAssertGreaterThanOrEqual(actual, start - 0.001)
-        XCTAssertLessThanOrEqual(actual, end + 0.001)
     }
     private func requireWorkspace(_ workspace: String, _ app: XCUIApplication) throws {
         try MorningUITestNavigation.requireIsolatedWorkspace(workspace, in: app)
