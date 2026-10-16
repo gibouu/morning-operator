@@ -61,6 +61,60 @@ struct SyntheticOpenAIComparisonTests {
         #expect(!Self.permits(changedMethod, instructions: instructions, allowed: allowed))
     }
 
+    @Test @MainActor func structuredDiagnosticsRejectMalformedResponsesWithoutRecordingTheirText() throws {
+        let batch = try Self.diagnosticBatch()
+        let unrecorded = "SYNTHETIC malformed response must not enter the report"
+        let response = try #require(HTTPURLResponse(url: MoreLanguageModel.endpoint, statusCode: 200,
+                                                  httpVersion: nil, headerFields: nil))
+        let summary = Self.structuredSummary(data: try Self.diagnosticResponse(unrecorded), response: response,
+                                             batch: batch, requestOrdinal: 1)
+        #expect(summary.status == "batchRejected" && summary.errorCategory == "malformedStructuredResponse")
+        #expect(summary.outcome == nil && summary.steps.isEmpty)
+        #expect(!String(decoding: try JSONEncoder().encode(summary), as: UTF8.self).contains(unrecorded))
+    }
+
+    @Test @MainActor func structuredDiagnosticsRequireExactBatchPinsBeforePublishingAnyStep() throws {
+        let batch = try Self.diagnosticBatch(), anchor = try #require(batch.anchors.first)
+        let response = try #require(HTTPURLResponse(url: MoreLanguageModel.endpoint, statusCode: 200,
+                                                  httpVersion: nil, headerFields: nil))
+        func payload(_ ids: [String]) throws -> Data {
+            let rows = ids.map { ["title": "Review invented agenda", "kind": "calendar",
+                                  "durationMinutes": 2, "citationIDs": [$0]] as [String: Any] }
+            let json = try JSONSerialization.data(withJSONObject: ["selection": ["outcome": "supportedActivities", "steps": rows]])
+            return try Self.diagnosticResponse(String(decoding: json, as: UTF8.self))
+        }
+        // A valid first row must not survive a later row whose citation is not in this batch.
+        let rejected = Self.structuredSummary(data: try payload([anchor.id, "q999"]), response: response,
+                                              batch: batch, requestOrdinal: 1)
+        #expect(rejected.status == "batchRejected" && rejected.errorCategory == "invalidCitation")
+        #expect(rejected.outcome == nil && rejected.steps.isEmpty)
+        let accepted = Self.structuredSummary(data: try payload([anchor.id]), response: response,
+                                              batch: batch, requestOrdinal: 2)
+        let step = try #require(accepted.steps.first)
+        #expect(accepted.status == "batchValidated" && accepted.errorCategory == nil)
+        #expect(accepted.outcome == "supportedActivities" && accepted.steps.count == 1)
+        #expect(accepted.unitIDs == batch.units.map(\.id))
+        #expect(step.title == "Review invented agenda" && step.kind == "calendar" && step.durationMinutes == 2)
+        #expect(step.citationIDs == [anchor.id] && step.unitIDs == [anchor.citation.unitID])
+        #expect(Self.category(RoutineEvidenceProposalError.tooManySteps) == "tooManySteps")
+        #expect(Self.category(RoutineEvidenceProposalError.screenTimeSelectionRequired(availableSlots: 2)) == "screenTimeSelectionRequired")
+    }
+
+    private static func diagnosticBatch() throws -> ModelCitationPreparation.Batch {
+        let date = Date(timeIntervalSince1970: 1_760_000_000)
+        let source = try ObservationAcquisition(importedAt: date,
+            observedDate: ObservationObservedDate(date: date, timeZoneIdentifier: "Europe/Paris", provenance: .userAssigned),
+            origin: .synthetic, sourceKind: .text, sourceLabel: "SYNTHETIC diagnostic only",
+            originalText: "I review the invented project agenda after breakfast.")
+        return try #require(ModelCitationPreparation.prepare(
+            LearningEvidencePreparation.prepare(acquisitions: [source])).batchesByFirstUnitID.values.first)
+    }
+
+    private static func diagnosticResponse(_ text: String) throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["status": "completed", "output": [["type": "message", "role": "assistant",
+            "content": [["type": "output_text", "text": text]]]]])
+    }
+
     @Test(.enabled("Requires explicit synthetic-text consent, a protected key file and private input/output paths.") {
         let env = ProcessInfo.processInfo.environment
         return env["MO_RUN_OPENAI_SYNTHETIC_COMPARISON"] == "1" && env["MO_OPENAI_SYNTHETIC_TEXT_CONSENT"] == "1"
@@ -95,19 +149,28 @@ struct SyntheticOpenAIComparisonTests {
             let anchored = try ModelCitationPreparation.prepare(evidence)
             let instructions = AppleIntelligenceService.groundedProposalInstructions(french: AppLanguage.isFrench)
             var allowed: [String: ComposioJSONValue] = [:]
+            var diagnosticBatches: [String: ModelCitationPreparation.Batch] = [:]
             for batch in anchored.batchesByFirstUnitID.values {
                 allowed[batch.prompt] = OpenAIRoutineSchema.make(citationIDs: batch.anchors.map(\.id))
+                diagnosticBatches[batch.prompt] = batch
             }
             guard !allowed.isEmpty, allowed.count <= 24 else { throw ComparisonFailure.unapprovedInput }
             report.instructionSHA256 = Self.digest(Data(instructions.utf8))
             report.preparedRequestCount = allowed.count
             let model = MoreLanguageModel(storage: storage, transport: { request in
                 guard report.requestsAttempted < allowed.count,
-                      Self.permits(request, instructions: instructions, allowed: allowed) else { throw ComparisonFailure.egressRefused }
+                      Self.permits(request, instructions: instructions, allowed: allowed),
+                      let body = request.httpBody,
+                      let prompt = try? JSONDecoder().decode(ComposioJSONValue.self, from: body).objectValue?["input"]?.stringValue,
+                      let batch = diagnosticBatches[prompt] else { throw ComparisonFailure.egressRefused }
                 report.requestsAttempted += 1
+                let ordinal = report.requestsAttempted
                 let result = try await MoreLanguageModel.send(request)
                 report.requestsReturned += 1
                 report.httpStatuses.append(result.1.statusCode)
+                report.batchResponses.append(Self.structuredSummary(data: result.0, response: result.1,
+                    batch: batch, requestOrdinal: ordinal))
+                // Diagnostics never replace the provider bytes seen by the ordinary parser.
                 return result
             })
             client = model
@@ -140,6 +203,43 @@ struct SyntheticOpenAIComparisonTests {
               body["text"] == .object(["format": .object(["type": .string("json_schema"), "name": .string("more_response"),
                                                           "strict": .bool(true), "schema": schema])]) else { return false }
         return true
+    }
+
+    @MainActor private static func structuredSummary(data: Data, response: HTTPURLResponse,
+                                                     batch: ModelCitationPreparation.Batch,
+                                                     requestOrdinal: Int) -> StructuredBatchSummary {
+        var summary = StructuredBatchSummary(requestOrdinal: requestOrdinal, unitIDs: batch.units.map(\.id))
+        do {
+            guard response.url == MoreLanguageModel.endpoint, response.statusCode == 200,
+                  data.count <= MoreLanguageModel.maximumResponseBytes else { throw MoreLanguageModelError.invalidResponse }
+            let root = try JSONDecoder().decode(ComposioJSONValue.self, from: data).objectValue
+            guard root?["status"]?.stringValue == "completed", let output = root?["output"]?.arrayValue else {
+                throw MoreLanguageModelError.invalidResponse
+            }
+            var texts: [String] = []
+            for item in output {
+                guard let message = item.objectValue, message["type"]?.stringValue == "message",
+                      message["role"]?.stringValue == "assistant", let content = message["content"]?.arrayValue else { continue }
+                for part in content {
+                    let object = part.objectValue
+                    if object?["type"]?.stringValue == "refusal" { throw MoreLanguageModelError.refused }
+                    if object?["type"]?.stringValue == "output_text", let text = object?["text"]?.stringValue { texts.append(text) }
+                }
+            }
+            guard !texts.isEmpty else { throw MoreLanguageModelError.invalidResponse }
+            let selection = try JSONDecoder().decode(GroundedRoutineSelection.self,
+                from: Data(texts.joined(separator: "\n").utf8)).selection
+            let resolved = try selection.resolvedSteps(in: batch)
+            try LearningEvidencePreparation.validateBatchResult(resolved, units: batch.units)
+            let steps = zip(selection.steps, resolved).map { selected, native in
+                StructuredStepSummary(title: selected.title, kind: selected.kind, durationMinutes: selected.durationMinutes,
+                    citationIDs: selected.citationIDs, unitIDs: native.citations.map(\.unitID))
+            }
+            summary.outcome = selection.outcome; summary.steps = steps; summary.status = "batchValidated"
+        } catch {
+            summary.errorCategory = error is DecodingError ? "malformedStructuredResponse" : Self.category(error)
+        }
+        return summary
     }
 
     private static func privateURL(_ path: String?, below work: URL) throws -> URL {
@@ -175,8 +275,23 @@ struct SyntheticOpenAIComparisonTests {
         if let model = error as? MoreLanguageModelError {
             switch model { case .unauthorized: return "unauthorized"; case .rateLimited: return "rateLimited"; default: return "modelRequestOrResponseRejected" }
         }
-        if case RoutineEvidenceProposalError.insufficientEvidence = error { return "insufficientEvidence" }
-        if error is RoutineEvidenceProposalError { return "nativeEvidencePolicyRejected" }
+        if let evidence = error as? RoutineEvidenceProposalError {
+            switch evidence {
+            case .invalidSelection: return "invalidSelection"
+            case .dateRequired: return "dateRequired"
+            case .incompatibleSources: return "incompatibleSources"
+            case .unsupportedSource: return "unsupportedSource"
+            case .insufficientEvidence: return "insufficientEvidence"
+            case .inputBudgetExceeded: return "inputBudgetExceeded"
+            case .outputBudgetExceeded: return "outputBudgetExceeded"
+            case .tooManySteps: return "tooManySteps"
+            case .invalidCitation: return "invalidCitation"
+            case .invalidProposal: return "invalidProposal"
+            case .ownInterfaceLeftNoEvidence: return "ownInterfaceLeftNoEvidence"
+            case .screenTimeSelectionRequired: return "screenTimeSelectionRequired"
+            case .screenTimePersonalChoicesNeedReview: return "screenTimePersonalChoicesNeedReview"
+            }
+        }
         if error is CancellationError { return "cancelled" }
         return "comparisonUnavailable"
     }
@@ -209,8 +324,20 @@ private struct ComparisonReport: Encodable {
     let model: String, interfaceLanguage: String
     var status = "failed", elapsedSeconds = 0.0, requestsAttempted = 0, requestsReturned = 0
     var preparedRequestCount = 0, httpStatuses: [Int] = []
+    /// At most 24 requests, each with at most four natively validated rows; not final-plan acceptance.
+    var batchResponses: [StructuredBatchSummary] = []
     var inputReportSHA256: String?, instructionSHA256: String?, errorCategory: String?
     var fingerprint: ObservationFileFingerprint?, acquisition: ObservationAcquisition?, videoEvidence: ObservationVideoEvidence?
     var proposal: EvidenceRoutineProposal?
+}
+private struct StructuredBatchSummary: Encodable {
+    let requestOrdinal: Int, unitIDs: [UUID]
+    var status = "batchRejected", errorCategory: String?, outcome: String?
+    var steps: [StructuredStepSummary] = []
+}
+private struct StructuredStepSummary: Encodable {
+    let title: String, kind: String, durationMinutes: Int
+    /// Parallel arrays: every qN is pinned to the unit resolved by this request's native batch.
+    let citationIDs: [String], unitIDs: [UUID]
 }
 private enum ComparisonFailure: String, Error { case invalidPath, invalidInputFile, unapprovedInput, egressRefused, credentialUnavailable, invalidProposal, reportNotSaved, failed }
