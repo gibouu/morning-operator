@@ -17,6 +17,7 @@ Package/script checks use synthetic DOM inputs. Simulator UI and unsigned builds
 ### Local verification — 16 October 2026
 
 - Shared/browser regression selection: 172 tests passed, including conversation identity, reviewed-send expiry, duplicate-effect reservations, receipt rejection, navigation containment and saved-routine routing. Script checks: 57 passed; localization audit: no missing French keys.
+- An unsigned iOS simulator `build-for-testing` passed after integrating `main` at `e7dfad7`, including its Apple-only voice configuration.
 - Two simulator UI journeys passed on iPhone 17 / iOS 26.5: automatic LinkedIn and Slack moments open their public sign-in page directly and pause the routine; services and first-use guidance remain available in French and English without changing a saved personal title. Screenshots were inspected. No account was signed in and no real message was sent.
 - The full package run completed with 2,188 passes, 16 skips and two native Vision OCR timeouts in unchanged tests (`MediaObservationLayoutTests.nativeTextAndBoundsFromSyntheticImage` and `MorningAppleTests.realVisionOCRFromSyntheticScreenshot`). The suite is not fully green; the OCR failures are tracked in [#244](https://github.com/gibouu/morning-operator/issues/244).
 - Replies implemented here are specific to LinkedIn and Slack. Other websites can keep their browser session, but supported actions still depend on a recognized service/layout. Further communication adapters are tracked in [#257](https://github.com/gibouu/morning-operator/issues/257).
