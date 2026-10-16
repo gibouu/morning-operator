@@ -72,25 +72,34 @@ struct AppLanguageTests {
 
     @Test("Argument and registered defaults cannot identify an old persisted picker choice")
     func ignoresNonpersistentMarkers() throws {
-        try withIsolatedDefaults { defaults, name in
-            defaults.setPersistentDomain(["AppleLanguages": ["fr"], "unrelated": "kept"], forName: name)
-            defaults.setVolatileDomain(["more.appLanguage": "fr"], forName: UserDefaults.argumentDomain)
-            defaults.register(defaults: ["more.appLanguage": "fr"])
-            AppLanguage.removeLegacyLanguageOverride(in: defaults, domainName: name)
-            #expect(defaults.persistentDomain(forName: name)?["AppleLanguages"] as? [String] == ["fr"])
-            #expect(defaults.volatileDomain(forName: UserDefaults.argumentDomain)["more.appLanguage"] as? String == "fr")
+        let processLanguages = Locale.preferredLanguages
+        for useArguments in [true, false] {
+            try withIsolatedDefaults(make: { NonpersistentOverlayDefaults(suiteName: $0) }) { defaults, name in
+                defaults.setPersistentDomain(["AppleLanguages": ["fr"], "unrelated": "kept"], forName: name)
+                if useArguments {
+                    defaults.setVolatileDomain(["more.appLanguage": "fr"], forName: UserDefaults.argumentDomain)
+                } else {
+                    defaults.register(defaults: ["more.appLanguage": "fr"])
+                }
+                #expect(defaults.object(forKey: "more.appLanguage") as? String == "fr")
+                #expect(defaults.string(forKey: "more.appLanguage") == "fr")
+                AppLanguage.removeLegacyLanguageOverride(in: defaults, domainName: name)
+                #expect(defaults.persistentDomain(forName: name)?["AppleLanguages"] as? [String] == ["fr"])
+                #expect(defaults.object(forKey: "more.appLanguage") as? String == "fr")
 
-            // An argument override must not make different persisted values match.
-            defaults.setPersistentDomain(["more.appLanguage": "fr", "AppleLanguages": ["en"],
-                                          "unrelated": "kept"], forName: name)
-            defaults.setVolatileDomain(["AppleLanguages": ["fr"]], forName: UserDefaults.argumentDomain)
-            AppLanguage.removeLegacyLanguageOverride(in: defaults, domainName: name)
-            let domain = try #require(defaults.persistentDomain(forName: name))
-            #expect(domain["more.appLanguage"] == nil)
-            #expect(domain["AppleLanguages"] as? [String] == ["en"])
-            #expect(domain["unrelated"] as? String == "kept")
-            #expect(defaults.volatileDomain(forName: UserDefaults.argumentDomain)["AppleLanguages"] as? [String] == ["fr"])
+                // An argument override must not make different persisted values match.
+                defaults.setPersistentDomain(["more.appLanguage": "fr", "AppleLanguages": ["en"],
+                                              "unrelated": "kept"], forName: name)
+                defaults.setVolatileDomain(["AppleLanguages": ["fr"]], forName: UserDefaults.argumentDomain)
+                AppLanguage.removeLegacyLanguageOverride(in: defaults, domainName: name)
+                let domain = try #require(defaults.persistentDomain(forName: name))
+                #expect(domain["more.appLanguage"] == nil)
+                #expect(domain["AppleLanguages"] as? [String] == ["en"])
+                #expect(domain["unrelated"] as? String == "kept")
+                #expect(defaults.volatileDomain(forName: UserDefaults.argumentDomain)["AppleLanguages"] as? [String] == ["fr"])
+            }
         }
+        #expect(Locale.preferredLanguages == processLanguages)
     }
 
     @Test("Absent or unknown markers leave the persisted domain untouched")
@@ -108,9 +117,10 @@ struct AppLanguageTests {
         }
     }
 
-    private func withIsolatedDefaults(_ body: (UserDefaults, String) throws -> Void) throws {
+    private func withIsolatedDefaults(make: (String) -> UserDefaults? = { UserDefaults(suiteName: $0) },
+                                      _ body: (UserDefaults, String) throws -> Void) throws {
         let name = "test.more.language-migration." + UUID().uuidString
-        let defaults = try #require(UserDefaults(suiteName: name))
+        let defaults = try #require(make(name))
         defer { defaults.removePersistentDomain(forName: name) }
         try body(defaults, name)
     }
@@ -173,5 +183,31 @@ struct AppLanguageTests {
         let next = "Calendar"
         #expect(AppLanguage.localized("Next: \(next)", bundle: bundle, locale: english) == "Next: Calendar")
         #expect(AppLanguage.localized("Next: \(next)", bundle: bundle, locale: french) == "Ensuite : Calendar")
+    }
+}
+
+/// Foundation's NSArgumentDomain and registration domain are process-shared even
+/// for named suites. Keep their aggregate lookup behavior local to this test
+/// double; the UUID persistent domain and its removal use real UserDefaults.
+/// Each mutable instance stays inside one synchronous test scope.
+private final class NonpersistentOverlayDefaults: UserDefaults, @unchecked Sendable {
+    private var argumentValues: [String: Any] = [:]
+    private var registeredValues: [String: Any] = [:]
+
+    override func setVolatileDomain(_ domain: [String: Any], forName domainName: String) {
+        precondition(domainName == UserDefaults.argumentDomain)
+        argumentValues = domain
+    }
+
+    override func volatileDomain(forName domainName: String) -> [String: Any] {
+        domainName == UserDefaults.argumentDomain ? argumentValues : super.volatileDomain(forName: domainName)
+    }
+
+    override func register(defaults registrationDictionary: [String: Any]) {
+        registeredValues.merge(registrationDictionary, uniquingKeysWith: { _, new in new })
+    }
+
+    override func object(forKey defaultName: String) -> Any? {
+        argumentValues[defaultName] ?? super.object(forKey: defaultName) ?? registeredValues[defaultName]
     }
 }
