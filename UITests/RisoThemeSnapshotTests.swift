@@ -63,7 +63,7 @@ final class RisoThemeSnapshotTests: XCTestCase {
             attach("riso-\(name)-privacy", app)
             app.terminate()
             app.launch()
-            app.buttons["morning.date"].tap()
+            MorningUITestNavigation.selectTab("Review", in: app)
             XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5))
             attach("riso-\(name)-review", app)
             app.terminate()
