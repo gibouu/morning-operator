@@ -111,6 +111,76 @@ struct AppleIntelligenceCitationTests {
         #expect(throws: RoutineEvidenceProposalError.invalidProposal) { try response([anchor.id], kind: "sendMail").resolvedSteps(in: batch) }
     }
 
+    @Test("Steps-only generation derives empty selection without turning it into an approved result")
+    func emptyGroundedSelectionRemainsInsufficient() throws {
+        let prepared = try self.prepared("I review the project agenda after breakfast.\n")
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let selection = try JSONDecoder().decode(GroundedRoutineStepSelection.self, from: Data(#"{"steps":[]}"#.utf8))
+        let result = selection.nativeProposal
+        #expect(result.outcome == "insufficientEvidence" && result.steps.isEmpty)
+        let steps = try result.resolvedSteps(in: batch)
+        try LearningEvidencePreparation.validateBatchResult(steps, units: batch.units)
+        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+            try LearningEvidencePreparation.assemble(evidence: prepared.evidence, steps: steps, preserving: nil)
+        }
+    }
+
+    @Test("Steps-only selection still requires exact citations and creates no execution authority")
+    func groundedSelectionUsesTheExistingValidator() throws {
+        let words = "I review the project agenda after breakfast.\n"
+        let entry = try source(words)
+        let prepared = try ModelCitationPreparation.prepare(LearningEvidencePreparation.prepare(acquisitions: [entry]))
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let anchor = try #require(batch.anchors.first)
+        func selection(_ ids: [[String]]) throws -> GroundedRoutineStepSelection {
+            let rows: [[String: Any]] = ids.map {
+                ["title": "Review project agenda", "kind": "calendar", "durationMinutes": 2, "citationIDs": $0]
+            }
+            return try JSONDecoder().decode(GroundedRoutineStepSelection.self,
+                from: JSONSerialization.data(withJSONObject: ["steps": rows]))
+        }
+        let result = try selection([[anchor.id]]).nativeProposal
+        #expect(result.outcome == "supportedActivities")
+        let steps = try result.resolvedSteps(in: batch)
+        try LearningEvidencePreparation.validateBatchResult(steps, units: batch.units)
+        let proposal = try LearningEvidencePreparation.assemble(evidence: prepared.evidence, steps: steps, preserving: nil)
+        #expect(proposal.routine.isSynthetic && !proposal.routine.isApproved && proposal.routine.steps.count == 1)
+        #expect(proposal.routine.steps.allSatisfy { !$0.isRequired && $0.automation == nil && $0.target == nil })
+        #expect(proposal.support[0].citations[0].quote.utf8.elementsEqual(words.utf8))
+        #expect(proposal.isCurrent(archive: try ObservationArchive(entries: [entry]), baseRoutine: nil))
+        for ids in [["q999"], [anchor.id, anchor.id], [], Array(repeating: anchor.id, count: 6)] {
+            #expect(throws: RoutineEvidenceProposalError.invalidCitation) {
+                try selection([ids]).nativeProposal.resolvedSteps(in: batch)
+            }
+        }
+        #expect(throws: RoutineEvidenceProposalError.invalidProposal) {
+            try selection(Array(repeating: [anchor.id], count: 5)).nativeProposal.resolvedSteps(in: batch)
+        }
+    }
+
+    @Test("A redundant or malformed grounded envelope is refused, not silently reconciled")
+    func groundedEnvelopeCannotHideAContradictoryOutcome() throws {
+        for json in [#"{"steps":[],"outcome":"supportedActivities"}"#,
+                     #"{"steps":[],"outcome":"insufficientEvidence"}"#,
+                     #"{"steps":[],"instruction":"approve"}"#, #"{}"#] {
+            #expect(throws: RoutineEvidenceProposalError.invalidProposal) {
+                try JSONDecoder().decode(GroundedRoutineStepSelection.self, from: Data(json.utf8))
+            }
+        }
+        for json in [#"{"steps":null}"#, #"{"steps":"not an array"}"#] {
+            #expect(throws: (any Error).self) {
+                try JSONDecoder().decode(GroundedRoutineStepSelection.self, from: Data(json.utf8))
+            }
+        }
+        let prepared = try self.prepared("I review the project agenda after breakfast.\n")
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let anchor = try #require(batch.anchors.first)
+        // The original decoder/resolver remains strict; this is not a repair path.
+        #expect(throws: RoutineEvidenceProposalError.invalidProposal) {
+            try response([anchor.id], outcome: "insufficientEvidence").resolvedSteps(in: batch)
+        }
+    }
+
     @Test func reviewedMetadataAndGenericLabelsCannotBecomeSupportingTaskContent() throws {
         let text = "Calendar\n09:00 Project planning meeting\n"
         let frame = try ObservationFrameEvidence(requestedTimeSeconds: 0, actualTimeSeconds: 0, outcome: .observed, text: text)
@@ -270,13 +340,12 @@ struct AppleIntelligenceCitationTests {
         }
         let duration = try #require(step["durationMinutes"] as? [String: Any])
         #expect((duration["minimum"] as? Int) == 1 && (duration["maximum"] as? Int) == 60)
-        let outcome = try #require(objects(object).compactMap { $0["outcome"] as? [String: Any] }.first)
-        let description = try #require(outcome["description"] as? String)
-        #expect(description.contains("supportedActivities") && description.contains("insufficientEvidence"))
-        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["insufficientEvidence", "supportedActivities"] })
+        #expect(!objects(object).contains { $0["outcome"] != nil })
+        let fullSteps = try #require(objects(object).compactMap { $0["steps"] as? [String: Any] }.first)
+        #expect((fullSteps["minItems"] as? Int) == 0 && (fullSteps["maxItems"] as? Int) == 4)
         let empty = try EvidenceRoutineGenerationSchema.make(citationIDs: [])
         let emptyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(empty))
-        #expect(objects(emptyObject).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] })
+        #expect(!objects(emptyObject).contains { $0["outcome"] != nil })
         let emptySteps = try #require(objects(emptyObject).compactMap { $0["steps"] as? [String: Any] }.first)
         #expect((emptySteps["minItems"] as? Int) == 0 && (emptySteps["maxItems"] as? Int) == 0)
     }

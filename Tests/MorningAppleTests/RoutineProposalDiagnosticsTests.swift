@@ -16,9 +16,30 @@ struct RoutineProposalDiagnosticsTests {
         #expect(diagnostics.respondInvocations == 3 && diagnostics.responseReturns == 3 && diagnostics.validatedBatchCount == 3)
         #expect(diagnostics.resolvedStepCount == 1 && diagnostics.phase == .assembling)
         #expect(diagnostics.batches[0].anchorCount == 0 && diagnostics.batches[0].outcome == .insufficientEvidence)
+        #expect(diagnostics.batches.allSatisfy { $0.outcomeSource == .modelReported })
         #expect(diagnostics.batches[1].anchorCount == 5 && diagnostics.batches[1].outcome == .supportedActivities && diagnostics.batches[1].stepCount == 0)
         #expect(diagnostics.batches[2].stepCount == 1 && diagnostics.batches.allSatisfy { $0.phase == .validated })
         #expect(try JSONDecoder().decode(RoutineProposalDiagnostics.self, from: JSONEncoder().encode(diagnostics)) == diagnostics)
+    }
+
+    @Test func nativeSelectionOutcomesAreMarkedAndOldReportsRemainReadable() throws {
+        var diagnostics = RoutineProposalDiagnostics()
+        diagnostics.prepare([(1, 3), (1, 4)])
+        for (index, count) in [0, 1].enumerated() {
+            diagnostics.started(index); diagnostics.returned(index)
+            diagnostics.decoded(index, outcome: count == 0 ? "insufficientEvidence" : "supportedActivities",
+                stepCount: count, outcomeSource: .nativeStepCardinality)
+        }
+        #expect(diagnostics.batches.allSatisfy { $0.outcomeSource == .nativeStepCardinality })
+        let encoded = try JSONEncoder().encode(diagnostics)
+        #expect(try JSONDecoder().decode(RoutineProposalDiagnostics.self, from: encoded) == diagnostics)
+        var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let rows = try #require(object["batches"] as? [[String: Any]])
+        object["batches"] = rows.map { row in row.filter { $0.key != "outcomeSource" } }
+        let old = try JSONDecoder().decode(RoutineProposalDiagnostics.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(old.batches.allSatisfy { $0.outcomeSource == nil })
+        #expect(old.respondInvocations == diagnostics.respondInvocations && old.responseReturns == diagnostics.responseReturns)
+        #expect(old.batches.map(\.outcome) == diagnostics.batches.map(\.outcome))
     }
 
     @Test func failureCheckpointsAndUnknownOutcomesRetainNoRawResponse() throws {

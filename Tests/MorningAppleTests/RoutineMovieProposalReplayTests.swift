@@ -77,7 +77,10 @@ struct RoutineMovieProposalReplayTests {
             if case RoutineEvidenceProposalError.insufficientEvidence = error, let d = model.proposalDiagnostics,
                d.phase == .assembling, d.plannedBatchCount > 0, d.respondInvocations == d.plannedBatchCount,
                d.responseReturns == d.plannedBatchCount, d.validatedBatchCount == d.plannedBatchCount, d.resolvedStepCount == 0,
-               d.batches.count == d.plannedBatchCount, d.batches.allSatisfy({ $0.phase == .validated && $0.outcome == .insufficientEvidence && $0.stepCount == 0 }) {
+               d.batches.count == d.plannedBatchCount, d.batches.allSatisfy({
+                   $0.phase == .validated && $0.outcomeSource == .nativeStepCardinality &&
+                   $0.outcome == .insufficientEvidence && $0.stepCount == 0
+               }) {
                 report.status = "validatedEmpty"
             }
         }

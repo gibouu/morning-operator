@@ -157,6 +157,9 @@ struct SelectedModelGroundingTests {
     @Test("The remote grounded schema excludes free details and quotes while the legacy schema retains its contract")
     func groundedSchemaIsSeparateFromLegacy() throws {
         let properties = try #require(OpenAIRoutineSchema.make(citationIDs: ["q1", "q2"]).objectValue?["properties"]?.objectValue)
+        #expect(Set(properties.keys) == ["steps"])
+        #expect(properties["steps"]?.objectValue?["minItems"] == .number(0))
+        #expect(properties["steps"]?.objectValue?["maxItems"] == .number(4))
         let step = try #require(properties["steps"]?.objectValue?["items"]?.objectValue?["properties"]?.objectValue)
         #expect(Set(step.keys) == ["title", "kind", "durationMinutes", "citationIDs"])
         #expect(step["citationIDs"]?.objectValue?["maxItems"] == .number(1))
@@ -168,7 +171,10 @@ struct SelectedModelGroundingTests {
         #expect(step["durationMinutes"]?.objectValue?["description"] == .string(EvidenceRoutineFieldGuidance.duration))
         let empty = try #require(OpenAIRoutineSchema.make(citationIDs: []).objectValue?["properties"]?.objectValue)
         #expect(empty["steps"]?.objectValue?["maxItems"] == .number(0))
-        #expect(empty["outcome"]?.objectValue?["enum"] == .array([.string("insufficientEvidence")]))
+        #expect(Set(empty.keys) == ["steps"])
+        #expect(empty["steps"]?.objectValue?["minItems"] == .number(0))
+        let legacyRoot = try #require(OpenAIRoutineSchema.make().objectValue?["properties"]?.objectValue)
+        #expect(legacyRoot["outcome"]?.objectValue?["enum"] == .array([.string("insufficientEvidence"), .string("supportedActivities")]))
         let legacy = try #require(OpenAIRoutineSchema.make().objectValue?["properties"]?.objectValue?["steps"]?.objectValue?["items"]?.objectValue?["properties"]?.objectValue)
         #expect(legacy["detail"] != nil && legacy["evidenceQuote"] != nil && legacy["evidenceKind"] != nil)
         #expect(legacy["citationIDs"] == nil)
@@ -196,7 +202,7 @@ struct SelectedModelGroundingTests {
     }
 
     private static func response(citationID: String) throws -> (Data, HTTPURLResponse) {
-        let result: [String: Any] = ["outcome": "supportedActivities", "steps": [["title": "Review project agenda", "kind": "calendar",
+        let result: [String: Any] = ["steps": [["title": "Review project agenda", "kind": "calendar",
             "durationMinutes": 2, "citationIDs": [citationID], "detail": "Uncited Friday in the West room.", "quote": "Invented quote"]]]
         let text = String(decoding: try JSONSerialization.data(withJSONObject: result), as: UTF8.self)
         let data = try JSONSerialization.data(withJSONObject: ["status": "completed", "output": [["type": "message", "role": "assistant",

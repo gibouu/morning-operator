@@ -195,7 +195,10 @@ struct SyntheticEvidencePromptTests {
             #expect(diagnostic.phase == .assembling && diagnostic.validatedBatchCount > 0)
             #expect(diagnostic.respondInvocations == diagnostic.responseReturns)
             #expect(diagnostic.resolvedStepCount == 0)
-            #expect(diagnostic.batches.allSatisfy { $0.phase == .validated && $0.outcome == .insufficientEvidence && $0.stepCount == 0 })
+            #expect(diagnostic.batches.allSatisfy {
+                $0.phase == .validated && $0.outcomeSource == .nativeStepCardinality &&
+                $0.outcome == .insufficientEvidence && $0.stepCount == 0
+            })
         }
     }
 

@@ -195,7 +195,10 @@ struct VisibleTaskContrastProbeTests {
             if let diagnostic = service.proposalDiagnostics, diagnostic.phase == .assembling,
                diagnostic.plannedBatchCount > 0, diagnostic.respondInvocations == diagnostic.plannedBatchCount,
                diagnostic.responseReturns == diagnostic.plannedBatchCount,
-               diagnostic.validatedBatchCount == diagnostic.plannedBatchCount, diagnostic.resolvedStepCount == 0 {
+               diagnostic.validatedBatchCount == diagnostic.plannedBatchCount, diagnostic.resolvedStepCount == 0,
+               diagnostic.batches.count == diagnostic.plannedBatchCount,
+               diagnostic.batches.allSatisfy({ $0.phase == .validated && $0.outcomeSource == .nativeStepCardinality &&
+                   $0.outcome == .insufficientEvidence && $0.stepCount == 0 }) {
                 record.result = .validatedEmpty; record.proposedStepCount = 0
                 record.errorCategory = "insufficientEvidence"
             } else {
