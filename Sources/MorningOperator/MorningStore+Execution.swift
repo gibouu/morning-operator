@@ -40,6 +40,31 @@ extension MorningStore {
         guard let session else { return nil }
         return executionSummary(for: session)
     }
+    func executionRecapRows(for session: RoutineSession) -> [RoutineStepExecutionRecap] {
+        guard !privacyBlocksWork else { return [] }
+        return RoutineStepExecutionRecap.make(session: session, records: executionRecords)
+    }
+
+    func executionRecapText(for row: RoutineStepExecutionRecap, in session: RoutineSession) -> String {
+        guard !privacyBlocksWork else { return "" }
+        let french = AppLanguage.isFrench
+        var text = row.summary(french: french)
+        guard let step = session.routine.steps.first(where: { $0.id == row.id }),
+              case .connectedAPI(let service, _, _, _) = step.target, service.lowercased() == "slack" else { return text }
+        // A Slack reply is a separate durable effect, never evidence that the
+        // read moment or its presentation succeeded. Query this exact context.
+        guard let replies = slackActionCounts(for: session, stepID: row.id) else {
+            return text + (french ? "\nÉtat des réponses Slack indisponible." : "\nSlack reply status unavailable.")
+        }
+        if replies.confirmed > 0 {
+            text += french ? "\nRéponses Slack confirmées : \(replies.confirmed)." : "\nSlack replies confirmed: \(replies.confirmed)."
+        }
+        if replies.unconfirmed > 0 {
+            text += french ? "\nRéponses Slack à vérifier : \(replies.unconfirmed)." : "\nSlack replies to check: \(replies.unconfirmed)."
+        }
+        return text
+    }
+
     func executionSummary(for session: RoutineSession) -> String? {
         let records = executionRecords.filter { $0.sessionID == session.id }
         guard !records.isEmpty else { return nil }

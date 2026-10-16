@@ -287,6 +287,33 @@ struct SlackThreadReplyTests {
     private func makeConversation(_ provider: Provider, directory: URL, draft: String = "Exact draft") -> SlackThreadReplyConversation {
         SlackThreadReplyConversation(provider: provider, drafts: SlackReplyDraftService(generator: { _ in draft }), directory: directory, now: { instant }, speak: { _ in })
     }
+
+    @Test func recapAttributesDurableRepliesToExactPinnedStepAfterRelaunch() throws {
+        let setup = try setup(); defer { setup.cleanup() }
+        let steps = [RoutineStep(title: "Same Slack title"), RoutineStep(title: "Same Slack title")]
+        let session = RoutineSession(routine: .init(sourceLabel: "SYNTHETIC", steps: steps, isApproved: true))
+        let contexts = steps.map { MorningExecutionID(sessionID: session.id, routineVersionID: session.routine.id, stepID: $0.id) }
+        let journal = SlackReplyJournal(control: .init(directory: setup.directory))
+        let firstSource = try #require(SlackReplySource.sources(in: document(context: contexts[0]), at: instant).first)
+        let reply = try SlackPreparedReply(source: firstSource, destination: destination(), body: "Exact reply")
+        let firstID = UUID(), firstFingerprint = String(repeating: "a", count: 64)
+        #expect(try journal.claim(id: firstID, context: contexts[0], target: String(repeating: "b", count: 64), fingerprint: firstFingerprint, generation: nil))
+        let verified = try SlackReplyReceipt.verified(result: receipt(reply, id: firstID), reply: reply, operationID: firstID)
+        try journal.confirm(id: firstID, fingerprint: firstFingerprint, receipt: verified, generation: nil)
+        #expect(try journal.claim(id: UUID(), context: contexts[1], target: String(repeating: "c", count: 64), fingerprint: String(repeating: "d", count: 64), generation: nil))
+        let restored = makeConversation(Provider(destination: try destination()), directory: setup.directory)
+        let confirmed = try restored.actionCounts(for: session, stepID: steps[0].id)
+        let unconfirmed = try restored.actionCounts(for: session, stepID: steps[1].id)
+        #expect(confirmed.confirmed == 1 && confirmed.unconfirmed == 0)
+        #expect(unconfirmed.confirmed == 0 && unconfirmed.unconfirmed == 1)
+        let differentSession = RoutineSession(routine: session.routine)
+        #expect(try restored.actionCounts(for: differentSession, stepID: steps[0].id).confirmed == 0)
+        let differentVersion = RoutineSession(id: session.id, routine: .init(sourceLabel: "SYNTHETIC other version", steps: steps, isApproved: true))
+        #expect(try restored.actionCounts(for: differentVersion, stepID: steps[1].id).unconfirmed == 0)
+        #expect(try restored.actionCounts(for: session, stepID: UUID()).unconfirmed == 0)
+        let total = try restored.actionCounts(for: session)
+        #expect(total.confirmed == 1 && total.unconfirmed == 1)
+    }
     private func setup() throws -> Workspace { Workspace() }
     private struct Workspace {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SlackReply-SYNTHETIC-\(UUID())")

@@ -48,6 +48,84 @@ public struct RoutineExecutionRecord: Codable, Equatable, Sendable, Identifiable
     }
 }
 
+/// A read-only recap of each pinned moment. Visiting a moment does not certify an
+/// operation, and a provider response is separate from presenting that response.
+/// Nothing here is persisted or changes session progression.
+public struct RoutineStepExecutionRecap: Identifiable, Equatable, Sendable {
+    public enum Progress: Equatable, Sendable { case reached, skipped, notReached }
+    public enum Operation: Equatable, Sendable {
+        case verified, timedBudgetFinished, budgetFinished, running, paused
+        case responseReceivedPresentationUnavailable, responseReceivedPresentationInterrupted
+        case unavailable, uncertain, interrupted, notVerified
+    }
+    public let id: UUID
+    public let title: String
+    public let progress: Progress
+    public let operation: Operation?
+    /// Actual metadata for this browser moment; nil means no record was received.
+    public let observedContents: Int?
+    public let confirmedLikes: Int?
+
+    public static func make(session: RoutineSession, records: [RoutineExecutionRecord]) -> [Self] {
+        let started = session.events.contains { $0.kind == .started }
+        let skipped = Set(session.skippedStepIDs)
+        return session.routine.steps.enumerated().map { index, step in
+            let reached = started && index <= session.currentStepIndex
+            let progress: Progress = skipped.contains(step.id) ? .skipped : reached ? .reached : .notReached
+            let record = reached ? records.last { $0.sessionID == session.id && $0.stepID == step.id } : nil
+            let operation: Operation?
+            switch record?.outcome {
+            case .completed: operation = step.automation == .timedMoment ? .notVerified : .verified
+            case .budgetFinished: operation = step.automation == .timedMoment ? .timedBudgetFinished : .budgetFinished
+            case .unavailable:
+                operation = record?.confirmedExternalEffect == true ? .responseReceivedPresentationUnavailable : .unavailable
+            case .uncertain: operation = .uncertain
+            case .interrupted:
+                operation = record?.confirmedExternalEffect == true ? .responseReceivedPresentationInterrupted : .interrupted
+            case .running:
+                if index == session.currentStepIndex, session.status == .running { operation = .running }
+                else if index == session.currentStepIndex, session.status == .paused { operation = .paused }
+                else { operation = .interrupted }
+            case .skipped: operation = progress == .skipped ? nil : .notVerified
+            case nil: operation = reached && progress != .skipped ? .notVerified : nil
+            }
+            return Self(id: step.id, title: step.title, progress: progress, operation: operation,
+                observedContents: step.webBehavior != nil ? record?.observedContents : nil,
+                confirmedLikes: step.webBehavior != nil ? record?.confirmedLikes : nil)
+        }
+    }
+
+    public func summary(french: Bool) -> String {
+        if progress == .notReached { return french ? "Moment non atteint." : "Moment not reached." }
+        let result: String
+        switch operation {
+        case .verified: result = french ? "Opération vérifiée." : "Operation verified."
+        case .timedBudgetFinished: result = french ? "Budget chronométré terminé." : "Timed budget finished."
+        case .budgetFinished: result = french ? "Temps alloué terminé ; aucune action supplémentaire vérifiée." : "Allocated time finished; no additional action verified."
+        case .running: result = french ? "Opération en cours." : "Operation in progress."
+        case .paused: result = french ? "Moment en pause." : "Moment paused."
+        case .responseReceivedPresentationUnavailable:
+            result = french ? "Réponse du service reçue ; restitution indisponible." : "Service response received; presentation unavailable."
+        case .responseReceivedPresentationInterrupted:
+            result = french ? "Réponse du service reçue ; restitution interrompue." : "Service response received; presentation interrupted."
+        case .unavailable: result = french ? "Opération indisponible." : "Operation unavailable."
+        case .uncertain: result = french ? "Résultat non confirmé ; à vérifier." : "Result unconfirmed; needs checking."
+        case .interrupted: result = french ? "Opération interrompue." : "Operation interrupted."
+        case .notVerified: result = french ? "Aucune opération vérifiée enregistrée." : "No verified operation recorded."
+        case nil: result = ""
+        }
+        var text = result
+        if progress == .skipped {
+            text = (french ? "Moment passé." : "Moment skipped.") + (result.isEmpty ? "" : " " + result)
+        }
+        if let observedContents, let confirmedLikes {
+            text += french ? "\nNavigateur : \(observedContents) contenus observés, \(confirmedLikes) likes confirmés."
+                : "\nBrowser: \(observedContents) contents observed, \(confirmedLikes) likes confirmed."
+        }
+        return text
+    }
+}
+
 public extension RoutineStep {
     var executionDescription: String {
         let service: String?

@@ -8,11 +8,13 @@ import MorningApple
 struct MorningRecapView: View {
     @Bindable var store: MorningStore
     let session: RoutineSession
-    /// The day page already lists every moment under the recap, so it leaves the names out.
+    /// The day page can omit the separate stopped-at title. Execution statuses
+    /// always retain their moment name so outcomes cannot be misattributed.
     var showsMomentNames = true
 
     var body: some View {
         let recap = store.recap(for: session)
+        let rows = store.executionRecapRows(for: session)
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Recap").font(MorningTheme.Typography.heading).accessibilityAddTraits(.isHeader)
@@ -27,18 +29,23 @@ struct MorningRecapView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 10) {
-                group("\(recap.completedSteps.count) moments completed", recap.completedSteps, id: "recap.completed")
-                if !recap.skippedSteps.isEmpty {
-                    group("\(recap.skippedSteps.count) moments skipped", recap.skippedSteps, id: "recap.skipped")
+                let reached = rows.filter { $0.progress != .notReached }.count
+                Text(AppLanguage.isFrench
+                     ? (reached == 1 ? "1 moment parcouru" : "\(reached) moments parcourus")
+                     : (reached == 1 ? "1 moment reached" : "\(reached) moments reached"))
+                    .font(.raleway(.subheadline, .medium)).accessibilityIdentifier("recap.completed")
+                ForEach(rows) { row in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.title).font(.raleway(.footnote, .medium))
+                        Text(store.executionRecapText(for: row, in: session))
+                            .font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("recap.execution.\(row.id.uuidString)")
                 }
-                if !recap.unfinishedSteps.isEmpty {
-                    group("\(recap.unfinishedSteps.count) moments not reached", recap.unfinishedSteps, id: "recap.unfinished")
-                }
-            }
+            }.accessibilityIdentifier("recap.execution")
             saveState(recap.saveState)
-            if let summary = store.executionSummary(for: session) {
-                Text(summary).font(.raleway(.footnote)).accessibilityIdentifier("recap.execution")
-            }
             if let counts = store.nativeActionCounts(for: session) {
                 if counts.confirmed > 0 {
                     Text(AppLanguage.isFrench ? "Actions Apple confirmées : \(counts.confirmed)" : "Apple actions confirmed: \(counts.confirmed)")
@@ -79,22 +86,6 @@ struct MorningRecapView: View {
     private func stoppedAtTitle(_ recap: RoutineSessionRecap) -> String? {
         guard showsMomentNames, let id = recap.stoppedAtStepID else { return nil }
         return session.routine.steps.first { $0.id == id }?.title
-    }
-
-    private func group(_ count: LocalizedStringKey, _ steps: [RoutineStep], id: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(count).font(.raleway(.subheadline, .medium))
-                .fixedSize(horizontal: false, vertical: true)
-            if showsMomentNames {
-                ForEach(steps) { step in
-                    Text(step.title).font(.raleway(.footnote)).foregroundStyle(MorningStyle.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        // One element per group: the count, then the names it covers.
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(id)
     }
 
     @ViewBuilder private func saveState(_ state: RoutineSessionRecapSaveState) -> some View {

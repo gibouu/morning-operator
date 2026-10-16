@@ -124,10 +124,10 @@ extension MorningStore {
         #endif
     }
 
-    func slackActionCounts(for session: RoutineSession) -> SlackReplyActionCounts? {
+    func slackActionCounts(for session: RoutineSession, stepID: UUID? = nil) -> SlackReplyActionCounts? {
         guard !privacyBlocksWork else { return nil }
         _ = slackReply.phase
-        return try? slackReply.actionCounts(for: session)
+        return try? slackReply.actionCounts(for: session, stepID: stepID)
     }
 }
 
