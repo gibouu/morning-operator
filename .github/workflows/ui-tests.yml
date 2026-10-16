@@ -28,14 +28,12 @@ permissions:
   contents: read
 
 env:
-  # The whole suite takes about two hours on one hosted simulator, so it is
-  # split by test class into three of roughly forty-five minutes. The same
-  # shard has taken 26 minutes on one runner and 52 on another, so the test
-  # step is allowed 80. Each class is named once, here. The third shard runs every class not
-  # named in the first two, so a new test class is picked up without touching
-  # this file.
+  # Keep the three existing partitions and give the real-minute long routine
+  # its own shard. The test step remains bounded at 80 minutes. Each named
+  # class belongs to one shard; everything-else picks up unlisted classes.
   MORNING_CLASSES: QuietMorningTests SunriseDockTests MorningEntryUITests FixtureJourneyTests MorningBriefingTests CompletionCaptureTests PrivacyTests RoutineTransferTests
   PROPOSAL_CLASSES: RoutineEvidenceProposalTests ObservationReviewJourneyTests
+  LONG_ROUTINE_CLASSES: ImportedLongRoutineJourneyTests
 
 jobs:
   guard:
@@ -92,7 +90,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [morning, proposals, everything-else]
+        shard: [morning, proposals, everything-else, long-routine]
     env:
       SHARD: ${{ matrix.shard }}
     steps:
@@ -106,14 +104,17 @@ jobs:
 
       - name: Choose this shard's tests
         run: |
+          allowance=900
           case "$SHARD" in
             morning) selection="$(python3 scripts/ui-tests-ci.py select only $MORNING_CLASSES)" ;;
             proposals) selection="$(python3 scripts/ui-tests-ci.py select only $PROPOSAL_CLASSES)" ;;
-            everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $PROPOSAL_CLASSES)" ;;
+            everything-else) selection="$(python3 scripts/ui-tests-ci.py select skip $MORNING_CLASSES $PROPOSAL_CLASSES $LONG_ROUTINE_CLASSES)" ;;
+            long-routine) selection="$(python3 scripts/ui-tests-ci.py select only $LONG_ROUTINE_CLASSES)"; allowance=2700 ;;
             *) echo "Unknown shard: $SHARD" >&2; exit 1 ;;
           esac
           echo "$selection"
           echo "SELECTION=$selection" >> "$GITHUB_ENV"
+          echo "TEST_ALLOWANCE=$allowance" >> "$GITHUB_ENV"
 
       # No device name is written here: the image's simulators change with each
       # Xcode. The script takes an iPhone on the newest iOS runtime this Xcode supports.
@@ -133,8 +134,8 @@ jobs:
             -destination "platform=iOS Simulator,id=$UDID" \
             -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO -quiet
 
-      # One simulator, one test at a time, no retry. A test that hangs is failed
-      # after 15 minutes instead of using up the whole job.
+      # One simulator, one test at a time, no retry. Only the long-routine shard
+      # permits 45 minutes per test for its real budgets; all others keep 15.
       - name: Run the UI tests
         timeout-minutes: 80
         run: |
@@ -142,8 +143,8 @@ jobs:
             -destination "platform=iOS Simulator,id=$UDID" \
             -derivedDataPath .build/xcode -resultBundlePath ui-tests.xcresult \
             -parallel-testing-enabled NO -collect-test-diagnostics never \
-            -test-timeouts-enabled YES -default-test-execution-time-allowance 900 \
-            -maximum-test-execution-time-allowance 900 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance "$TEST_ALLOWANCE" \
+            -maximum-test-execution-time-allowance "$TEST_ALLOWANCE" \
             CODE_SIGNING_ALLOWED=NO $SELECTION
 
       # The largest-text checks need the simulator's own text size changed, so
