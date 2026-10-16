@@ -209,7 +209,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
             let brand = control("onboarding.brand", in: app)
             XCTAssertTrue(brand.exists)
             XCTAssertGreaterThan(brand.frame.midX, app.frame.midX, "Only the M mark belongs in the upper right.")
-            XCTAssertFalse(app.staticTexts["MORE"].exists, "The welcome header no longer contains a MORE wordmark.")
+            XCTAssertEqual(brand.label, "MORE", "The symbol keeps its accessible brand name.")
             tap("onboarding.offer", in: app)
             tap("paywall.subscribe", in: app)
             XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 5))
