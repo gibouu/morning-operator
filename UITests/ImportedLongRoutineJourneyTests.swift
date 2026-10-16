@@ -53,6 +53,49 @@ import MorningCore
         try runManualOracle(mediaArgument: media)
     }
 
+    func testActionSelectionAboveOpenKeyboardSurvivesSaveAndReopen() throws {
+        continueAfterFailure = false
+        executionTimeAllowance = 420
+        let portable = #"{"format":"morning-operator.routine","formatVersion":1,"detail":"includeDetails","sourceRoutineID":"92000000-0000-4000-8000-000000000100","sourceRoutineVersion":1,"sourceCreatedAt":1792129500.0,"approvalAtExport":false,"sourceIsSynthetic":true,"sourceLabel":"SYNTHETIC manual keyboard regression; no service execution","steps":[{"id":"92000000-0000-4000-8000-000000000001","title":"SYNTHETIC Calendar choice","kind":"calendar","durationMinutes":1,"isRequired":false,"detail":"SYNTHETIC manual Calendar moment."},{"id":"92000000-0000-4000-8000-000000000002","title":"SYNTHETIC Gmail choice","kind":"messages","durationMinutes":1,"isRequired":false,"detail":"SYNTHETIC manual Gmail moment."}]}"#
+        let data = Data(portable.utf8), document = try PortableRoutineDocument.decode(data)
+        let draft = try document.importedDraft(replacing: nil)
+        XCTAssertTrue(draft.isSynthetic && !draft.isApproved && !document.approvalAtExport)
+        XCTAssertEqual(draft.steps.count, 2)
+        XCTAssertTrue(draft.steps.allSatisfy { $0.automation == nil && $0.target == nil })
+        let app = XCUIApplication(), workspace = UUID().uuidString
+        app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
+            "--ui-testing-parsed-routine=" + data.base64EncodedString(),
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-more.appLanguage", "en"]
+        app.launch(); defer { app.terminate() }
+        try requireWorkspace(workspace, app); try requireAcceptedImport(app)
+        openRoutine(app)
+        for (index, action) in ["Read today's calendar", "Read my mail and help me reply"].enumerated() {
+            XCTAssertTrue(button("routine.approve", app).isEnabled)
+            tap("routine.step.\(index)", app)
+            let detail = "SYNTHETIC manual choice \(index).\nA second typed line keeps the native keyboard open.\nNo service is read and no routine is started."
+            replace(app.textFields["Step details"], id: "Step details", with: detail, in: app)
+            XCTAssertTrue(app.keyboards.firstMatch.exists)
+            chooseAction(action, app)
+            attach("keyboard-action-\(index)-selected-before-save", app)
+            tap("step.save", app)
+            XCTAssertTrue(button("routine.approve", app).isEnabled)
+            tap("routine.step.\(index)", app)
+            let form = stepEditorForm(app)
+            let choices = form.descendants(matching: .any).matching(identifier: "step.automation")
+            scroll(choices.firstMatch, id: "step.automation", in: app)
+            XCTAssertTrue(choices.allElementsBoundByIndex.contains {
+                $0.exists && $0.isEnabled && $0.isHittable &&
+                    ($0.label.contains(action) || ($0.value as? String ?? "").contains(action))
+            })
+            let retainedDetails = app.textFields["Step details"]
+            scroll(retainedDetails, id: "Step details", in: app)
+            XCTAssertEqual(retainedDetails.value as? String, detail)
+            attach("keyboard-action-\(index)-retained-after-reopen", app)
+            tap("Cancel", app)
+        }
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+    }
+
     private func runManualOracle(mediaArgument: String?) throws {
         continueAfterFailure = false
         // Native setup/review adds to the unchanged 28 real-minute routine.
@@ -801,6 +844,16 @@ import MorningCore
             }) {
                 choice.tap()
                 let form = app.collectionViews["step.editor.form"]
+                let save = app.buttons["step.save"]
+                guard form.waitForExistence(timeout: 5), save.exists, save.isHittable else {
+                    captureFailure("long-ten-editor-not-returned-after-picker-" + pickerID, app)
+                    XCTFail("The native choice must return to the foreground editor before its value is checked.")
+                    return
+                }
+                // Native selection can leave the focused details field above
+                // the keyboard, with the selected Picker below its viewport.
+                scroll(form.descendants(matching: .any).matching(identifier: pickerID).firstMatch,
+                       id: pickerID, in: app)
                 let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                     let save = app.buttons["step.save"]
                     return form.exists && save.exists && save.isHittable &&
