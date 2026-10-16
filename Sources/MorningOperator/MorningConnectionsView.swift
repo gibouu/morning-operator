@@ -250,7 +250,7 @@ struct MorningConnectionsView: View {
     private func providerInfo(_ id: String) -> (name: String, detail: String, symbol: String) {
         switch id {
         case "gmail": ("Gmail", text("Your email and the actions you choose.", "Vos e-mails et les actions que vous choisissez."), "envelope")
-        case "outlook": ("Outlook", text("Your Microsoft email and calendar.", "Vos e-mails et votre calendrier Microsoft."), "envelope.badge")
+        case "outlook": ("Outlook", text("Your Microsoft email.", "Vos e-mails Microsoft."), "envelope.badge")
         case "googlecalendar": ("Google Calendar", text("Your events, connected to your morning.", "Vos événements, au fil de votre matin."), "calendar")
         case "googledrive": ("Google Drive", text("Find the files you need.", "Retrouvez les fichiers dont vous avez besoin."), "folder")
         case "googledocs": ("Google Docs", text("Your documents, close at hand.", "Vos documents, à portée de main."), "doc.text")

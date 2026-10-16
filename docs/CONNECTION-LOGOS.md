@@ -9,7 +9,7 @@ No artwork is fetched at runtime. The asset catalog is already included by `proj
 Artwork was retrieved on 16 October 2026. Names identify services; their trademarks
 remain the property of their respective owners and do not imply endorsement.
 
-All assets except Google Docs come from [SVGL](https://github.com/pheralb/svgl),
+All assets except Google Docs and Le Monde come from [SVGL](https://github.com/pheralb/svgl),
 pinned at [f9b726cee1d1f3c697a18c880185e89d9a55bb70](https://github.com/pheralb/svgl/tree/f9b726cee1d1f3c697a18c880185e89d9a55bb70/static/library).
 
 | Asset service ID | Upstream SVG filename |
@@ -40,6 +40,13 @@ with its upstream brand color `#4285F4`. Simple Icons artwork is released under
 The SVG files were rasterized with `rsvg-convert --width N --height N` for
 `N = 24, 48, 72`. To update an image, retrieve its pinned upstream SVG, render those
 three sizes and replace the corresponding `Connection-<service>.imageset` files.
+
+The `news` asset identifies Le Monde. Its official [180 px site icon](https://www.lemonde.fr/bucket/resources/front/static/img/logos/pwa-180.png)
+was discovered in the `apple-touch-icon` and `icon` links on the [Le Monde homepage](https://www.lemonde.fr/)
+on 16 October 2026, then resized to the same three sizes with Lanczos resampling.
+The source SHA-256 is `60020297e849f118df6d6f305be9aad92280ba5abc2e4f6d25b93adeb1ba2de2`.
+This artwork belongs to Le Monde and is used solely to identify the linked service;
+it is not covered by the SVGL or Simple Icons licenses.
 
 ## SVGL license
 

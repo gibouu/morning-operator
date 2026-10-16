@@ -34,6 +34,6 @@ struct MorningConnectionIcon: View {
     private static let brandedServices: Set<String> = [
         "instagram", "tiktok", "twitter", "whatsapp", "reddit", "facebook", "threads", "youtube",
         "gmail", "outlook", "googlecalendar", "googledrive", "googledocs", "googlesheets",
-        "notion", "slack", "calendly", "linkedin", "discord"
+        "notion", "slack", "calendly", "linkedin", "discord", "news"
     ]
 }

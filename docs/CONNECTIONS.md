@@ -26,7 +26,7 @@ The configured API services are **Gmail, Outlook, Google Calendar, Google Drive,
 | Interactive websites | Real public Reddit progression/pause/reopen and Le Monde privacy-wall refusal passed native tests. Earlier Instagram QA sign-in/unread evidence is separate from ordinary MORE. [Browser execution ledger](ROUTINE-AUTOMATION-QA.md). | Authenticated social feeds, stories, videos, approved likes and personal WhatsApp linking on the ordinary iPhone. A browser driver exists; its full service coverage is not proven. |
 | Other API services and Shortcuts | Configured catalogs, schemas and app routes exist; generic reviewed actions can become routine drafts. | Per-user grants and useful operations for each account; real installed Shortcuts and their results. Catalog presence and an app logo establish neither. |
 
-Backend regression result for this snapshot is recorded below after the Node/Worker run. Package checks use synthetic upstreams; they never close the real-account gates above.
+Fresh backend regression on 16 October: after `npm ci --ignore-scripts`, `npm test` reports **36 passed / 2 failed**. The two Worker cross-isolate success/receipt checks receive `409` rather than `200`; unchanged isolated reruns still fail, and one also times out during synthetic account setup (`502 provider_timeout`). These fixtures use a 100 ms upstream deadline. This points to a timing-sensitive harness, but its cause is not established and the suite is **not green**. [Issue #196](https://github.com/gibouu/morning-operator/issues/196) records the commands, failures and remaining investigation. No production effect was tested. Earlier 38/38 results below remain historical. All these package checks use synthetic upstreams and cannot close the real-account gates above.
 
 The latest ordinary source also requires verified StoreKit access. The actual monthly offer, introductory eligibility, sandbox purchase/restore/revocation and normal access are still open in [#191](https://github.com/gibouu/morning-operator/issues/191). The documented phone retains the pre-subscription-gate Health build 1563; signed combined build 1565 was built but not installed. Source, installed app and live entitlement evidence must remain separate.
 
@@ -46,7 +46,7 @@ Pending the task's final simulator/build inspection. Record normal and largest F
 
 The dated sections below preserve the earlier delivery record. The current snapshot and newer linked acceptance reports take precedence: in particular, browser routine driving now exists, HealthKit is linked, native Gmail reading and current-location WeatherKit have real evidence, and the latest connections hub uses compact native grouped rows.
 
-## Current activation
+## Initial activation
 
 The connection service is live at [more-composio.more-gderamchi.workers.dev](https://more-composio.more-gderamchi.workers.dev/health), with an EU D1 database, applied migration and a server-only Composio Worker secret. The same personally signed MORE bundle was updated and launched on the physical iPhone. No Mac or local server is needed to run its API connections; this development installation still has its existing signing requirements.
 
@@ -64,7 +64,7 @@ The callback probe did not perform OAuth. No physical-phone screen was inspected
 
 Sixteen managed auth configurations are enabled: Gmail, Google Calendar, Outlook, Drive, Docs, Sheets, Notion, Slack, Calendly, Instagram Business/Creator, WhatsApp Business Cloud, LinkedIn profile/posts, Discord profile/servers, Facebook Pages, YouTube and Reddit. Real IDs remain outside shared source; scope labels and catalog pins are in [COMPOSIO-SERVICES.md](COMPOSIO-SERVICES.md). Google Contacts is excluded because managed OAuth is unavailable; Gmail contact-reading tools are a narrower alternative. Configuring a toolkit cannot expand the provider's account eligibility, scopes or production approval requirements.
 
-## Implemented behavior
+## Earlier implemented behavior
 
 - **iOS native:** Calendar/Weather source setup and reviewed Calendar/Reminder capture. Calendar briefing requires full permission and an explicit calendar selection; event creation can use write-only permission. The native screen reads at most 50 incomplete dated reminders due in the next seven days and can complete a displayed reminder after checking freshness and changes. Undated/overdue items are excluded. Messages, Mail, Notes, Clock and Other shortcut cards run separately prepared Apple Shortcuts or add them to a routine draft. Names alone prove neither installation nor actions; a validated callback confirms return from the shortcut, not its external effect. Input/output are bounded and returned text is transient.
 - **Browser:** the visible, persistent WebKit browser opens TikTok, X, Instagram, WhatsApp, YouTube Shorts and Le Monde. Reddit, personal Facebook and Threads are grouped under more websites. New sites support manual navigation and scrolling, with no invented unread/video automation. They are also routine destinations. Human browsing is distinct from MORE's calibrated unread/headline/scroll scripts. Automatic stories/likes/comments and hidden browsing are not supplied. Browser sessions are separate from Composio accounts.
