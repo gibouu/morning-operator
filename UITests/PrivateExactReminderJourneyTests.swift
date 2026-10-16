@@ -50,13 +50,23 @@ import MorningCore
         reveal(app); tap("morning.settings", in: app); tap("setup.routine", in: app)
         XCTAssertFalse(app.buttons["routine.approve"].exists, "Only the saved UI approval authorizes this session.")
         home(app); reveal(app); tap("morning.begin", in: app)
-        wait(app.staticTexts["morning.caption"], predicate: NSPredicate(format: "label CONTAINS %@", "Would you like"), timeout: 20)
-        reveal(app)
-        let play = button("morning.playback", in: app)
-        XCTAssertEqual(play.label, "Continue"); play.tap()
-        wait(play, predicate: NSPredicate(format: "label == %@", "Pause"), timeout: 8)
         let pinned = try executionIdentity(in: app)
         XCTAssertEqual(pinned[1], stepID)
+        XCTAssertEqual(pinned[3], "0")
+        reveal(app)
+        let play = button("morning.playback", in: app)
+        wait(play, predicate: NSPredicate(format: "label IN %@", ["Continue", "Pause"]), timeout: 8)
+        // Silent hands-free starts can hand over immediately. Only operate a
+        // Continue actually offered; a caption or identity alone is not running.
+        if play.label == "Continue" {
+            XCTAssertTrue(play.isEnabled && play.isHittable)
+            play.tap()
+        }
+        wait(play, predicate: NSPredicate(format: "label == %@", "Pause"), timeout: 8)
+        XCTAssertTrue(play.isEnabled && play.isHittable)
+        XCTAssertEqual(try executionIdentity(in: app), pinned,
+                       "The offered handover must preserve the same session, approved version and first moment.")
+        attach("exact-reminder-observed-running-moment-before-request", app)
         interact(app)
         tap("nativeMoment.open", in: app)
         XCTAssertTrue(app.staticTexts["nativeMoment.synthetic"].exists)
