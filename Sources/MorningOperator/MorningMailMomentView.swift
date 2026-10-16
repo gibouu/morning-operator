@@ -8,6 +8,8 @@ struct MorningMailMomentView: View {
     @Bindable var store: MorningStore
     @State private var replyIntention = ""
     @State private var replyCorrection = ""
+    @State private var submittedReplyIntention: String?
+    @State private var submittedReplyCorrection: String?
     @FocusState private var replyInputFocused: Bool
     @Environment(\.scenePhase) private var scenePhase
     private var french: Bool { AppLanguage.isFrench }
@@ -72,7 +74,7 @@ struct MorningMailMomentView: View {
                         .lineLimit(2...5).focused($replyInputFocused).accessibilityIdentifier("mail.reply.intention")
                     Button(french ? "Préparer la réponse" : "Prepare reply") {
                         let guidance = replyIntention
-                        replyIntention = ""; replyInputFocused = false
+                        submittedReplyIntention = guidance; replyInputFocused = false
                         store.prepareMailReply(guidance: guidance, revising: false)
                     }.disabled(replyIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("mail.reply.prepare")
@@ -92,7 +94,7 @@ struct MorningMailMomentView: View {
                         .lineLimit(2...5).focused($replyInputFocused).accessibilityIdentifier("mail.reply.correction")
                     Button(french ? "Corriger la réponse" : "Revise reply") {
                         let guidance = replyCorrection
-                        replyCorrection = ""; replyInputFocused = false
+                        submittedReplyCorrection = guidance; replyInputFocused = false
                         store.prepareMailReply(guidance: guidance, revising: true)
                     }.disabled(replyCorrection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("mail.reply.revise")
@@ -146,6 +148,12 @@ struct MorningMailMomentView: View {
         .disabled([.preparing, .preparingReply, .sending].contains(mail.state))
         .font(.subheadline)
         .accessibilityElement(children: .contain)
+        .onChange(of: mail.replyPreparationID) { _, prepared in
+            guard prepared != nil else { return }
+            if let submittedReplyIntention, replyIntention == submittedReplyIntention { replyIntention = "" }
+            if let submittedReplyCorrection, replyCorrection == submittedReplyCorrection { replyCorrection = "" }
+            submittedReplyIntention = nil; submittedReplyCorrection = nil
+        }
         .onChange(of: mail.context) { _, _ in clearReplyInputs() }
         .onChange(of: mail.selectedMessageID) { _, _ in clearReplyInputs() }
         .onChange(of: store.dataGeneration) { _, _ in clearReplyInputs() }
@@ -153,5 +161,8 @@ struct MorningMailMomentView: View {
         .onDisappear { clearReplyInputs() }
     }
 
-    private func clearReplyInputs() { replyIntention = ""; replyCorrection = ""; replyInputFocused = false }
+    private func clearReplyInputs() {
+        replyIntention = ""; replyCorrection = ""; replyInputFocused = false
+        submittedReplyIntention = nil; submittedReplyCorrection = nil
+    }
 }
