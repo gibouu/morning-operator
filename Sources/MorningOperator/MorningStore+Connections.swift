@@ -62,8 +62,11 @@ extension MorningStore {
             if (matches && connectedMoment.effectConfirmed) || currentExecutionRecord?.confirmedExternalEffect == true {
                 connectedActionStatus = matches && connectedMoment.document != nil
                     ? (AppLanguage.isFrench
-                        ? "Le service a confirmé l’action. Les informations reçues sont conservées. Dites répète pour les relire dans la langue choisie, ou suivant."
-                        : "The service confirmed the action. The received information is kept. Say repeat to hear it in your chosen language, or next.") + paused
+                        ? "Le service a confirmé l’action. Les informations reçues sont conservées. "
+                        : "The service confirmed the action. The received information is kept. ") + (canHearHandsFreeCommands
+                            ? (AppLanguage.isFrench ? "Dites répète pour les relire dans la langue choisie, ou suivant."
+                                : "Say repeat to hear it in your chosen language, or next.")
+                            : connectedNextInstruction) + paused
                     : clearedConnectedResultMessage
             } else {
                 connectedActionStatus = (AppLanguage.isFrench
@@ -158,9 +161,9 @@ extension MorningStore {
                       connectedMoment.matches(attempt, executionID: context) else { return }
                 guard connections.contains(where: { $0.id == connectionID && $0.service == service && $0.isActive }) else {
                     connectedMoment.fail(attempt, executionID: context)
-                    finishConnectedFailure(AppLanguage.isFrench
-                        ? "Ce compte doit être reconnecté dans Apps et comptes. Dites suivant pour continuer, ou mettez en pause pour le reconnecter."
-                        : "Reconnect this account in Apps & accounts. Say next to continue, or pause to reconnect it.", outcome: .unavailable)
+                    finishConnectedFailure((AppLanguage.isFrench
+                        ? "Ce compte doit être reconnecté dans Apps et comptes."
+                        : "Reconnect this account in Apps & accounts.") + " " + connectedNextInstruction, outcome: .unavailable)
                     return
                 }
                 let arguments = try ComposioJSONValue.parseObject(argumentsJSON)
@@ -195,7 +198,7 @@ extension MorningStore {
                 connectedMoment.fail(attempt, executionID: context)
                 guard !Task.isCancelled else { return }
                 finishConnectedFailure(connectedMoment.wasDispatched ? uncertainConnectedResultMessage :
-                    (AppLanguage.isFrench ? "Le service est inaccessible. Dites suivant pour continuer, ou mettez en pause pour vérifier la connexion." : "The service is unavailable. Say next to continue, or pause to check the connection."),
+                    (AppLanguage.isFrench ? "Le service est inaccessible. Vérifiez la connexion. " : "The service is unavailable. Check the connection. ") + connectedNextInstruction,
                     outcome: connectedMoment.wasDispatched ? .uncertain : .unavailable)
             }
         }
@@ -235,8 +238,8 @@ extension MorningStore {
             } catch {
                 guard !Task.isCancelled, connectedActionIsCurrent(context, generation: generation), connectedMoment.matches(attempt, executionID: context) else { return }
                 connectedMoment.fail(attempt, executionID: context)
-                connectedActionStatus = AppLanguage.isFrench ? "La lecture Slack n’a pas pu être actualisée. Aucun message n’a été publié. Réessayez ou dites suivant."
-                    : "Slack messages could not be refreshed. Nothing was posted. Try again or say next."
+                connectedActionStatus = (AppLanguage.isFrench ? "La lecture Slack n’a pas pu être actualisée. Aucun message n’a été publié. Réessayez. "
+                    : "Slack messages could not be refreshed. Nothing was posted. Try again. ") + connectedNextInstruction
                 recordExecution(.unavailable)
                 if readAloud, let connectedActionStatus { speech.speak(connectedActionStatus) }
             }
@@ -254,7 +257,7 @@ extension MorningStore {
         } else {
             let message = (connectedMoment.executionID == context && connectedMoment.effectConfirmed) || currentExecutionRecord?.confirmedExternalEffect == true
                 ? clearedConnectedResultMessage
-                : connectedActionStatus ?? (AppLanguage.isFrench ? "Le résultat n’est pas encore disponible. Dites suivant pour continuer." : "The result is not available yet. Say next to continue.")
+                : connectedActionStatus ?? ((AppLanguage.isFrench ? "Le résultat n’est pas encore disponible. " : "The result is not available yet. ") + connectedNextInstruction)
             speech.speak(message)
         }
         return true
@@ -273,9 +276,11 @@ extension MorningStore {
                     guard !Task.isCancelled, connectedActionIsCurrent(context, generation: generation),
                           connectedMoment.matches(attempt, executionID: context) else { return }
                     connectedMoment.fail(attempt, executionID: context)
-                    finishConnectedFailure(AppLanguage.isFrench
-                        ? "Le résultat est confirmé, mais je n’ai pas pu finir sa lecture. Dites répète ou suivant."
-                        : "The result is confirmed, but I could not finish reading it. Say repeat or next.", outcome: .unavailable)
+                    finishConnectedFailure((AppLanguage.isFrench
+                        ? "Le résultat est confirmé, mais je n’ai pas pu finir sa lecture. "
+                        : "The result is confirmed, but I could not finish reading it. ") + (canHearHandsFreeCommands
+                            ? (AppLanguage.isFrench ? "Dites répète ou suivant." : "Say repeat or next.")
+                            : connectedNextInstruction), outcome: .unavailable)
                     return
                 }
                 guard !Task.isCancelled, connectedActionIsCurrent(context, generation: generation),
@@ -317,7 +322,7 @@ extension MorningStore {
             guard !Task.isCancelled, connectedActionIsCurrent(context, generation: generation),
                   connectedMoment.matches(attempt, executionID: context) else { return }
             connectedMoment.fail(attempt, executionID: context)
-            finishConnectedFailure(ConnectedResultError.modelUnavailable.moreDescription, outcome: .unavailable)
+            finishConnectedFailure(ConnectedResultError.modelUnavailable.moreDescription + " " + connectedNextInstruction, outcome: .unavailable)
         }
     }
 
@@ -337,15 +342,19 @@ extension MorningStore {
         if let timer = activeStepTimer, timer.hasAlertedCurrentEnd { _ = finishAutomatedBudget(timer) }
     }
 
+    private var connectedNextInstruction: String {
+        MorningInteractionGuidance.next(canHearCommands: canHearHandsFreeCommands, french: AppLanguage.isFrench)
+    }
+
     private var uncertainConnectedResultMessage: String {
-        AppLanguage.isFrench
-            ? "L’action n’est pas confirmée. Je ne la répéterai pas. Vérifiez son résultat dans le compte connecté, ou dites suivant."
-            : "The action is unconfirmed. I will not repeat it. Check its result in the connected account, or say next."
+        (AppLanguage.isFrench
+            ? "L’action n’est pas confirmée. Je ne la répéterai pas. Vérifiez son résultat dans le compte connecté. "
+            : "The action is unconfirmed. I will not repeat it. Check its result in the connected account. ") + connectedNextInstruction
     }
 
     private var clearedConnectedResultMessage: String {
-        AppLanguage.isFrench
-            ? "Le service a confirmé l’action. Son contenu n’est plus disponible dans ce moment et je ne relancerai pas l’action pour le relire. Dites suivant pour continuer."
-            : "The service confirmed the action. Its content is no longer available in this moment, and I will not run it again to reread it. Say next to continue."
+        (AppLanguage.isFrench
+            ? "Le service a confirmé l’action. Son contenu n’est plus disponible dans ce moment et je ne relancerai pas l’action pour le relire. "
+            : "The service confirmed the action. Its content is no longer available in this moment, and I will not run it again to reread it. ") + connectedNextInstruction
     }
 }

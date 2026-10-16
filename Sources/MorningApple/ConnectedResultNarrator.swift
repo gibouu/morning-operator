@@ -38,7 +38,27 @@ public enum ConnectedResultError: LocalizedError {
     case tooLarge, modelUnavailable, invalidSummary
     public var errorDescription: String? {
         AppLanguage.isFrench
-            ? "Le service a répondu, mais MORE ne peut pas encore vous restituer ce résultat. Dites suivant pour continuer."
-            : "The service replied, but MORE could not prepare this result for you. Say next to continue."
+            ? "Le service a répondu, mais MORE ne peut pas encore vous restituer ce résultat."
+            : "The service replied, but MORE could not prepare this result for you."
+    }
+}
+
+/// UI guidance follows actual listening availability, independently of speech output.
+public enum MorningInteractionGuidance {
+    public static func next(canHearCommands: Bool, french: Bool) -> String {
+        if canHearCommands {
+            return french ? "Dites suivant pour poursuivre votre matin." : "Say next to continue your morning."
+        }
+        return french ? "Utilisez Suivant dans les réglages pour poursuivre votre matin."
+            : "Use Next in Settings to continue your morning."
+    }
+
+    public static func pausedRequest(canHearCommands: Bool, french: Bool) -> String {
+        if canHearCommands {
+            return french ? "Votre matin est en pause. Dites reprends après avoir fermé cette demande."
+                : "Your morning is paused. Say resume after closing this request."
+        }
+        return french ? "Votre matin est en pause. Fermez cette demande et ce moment, puis utilisez Continuer ou Suivant dans les réglages."
+            : "Your morning is paused. Close this request and this moment, then use Continue or Next in Settings."
     }
 }

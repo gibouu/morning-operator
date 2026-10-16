@@ -82,8 +82,7 @@ struct SlackMomentReplyView: View {
             }
             if reply.phase == .preparing || reply.phase == .sending { ProgressView() }
             if reply.context != nil {
-                Text(french ? "Votre matin est en pause. Dites reprends après avoir fermé cette demande."
-                     : "Your morning is paused. Say resume after closing this request.")
+                Text(MorningInteractionGuidance.pausedRequest(canHearCommands: store.canHearHandsFreeCommands, french: french))
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                 Button(french ? "Fermer cette demande" : "Close this request") { focused = false; store.clearSlackReply() }
                     .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("slackMoment.cancel")
