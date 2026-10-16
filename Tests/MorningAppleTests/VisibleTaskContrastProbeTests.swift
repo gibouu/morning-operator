@@ -57,6 +57,13 @@ struct VisibleTaskContrastProbeTests {
         }
     }
 
+    private static var explicitBaseline: [Contrast] {
+        contrasts.filter {
+            [Stimulus.explicitEnglish, .explicitFrench].contains($0.stimulus)
+                && $0.kind == .video && !$0.banner && !$0.fullDisclosure
+        }
+    }
+
     private enum Result: String, Encodable { case proposedDraft, validatedEmpty, failed }
     private enum ProbeFailure: Error { case invalidResult }
     private struct Record: Encodable {
@@ -93,6 +100,19 @@ struct VisibleTaskContrastProbeTests {
         let video = try ObservationVideoEvidence(durationSeconds: 2, frames: frames)
         return [try .init(importedAt: instant, observedDate: day, origin: .synthetic, sourceKind: .video,
             sourceLabel: "Synthetic contrast diagnostic", originalText: video.renderedText, videoEvidence: video)]
+    }
+
+    @Test("The explicit baseline selects only the two unchanged, banner-free video stimuli")
+    func explicitBaselineKeepsExistingStimuli() {
+        #expect(Self.explicitBaseline.map(\.label) == [
+            "explicitEnglish_video_noBanner", "explicitFrench_video_noBanner"
+        ])
+        for contrast in Self.explicitBaseline {
+            #expect(contrast.kind == .video && !contrast.banner && !contrast.fullDisclosure)
+            #expect(zip(contrast.texts, contrast.stimulus.texts).allSatisfy {
+                $0.0.utf8.elementsEqual($0.1.utf8)
+            })
+        }
     }
 
     @Test("The diagnostic varies only its declared source-kind, stimulus language and banner factors")
@@ -138,13 +158,17 @@ struct VisibleTaskContrastProbeTests {
     @MainActor
     func realLocalContrastDiagnostic() async throws {
         // One test and an awaited loop keep probes serial. The optional selector
-        // allows only the two new cases without repeating the frozen eight.
+        // isolates existing inputs without changing the production proposal path.
         let selection = ProcessInfo.processInfo.environment["MO_VISUAL_EVIDENCE_CONTRAST_VARIANT"]
-        guard selection == nil || selection == "fullDisclosure" else {
+        let contrasts: [Contrast]
+        switch selection {
+        case nil: contrasts = Self.contrasts
+        case "fullDisclosure": contrasts = Self.contrasts.filter(\.fullDisclosure)
+        case "explicitBaseline": contrasts = Self.explicitBaseline
+        default:
             Issue.record("Unknown contrast variant; no model was invoked.")
             return
         }
-        let contrasts = selection == "fullDisclosure" ? Self.contrasts.filter(\.fullDisclosure) : Self.contrasts
         for contrast in contrasts {
             try Task.checkCancellation()
             await probe(contrast)
