@@ -1,5 +1,7 @@
 # Apple-voice first beta
 
+Historical release snapshot: main restores the optional ElevenLabs conversation after PR #258. The SDK-free and encryption statements below describe that earlier build only; future archives must assess their restored dependencies separately.
+
 This release variant starts at frozen `de9373b7dfd4f7436670dba372080eb7c069efad`. It retains free entry, the internal Instagram browser, the bounded Dynamic Island layout and the English/French read-only HealthKit purpose text.
 
 The app project and `project.yml` have no remote Swift package dependency. Removing ElevenLabs also removes its LiveKit, WebRTC and RustLiveKitUniFFI dependency graph. The complete SDK transport, including its track/caption helpers, is removed. Its unavailable replacement cannot connect, even if an old build cache still contains SDK modules. Settings explain in English and French that live conversation is unavailable. The start method rejects it before requesting a token, changing consent or touching audio.
