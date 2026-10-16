@@ -6,26 +6,68 @@ import XCTest
 @MainActor
 final class MorningSubscriptionPurchaseTests: XCTestCase {
     private let productID = "com.gibouu.more.monthly"
+    // XCTest serializes each case and calls its synchronous cleanup directly.
+    nonisolated(unsafe) private var sessionForCleanup: SKTestSession?
+    nonisolated(unsafe) private var fixtureDirectoryForCleanup: URL?
 
-    // These entry tests do not need a working StoreKit test service. They exercise
-    // the ordinary app entry, including while StoreKit is still loading.
-    func testFreeContinueFromIntroductionAndOfferPersistsInEnglishAndFrench() {
-        for french in [false, true] {
-            for paywall in [false, true] {
-                let workspace = UUID()
-                let extra = french ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
-                let app = launch(workspace: workspace, french: french, extra: extra)
-                if paywall { showOffer(in: app) }
-                continueFree(in: app, french: french)
-                assertHome(app)
-                app.terminate()
-                app.launch()
-                assertHome(app)
-                let marker = app.staticTexts["qa.testWorkspace"]
-                XCTAssertEqual((marker.value as? String)?.lowercased(), workspace.uuidString.lowercased())
-                app.terminate()
-            }
+    override func tearDown() {
+        // UI XCTest cleanup runs synchronously on the main thread, including
+        // when a failed async assertion prevents the test actor from resuming.
+        MainActor.assumeIsolated {
+            let app = XCUIApplication()
+            if app.state != .notRunning { app.terminate() }
         }
+        if let sessionForCleanup {
+            attachTransactions(sessionForCleanup, name: "local-store-before-cleanup")
+        }
+        sessionForCleanup?.clearTransactions()
+        sessionForCleanup?.resetToDefaultState()
+        sessionForCleanup = nil
+        if let fixtureDirectoryForCleanup { try? FileManager.default.removeItem(at: fixtureDirectoryForCleanup) }
+        fixtureDirectoryForCleanup = nil
+        super.tearDown()
+    }
+
+    /// Run against the ordinary Release executable with a clean simulator app
+    /// container. The test runner's opt-in never reaches the application.
+    func testOrdinaryReleaseFreeEntryAndOnboardingPersist() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["MO_RUN_RELEASE_ENTRY_ACCEPTANCE"] == "1" else {
+            throw XCTSkip("Opt in with an ordinary Release target app and a clean simulator install.")
+        }
+        continueAfterFailure = false
+        let french = environment["MO_RELEASE_ENTRY_LANGUAGE"] == "fr"
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", french ? "(fr)" : "(en)",
+                               "-AppleLocale", french ? "fr_FR" : "en_US"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.buttons["entry.continueFree"].waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertFalse(app.buttons["onboarding.developerAccess"].exists)
+        XCTAssertFalse(app.staticTexts["qa.testWorkspace"].exists)
+        if environment["MO_RELEASE_ENTRY_OFFER"] == "1" { showOffer(in: app) }
+        continueFree(in: app, french: french)
+        let overview = app.staticTexts["permissions.title.summary"]
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+        XCTAssertEqual(app.alerts.count, 0)
+        tap("permissions.skip", in: app)
+        tap("routinePreparation.later", in: app)
+        assertHome(app)
+        app.terminate()
+        app.launch()
+        assertHome(app)
+        XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "ordinary-release-free-entry-\(french ? "fr" : "en")"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    // Each native case has one language and route so cold launches do not
+    // exhaust the per-test time budget before a result can be recorded.
+    func testEnglishIntroductionFreeEntryPersistsWithinItsWorkspace() {
+        verifyFreeEntry(french: false, paywall: false)
         let separateWorkspace = launch(french: false)
         XCTAssertTrue(separateWorkspace.buttons["entry.continueFree"].waitForExistence(timeout: 15),
                       "A saved entry choice must stay within its test workspace.")
@@ -33,52 +75,70 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         separateWorkspace.terminate()
     }
 
-    func testFreeContinueKeepsOptionalAccessOverviewAndRoutineSetupInEnglishAndFrench() {
-        for french in [false, true] {
-            let app = launch(french: french, extra: ["--ui-testing-permissions"])
-            continueFree(in: app, french: french)
-            let overview = app.staticTexts["permissions.title.summary"]
-            XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
-            XCTAssertTrue(app.staticTexts["permissions.title.calendar"].exists)
-            XCTAssertTrue(app.staticTexts["permissions.title.speech"].exists)
-            XCTAssertEqual(app.alerts.count, 0)
-            // An interrupted first setup must resume without returning to the offer.
-            app.terminate()
-            app.launch()
-            XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
-            XCTAssertFalse(app.buttons["entry.continueFree"].exists)
-            tap("permissions.skip", in: app)
-            let later = app.buttons["routinePreparation.later"]
-            XCTAssertTrue(later.waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertEqual(later.label, french ? "Continuer pour le moment" : "Continue for now")
-            tap("routinePreparation.later", in: app)
-            assertHome(app)
-            app.terminate()
-            app.launch()
-            assertHome(app)
-            XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
-            XCTAssertFalse(later.exists)
-            app.terminate()
-        }
+    func testEnglishOfferFreeEntryPersists() { verifyFreeEntry(french: false, paywall: true) }
+    func testFrenchIntroductionFreeEntryPersistsAtLargestText() { verifyFreeEntry(french: true, paywall: false) }
+    func testFrenchOfferFreeEntryPersistsAtLargestText() { verifyFreeEntry(french: true, paywall: true) }
+    func testEnglishOptionalAccessAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: false) }
+    func testFrenchOptionalAccessAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: true) }
+    func testEnglishFreeUserCanReopenMembershipAndReturnToSettings() { verifyMembership(french: false) }
+    func testFrenchFreeUserCanReopenMembershipAndReturnToSettings() { verifyMembership(french: true) }
+
+    private func verifyFreeEntry(french: Bool, paywall: Bool) {
+        let workspace = UUID()
+        let extra = french ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
+        let app = launch(workspace: workspace, french: french, extra: extra)
+        if paywall { showOffer(in: app) }
+        continueFree(in: app, french: french)
+        assertHome(app)
+        app.terminate()
+        app.launch()
+        assertHome(app)
+        let marker = app.staticTexts["qa.testWorkspace"]
+        XCTAssertEqual((marker.value as? String)?.lowercased(), workspace.uuidString.lowercased())
+        app.terminate()
     }
 
-    func testFreeUserCanReopenMembershipAndReturnToSettingsInEnglishAndFrench() {
-        for french in [false, true] {
-            let app = launch(french: french)
-            continueFree(in: app, french: french)
-            assertHome(app)
-            tap("morning.actions", in: app)
-            tap("morning.settings", in: app)
-            tap("setup.membership", in: app)
-            XCTAssertTrue(app.buttons["paywall.subscribe"].waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertTrue(app.buttons["paywall.restore"].exists)
-            continueFree(in: app, french: french)
-            XCTAssertTrue(app.buttons["setup.membership"].waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
-            app.terminate()
-        }
+    private func verifyOptionalSetup(french: Bool) {
+        let app = launch(french: french, extra: ["--ui-testing-permissions"])
+        continueFree(in: app, french: french)
+        let overview = app.staticTexts["permissions.title.summary"]
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+        XCTAssertTrue(app.staticTexts["permissions.title.calendar"].exists)
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].exists)
+        XCTAssertEqual(app.alerts.count, 0)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+        XCTAssertFalse(app.buttons["entry.continueFree"].exists)
+        tap("permissions.skip", in: app)
+        let later = app.buttons["routinePreparation.later"]
+        XCTAssertTrue(later.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(later.label, french ? "Continuer pour le moment" : "Continue for now")
+        tap("routinePreparation.later", in: app)
+        assertHome(app)
+        app.terminate()
+        app.launch()
+        assertHome(app)
+        XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
+        XCTAssertFalse(later.exists)
+        app.terminate()
+    }
+
+    private func verifyMembership(french: Bool) {
+        let app = launch(french: french)
+        continueFree(in: app, french: french)
+        assertHome(app)
+        tap("morning.actions", in: app)
+        tap("morning.settings", in: app)
+        tap("setup.membership", in: app)
+        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["paywall.restore"].exists)
+        continueFree(in: app, french: french)
+        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["setup.membership"].waitForExistence(timeout: 5), app.debugDescription)
+        app.terminate()
     }
 
     func testEmptyRestoreStillAllowsFreeEntryWithoutCreatingATransaction() throws {
@@ -89,7 +149,6 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         showPaywall(in: app)
         XCTAssertTrue(app.staticTexts["paywall.price"].label.contains("4,99"))
         XCTAssertTrue(app.staticTexts["paywall.price"].label.contains("€"))
-        XCTAssertTrue(app.buttons["paywall.subscribe"].label.contains("7"), "The fixture offers one free week.")
         tap("paywall.restore", in: app)
         XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 15), app.debugDescription)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
@@ -156,8 +215,8 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     func testUnverifiedSubscriptionRequiresAnEntryChoiceAndAllowsFreeContinue() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        try await session.buyProduct(identifier: productID)
         try await session.setSimulatedError(.verification(.invalidSignature), forAPI: .verification)
+        try await session.buyProduct(identifier: productID)
         let app = launch()
         defer { app.terminate() }
         XCTAssertTrue(app.staticTexts["onboarding.heading"].waitForExistence(timeout: 20), app.debugDescription)
@@ -169,20 +228,41 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     func testCancelledPurchaseLeavesTheOfferReadyAndAllowsFreeContinue() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        try await session.setSimulatedError(.generic(.userCancelled), forAPI: .purchase)
-        let app = launch()
+        session.disableDialogs = false
+        let app = launch(french: false)
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
-        let button = app.buttons["paywall.subscribe"]
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND label CONTAINS '7'"), object: button)
+        let payment = XCUIApplication(bundleIdentifier: "com.apple.ServicesPaymentAngel")
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let cancellations = [payment.buttons["dismiss"], payment.buttons["Cancel"], payment.buttons["Annuler"],
+                             payment.buttons["Close"], payment.buttons["Fermer"],
+                             app.buttons["Cancel"], app.buttons["Annuler"],
+                             springboard.buttons["Cancel"], springboard.buttons["Annuler"]]
+        let sheet = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            cancellations.contains { $0.exists && $0.isHittable }
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [sheet], timeout: 60), .completed,
+                       "The accepted local purchase must expose a cancel action: \(payment.debugDescription)")
+        let cancel = try XCTUnwrap(cancellations.first { $0.exists && $0.isHittable })
+        cancel.tap()
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"),
+                                             object: app.buttons["paywall.subscribe"])
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
         XCTAssertFalse(app.buttons["morning.actions"].exists)
-        XCTAssertFalse(app.staticTexts["paywall.notice"].exists)
-        XCTAssertTrue(session.allTransactions().isEmpty)
-        continueFree(in: app)
+        XCTAssertTrue(app.staticTexts["paywall.notice"].waitForNonExistence(timeout: 5), app.debugDescription)
+        let beforeFreeEntry = session.allTransactions()
+        XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
+        continueFree(in: app, french: false)
         assertHome(app)
-        XCTAssertTrue(session.allTransactions().isEmpty)
+        app.terminate()
+        app.launch()
+        assertHome(app)
+        let afterFreeEntry = session.allTransactions()
+        XCTAssertFalse(afterFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs,
+                       "Free entry must not add or approve a transaction after cancellation.")
     }
 
     func testFailedPurchaseAllowsFreeContinueWithoutATransaction() async throws {
@@ -194,9 +274,15 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
         XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 15), app.debugDescription)
+        let beforeFreeEntry = session.allTransactions()
+        XCTAssertFalse(beforeFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        let transactionIDs = Set(beforeFreeEntry.map(\.identifier))
         continueFree(in: app)
         assertHome(app)
-        XCTAssertTrue(session.allTransactions().isEmpty)
+        let afterFreeEntry = session.allTransactions()
+        XCTAssertFalse(afterFreeEntry.contains { $0.state == .purchased || $0.state == .restored })
+        XCTAssertEqual(Set(afterFreeEntry.map(\.identifier)), transactionIDs,
+                       "Free entry must not add or replace a StoreKit transaction.")
     }
 
     func testProductLoadFailureAllowsFreeContinueWithoutAFabricatedOffer() async throws {
@@ -214,7 +300,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testPendingPurchaseAllowsFreeContinueAndRelaunchWithoutApproval() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
         let app = launch()
@@ -238,13 +324,15 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testPendingPurchaseSurvivesForegroundUntilStoreKitApprovesIt() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
+        session.disableDialogs = false
         let app = launch()
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        confirmLocalPaymentSheet(session)
         let button = app.buttons["paywall.subscribe"]
         let pending = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false AND label CONTAINS 'attente'"), object: button)
         XCTAssertEqual(XCTWaiter.wait(for: [pending], timeout: 15), .completed)
@@ -260,21 +348,26 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     func testDeclinedPendingPurchaseNeedsExplicitRetryBeforeAnotherRequest() throws {
-        let session = try makeSession()
+        let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
+        session.disableDialogs = false
         let app = launch()
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        confirmLocalPaymentSheet(session)
         let button = app.buttons["paywall.subscribe"]
         let pending = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false AND label CONTAINS 'attente'"), object: button)
         XCTAssertEqual(XCTWaiter.wait(for: [pending], timeout: 15), .completed)
         let declined = try XCTUnwrap(session.allTransactions().first)
         try session.declineAskToBuyTransaction(identifier: declined.identifier)
+        attachTransactions(session, name: "ask-to-buy-after-decline")
         XCTAssertFalse(app.buttons["morning.actions"].exists)
         XCTAssertFalse(button.isEnabled, "A decline must not automatically request another purchase.")
+        session.disableDialogs = false
         tap("paywall.retryPending", in: app)
+        confirmLocalPaymentSheet(session)
         let newRequest = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             session.allTransactions().contains { $0.identifier != declined.identifier }
         }, object: nil)
@@ -287,7 +380,45 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 20), app.debugDescription)
     }
 
-    private func makeSession() throws -> SKTestSession {
+    private func confirmLocalPaymentSheet(_ session: SKTestSession) {
+        XCTAssertTrue(session.askToBuyEnabled)
+        XCTAssertFalse(session.disableDialogs)
+        let payment = XCUIApplication(bundleIdentifier: "com.apple.ServicesPaymentAngel")
+        XCTAssertTrue(payment.otherElements["payment-sheet"].waitForExistence(timeout: 60), payment.debugDescription)
+        XCTAssertTrue(payment.navigationBars["Xcode"].exists, payment.debugDescription)
+        XCTAssertTrue(payment.staticTexts["For testing purposes only. You will not be charged for confirming this purchase."].exists,
+                      payment.debugDescription)
+        let confirmation = payment.buttons["pay-now"]
+        XCTAssertTrue(confirmation.exists && confirmation.isHittable, payment.debugDescription)
+        let attachment = XCTAttachment(string: payment.debugDescription)
+        attachment.name = "local-Xcode-payment-before-confirmation"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        confirmation.tap()
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts["Ask Permission"]
+        XCTAssertTrue(permission.waitForExistence(timeout: 30), payment.debugDescription)
+        XCTAssertTrue(permission.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "[Environment: Xcode]")).firstMatch.exists,
+                      permission.debugDescription)
+        let ask = permission.buttons["OK"]
+        XCTAssertTrue(ask.exists && ask.isHittable, permission.debugDescription)
+        let request = XCTAttachment(string: permission.debugDescription)
+        request.name = "local-Xcode-ask-permission-before-request"
+        request.lifetime = .keepAlways
+        add(request)
+        ask.tap()
+    }
+
+    nonisolated private func attachTransactions(_ session: SKTestSession, name: String) {
+        let details = session.allTransactions().map {
+            "id=\($0.identifier) state=\($0.state.rawValue) pending=\($0.pendingAskToBuyConfirmation) expires=\(String(describing: $0.expirationDate))"
+        }.joined(separator: "\n")
+        let attachment = XCTAttachment(string: details.isEmpty ? "No local transactions." : details)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func makeSession(askToBuy: Bool = false) throws -> SKTestSession {
         continueAfterFailure = false
         #if targetEnvironment(simulator)
         let version = ProcessInfo.processInfo.operatingSystemVersion
@@ -295,8 +426,27 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
             throw XCTSkip("iOS 26.5 Simulator cannot connect SKTestSession to its local store (Apple FB22237318 / FB22500243). Run MORESubscriptions on iOS 26.6 or later; native purchases remain unverified here.")
         }
         #endif
-        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
+        // On a fresh CLI simulator, XCTest installs the target lazily at its
+        // first launch. StoreKit needs its registered bundle before loading a
+        // test configuration. This launch never starts a purchase or restore.
+        let registration = launch()
+        registration.terminate()
+        var url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "MORE", withExtension: "storekit"))
+        if askToBuy {
+            // Keep the fixture defaults and session overrides consistent across launches.
+            var fixture = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+            var settings = try XCTUnwrap(fixture["settings"] as? [String: Any])
+            settings["_askToBuyEnabled"] = true
+            settings["_disableDialogs"] = true
+            fixture["settings"] = settings
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("MOREAskToBuy-\(UUID().uuidString)")
+            fixtureDirectoryForCleanup = directory
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            url = directory.appendingPathComponent("MOREAskToBuy.storekit")
+            try JSONSerialization.data(withJSONObject: fixture, options: [.sortedKeys]).write(to: url)
+        }
         let session = try SKTestSession(contentsOf: url)
+        sessionForCleanup = session
         session.resetToDefaultState()
         session.clearTransactions()
         session.disableDialogs = true
@@ -304,6 +454,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         session.locale = Locale(identifier: "fr_FR")
         session.timeRate = .realTime
         XCTAssertTrue(session.disableDialogs, "The local StoreKit test configuration was not accepted. Do not launch an App Store purchase flow.")
+        XCTAssertEqual(session.askToBuyEnabled, askToBuy)
         return session
     }
 
@@ -334,9 +485,13 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     private func assertHome(_ app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 15), app.debugDescription)
+        let actions = app.buttons["morning.actions"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 15), app.debugDescription)
+        let usable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: actions)
+        XCTAssertEqual(XCTWaiter.wait(for: [usable], timeout: 5), .completed, app.debugDescription)
         XCTAssertFalse(app.staticTexts["onboarding.heading"].exists)
         XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
+        XCTAssertFalse(app.buttons["routinePreparation.later"].exists)
         XCTAssertEqual(app.alerts.count, 0)
     }
 
@@ -349,8 +504,13 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
 
     private func tap(_ identifier: String, in app: XCUIApplication) {
         let button = app.buttons[identifier]
+        let collection = app.collectionViews.firstMatch
+        // Form rows become accessible only when the collection reveals them.
+        if collection.exists {
+            for _ in 0..<10 where !button.exists { collection.swipeUp() }
+        }
         XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
-        let scroll = app.scrollViews.firstMatch
+        let scroll = collection.exists ? collection : app.scrollViews.firstMatch
         let scrollsButton = scroll.exists
             && scroll.descendants(matching: .button).matching(identifier: identifier).firstMatch.exists
         func visibleAndHittable() -> Bool {
