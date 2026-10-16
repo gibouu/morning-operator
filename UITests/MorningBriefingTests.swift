@@ -161,8 +161,15 @@ final class MorningBriefingTests: XCTestCase {
         let app = launchFixture()
         defer { app.terminate() }
         openBriefing(app)
-        configureSources(app)
-        assertPreparedSources(app)
+        let calendar = app.switches["briefing.calendar.synthetic-day-calendar"].firstMatch
+        reveal(calendar, app)
+        let control = calendar.switches.firstMatch
+        if control.exists { control.tap() } else { calendar.tap() }
+        let prepared = app.staticTexts["briefing.text"]
+        reveal(prepared, app)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format:
+            "label CONTAINS %@", "Synthetic quiet reading"), object: prepared)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed)
         closeBriefingAndSettings(app)
         MorningUITestNavigation.openRoutine(in: app)
         MorningUITestNavigation.tapButton("routine.approve", in: app)
@@ -182,7 +189,9 @@ final class MorningBriefingTests: XCTestCase {
         attach("synthetic-routine-starts-without-extra-recap", app)
 
         openBriefing(app)
-        assertPreparedSources(app)
+        let retained = app.staticTexts["briefing.text"]
+        reveal(retained, app)
+        XCTAssertTrue(retained.label.contains("Synthetic quiet reading"))
         let hear = app.buttons["briefing.hear"]
         reveal(hear, app)
         XCTAssertFalse(hear.isEnabled, "The preview cannot start competing speech during the routine.")
