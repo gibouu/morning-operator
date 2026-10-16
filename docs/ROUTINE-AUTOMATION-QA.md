@@ -234,6 +234,33 @@ filming flag is used by the complete routine. Main's subsequent `0d562f2`
 change is documentation only. The owner defers Apple reauthentication until
 after the iPhone installation; TestFlight submission remains unverified.
 
+The combined shared v39 checkpoint on `f8ccd65` passes with2,228 reported tests,
+zero issues and16 optional integration skips, including all four solar tests.
+All541 recorded inputs remain unchanged during that run. The later `d495b20`
+changes only app DEBUG filming behavior and documentation; all415 recorded
+package/library/test inputs remain identical. The two unchanged native OCR
+checks remain separately validated; all60 Python checks pass.
+
+Debug and unsigned generic-iOS Release9ad on `f8ccd65` both compile. The standard
+solar smoke shows day, held night and ordinary time after relaunch without
+filming flags. Independent visual review accepts that bounded result. A DEBUG
+Reduce Motion defect is corrected in `d495b20`; Debug/Release9ae then compile,
+and the filming type/flag are absent from Release. The explicit QA Reduce Motion
+flag holds the same pose past the ten-second deadline and after background
+return with the same process. Captures extend to32.96s and a subsequent ordinary
+relaunch restores the day. These images do not establish continuous FPS, the
+real iOS accessibility toggle or a second periodic30-second tick after return.
+
+Complete Long9ae on `d495b20` fails in223.494s before Save/approval/Start.
+Actual PNG/AX establish that Calendar is selected, but its Picker is beneath
+the open keyboard. The driver immediately requires hittability without first
+revealing the control again. Root and independent UX agree on this bounded
+driver failure; no product selection defect or executed session is credited.
+Products remain hash-identical. The owner initially stops work, then explicitly
+requests the fix and main integration. The focused regression and final
+integration outcome are recorded separately below; the full routine is not
+retrospectively marked passed.
+
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
 seven validated outcomes. Five abstain; two yield four synthetic unapproved
