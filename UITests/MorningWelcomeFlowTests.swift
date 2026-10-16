@@ -252,6 +252,10 @@ final class MorningWelcomeFlowTests: XCTestCase {
         XCTAssertEqual(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.count, 0)
         XCTAssertFalse(app.buttons["morning.actions"].exists, "A failed or absent purchase must keep the paywall visible.")
         XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+        XCTAssertFalse(app.staticTexts["permissions.title.speech"].exists,
+                       "The single voice explanation must stay behind verified subscription access.")
+        XCTAssertFalse(app.buttons["permissions.option.speech"].exists,
+                       "Optional access choices belong in Settings after the paywall.")
     }
 
     private func tap(_ identifier: String, in app: XCUIApplication) {

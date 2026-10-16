@@ -2,12 +2,14 @@ import Foundation
 import Testing
 @testable import MorningCore
 
-@Suite("First-opening permission explanations")
+@Suite("Progressive permission explanations")
 struct MorningPermissionProgressTests {
-    @Test func requestsKeepOrderAndSpeechHasItsOwnStepBeforeMicrophone() {
+    @Test func firstOpeningOnlyPreparesTheTwoVoicePermissions() {
         let supported = MorningPermission.allCases
         #expect(MorningPermissionProgress().pending(supported: supported) == supported)
-        #expect(supported.firstIndex(of: .speech)! < supported.firstIndex(of: .microphone)!)
+        #expect(MorningPermissionProgress().pendingInitial == [.speech, .microphone])
+        #expect(MorningPermissionProgress(completed: [.speech, .microphone]).pendingInitial.isEmpty)
+        #expect(MorningPermissionProgress(completed: [.speech]).pendingInitial == [.microphone])
     }
     @Test func handledChoicesSurviveRelaunchAndDoNotRepeat() throws {
         var progress = MorningPermissionProgress()

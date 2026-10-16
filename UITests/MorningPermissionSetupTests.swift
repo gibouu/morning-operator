@@ -5,84 +5,65 @@ import UIKit
 /// Synthetic sources never change iOS authorizations or contact weather providers.
 @MainActor
 final class MorningPermissionSetupTests: XCTestCase {
-    func testEachAccessHasAnExplanationBeforeAllowAndPersistsWhenRoutineLearningIsDeferred() {
+    func testVoiceAccessClosesAfterOneChoiceAndPersistsWhenPermissionIsDenied() {
         let app = launchFixture(denied: true)
-        let permissions = ["location", "calendar", "reminders", "screenTime", "speech", "microphone", "notifications", "alarms"]
-        for permission in permissions {
-            let title = app.staticTexts["permissions.title.\(permission)"]
-            XCTAssertTrue(title.waitForExistence(timeout: 5), app.debugDescription)
-            XCTAssertFalse(app.staticTexts["Your access choices couldn't be restored. You can still review them; the saved file stays intact."].exists)
-            XCTAssertFalse(app.staticTexts["These access choices couldn't be saved. MORE may ask you to review them next time."].exists)
-            XCTAssertEqual(app.alerts.count, 0)
-            let allow = app.buttons["permissions.allow"]
-            reveal(allow, app)
-            allow.tap()
-        }
-        let finish = app.buttons["permissions.finish"]
-        reveal(finish, app)
+        XCTAssertEqual(app.staticTexts["permissions.title.speech"].label, "Talk to MORE.")
+        XCTAssertEqual(app.buttons["permissions.allow"].label, "Enable voice")
+        let voicePrompts = app.staticTexts["permissions.voicePrompts"].label
+        XCTAssertTrue(voicePrompts.contains("speech recognition") && voicePrompts.contains("microphone"))
+        XCTAssertFalse(app.staticTexts["Your access choices couldn't be restored. You can still review them; the saved file stays intact."].exists)
         XCTAssertFalse(app.staticTexts["These access choices couldn't be saved. MORE may ask you to review them next time."].exists)
-        finish.tap()
-        XCTAssertTrue(finish.waitForNonExistence(timeout: 5))
-        app.terminate(); launchConfirmedWorkspace(app)
-        XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2), "Access setup must not repeat when routine onboarding was deferred.")
-        openSettingsFromHome(app)
-        let revisit = app.buttons["setup.permissions"]
-        reveal(revisit, app); revisit.tap()
-        XCTAssertTrue(app.staticTexts["permissions.title.location"].waitForExistence(timeout: 5))
-    }
-
-    func testSkippingOneAccessStillExplainsTheNextAndSpeechIsSeparateFromMicrophone() {
-        let app = launchFixture()
-        for permission in ["location", "calendar", "reminders", "screenTime", "speech"] {
-            XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5))
-            let skip = app.buttons["permissions.skip"]
-            reveal(skip, app)
-            XCTAssertEqual(skip.label, "Not now")
-            skip.tap()
-        }
-        XCTAssertTrue(app.staticTexts["permissions.title.microphone"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["permissions.title.microphone"].label, "Make your voice heard.")
         XCTAssertEqual(app.alerts.count, 0)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "synthetic-permission-explanation-microphone"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        let allow = app.buttons["permissions.allow"]
+        reveal(allow, app); allow.tap()
+        assertHomeWithoutFurtherSetup(app)
+        app.terminate(); launchConfirmedWorkspace(app)
+        XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2),
+                       "A denied voice choice must not repeat on the next launch.")
+        openPermissionOptions(app)
+        selectPermissionOption("speech", in: app)
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5))
+        reveal(allow, app); allow.tap()
+        XCTAssertTrue(app.buttons["permissions.option.speech"].waitForExistence(timeout: 5),
+                      "An optional access choice returns to the list instead of starting a wizard.")
+        XCTAssertFalse(app.buttons["permissions.allow"].exists)
     }
 
-    func testFrenchLargestTextExplainsEveryAccessAndReturnsToTopWithoutAnimation() {
+    func testSkippingVoiceReturnsDirectlyHomeWithoutRequestingAnyOtherAccess() {
+        let app = launchFixture()
+        let skip = app.buttons["permissions.skip"]
+        reveal(skip, app)
+        XCTAssertEqual(skip.label, "Continue without voice")
+        XCTAssertFalse(app.staticTexts["permissions.title.microphone"].exists,
+                       "Speech and microphone belong to the same voice explanation.")
+        XCTAssertEqual(app.alerts.count, 0)
+        attach("synthetic-single-voice-explanation", app)
+        skip.tap()
+        assertHomeWithoutFurtherSetup(app)
+        XCTAssertEqual(app.alerts.count, 0)
+    }
+
+    func testFrenchLargestTextKeepsTheSingleVoiceChoiceReachableInPortraitAndLandscape() {
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
         let app = launchFixture(frenchLargestText: true, phase: "night")
-        let permissions = ["location", "calendar", "reminders", "screenTime", "speech", "microphone", "notifications", "alarms"]
-        for (index, permission) in permissions.enumerated() {
-            if index == 4 {
-                XCUIDevice.shared.orientation = .landscapeLeft
-                let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                    let frame = app.frame
-                    return frame.width > frame.height
-                }, object: nil)
-                XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed, app.debugDescription)
-            }
-            XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5))
-            XCTAssertTrue(element("permissions.progress", in: app).isHittable,
-                          "Progress must stay available while long text scrolls.")
-            XCTAssertFalse(app.staticTexts["permissions.explanation"].exists,
-                           "Each new choice should start with its details closed.")
-            if index == 0 {
-                let details = element("permissions.details", in: app)
-                reveal(details, app); details.tap()
-                XCTAssertTrue(app.staticTexts["permissions.explanation"].waitForExistence(timeout: 5))
-                attach("permissions-night-fr-largest-expanded-portrait", app)
-            }
-            let allow = app.buttons["permissions.allow"]
-            reveal(allow, app)
-            let skip = app.buttons["permissions.skip"]
-            reveal(skip, app)
-            XCTAssertEqual(skip.label, "Plus tard")
-            skip.tap()
-        }
-        let finish = app.buttons["permissions.finish"]
-        for control in [app.buttons["permissions.learn"], finish, element("permissions.progress", in: app)] {
+        XCTAssertEqual(app.staticTexts["permissions.title.speech"].label, "Parlez à MORE.")
+        let voicePrompts = app.staticTexts["permissions.voicePrompts"].label
+        XCTAssertTrue(voicePrompts.contains("reconnaissance vocale") && voicePrompts.contains("micro"))
+        XCTAssertTrue(element("permissions.progress", in: app).isHittable)
+        XCTAssertFalse(app.staticTexts["permissions.explanation"].exists)
+        let details = element("permissions.details", in: app)
+        reveal(details, app); details.tap()
+        XCTAssertTrue(app.staticTexts["permissions.explanation"].waitForExistence(timeout: 5))
+        attach("permissions-night-fr-largest-voice-expanded-portrait", app)
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return frame.width > frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed, app.debugDescription)
+        for control in [app.buttons["permissions.allow"], app.buttons["permissions.skip"], element("permissions.progress", in: app)] {
             reveal(control, app)
             let frame = control.frame
             XCTAssertGreaterThan(frame.width, 0, control.debugDescription)
@@ -91,44 +72,47 @@ final class MorningPermissionSetupTests: XCTestCase {
             XCTAssertLessThanOrEqual(frame.maxX, app.frame.maxX + 1,
                                      "The complete control must fit horizontally: \(control.debugDescription)")
         }
-        XCTAssertEqual(finish.label, "Plus tard")
-        attach("permissions-night-fr-largest-completion-landscape", app)
-        attach("permissions-night-fr-largest-completion-landscape-screen", app,
-               screenshot: XCUIScreen.main.screenshot())
-        let hierarchy = XCTAttachment(string: app.debugDescription)
-        hierarchy.name = "permissions-night-fr-largest-completion-landscape-hierarchy"
-        hierarchy.lifetime = .keepAlways
-        add(hierarchy)
-        finish.tap()
-        XCTAssertTrue(finish.waitForNonExistence(timeout: 5))
+        let skip = app.buttons["permissions.skip"]
+        XCTAssertEqual(skip.label, "Continuer sans la voix")
+        XCTAssertFalse(app.buttons["permissions.learn"].exists)
+        XCTAssertFalse(app.buttons["permissions.finish"].exists)
+        attach("permissions-night-fr-largest-voice-landscape", app, screenshot: XCUIScreen.main.screenshot())
+        reveal(skip, app); skip.tap()
+        assertHomeWithoutFurtherSetup(app)
     }
 
-    func testCompletingAccessChoicesCanContinueIntoRealRoutineLearning() {
+    func testAllowingVoiceReturnsDirectlyHomeAndPersistsWithoutRoutineLearning() {
         let app = launchFixture()
-        skipAllPermissions(in: app)
-        let learn = app.buttons["permissions.learn"]
-        reveal(learn, app); learn.tap()
-        XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(app.buttons["learn.connections"].exists, "Continue must open the existing learning journey.")
-        XCTAssertFalse(app.buttons["permissions.allow"].exists)
-        XCTAssertFalse(app.buttons["permissions.learn"].exists)
-        XCTAssertEqual(app.alerts.count, 0)
+        let allow = app.buttons["permissions.allow"]
+        reveal(allow, app); allow.tap()
+        assertHomeWithoutFurtherSetup(app)
+        XCTAssertEqual(app.alerts.count, 0, "The isolated voice fixture never requests system permissions.")
         app.terminate(); launchConfirmedWorkspace(app)
         XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2),
-                       "Opening learning must keep the access choices saved.")
+                       "The voice choice must stay saved without opening routine learning.")
+        assertHomeWithoutFurtherSetup(app)
     }
 
-    func testRevisitingPermissionsReturnsToSettingsWithoutOfferingOnboardingAgain() {
+    func testRevisitingOptionalPermissionsReturnsToTheListAndSettingsWithoutOnboarding() {
         let app = launchFixture(french: true)
-        skipAllPermissions(in: app)
-        let later = app.buttons["permissions.finish"]
-        reveal(later, app); later.tap()
-        openSettingsFromHome(app)
-        let revisit = app.buttons["setup.permissions"]
-        reveal(revisit, app); revisit.tap()
-        skipAllPermissions(in: app)
-        XCTAssertFalse(app.buttons["permissions.learn"].exists,
-                       "Reviewing access from Settings must not restart routine onboarding.")
+        skipVoice(in: app)
+        assertHomeWithoutFurtherSetup(app)
+        openPermissionOptions(app)
+        for permission in ["location", "calendar", "reminders", "screenTime", "speech", "notifications", "alarms"] {
+            XCTAssertTrue(app.buttons["permissions.option.\(permission)"].exists, app.debugDescription)
+        }
+        XCTAssertFalse(app.buttons["permissions.option.microphone"].exists,
+                       "The optional voice choice groups speech recognition and microphone.")
+        selectPermissionOption("location", in: app)
+        XCTAssertTrue(app.staticTexts["permissions.title.location"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["permissions.learn"].exists)
+        let skip = app.buttons["permissions.skip"]
+        reveal(skip, app)
+        XCTAssertEqual(skip.label, "Plus tard")
+        skip.tap()
+        XCTAssertTrue(app.buttons["permissions.option.speech"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["permissions.title.calendar"].exists,
+                       "Skipping an optional access must return to the list, without advancing to another request.")
         let done = app.buttons["permissions.finish"]
         reveal(done, app)
         XCTAssertEqual(done.label, "Terminer")
@@ -138,32 +122,34 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertFalse(app.buttons["learn.screenTime"].exists)
     }
 
-    func testFrenchChoicesUseDistinctDayAndNightPaperWithDetailsInitiallyHidden() throws {
+    func testFrenchVoiceUsesDistinctDayAndNightPaperWithDetailsInitiallyHidden() throws {
         var luminances: [String: Double] = [:]
         for phase in ["day", "night"] {
             let app = launchFixture(french: true, phase: phase)
-            XCTAssertTrue(app.staticTexts["permissions.title.location"].waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertEqual(app.staticTexts["permissions.title.speech"].label, "Parlez à MORE.")
             let benefit = app.staticTexts["permissions.benefit"]
             XCTAssertTrue(benefit.exists)
             XCTAssertFalse(benefit.label.isEmpty)
             XCTAssertFalse(app.staticTexts["permissions.explanation"].exists,
-                           "The first view should show the short benefit, with detail available on demand.")
+                           "The single voice view should start with its short benefit.")
             XCTAssertFalse(app.staticTexts["permissions.lastOutcome"].exists)
             let screenshot = app.screenshot()
             luminances[phase] = try paperLuminance(screenshot)
-            attach("permissions-\(phase)-fr-compact", app, screenshot: screenshot)
+            attach("permissions-\(phase)-fr-voice-compact", app, screenshot: screenshot)
             let details = element("permissions.details", in: app)
             reveal(details, app); details.tap()
             let explanation = app.staticTexts["permissions.explanation"]
             XCTAssertTrue(explanation.waitForExistence(timeout: 5), app.debugDescription)
             XCTAssertGreaterThan(explanation.label.count, benefit.label.count)
-            attach("permissions-\(phase)-fr-expanded", app)
-            let skip = app.buttons["permissions.skip"]
-            reveal(skip, app); skip.tap()
-            XCTAssertTrue(app.staticTexts["permissions.title.calendar"].waitForExistence(timeout: 5))
-            XCTAssertFalse(app.staticTexts["permissions.explanation"].exists)
-            XCTAssertFalse(app.staticTexts["permissions.lastOutcome"].exists,
-                           "The previous choice must not add a second explanation to the next screen.")
+            attach("permissions-\(phase)-fr-voice-expanded", app)
+            skipVoice(in: app)
+            assertHomeWithoutFurtherSetup(app)
+            openPermissionOptions(app)
+            selectPermissionOption("speech", in: app)
+            XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.staticTexts["permissions.explanation"].exists,
+                           "Reopening a choice must reset its disclosure.")
+            XCTAssertFalse(app.staticTexts["permissions.lastOutcome"].exists)
             XCTAssertEqual(app.alerts.count, 0)
             app.terminate()
         }
@@ -230,7 +216,7 @@ final class MorningPermissionSetupTests: XCTestCase {
         if frenchLargestText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         if denied { app.launchArguments.append("--ui-testing-permissions-denied") }
         launchConfirmedWorkspace(app)
-        XCTAssertTrue(app.staticTexts["permissions.title.location"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5), app.debugDescription)
         return app
     }
 
@@ -248,12 +234,34 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertEqual(marker.value as? String, workspace, app.debugDescription)
     }
 
-    private func skipAllPermissions(in app: XCUIApplication) {
-        for permission in ["location", "calendar", "reminders", "screenTime", "speech", "microphone", "notifications", "alarms"] {
-            XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5), app.debugDescription)
-            let skip = app.buttons["permissions.skip"]
-            reveal(skip, app); skip.tap()
-        }
+    private func skipVoice(in app: XCUIApplication) {
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5), app.debugDescription)
+        let skip = app.buttons["permissions.skip"]
+        reveal(skip, app); skip.tap()
+    }
+
+    private func assertHomeWithoutFurtherSetup(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["permissions.allow"].exists)
+        XCTAssertFalse(app.buttons["permissions.finish"].exists)
+        XCTAssertFalse(app.buttons["permissions.learn"].exists)
+        XCTAssertFalse(app.staticTexts["permissions.title.ready"].exists)
+        XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+    }
+
+    private func openPermissionOptions(_ app: XCUIApplication) {
+        openSettingsFromHome(app)
+        let revisit = app.buttons["setup.permissions"]
+        reveal(revisit, app); revisit.tap()
+        XCTAssertTrue(app.buttons["permissions.option.speech"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["permissions.allow"].exists)
+        XCTAssertFalse(app.buttons["permissions.learn"].exists)
+    }
+
+    private func selectPermissionOption(_ permission: String, in app: XCUIApplication) {
+        let option = app.buttons["permissions.option.\(permission)"]
+        reveal(option, app); option.tap()
+        XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
