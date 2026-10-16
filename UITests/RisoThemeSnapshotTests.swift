@@ -7,17 +7,13 @@ final class RisoThemeSnapshotTests: XCTestCase {
     func testMorningAndRunningRoutineAcrossAllDayPhases() {
         for phase in ["dawn", "morning", "day", "evening", "night"] {
             let app = launch(phase: phase, dark: phase == "night")
-            XCTAssertTrue(app.buttons["morning.step.0"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.buttons["morning.step.0"].exists, "Home keeps the landscape free of routine cards.")
             attach("riso-\(phase)-home", app)
-            MorningUITestNavigation.revealMorningAction("run.start", in: app)
-            app.buttons["run.start"].tap()
-            XCTAssertTrue(app.buttons["morning.confirmStart"].waitForExistence(timeout: 5))
-            app.buttons["morning.confirmStart"].tap()
-            XCTAssertTrue(app.buttons["morning.closeActions"].waitForNonExistence(timeout: 3),
-                "Starting a morning must remove the playback overlay so its opening choices can be tapped.")
-            MorningUITestNavigation.chooseRoutineAtOpening(in: app)
-            XCTAssertTrue(app.staticTexts["run.step"].waitForExistence(timeout: 10))
-            XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 10))
+            MorningUITestNavigation.tapButton("run.start", in: app)
+            MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+            XCTAssertTrue(app.staticTexts["morning.caption"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.staticTexts["run.step"].exists, "Playback shows the passage instead of a step card.")
             attach("riso-\(phase)-running", app)
             app.terminate()
         }
@@ -27,10 +23,9 @@ final class RisoThemeSnapshotTests: XCTestCase {
         for dark in [false, true] {
             let name = dark ? "night-fr-dark" : "day-en-light"
             let app = launch(phase: dark ? "night" : "day", dark: dark, empty: true, french: dark)
-            XCTAssertTrue(app.buttons["learn.begin"].waitForExistence(timeout: 10))
+            MorningUITestNavigation.assertMorningAction("morning.learn", in: app)
             attach("riso-\(name)-first-use", app)
-            MorningUITestNavigation.revealMorningAction("morning.learn", in: app)
-            app.buttons["morning.learn"].tap()
+            MorningUITestNavigation.tapButton("morning.learn", in: app)
             XCTAssertTrue(app.buttons["learn.import"].waitForExistence(timeout: 5))
             attach("riso-\(name)-learn", app)
             app.terminate()
@@ -38,8 +33,7 @@ final class RisoThemeSnapshotTests: XCTestCase {
             app.launchArguments.removeAll { $0 == "--ui-testing-empty-workspace" }
             app.launchArguments.append("--ui-testing-approved")
             app.launch()
-            MorningUITestNavigation.revealMorningAction("morning.settings", in: app)
-            app.buttons["morning.settings"].tap()
+            MorningUITestNavigation.openSettings(in: app)
             XCTAssertTrue(app.buttons["setup.briefing"].waitForExistence(timeout: 5))
             attach("riso-\(name)-settings", app)
             app.buttons["setup.briefing"].tap()
@@ -50,12 +44,8 @@ final class RisoThemeSnapshotTests: XCTestCase {
             attach("riso-\(name)-brief", app)
             app.terminate()
             app.launch()
-            MorningUITestNavigation.revealMorningAction("morning.settings", in: app)
-            app.buttons["morning.settings"].tap()
-            let privacy = app.buttons["setup.privacy"]
-            for _ in 0..<6 where !privacy.isHittable { app.scrollViews.firstMatch.swipeUp() }
-            XCTAssertTrue(privacy.isHittable)
-            privacy.tap()
+            MorningUITestNavigation.openSettings(in: app)
+            MorningUITestNavigation.tapButton("setup.privacy", in: app)
             // The destructive control is a lazily created row far below the fold.
             // Verify the inventory that this screenshot actually shows.
             let inventory = app.descendants(matching: .any).matching(identifier: "privacy.observations").firstMatch
@@ -63,7 +53,7 @@ final class RisoThemeSnapshotTests: XCTestCase {
             attach("riso-\(name)-privacy", app)
             app.terminate()
             app.launch()
-            app.buttons["morning.date"].tap()
+            MorningUITestNavigation.selectTab("Review", in: app)
             XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5))
             attach("riso-\(name)-review", app)
             app.terminate()

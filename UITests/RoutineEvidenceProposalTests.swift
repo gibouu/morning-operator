@@ -46,44 +46,36 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         attach("synthetic-text-import-restored-approved-routine-preserved", app)
     }
 
-    /// Saved imported text can be reviewed independently of native recording support.
-    /// This does not start capture, obtain consent or call the local model.
-    func testMorningNoticeHandsOffToSavedObservationAfterDismissal() throws {
+    /// Saved imported text is reached through Settings and History without capture or a model call.
+    func testHistoryOpensSavedObservationAndBackPreservesApprovedRoutine() throws {
         let app = launch(["--ui-testing-import-observation"])
         openLearn(in: app)
         waitForNotes(importedObservation, in: app)
         closeLearn(in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        tap("morning.attention", in: app)
-        let notice = app.navigationBars["Your morning"]
-        XCTAssertTrue(notice.waitForExistence(timeout: 5))
-        let review = app.buttons["observation.review"]
-        XCTAssertTrue(review.waitForExistence(timeout: 5))
-        XCTAssertTrue(review.isHittable,
-                      "The saved-observation action must be reachable in the notice sheet.")
-        attach("synthetic-import-review-in-morning-notice", app)
-        review.tap()
-        waitAbsent(notice)
-        let learn = app.navigationBars["Learn my morning"]
-        XCTAssertTrue(learn.waitForExistence(timeout: 5),
-                      "Learn must open after the notice finishes dismissing.")
-        XCTAssertTrue(learn.buttons["Done"].isHittable)
+        reviewRoot(in: app)
+        let review = app.buttons["review.learn"]
+        tap("review.learn", in: app)
         waitForNotes(importedObservation, in: app)
+        let back = app.navigationBars.buttons["BackButton"].firstMatch
+        XCTAssertTrue(back.isHittable, "Saved observation review must retain its native return to History.")
         scrollTo(app.textViews["learn.notes"], in: app)
         XCTAssertFalse(app.buttons["proposal.approve"].exists)
         XCTAssertEqual(app.alerts.count, 0)
-        attach("synthetic-notice-dismissed-before-learn-review", app)
+        attach("synthetic-history-opens-saved-observation-without-proposal", app)
         closeLearn(in: app)
+        XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5),
+                      "Back must return to History before another destination is opened.")
+        XCTAssertTrue(review.exists)
         assertApprovedRoutine(currentTitle, count: 4, in: app)
         openArchive(in: app)
         XCTAssertFalse(app.buttons["observations.reviewProposal"].exists,
                        "Reviewing saved text must not generate or install a routine.")
     }
 
-    /// A real failed external-file import leaves a reviewable prior observation.
-    /// Its queued review waits for a paused manual morning to end. This does not
-    /// test native capture, owned-recording recovery, speech or model inference.
-    func testPausedMorningDefersSavedObservationReviewUntilItEnds() throws {
+    /// A failed external-file import preserves reviewable text and the paused session's pinned routine.
+    /// This does not test native capture, owned-recording recovery, speech or model inference.
+    func testPausedMorningKeepsFailedImportReviewSeparateFromPinnedSession() throws {
         let environment = ProcessInfo.processInfo.environment
         guard environment["MO_BLANK_OBSERVATION_TEST"] == "1",
               let supplied = environment["MO_RECORDED_OBSERVATION_WORKSPACE"],
@@ -96,8 +88,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         waitForNotes(importedObservation, in: app)
         app.terminate()
 
-        // Keep the approved routine and saved text in the same workspace. This
-        // hook must reach real blank extraction, never missing-file substitute data.
+        // The hook must reach blank extraction, never a missing-file substitute.
         app.launchArguments.removeAll {
             $0 == "--ui-testing-import-observation" || $0 == "--ui-testing-observation-archive"
                 || $0 == "--ui-testing-approved"
@@ -117,46 +108,36 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         MorningUITestNavigation.selectTab("Morning", in: app)
         tap("run.start", in: app)
         assertRun("running", step: currentTitle, in: app)
-        tap("run.pause", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        tap("morning.playback", in: app)
         assertRun("paused", step: currentTitle, in: app)
 
-        tap("morning.attention", in: app)
-        let notice = app.navigationBars["Your morning"]
-        XCTAssertTrue(notice.waitForExistence(timeout: 5))
-        let review = app.buttons["observation.review"]
-        XCTAssertTrue(review.waitForExistence(timeout: 5))
-        XCTAssertTrue(review.isHittable)
-        review.tap()
-        waitAbsent(notice)
-        let learn = app.navigationBars["Learn my morning"]
-        let prematureReview = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true"), object: learn)
-        prematureReview.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [prematureReview], timeout: 2), .completed,
-                       "A paused morning must continue to block the queued saved-observation review.")
+        openLearn(in: app)
+        waitForNotes(importedObservation, in: app)
+        XCTAssertFalse(app.buttons["proposal.approve"].exists)
+        XCTAssertFalse(app.staticTexts["learn.videoEvidence"].exists)
+        XCTAssertEqual(app.alerts.count, 0)
+        attach("synthetic-failed-import-review-preserves-paused-morning", app)
+        closeLearn(in: app)
         assertRun("paused", step: currentTitle, in: app)
-        XCTAssertTrue(app.buttons["run.resume"].isHittable)
-        attach("synthetic-saved-observation-review-deferred-while-paused", app)
+        MorningUITestNavigation.openSettings(in: app)
+        let resume = app.buttons["morning.playback"]
+        XCTAssertTrue(resume.isHittable)
+        XCTAssertEqual(resume.label, "Continue")
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        stopRun(in: app)
 
-        // The automatic sheet handoff can hide the stopped-state label immediately;
-        // verify it below once the requested review has been closed.
-        stopRun(in: app, verifyStoppedState: false)
-        XCTAssertTrue(learn.waitForExistence(timeout: 5),
-                      "Ending the paused morning must present the queued review without another tap.")
-        XCTAssertTrue(learn.buttons["Done"].isHittable)
+        openLearn(in: app)
         waitForNotes(importedObservation, in: app)
         XCTAssertFalse(app.buttons["proposal.approve"].exists)
         XCTAssertEqual(app.alerts.count, 0)
-        attach("synthetic-saved-observation-review-opened-after-morning-ended", app)
+        attach("synthetic-failed-import-review-after-morning-ended", app)
         closeLearn(in: app)
-        MorningUITestNavigation.selectTab("Morning", in: app)
-        let stopped = app.staticTexts["morning.heading"]
-        XCTAssertTrue(stopped.waitForExistence(timeout: 5))
-        XCTAssertTrue(MorningUITestState.labels(for: "stopped").contains(stopped.value as? String ?? ""))
+        MorningUITestNavigation.assertSession(state: "stopped", in: app)
         assertApprovedRoutine(currentTitle, count: 4, in: app)
         openArchive(in: app)
         XCTAssertFalse(app.buttons["observations.reviewProposal"].exists,
-                       "Deferred review must preserve the approved routine without generating a proposal.")
+                       "Review must preserve the approved routine without generating a proposal.")
     }
 
     func testLearnRequiresExplicitProvenanceThenReviewsSingleSourceBeforeApproval() throws {
@@ -315,10 +296,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         XCTAssertTrue(changed.contains("Keep this changed observation."))
         let keyboardDone = app.buttons["input.done"]
         if keyboardDone.exists && keyboardDone.isHittable { keyboardDone.tap() }
-        let learn = app.navigationBars["Learn my morning"]
-        XCTAssertTrue(learn.buttons["Done"].isHittable)
-        learn.buttons["Done"].tap()
-        waitAbsent(learn)
+        closeLearn(in: app)
 
         relaunchWithoutSeed(app)
         openArchive(in: app)
@@ -378,7 +356,8 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         MorningUITestNavigation.selectTab("Morning", in: app)
         tap("run.start", in: app)
         assertRun("running", step: currentTitle, in: app)
-        tap("run.pause", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        tap("morning.playback", in: app)
         assertRun("paused", step: currentTitle, in: app)
         openPendingProposal(in: app)
         XCTAssertFalse(app.buttons["proposal.approve"].isEnabled,
@@ -655,9 +634,10 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     }
 
     private func closeLearn(in app: XCUIApplication) {
-        let learn = app.navigationBars["Learn my morning"]
-        XCTAssertTrue(learn.buttons["Done"].isHittable)
-        learn.buttons["Done"].tap()
+        let back = app.navigationBars.buttons["BackButton"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        XCTAssertTrue(back.isHittable)
+        back.tap()
         waitAbsent(app.textViews["learn.notes"])
     }
 
@@ -677,8 +657,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     }
 
     private func reviewRoot(in app: XCUIApplication) {
-        MorningUITestNavigation.selectTab("Morning", in: app)
-        tap("morning.date", in: app)
+        MorningUITestNavigation.selectTab("Review", in: app)
         XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5))
     }
 
@@ -702,6 +681,16 @@ final class RoutineEvidenceProposalTests: XCTestCase {
             XCTAssertTrue(choice.waitForExistence(timeout: 5))
             XCTAssertTrue(choice.isEnabled)
             if (choice.value as? String) != "Selected" { tap(choice.identifier, in: app) }
+            let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Selected"), object: choice)
+            let outcome = XCTWaiter.wait(for: [selected], timeout: 5)
+            if outcome != .completed {
+                let hierarchy = XCTAttachment(string: app.debugDescription)
+                hierarchy.name = "observation-selection-did-not-change"
+                hierarchy.lifetime = .keepAlways
+                add(hierarchy)
+                attach("observation-selection-did-not-change", app)
+            }
+            XCTAssertEqual(outcome, .completed)
             XCTAssertEqual(choice.value as? String, "Selected")
         }
         let fixture = app.descendants(matching: .any).matching(identifier: "observations.fixtureMode").firstMatch
@@ -777,8 +766,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     }
 
     private func openRoutine(in app: XCUIApplication) {
-        reviewRoot(in: app)
-        tap("review.routine", in: app)
+        MorningUITestNavigation.openRoutine(in: app)
         XCTAssertTrue(app.navigationBars["Your routine"].waitForExistence(timeout: 5))
     }
 
@@ -799,21 +787,17 @@ final class RoutineEvidenceProposalTests: XCTestCase {
     }
 
     private func assertRun(_ state: String, step: String, in app: XCUIApplication) {
-        let status = app.staticTexts["run.state"]
-        XCTAssertTrue(status.waitForExistence(timeout: 5))
-        XCTAssertTrue(MorningUITestState.labels(for: state).contains(status.value as? String ?? ""))
-        XCTAssertEqual(app.staticTexts["run.step"].label, step)
+        MorningUITestNavigation.assertSession(state: state, step: step, in: app)
     }
 
-    private func stopRun(in app: XCUIApplication, verifyStoppedState: Bool = true) {
-        tap("run.controls", in: app)
-        tap("run.stop", in: app)
-        guard verifyStoppedState else { return }
-        let stopped = app.staticTexts["morning.heading"]
-        XCTAssertTrue(stopped.waitForExistence(timeout: 5))
-        XCTAssertTrue(MorningUITestState.labels(for: "stopped").contains(stopped.value as? String ?? ""))
-        XCTAssertFalse(app.buttons["run.pause"].exists)
-        XCTAssertFalse(app.buttons["run.resume"].exists)
+    private func stopRun(in app: XCUIApplication) {
+        MorningUITestNavigation.openSettings(in: app)
+        tap("morning.stop", in: app)
+        MorningUITestNavigation.assertSession(state: "stopped", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        XCTAssertFalse(app.buttons["morning.playback"].exists)
+        XCTAssertFalse(app.buttons["morning.stop"].exists)
+        MorningUITestNavigation.selectTab("Morning", in: app)
     }
 
     private func tap(_ identifier: String, in app: XCUIApplication) {

@@ -66,9 +66,7 @@ final class BudgetAndRecapTests: XCTestCase {
         MorningUITestNavigation.selectTab("Morning", in: app)
         tap("run.start", in: app)
         for _ in 0..<4 { advance(in: app) }
-        let state = app.staticTexts["run.state"]
-        let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value IN %@", MorningUITestState.labels(for: "completed")), object: state)
-        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 5), .completed)
+        MorningUITestNavigation.assertSession(state: "completed", in: app)
 
         MorningUITestNavigation.selectTab("Review", in: app)
         reveal("recap.completed", in: app)
@@ -197,11 +195,19 @@ final class BudgetAndRecapTests: XCTestCase {
 
     /// Marks the current moment complete and waits for the run to move on.
     private func advance(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let step = app.staticTexts["run.step"]
-        XCTAssertTrue(step.waitForExistence(timeout: 5), file: file, line: line)
-        let before = step.label
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        let before = MorningUITestNavigation.sessionSnapshot(in: app)
+        let step = before["step"] ?? ""
+        XCTAssertFalse(step.isEmpty, file: file, line: line)
         tap("run.next", in: app, file: file, line: line)
-        let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", before), object: step)
+        MorningUITestNavigation.selectTab("Morning", in: app)
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let current = MorningUITestNavigation.sessionSnapshot(in: app)
+            guard let state = current["state"] else { return false }
+            if state == "completed" { return true }
+            guard let title = current["step"], !title.isEmpty else { return false }
+            return title != step
+        }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed, file: file, line: line)
     }
 
@@ -211,9 +217,7 @@ final class BudgetAndRecapTests: XCTestCase {
         advance(in: app)
         tap("run.controls", in: app)
         tap("run.stop", in: app)
-        let pause = app.buttons["run.pause"]
-        let stopped = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: pause)
-        XCTAssertEqual(XCTWaiter.wait(for: [stopped], timeout: 5), .completed)
+        MorningUITestNavigation.assertSession(state: "stopped", in: app)
     }
 
     /// The stepper's own decrement button: five minutes less.

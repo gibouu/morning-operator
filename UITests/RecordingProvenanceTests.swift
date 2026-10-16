@@ -16,7 +16,10 @@ final class RecordingProvenanceTests: XCTestCase {
         }, object: app)
         XCTAssertEqual(XCTWaiter.wait(for: [complete], timeout: 120), .completed,
                        "Both independent fixture-app headings must be extracted from the staged movie.")
-        app.navigationBars["Learn my morning"].buttons["Done"].tap()
+        let back = app.navigationBars["Learn my morning"].buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5) && back.isHittable)
+        back.tap()
+        XCTAssertTrue(app.navigationBars["Learn my morning"].waitForNonExistence(timeout: 5))
         XCTAssertFalse(app.buttons["record.retryImport"].exists)
         openOnlyObservation(in: app)
         reveal(app.buttons["Recording details"], in: app).tap()

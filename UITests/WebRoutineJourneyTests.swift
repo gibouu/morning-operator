@@ -26,7 +26,6 @@ final class WebRoutineJourneyTests: XCTestCase {
         let approve = app.buttons["routine.approve"]
         XCTAssertTrue(approve.waitForExistence(timeout: 5), app.debugDescription)
         approve.tap()
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
         MorningUITestNavigation.tapButton("run.start", in: app)
         let about = app.buttons["web.aboutDone"]
         if about.waitForExistence(timeout: 5) { about.tap() }
@@ -49,11 +48,14 @@ final class WebRoutineJourneyTests: XCTestCase {
         let extendedEnd = Date().addingTimeInterval(TimeInterval(extended))
         XCTAssertEqual(extendedEnd.timeIntervalSince(beforeEnd), 120, accuracy: 8)
         app.buttons["web.close"].tap()
-        XCTAssertTrue(app.buttons["stepTimer.openPage"].waitForExistence(timeout: 5))
-        let closed = try remaining("stepTimer.remaining", in: app)
+        XCTAssertTrue(app.buttons["web.close"].waitForNonExistence(timeout: 5))
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+        let closed = try XCTUnwrap(Int(MorningUITestNavigation.sessionSnapshot(in: app)["remaining"] ?? ""),
+            "The current routine timer must remain available after closing the browser.")
         let closedEnd = Date().addingTimeInterval(TimeInterval(closed))
         XCTAssertEqual(closedEnd.timeIntervalSince(extendedEnd), 0, accuracy: 8)
-        app.buttons["stepTimer.openPage"].tap()
+        MorningUITestNavigation.openSettings(in: app)
+        MorningUITestNavigation.tapButton("stepTimer.openPage", in: app)
         XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 5))
         let reopened = try remaining("web.remaining", in: app)
         let reopenedEnd = Date().addingTimeInterval(TimeInterval(reopened))
@@ -61,8 +63,10 @@ final class WebRoutineJourneyTests: XCTestCase {
         attach("web-routine-extended-and-reopened", app)
         app.buttons["web.nextMoment"].tap()
         XCTAssertTrue(app.buttons["web.nextMoment"].waitForNonExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["run.step"].label, "People and messages")
-        XCTAssertFalse(app.buttons["stepTimer.openPage"].exists)
+        MorningUITestNavigation.assertSession(state: "running", step: "People and messages", in: app)
+        MorningUITestNavigation.openSettings(in: app)
+        XCTAssertFalse(app.buttons["stepTimer.openPage"].exists,
+                       "Advancing must remove the previous web moment's reopening action.")
         attach("web-routine-next-step", app)
     }
 

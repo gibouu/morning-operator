@@ -95,7 +95,7 @@ final class PrivacyTests: XCTestCase {
     }
 
     private func openPrivacy(_ app: XCUIApplication) {
-        MorningUITestNavigation.reviewAction("navigation.setup", in: app)
+        MorningUITestNavigation.openSettings(in: app)
         MorningUITestNavigation.tapButton("setup.privacy", in: app)
         XCTAssertTrue(app.navigationBars["Privacy"].waitForExistence(timeout: 5))
     }
@@ -123,11 +123,14 @@ final class PrivacyTests: XCTestCase {
     }
 
     private func assertEmptyMorning(_ app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["learn.begin"].waitForExistence(timeout: 30))
-        XCTAssertFalse(app.buttons["morning.reviewDraft"].exists)
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 30))
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
         XCTAssertFalse(app.buttons["review.proposal"].exists)
+        MorningUITestNavigation.tapButton("morning.begin", in: app)
+        XCTAssertTrue(app.buttons["learn.screenTime"].waitForExistence(timeout: 5), "An empty workspace offers learning, not a saved routine.")
+        XCTAssertFalse(app.buttons["routine.approve"].exists)
         XCTAssertEqual(app.alerts.count, 0)
+        MorningUITestNavigation.selectTab("Morning", in: app)
     }
 
     private func relaunch(_ app: XCUIApplication) {

@@ -122,8 +122,9 @@ final class RoutineTransferTests: XCTestCase {
         MorningUITestNavigation.closeRoutine(in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
         MorningUITestNavigation.assertMorningAction("run.start", in: app)
-        XCTAssertFalse(app.staticTexts["run.state"].exists,
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["state"], "none",
                        "Restoring an approved plan makes it ready; it must not start it.")
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
     }
 
     /// Exercises actual system panel presentation/dismissal only. It does not
@@ -414,7 +415,9 @@ final class RoutineTransferTests: XCTestCase {
     private func assertCannotStart(in app: XCUIApplication) {
         MorningUITestNavigation.selectTab("Morning", in: app)
         MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
-        XCTAssertFalse(app.staticTexts["run.state"].exists)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["state"], "none",
+                       "Reviewing or importing a draft must never create a playback session.")
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
     }
 
     private func tap(_ identifier: String, in app: XCUIApplication) {

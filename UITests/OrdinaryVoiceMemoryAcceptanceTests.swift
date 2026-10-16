@@ -12,8 +12,8 @@ final class OrdinaryVoiceMemoryAcceptanceTests: XCTestCase {
             throw XCTSkip("Requires explicit MO_ORDINARY_VOICE_MEMORY=1; no app was activated.")
         }
         let phase = environment["MO_ORDINARY_VOICE_PHASE"] ?? "inspect"
-        guard ["inspect", "inspectSettings", "inspectRoutine", "weatherRead", "voiceWindow", "memoryCheck"].contains(phase) else {
-            throw XCTSkip("Choose inspect, inspectSettings, inspectRoutine, weatherRead, voiceWindow or memoryCheck before activating the app.")
+        guard ["inspect", "inspectSettings", "inspectRoutine", "inspectMemory", "weatherRead", "voiceWindow", "memoryCheck"].contains(phase) else {
+            throw XCTSkip("Choose inspect, inspectSettings, inspectRoutine, inspectMemory, weatherRead, voiceWindow or memoryCheck before activating the app.")
         }
         let base = "com.gibouu.morningoperator"
         guard let bundle = environment["MO_ORDINARY_VOICE_BUNDLE_ID"],
@@ -40,6 +40,9 @@ final class OrdinaryVoiceMemoryAcceptanceTests: XCTestCase {
             capture("ordinary-voice-settings")
         case "inspectRoutine":
             try inspectRoutine()
+        case "inspectMemory":
+            try openMemory()
+            capture("ordinary-voice-existing-memory")
         case "weatherRead":
             try readWeather()
         case "voiceWindow":
@@ -177,6 +180,10 @@ final class OrdinaryVoiceMemoryAcceptanceTests: XCTestCase {
     }
 
     private func observeVoiceWindow() throws {
+        guard let seconds = Int(ProcessInfo.processInfo.environment["MO_ORDINARY_VOICE_WINDOW_SECONDS"] ?? "150"),
+              (30...180).contains(seconds) else {
+            throw XCTSkip("The observation duration must be between 30 and 180 seconds.")
+        }
         do {
             let caption = app.staticTexts["morning.caption"]
             // A caption surface belongs only to an active ordinary session. From a
@@ -201,7 +208,7 @@ final class OrdinaryVoiceMemoryAcceptanceTests: XCTestCase {
             }
             capture("ordinary-voice-window-initial")
             print("MORE_ORDINARY_VOICE_READY")
-            let deadline = ProcessInfo.processInfo.systemUptime + 150
+            let deadline = ProcessInfo.processInfo.systemUptime + Double(seconds)
             var previous = ""
             var change = 0
             while ProcessInfo.processInfo.systemUptime < deadline {

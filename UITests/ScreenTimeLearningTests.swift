@@ -83,7 +83,7 @@ final class ScreenTimeLearningTests: XCTestCase {
         if screenTime.exists, screenTime.buttons.element(boundBy: 0).exists { screenTime.buttons.element(boundBy: 0).tap() }
         let learn = app.navigationBars["Learn my morning"]
         XCTAssertTrue(learn.waitForExistence(timeout: 5))
-        learn.buttons["Done"].tap()
+        learn.buttons.element(boundBy: 0).tap()
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: learn)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 5), .completed)
     }

@@ -1,10 +1,8 @@
 import XCTest
 
-/// The opening of a started morning (issue #28) in an isolated fixture workspace. No
-/// source is connected here, so the opening is the greeting and the routine/stop choice;
-/// the sourced opening is in `MorningBriefingTests`. These checks read what the app
-/// requested from its speech coordinator, never audio: they do not establish what a
-/// listener hears, on a phone or on a speaker.
+/// The opening of a started morning in an isolated fixture workspace. The
+/// landscape shows its passage; playback and Settings replace the old opening
+/// cards. Speech observations prove requests, never audibility on a device.
 @MainActor
 final class MorningOpeningUITests: XCTestCase {
     func testStartShowsTheOpeningAndRoutineReachesTheFirstStep() {
@@ -12,93 +10,94 @@ final class MorningOpeningUITests: XCTestCase {
         start(app)
         let opening = openingText(in: app)
         XCTAssertFalse(opening.label.isEmpty)
-        XCTAssertFalse(app.buttons["opening.brief"].exists, "With no source connected there is no recap to offer.")
-        for identifier in ["opening.routine", "opening.stop"] {
-            let control = app.buttons[identifier]
-            XCTAssertTrue(control.exists, identifier)
-            XCTAssertTrue(control.isHittable, identifier)
-            XCTAssertFalse(control.label.isEmpty, identifier)
-        }
-        // Issue #99: the first moment's "Now" card waits with the routine. The run controls stay.
-        XCTAssertFalse(app.staticTexts["run.state"].exists, "The Now card is hidden while the opening waits.")
-        XCTAssertFalse(app.staticTexts["run.step"].exists, "The Now card is hidden while the opening waits.")
-        XCTAssertTrue(app.buttons["run.pause"].exists)
-        attach("opening-no-source-connected", app)
-        // A normal morning waits for the tap: nothing moves on its own.
-        let leaves = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["opening.routine"])
-        leaves.isInverted = true
-        XCTAssertEqual(XCTWaiter.wait(for: [leaves], timeout: 4), .completed, "Without Hands free the opening waits for a choice.")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
+        XCTAssertFalse(app.buttons["opening.brief"].exists)
+        XCTAssertFalse(app.staticTexts["run.state"].exists)
         XCTAssertFalse(app.staticTexts["run.step"].exists)
-
-        app.buttons["opening.routine"].tap()
-        XCTAssertTrue(opening.waitForNonExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["opening.routine"].exists)
-        XCTAssertTrue(MorningUITestState.labels(for: "running").contains(app.staticTexts["run.state"].value as? String ?? ""))
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
-        XCTAssertEqual(app.staticTexts["run.step"].value as? String, "routine started 1")
-        XCTAssertTrue(app.buttons["run.pause"].exists)
-        attach("opening-routine-started-now-card", app)
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertEqual(app.buttons["morning.playback"].label, "Continue")
+        XCTAssertTrue(app.buttons["morning.settings"].isHittable)
+        attach("opening-no-source-connected", app)
+        let leaves = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.sessionSnapshot(in: app)["opening"] != "choosing"
+        }, object: nil)
+        leaves.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [leaves], timeout: 4), .completed,
+                       "Without Hands free the opening waits for the playback choice.")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
+        MorningUITestNavigation.chooseRoutineAtOpening(in: app)
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 1")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertEqual(app.buttons["morning.playback"].label, "Pause")
+        attach("opening-routine-started-current-passage", app)
     }
 
-    /// Issue #99, with spoken guidance off: a hands-free morning does not wait for a tap.
-    /// The spoken case, with a recap on offer, is in `MorningBriefingTests`.
+    /// With spoken guidance off, a hands-free morning still starts without a tap.
     func testHandsFreeStartWithoutSpeechReachesTheFirstStepWithoutATap() {
         let app = launch(extra: ["--ui-testing-hands-free"])
         start(app)
-        let step = app.staticTexts["run.step"]
-        XCTAssertTrue(step.waitForExistence(timeout: 15), "A hands-free morning starts its routine on its own.\n\(app.debugDescription)")
-        XCTAssertFalse(app.staticTexts["opening.text"].exists)
+        let handedOver = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let snapshot = MorningUITestNavigation.sessionSnapshot(in: app)
+            return snapshot["opening"] == "none" && snapshot["starts"] == "routine started 1"
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [handedOver], timeout: 15), .completed,
+                       "A hands-free morning starts its routine on its own.\n\(app.debugDescription)")
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
         XCTAssertFalse(app.buttons["opening.routine"].exists)
         XCTAssertFalse(app.staticTexts["opening.briefText"].exists)
-        XCTAssertEqual(step.label, "Your morning")
-        XCTAssertEqual(step.value as? String, "routine started 1")
-        XCTAssertTrue(app.buttons["run.pause"].exists)
-        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertEqual(app.buttons["morning.playback"].label, "Pause")
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
     func testStopAtTheOpeningEndsTheMorning() {
         let app = launch()
         start(app)
-        let opening = openingText(in: app)
-        app.buttons["opening.stop"].tap()
-        XCTAssertTrue(opening.waitForNonExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["run.pause"].exists)
-        XCTAssertFalse(app.buttons["run.resume"].exists)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].isHittable, "A stopped morning offers an explicit restart.")
+        _ = openingText(in: app)
+        MorningUITestNavigation.tapButton("run.stop", in: app)
+        MorningUITestNavigation.assertSession(state: "stopped", in: app)
+        XCTAssertFalse(app.scrollViews["morning.captions"].exists)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
+        MorningUITestNavigation.revealControls(in: app)
+        XCTAssertTrue(app.buttons["morning.begin"].isHittable, "A stopped morning offers an explicit restart.")
+        XCTAssertFalse(app.buttons["morning.playback"].exists)
     }
 
     func testOpeningDoesNotReturnAfterRelaunchOrWhenTheMorningContinues() {
         let app = launch()
         start(app)
         _ = openingText(in: app)
-
+        let identity = app.scrollViews["morning.captions"].value as? String
+        XCTAssertFalse(identity?.isEmpty ?? true)
         app.terminate()
-        app.launch()
-        // The same session comes back paused, and the opening does not come back with it.
-        XCTAssertTrue(app.buttons["run.resume"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["opening.text"].exists)
-        XCTAssertFalse(app.buttons["opening.routine"].exists)
+        MorningUITestNavigation.launch(app)
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "")
+        let starts = MorningUITestNavigation.sessionSnapshot(in: app)["starts"]
         MorningUITestNavigation.tapButton("run.resume", in: app)
-        XCTAssertTrue(app.buttons["run.pause"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["opening.text"].exists)
-        XCTAssertEqual(app.staticTexts["run.step"].label, "Your morning")
+        MorningUITestNavigation.assertSession(state: "running", step: "Your morning", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], starts,
+                       "Resuming the existing session must not hand over a new opening.")
     }
 
     func testSpokenGuidanceOffRequestsNoSpeech() {
         let app = launch()
         start(app)
-        let opening = openingText(in: app)
-        XCTAssertEqual(opening.value as? String, "silent")
-        // The speech coordinator's own state, where the voice settings show it.
-        MorningUITestNavigation.tapButton("morning.settings", in: app)
+        _ = openingText(in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "silent")
+        MorningUITestNavigation.openSettings(in: app)
         let status = app.staticTexts["setup.speechStatus"]
-        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        reveal(status, in: app)
         XCTAssertEqual(status.value as? String, "idle")
     }
 
-    /// Requests real synthesis. Runs on a simulator; on a phone it needs the audible opt-in.
+    /// Requests real synthesis. On a phone it retains the audible opt-in guard.
     func testSpokenGuidanceOnRequestsTheOpeningOnceAndNotAfterRelaunch() throws {
         #if !targetEnvironment(simulator)
         guard ProcessInfo.processInfo.environment["MO_VOICE_TEST_ENABLED"] == "1" else {
@@ -106,32 +105,31 @@ final class MorningOpeningUITests: XCTestCase {
         }
         #endif
         let app = launch(approved: false)
-        MorningUITestNavigation.reviewAction("navigation.setup", in: app)
+        MorningUITestNavigation.openSettings(in: app)
         let readAloud = app.switches["setup.readAloud"]
-        XCTAssertTrue(readAloud.waitForExistence(timeout: 5))
-        let sheet = app.scrollViews.containing(.switch, identifier: "setup.readAloud").firstMatch
-        for _ in 0..<4 where !readAloud.isHittable { sheet.swipeUp() }
-        XCTAssertTrue(readAloud.isHittable)
-        readAloud.tap()
+        reveal(readAloud, in: app)
+        XCTAssertEqual(readAloud.value as? String, "0")
+        let nativeSwitch = readAloud.switches.firstMatch
+        if nativeSwitch.exists { nativeSwitch.tap() } else { readAloud.tap() }
         XCTAssertEqual(readAloud.value as? String, "1")
-        app.navigationBars["Settings"].buttons["Done"].tap()
         MorningUITestNavigation.openRoutine(in: app)
         MorningUITestNavigation.tapButton("routine.approve", in: app)
-
         start(app)
-        let opening = openingText(in: app)
-        XCTAssertEqual(opening.value as? String, "speech requested")
-
+        _ = openingText(in: app)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "speech requested")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["starts"], "routine started 0")
+        let identity = app.scrollViews["morning.captions"].value as? String
         app.terminate()
-        app.launch()
-        XCTAssertTrue(app.buttons["run.resume"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["opening.text"].exists, "A relaunch must not greet the same morning again.")
-        MorningUITestNavigation.tapButton("run.controls", in: app)
+        MorningUITestNavigation.launch(app)
+        MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
+        XCTAssertEqual(app.scrollViews["morning.captions"].value as? String, identity)
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["opening"], "none",
+                       "A relaunch must not greet the same morning again.")
+        XCTAssertEqual(MorningUITestNavigation.sessionSnapshot(in: app)["speech"], "")
         MorningUITestNavigation.tapButton("run.stop", in: app)
     }
 
-    /// Pictures for a person to look at: English and French, light and dark, and the largest text size.
-    /// Nothing about wording or layout is asserted here.
+    /// Native pictures in both languages, palettes and the largest text size.
     func testOpeningScreenshotsInEnglishFrenchAndLargestText() {
         for (name, arguments) in [
             ("opening-english", ["-more.appLanguage", "en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]),
@@ -148,19 +146,22 @@ final class MorningOpeningUITests: XCTestCase {
         for (name, language) in [("opening-largest-text-english", "en"), ("opening-largest-text-french", "fr")] {
             let app = launch(extra: ["-more.appLanguage", language, "-AppleLanguages", "(\(language))", "-AppleLocale", language == "fr" ? "fr_FR" : "en_US",
                                      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-            let scroll = app.scrollViews["morning.accessibleScroll"]
-            XCTAssertTrue(scroll.waitForExistence(timeout: 10), "This picture requires the largest accessibility text size.")
-            MorningUITestNavigation.revealMorningAction("run.start", in: app)
-            let play = app.buttons["run.start"]
-            for _ in 0..<8 where !play.isHittable { scroll.swipeUp() }
+            MorningUITestNavigation.revealControls(in: app)
+            let play = app.buttons["morning.begin"]
+            XCTAssertTrue(play.isHittable)
+            XCTAssertGreaterThanOrEqual(play.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(play.frame.height, 44)
             start(app)
             _ = openingText(in: app)
-            for _ in 0..<4 { scroll.swipeDown() }
+            let scroll = app.scrollViews["morning.captions"]
+            XCTAssertTrue(scroll.exists)
             attach("\(name)-top", app)
             scroll.swipeUp()
             attach("\(name)-after-one-swipe", app)
-            scroll.swipeUp()
-            attach("\(name)-after-two-swipes", app)
+            MorningUITestNavigation.revealControls(in: app)
+            XCTAssertTrue(app.buttons["morning.playback"].isHittable)
+            XCTAssertTrue(app.buttons["morning.settings"].isHittable)
+            attach("\(name)-revealed-controls", app)
             app.terminate()
         }
     }
@@ -168,33 +169,41 @@ final class MorningOpeningUITests: XCTestCase {
     private func launch(approved: Bool = true, extra: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        // An isolated temporary workspace; the fixture keeps speech and hands-free off
-        // unless `extra` asks for them.
-        // The light palette unless a test asks for the dark one.
         app.launchArguments = ["--ui-testing", "--fixture-mode"] + (extra.contains("--dark-preview") ? [] : ["--light-preview"])
             + ["--ui-testing-workspace=\(UUID().uuidString)"]
             + (approved ? ["--ui-testing-approved"] : []) + extra
         if !extra.contains("-more.appLanguage") { app.launchArguments += ["-more.appLanguage", "en"] }
-        app.launch()
+        MorningUITestNavigation.launch(app)
         return app
     }
 
-    /// Play, then the explicit Start, leaving the opening on screen.
     private func start(_ app: XCUIApplication) {
         MorningUITestNavigation.tapButton("run.start", in: app, keepingOpening: true)
     }
 
     private func openingText(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
-        let opening = app.staticTexts["opening.text"]
-        XCTAssertTrue(opening.waitForExistence(timeout: 10),
-                      "A started morning must show its opening.\n\(app.debugDescription)", file: file, line: line)
+        let opening = app.staticTexts["morning.caption"]
+        XCTAssertTrue(opening.waitForExistence(timeout: 10), app.debugDescription, file: file, line: line)
+        let prepared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MorningUITestNavigation.sessionSnapshot(in: app)["opening"] == "choosing"
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [prepared], timeout: 10), .completed,
+                       "A manually started morning shows its greeting before the routine begins.", file: file, line: line)
+        XCTAssertFalse(opening.label.isEmpty, file: file, line: line)
         return opening
+    }
+
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        let form = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
+        for _ in 0..<10 where !element.exists || !element.isHittable {
+            if element.exists, element.frame.midY < form.frame.midY { form.swipeDown() }
+            else { form.swipeUp() }
+        }
+        XCTAssertTrue(element.exists && element.isHittable, app.debugDescription)
     }
 
     private func attach(_ name: String, _ app: XCUIApplication) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
 }

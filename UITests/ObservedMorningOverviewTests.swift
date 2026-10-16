@@ -102,9 +102,8 @@ final class ObservedMorningOverviewTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Sampled moment"].waitForExistence(timeout: 5), app.debugDescription)
 
         relaunchWithoutSeed(app)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5), "Cancel must leave the saved approval unchanged.\n\(app.debugDescription)")
-        XCTAssertFalse(app.buttons["morning.reviewDraft"].exists)
+        MorningUITestNavigation.assertMorningAction("run.start", in: app,
+            "Cancel must leave the saved approval unchanged.")
         MorningUITestNavigation.openRoutine(in: app)
         let baseline = app.buttons["routine.step.0"]
         XCTAssertTrue(baseline.waitForExistence(timeout: 5), app.debugDescription)
@@ -121,14 +120,11 @@ final class ObservedMorningOverviewTests: XCTestCase {
         tap("narration.done", in: app)
         waitForAbsence(app.navigationBars["A saved moment"], in: app)
         MorningUITestNavigation.selectTab("Morning", in: app)
-        MorningUITestNavigation.revealMorningAction("morning.reviewDraft", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists, "Reading source evidence cannot authorize automatic execution.")
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app,
+            "Reading source evidence cannot authorize automatic execution.")
 
         relaunchWithoutSeed(app)
-        MorningUITestNavigation.revealMorningAction("morning.reviewDraft", in: app)
-        XCTAssertTrue(app.buttons["morning.reviewDraft"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["run.start"].exists)
+        MorningUITestNavigation.assertMorningAction("morning.reviewDraft", without: "run.start", in: app)
         MorningUITestNavigation.openRoutine(in: app)
         let added = app.buttons["routine.step.0"]
         XCTAssertTrue(added.waitForExistence(timeout: 5), app.debugDescription)
@@ -159,20 +155,17 @@ final class ObservedMorningOverviewTests: XCTestCase {
     private func approveBaseline(in app: XCUIApplication) {
         MorningUITestNavigation.openRoutine(in: app)
         tap("routine.approve", in: app)
-        MorningUITestNavigation.revealMorningAction("run.start", in: app)
-        XCTAssertTrue(app.buttons["run.start"].waitForExistence(timeout: 5), app.debugDescription)
-        MorningUITestNavigation.closeMorningActions(in: app)
+        MorningUITestNavigation.assertMorningAction("run.start", in: app)
     }
 
     private func openReview(in app: XCUIApplication) {
-        // The home date is the intended direct route into review. It remains
-        // available when native tab minimization hides the other tab buttons.
-        tap("morning.date", in: app)
+        MorningUITestNavigation.selectTab("Review", in: app)
         XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(element("review.week", in: app).waitForExistence(timeout: 5), app.debugDescription)
     }
 
     private func openDay(offset: Int, in app: XCUIApplication) {
+        MorningUITestNavigation.selectTab("Review", in: app)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current
         let date = calendar.date(byAdding: .day, value: offset, to: Date())!

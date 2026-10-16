@@ -47,7 +47,10 @@ final class RecordedObservationImportTests: XCTestCase {
         XCTAssertTrue(edited.contains("User correction."))
         XCTAssertFalse(summary.exists, "Edited prose must lose the original sampled-frame association.")
         if app.buttons["input.done"].exists { app.buttons["input.done"].tap() }
-        app.navigationBars["Learn my morning"].buttons["Done"].tap()
+        let back = app.navigationBars["Learn my morning"].buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5) && back.isHittable)
+        back.tap()
+        XCTAssertTrue(app.navigationBars["Learn my morning"].waitForNonExistence(timeout: 5))
         app.terminate()
         MorningUITestNavigation.launch(app)
         openLearn(in: app)
