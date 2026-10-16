@@ -395,6 +395,17 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
         confirmation.tap()
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts["Ask Permission"]
+        XCTAssertTrue(permission.waitForExistence(timeout: 30), payment.debugDescription)
+        XCTAssertTrue(permission.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "[Environment: Xcode]")).firstMatch.exists,
+                      permission.debugDescription)
+        let ask = permission.buttons["OK"]
+        XCTAssertTrue(ask.exists && ask.isHittable, permission.debugDescription)
+        let request = XCTAttachment(string: permission.debugDescription)
+        request.name = "local-Xcode-ask-permission-before-request"
+        request.lifetime = .keepAlways
+        add(request)
+        ask.tap()
     }
 
     nonisolated private func attachTransactions(_ session: SKTestSession, name: String) {
