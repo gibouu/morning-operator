@@ -240,6 +240,11 @@ import Testing
         #expect(try proof(context)["simulatedSendAttempts"] == "1")
         mail.clear()
         #expect(GmailAttentionUITestFixture.privateReplyDiagnostic(context: context) == nil)
+        let retained = try #require(GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: context.sessionID, routineVersionID: context.routineVersionID))
+        let retainedProof = try #require(JSONSerialization.jsonObject(with: Data(retained.utf8)) as? [String: String])
+        #expect(retainedProof == received, "Clearing the dialogue retains only the actual received fictional payload in memory.")
+        #expect(GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: UUID(), routineVersionID: context.routineVersionID) == nil)
+        #expect(GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: context.sessionID, routineVersionID: UUID()) == nil)
         // A fresh in-memory service still consults the ordinary durable claim for the same operation.
         let restored = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: french) { _ in }
         await restored.begin(context: context, generation: nil)
@@ -250,6 +255,7 @@ import Testing
         #expect(restored.lastSendOutcome == .sent)
         #expect(try proof(context)["simulatedSendAttempts"] == "0")
         #expect(try proof(context)["body"] == nil, "A prior payload is not persisted by the fixture as a second send.")
+        #expect(GmailAttentionUITestFixture.lastPrivateReplyDiagnostic(sessionID: context.sessionID, routineVersionID: context.routineVersionID) == nil)
     }
 
     @Test func correctionTextCannotBecomeASendCommandAndPrivacyRevokesScreenReview() async throws {
