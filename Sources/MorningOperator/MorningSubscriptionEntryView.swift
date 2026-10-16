@@ -204,6 +204,9 @@ struct MorningWelcomePreview: View {
                            continueFree: onSkip)
         flow.developerAccess = onSkip
         flow.developerAccessIsPreviewSkip = true
+        // Keep the filming preview's final caption layout. Ordinary entry in
+        // both Debug and Release always offers the public free route.
+        flow.showsFreeContinue = false
         return flow
             .sheet(item: $legalDocument) { MorningSubscriptionLegalSheet(document: $0) }
             .accessibilityElement(children: .contain)

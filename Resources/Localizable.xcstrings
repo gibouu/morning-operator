@@ -26913,6 +26913,38 @@
           }
         }
       }
+    },
+    "Your purchase is awaiting App Store confirmation. You can continue for free now.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your purchase is awaiting App Store confirmation. You can continue for free now."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre achat attend la confirmation de l’App Store. Vous pouvez continuer gratuitement dès maintenant."
+          }
+        }
+      }
+    },
+    "The App Store is unavailable right now. You can continue for free or try again later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The App Store is unavailable right now. You can continue for free or try again later."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’App Store est indisponible pour le moment. Vous pouvez continuer gratuitement ou réessayer plus tard."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -28,6 +28,7 @@ struct MorningWelcomeFlow: View {
     let showLegal: (MorningSubscriptionLegalDocument) -> Void
     let continueFree: () -> Void
     var startsWithOffer = false
+    var showsFreeContinue = true
     #if DEBUG
     var developerAccess: (() -> Void)? = nil
     var developerAccessIsPreviewSkip = false
@@ -308,10 +309,12 @@ struct MorningWelcomeFlow: View {
             .modifier(MorningEntryPrimaryStyle(prefersOpaque: strongInk))
             .disabled(isPaywall && (purchaseState.isBusy || purchaseState == .pending))
             .accessibilityIdentifier(isPaywall ? "paywall.subscribe" : "onboarding.next")
-            Button(text("Continuer gratuitement", "Continue for free"), action: continueFree)
-                .font(.system(.subheadline, weight: .semibold)).frame(minHeight: 44)
-                .accessibilityHint(text("Ouvrir MORE sans achat ni essai.", "Open MORE without a purchase or trial."))
-                .accessibilityIdentifier("entry.continueFree")
+            if showsFreeContinue {
+                Button(text("Continuer gratuitement", "Continue for free"), action: continueFree)
+                    .font(.system(.subheadline, weight: .semibold)).frame(minHeight: 44)
+                    .accessibilityHint(text("Ouvrir MORE sans achat ni essai.", "Open MORE without a purchase or trial."))
+                    .accessibilityIdentifier("entry.continueFree")
+            }
             if !isPaywall {
                 Button(text("Voir l’offre", "View offer")) { move(to: 3) }
                     .font(.system(.caption, weight: .medium)).frame(minHeight: 44)
@@ -385,10 +388,10 @@ struct MorningWelcomeFlow: View {
     }
     private var notice: String? {
         switch purchaseState {
-        case .pending: text("Votre achat attend la confirmation de l’App Store. Vous pourrez continuer dès qu’il sera validé.",
-                            "Your purchase is awaiting App Store confirmation. You can continue once it is approved.")
-        case .unavailable: text("L’App Store est indisponible pour le moment. Réessayez dans un instant.",
-                                "The App Store is unavailable right now. Please try again shortly.")
+        case .pending: text("Votre achat attend la confirmation de l’App Store. Vous pouvez continuer gratuitement dès maintenant.",
+                            "Your purchase is awaiting App Store confirmation. You can continue for free now.")
+        case .unavailable: text("L’App Store est indisponible pour le moment. Vous pouvez continuer gratuitement ou réessayer plus tard.",
+                                "The App Store is unavailable right now. You can continue for free or try again later.")
         case .failed(let message): message
         default: nil
         }
