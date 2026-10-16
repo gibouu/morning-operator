@@ -93,6 +93,8 @@
 	<string>MORE reads only the sleep, optional steps, resting heart rate, heart rate variability (SDNN) and breathing rate you explicitly choose for your morning. Readings stay on this iPhone unless you choose online reading aloud. MORE never writes Health data.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>MORE uses HealthKit to read the sleep and health information you choose for your morning briefing. MORE does not add or change Health data.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>MORE uses your camera only when you choose to take a photo or video on a page in its in-app browser.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MORE listens on this iPhone so you can interrupt or ask a question during your morning. Listening stops when you end the morning or leave the app.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
