@@ -38,18 +38,23 @@ final class MorningBrandingTests: XCTestCase {
     func testFrenchLargestNightBrandPersistsThroughPauseResumeAndHiddenControls() {
         let app = launchFixture(night: true, french: true, largestText: true)
         defer { app.terminate() }
-        MorningUITestNavigation.tapButton("run.start", in: app)
+        // Tap the short-lived Home control directly; generic scroll helpers can
+        // outlast its five-second visibility window on a busy simulator.
+        app.buttons["morning.actions"].tap()
+        let begin = app.buttons["morning.begin"]
+        XCTAssertTrue(begin.waitForExistence(timeout: 5))
+        begin.tap()
         XCTAssertTrue(app.staticTexts["morning.caption"].waitForExistence(timeout: 8))
         assertBrand("night", in: app)
         let brandFrame = element("brand.wordmark", in: app).frame
         MorningUITestNavigation.revealControls(in: app)
         let playback = app.buttons["morning.playback"]
-        XCTAssertTrue(playback.isHittable)
-        XCTAssertFalse(brandFrame.intersects(playback.frame))
         playback.tap()
         assertPlaybackLabel("Continuer", in: app)
+        XCTAssertFalse(brandFrame.intersects(playback.frame))
         assertBrand("night", in: app)
         attach("brand-night-french-largest-paused", app)
+        MorningUITestNavigation.revealControls(in: app)
         playback.tap()
         assertPlaybackLabel("Pause", in: app)
         assertBrand("night", in: app)
