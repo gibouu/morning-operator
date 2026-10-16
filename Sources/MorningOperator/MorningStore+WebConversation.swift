@@ -5,7 +5,7 @@ import UIKit
 extension MorningStore {
     var currentConversationController: WebMorningController? {
         guard !privacyBlocksWork, automatic, let session, let step = currentStep,
-              step.webBehavior == .readUnread, case let .inAppWeb(url) = step.target,
+              step.webBehavior != nil, case let .inAppWeb(url) = step.target,
               let site = WebMorningSite(url: url), WebConversationPolicy.supports(site) else { return nil }
         return routineWebMoment.existingController(for: .init(sessionID: session.id,
             routineVersionID: session.routine.id, stepID: step.id), privacyGeneration: dataGeneration)

@@ -140,7 +140,7 @@ public enum WebConversationPolicy {
             const ownAvatar = avatarID(me);
             const account = me && (me.getAttribute('data-current-user-id') || ownAvatar);
             const messageNodes = root ? visibleAll(root, ['.msg-s-message-list__event', '[data-event-urn]']) : [];
-            const message = e => ({id:e.getAttribute('data-event-urn') || e.id,
+            const message = e => ({id:e.getAttribute('data-event-urn') || e.id,...delivery(e),
               text:clean(one(e,['.msg-s-event-listitem__body','.msg-s-message-group__message-bubble'])?.innerText),
               own:e.getAttribute('data-is-self')==='true' || e.classList.contains('msg-s-message-list__event--own') ||
                 Boolean(ownAvatar && avatarID(one(e.closest('.msg-s-message-group')||e,['.msg-s-message-group__profile-photo','img']))===ownAvatar)});
@@ -159,7 +159,7 @@ public enum WebConversationPolicy {
             const ownAvatar = avatarID(me && one(me,['img']));
             const account = me && (me.getAttribute('data-current-user-id') || me.getAttribute('data-member-id') || me.getAttribute('data-user-id') || ownAvatar);
             const messageNodes = root ? visibleAll(root, ['[data-qa="message_container"]', '.c-message_kit__message']) : [];
-            const message = e => ({id:e.getAttribute('data-ts') || e.getAttribute('data-message-id') || e.closest('[data-item-key]')?.getAttribute('data-item-key') || e.id,
+            const message = e => ({id:e.getAttribute('data-ts') || e.getAttribute('data-message-id') || e.closest('[data-item-key]')?.getAttribute('data-item-key') || e.id,...delivery(e),
               text:clean(one(e,['[data-qa="message-text"]','.c-message_kit__text'])?.innerText),
               own:e.getAttribute('data-is-self')==='true' || e.getAttribute('data-user-id')===account ||
                 one(e,['[data-message-sender]'])?.getAttribute('data-message-sender')===account ||
@@ -186,6 +186,22 @@ public enum WebConversationPolicy {
           const unique=list=>list.length===1?list[0]:null;
           const uniqueRoot=list=>unique(list.filter(e=>!list.some(other=>other!==e&&e.contains(other))));
           const uniqueLabel=(root,selectors)=>{const nodes=visibleAll(root,selectors),labels=new Set(nodes.map(e=>clean(e.innerText)).filter(Boolean));return labels.size===1?nodes[0]:null;};
+          const delivery=e=>{
+            const status=clean(e.getAttribute('data-delivery-status')||e.getAttribute('data-message-status')).toLowerCase();
+            const pending=['pending','sending','queued','uploading'].includes(status)||e.getAttribute('data-pending')==='true'||e.getAttribute('aria-busy')==='true'||
+              e.classList.contains('c-message_kit__message--pending')||e.classList.contains('c-message_kit__message--sending')||e.classList.contains('msg-s-message-list__event--pending')||
+              Boolean(one(e,['[data-qa="message_pending"]','[data-qa="message_sending"]','[data-delivery-status="pending"]','[data-message-status="pending"]','[aria-busy="true"]','.msg-s-event-listitem__pending','.msg-s-event-listitem__sending']));
+            const failed=['failed','error','retry'].includes(status)||e.getAttribute('data-failed')==='true'||
+              e.classList.contains('c-message_kit__message--failed')||e.classList.contains('msg-s-message-list__event--failed')||
+              Boolean(one(e,['[data-qa="message_failed"]','[data-qa="message_error"]','[data-qa="retry_send_button"]','.c-message__send_error','.msg-s-event-listitem__error','.msg-s-event-listitem__retry']));
+            const seen=one(e,['.msg-s-event-listitem__seen-receipt']), statusNode=one(e,['.msg-s-event-listitem__delivery-status']);
+            const positive=['sent','delivered','read','seen'].includes(status)||
+              visibleAll(e,['[data-qa="message_sent"]','[data-qa="message_delivered"]']).length>0||
+              Boolean(seen&&visible(seen)&&(seen.getAttribute('aria-label')||clean(seen.innerText)||one(seen,['img[alt]'])?.getAttribute('alt')))||
+              Boolean(statusNode&&visible(statusNode)&&/^(sent|delivered|read|seen|envoy[eé]|distribu[eé]|lu|vu)$/i.test(clean(statusNode.innerText)));
+            const permalink=one(e,['a[data-qa="message_timestamp"]','a.c-timestamp']);
+            return {pending,failed,positive,permalink:permalink?.getAttribute('href')||''};
+          };
           if (visibleAll(document,['[role="dialog"]','[aria-modal="true"]','#onetrust-banner-sdk','[data-testid="cookie-consent"]']).length) return out({status:'choice'});
           if(command==='openUnread') {
             if(Date.now()>\#(Int(expiresAt.timeIntervalSince1970*1000))) return out({status:'stale'});
@@ -210,7 +226,12 @@ public enum WebConversationPolicy {
           if(Date.now()>\#(Int(expiresAt.timeIntervalSince1970*1000))) return out({status:'stale'});
           if(!expected||['site','conversationID','recipient','accountID','messageID','messageText','editorID'].some(k=>snapshot[k]!==expected[k])) return out({status:'stale'});
           if(command==='verify') {
-            const added=messages.filter(m=>m.own&&m.text===body&&!expected.outgoingMessageIDs.includes(m.id));
+            const added=messages.filter(m=>{
+              if(!m.own||m.text!==body||expected.outgoingMessageIDs.includes(m.id)||m.pending||m.failed) return false;
+              if(\#(json(site.rawValue))==='slack') return /^\d{10}\.\d{6}$/.test(m.id)&&
+                (m.positive||new RegExp('/archives/[^/]+/p'+m.id.replace('.','')+'(?:[?#]|$)').test(m.permalink));
+              return /^urn:li:(msg_message|messagingMessage):/.test(m.id)&&m.positive;
+            });
             return added.length===1&&editorText==='' ? out({status:'verified',snapshot,receiptID:added[0].id}) : out({status:'unavailable'});
           }
           if(command==='fill') {

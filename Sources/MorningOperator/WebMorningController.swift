@@ -598,7 +598,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func suspendPresentation() {
         pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil; cancelArticleWork()
-        cancelConversationWork()
+        clearSourceText()
+        pendingConversationSendID = nil
         actionsEnabled = false
         learningAllowed = false
         onExecutionEvent = nil
@@ -1049,8 +1050,14 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 draft = try await conversationDrafts.reviseReply(sender: source.recipient, subject: site.displayName,
                     body: source.messageText, reply: previous, guidance: intention)
             }
-            guard conversationOperation == operation, conversationAccess(authorized),
-                  let fresh = await observeConversation(authorized: authorized), fresh.snapshot == source else { return }
+            guard conversationOperation == operation, conversationAccess(authorized) else { return }
+            guard let fresh = await observeConversation(authorized: authorized), fresh.snapshot == source else {
+                guard conversationOperation == operation, conversationAccess(authorized) else { return }
+                cancelConversationWork()
+                conversationMessage = AppLanguage.isFrench ? "Le message affiché a changé. Relisez la conversation, puis demandez une nouvelle réponse."
+                    : "The displayed message changed. Read the conversation, then ask for a new reply."
+                return
+            }
             _ = conversationDraft.edit(draft)
             conversationMessage = nil
         } catch {

@@ -27846,6 +27846,22 @@
           }
         }
       }
+    },
+    "Open a conversation on the page, then ask for a reply.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a conversation on the page, then ask for a reply."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez une conversation dans la page, puis demandez une réponse."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

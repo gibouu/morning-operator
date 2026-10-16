@@ -33,6 +33,7 @@ final class WebRoutineJourneyTests: XCTestCase {
             // This asserts the ordinary route before any provider-specific redirect.
             // No account is signed in and no external message is sent by this test.
             XCTAssertTrue(app.staticTexts["web.host"].exists)
+            XCTAssertTrue((service == "LinkedIn" ? ["www.linkedin.com", "linkedin.com"] : ["app.slack.com", "slack.com", "www.slack.com"]).contains(app.staticTexts["web.host"].label), app.debugDescription)
             XCTAssertTrue(app.otherElements["web.conversation"].exists || app.scrollViews["web.conversation"].exists, app.debugDescription)
             XCTAssertFalse(app.buttons["connections.confirmReady"].exists)
             attach("browser-first-\(service)-\(language)-\(host)", app)

@@ -75,7 +75,7 @@ struct WebConversationScriptTests {
     @Test("A redirected login is rejected before any document access")
     func loginOrigin() throws {
         let context = try page()
-        context.evaluateScript("location.pathname='/login'; var touched=false; Object.defineProperty(this,'document',{get(){touched=true;throw Error('DOM touched');}});")
+        context.evaluateScript("location.pathname='/login'; var touched=false; Object.defineProperty(document,'hidden',{get(){touched=true;throw Error('DOM touched');}});document.querySelector=function(){touched=true;throw Error('DOM touched');};document.querySelectorAll=document.querySelector;")
         #expect(try run(context).status == .signin)
         #expect(context.objectForKeyedSubscript("touched")?.toBool() == false)
     }
@@ -125,12 +125,12 @@ struct WebConversationScriptTests {
         let source = try #require(run(context, site: site).snapshot)
         #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
         context.evaluateScript(#"""
-        var sent=makeMessage('new-receipt','Yes, tomorrow.',true); sent.attributes['data-ts']='new-receipt';
+        var sent=makeMessage('urn:li:msg_message:new-receipt','Yes, tomorrow.',true); sent.attributes['data-ts']='1792100999.000001';sent.attributes['data-delivery-status']='sent';
         sent.selectors['[data-qa="message-text"]']=sent.selectors['.msg-s-event-listitem__body']; messages.push(sent);
         """#)
         let receipt = try run(context, site: site, command: .verify, snapshot: source)
         #expect(receipt.status == .verified)
-        #expect(receipt.receiptID == "new-receipt")
+        #expect(receipt.receiptID == (site == .linkedin ? "urn:li:msg_message:new-receipt" : "1792100999.000001"))
         context.evaluateScript("sent.attributes['data-is-self']='false';")
         #expect(try run(context, site: site, command: .verify, snapshot: source).status == .stale)
     }
@@ -172,6 +172,26 @@ struct WebConversationScriptTests {
         let context = try page()
         context.evaluateScript("delete me.attributes['data-current-user-id']; me.attributes.alt='Alex';")
         #expect(try run(context).status == .unavailable)
+    }
+
+    @Test("Optimistic, failed and unacknowledged outgoing messages never verify", arguments: [WebMorningSite.linkedin, .slack])
+    func requireDeliveryProof(site: WebMorningSite) throws {
+        let context = try page(site), source = try #require(run(context, site: site).snapshot)
+        context.evaluateScript(#"""
+        var sent=makeMessage('urn:li:msg_message:new-receipt','Yes, tomorrow.',true); sent.attributes['data-ts']='1792100999.000001';
+        sent.selectors['[data-qa="message-text"]']=sent.selectors['.msg-s-event-listitem__body']; messages.push(sent);
+        """#)
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
+        context.evaluateScript("sent.attributes['data-delivery-status']='pending';")
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
+        context.evaluateScript("sent.attributes['data-delivery-status']='failed';")
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
+        context.evaluateScript("sent.attributes['data-delivery-status']='sent';sent.attributes['data-pending']='true';")
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
+        context.evaluateScript("delete sent.attributes['data-pending'];sent.attributes['data-failed']='true';")
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
+        context.evaluateScript("delete sent.attributes['data-failed'];sent.attributes['data-event-urn']='local-draft';sent.attributes['data-ts']='local-draft';")
+        #expect(try run(context, site: site, command: .verify, snapshot: source).status == .unavailable)
     }
 }
 #endif
