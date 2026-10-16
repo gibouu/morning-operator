@@ -21,12 +21,13 @@ enum OpenAIRoutineSchema {
             "durationMinutes": .object(["type": .string("integer"), "minimum": .number(1), "maximum": .number(60)])
         ]
         if let citationIDs {
+            let abstention = object([
+                "outcome": string(["insufficientEvidence"]),
+                "steps": .object(["type": .string("array"), "minItems": .number(0), "maxItems": .number(0),
+                    "items": string()])
+            ])
             if citationIDs.isEmpty {
-                return object([
-                    "outcome": string(["insufficientEvidence"]),
-                    "steps": .object(["type": .string("array"), "minItems": .number(0), "maxItems": .number(0),
-                        "items": string()])
-                ])
+                return object(["selection": abstention])
             }
             step["citationIDs"] = .object(["type": .string("array"), "minItems": .number(1), "maxItems": .number(1),
                 "items": string(citationIDs)])
@@ -34,6 +35,13 @@ enum OpenAIRoutineSchema {
             step["title"] = string(description: EvidenceRoutineFieldGuidance.title)
             step["durationMinutes"] = .object(["type": .string("integer"), "minimum": .number(1), "maximum": .number(60),
                 "description": .string(EvidenceRoutineFieldGuidance.duration)])
+            let supported = object([
+                "outcome": string(["supportedActivities"]),
+                "steps": .object(["type": .string("array"), "minItems": .number(1), "maxItems": .number(4),
+                    "items": object(step)])
+            ])
+            return object(["selection": .object(["anyOf": .array([abstention, supported]),
+                "description": .string(EvidenceRoutineFieldGuidance.selection)])])
         } else {
             step["detail"] = string()
             step["evidenceQuote"] = string()
