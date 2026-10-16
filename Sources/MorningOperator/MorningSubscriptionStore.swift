@@ -4,7 +4,8 @@ import Observation
 import StoreKit
 import UIKit
 
-/// StoreKit is the only source of subscription access, including the free trial.
+/// StoreKit is the only source of subscription rights, including the free trial.
+/// Ordinary app entry is independent of this entitlement state.
 @MainActor @Observable
 final class MorningSubscriptionStore {
     private(set) var offer: MorningSubscriptionOffer?

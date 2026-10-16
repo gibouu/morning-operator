@@ -1,12 +1,15 @@
 import SwiftUI
 import MorningCore
 
-/// Keep setup and its permission requests outside the unpaid presentation tree.
+/// Entry is a local choice. StoreKit alone determines subscription rights.
 struct MorningSubscriptionEntryView: View {
     @Bindable var store: MorningStore
+    var offerOnly = false
     @State private var subscription = MorningSubscriptionStore()
     @State private var legalDocument: MorningSubscriptionLegalDocument?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(MorningAppEntry.preferenceKey) private var hasEnteredApp = false
     #if DEBUG
     @AppStorage(MorningDeveloperAccess.preferenceKey) private var developerAccess = false
     #endif
@@ -21,15 +24,10 @@ struct MorningSubscriptionEntryView: View {
 
     var body: some View {
         Group {
-            if hasDeveloperAccess || subscription.hasAccess {
+            if !offerOnly && (hasEnteredApp || hasDeveloperAccess || subscription.hasAccess) {
                 MorningRootView(store: store)
-            } else if !subscription.hasResolvedAccess {
-                ZStack {
-                    MorningQuietLandscape(scene: MorningThemeClock.shared.celestial, animated: false)
-                        .ignoresSafeArea()
-                    ProgressView().accessibilityLabel(AppLanguage.isFrench ? "Vérification de l’abonnement" : "Checking your subscription")
-                }
             } else {
+                // StoreKit may be slow or unavailable. Free entry is ready now.
                 welcomeFlow
             }
         }
@@ -57,17 +55,18 @@ struct MorningSubscriptionEntryView: View {
                 Task { await loadSubscription() }
             }
         }
-        .onChange(of: subscription.hasAccess) { wasActive, isActive in
-            guard wasActive && !isActive && !hasDeveloperAccess else { return }
-            store.briefing.cancelAndClear()
-            if store.session?.status == .running { store.pause() }
-            store.speech.stop()
-            store.suspendHandsFreeVoice()
+        .onChange(of: subscription.hasAccess, initial: true) { _, isActive in
+            // Subscribers keep ordinary app access after expiration or refund.
+            // This preference never changes a StoreKit entitlement.
+            if isActive {
+                hasEnteredApp = true
+                if offerOnly { dismiss() }
+            }
         }
     }
 
     private var welcomeFlow: MorningWelcomeFlow {
-        let flow = MorningWelcomeFlow(offer: subscription.offer, purchaseState: subscription.state,
+        var flow = MorningWelcomeFlow(offer: subscription.offer, purchaseState: subscription.state,
                                       subscribe: { Task { await subscription.purchase() } },
                                       restore: { Task { await subscription.restore() } },
                                       retry: {
@@ -76,19 +75,33 @@ struct MorningSubscriptionEntryView: View {
                                               else { await subscription.load() }
                                           }
                                       },
-                                      showLegal: { legalDocument = $0 })
+                                      showLegal: { legalDocument = $0 },
+                                      continueFree: {
+                                          hasEnteredApp = true
+                                          if offerOnly { dismiss() }
+                                      })
+        flow.startsWithOffer = offerOnly
         #if DEBUG
-        var developerFlow = flow
-        developerFlow.developerAccess = { developerAccess = true }
-        return developerFlow
-        #else
-        return flow
+        if !offerOnly { flow.developerAccess = { developerAccess = true } }
         #endif
+        return flow
     }
 
     private func loadSubscription() async {
-        guard !hasDeveloperAccess else { return }
+        guard offerOnly || !hasDeveloperAccess else { return }
         await subscription.load()
+    }
+}
+
+enum MorningAppEntry {
+    static var preferenceKey: String {
+        let key = "more.entry.hasEnteredApp"
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            return key + "." + LocalDataControl.defaultDirectory.lastPathComponent
+        }
+        #endif
+        return key
     }
 }
 
@@ -127,8 +140,8 @@ struct MorningSubscriptionLegalSheet: View {
                         Link(text("Lire les conditions d’utilisation Apple", "Read Apple’s terms of use"),
                              destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     } else {
-                        Text(text("Vous choisissez les sources à partager avec MORE. Les autorisations et les connexions seront expliquées une par une, après l’abonnement.",
-                                  "You choose which sources to share with MORE. Permissions and connections will be explained one by one after subscribing."))
+                        Text(text("Vous choisissez les sources à partager avec MORE. Après votre entrée gratuite ou votre abonnement, les autorisations et les connexions sont expliquées une par une.",
+                                  "You choose which sources to share with MORE. After free entry or subscribing, permissions and connections are explained one by one."))
                         Text(text("L’analyse des vidéos et les apprentissages restent sur cet iPhone par défaut. Les services que vous connectez peuvent traiter les informations nécessaires à leurs fonctions, selon leurs propres conditions.",
                                   "Video analysis and learning stay on this iPhone by default. Services you connect may process the information needed for their features under their own terms."))
                         Text(text("Les achats sont gérés par Apple. MORE n’a pas accès aux coordonnées de votre carte bancaire.",
@@ -187,7 +200,8 @@ struct MorningWelcomePreview: View {
                                                        : "Preview: no purchase made. You can try again.") },
                            restore: { state = .failed(french ? "Aperçu : aucun abonnement à restaurer."
                                                      : "Preview: no subscription to restore.") },
-                           retry: { state = .ready }, showLegal: { legalDocument = $0 })
+                           retry: { state = .ready }, showLegal: { legalDocument = $0 },
+                           continueFree: onSkip)
         flow.developerAccess = onSkip
         flow.developerAccessIsPreviewSkip = true
         return flow
