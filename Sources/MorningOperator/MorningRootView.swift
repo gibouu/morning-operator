@@ -23,7 +23,7 @@ struct MorningRootView: View {
 
     // No tab bar: Home is the root, and every other destination is a screen pushed on
     // it. These flags keep their old meaning ("that destination is showing").
-    private enum HomeRoute: Hashable { case settings, routine, learn, history }
+    private enum HomeRoute: Hashable { case settings, routine, routinePreparation, learn, history }
     @ViewState<[HomeRoute]> private var path: [HomeRoute] = []
     private func route(_ route: HomeRoute) -> Bool { path.contains(route) }
     private func setRoute(_ route: HomeRoute, _ visible: Bool) {
@@ -38,6 +38,9 @@ struct MorningRootView: View {
     }
     private var showingRoutineEditor: Bool {
         get { route(.routine) } nonmutating set { setRoute(.routine, newValue) }
+    }
+    private var showingRoutinePreparation: Bool {
+        get { route(.routinePreparation) } nonmutating set { setRoute(.routinePreparation, newValue) }
     }
     private var learnPushed: Bool {
         get { route(.learn) } nonmutating set { setRoute(.learn, newValue) }
@@ -82,8 +85,8 @@ struct MorningRootView: View {
                            playback: store.sessionActive && !store.privacyBlocksWork ? AnyView(MorningHomePlaybackView(store: store, openSettings: { showingActions = false; showingSettings = true }).id(store.currentStep?.id)) : nil,
                            begin: {
                                guard !store.sessionActive else { return }
-                               // No routine yet: begin by learning the morning.
-                               guard let routine = store.routine else { showingLearn = true; return }
+                               // No saved routine: show the proposal path, not the learning toolbox.
+                               guard let routine = store.routine else { showingRoutinePreparation = true; return }
                                guard routine.isApproved else { showingRoutineEditor = true; return }
                                // A refused start leaves its notice on Home; it never sends a person
                                // with a routine back to Learn.
@@ -96,11 +99,14 @@ struct MorningRootView: View {
                     switch route {
                     case .settings:
                         SetupView(store: store,
-                                  openRoutine: { if store.routine == nil { showingLearn = true } else { showingRoutineEditor = true } },
+                                  openRoutine: { if store.routine == nil { showingRoutinePreparation = true } else { showingRoutineEditor = true } },
+                                  openLearning: { showingLearn = true },
                                   openHistory: { historyPushed = true })
                             .navigationTitle(String(localized: "Settings", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
                             .navigationBarTitleDisplayMode(.large)
                             .toolbar(.visible, for: .navigationBar)
+                    case .routinePreparation:
+                        MorningRoutinePreparationView(store: store, onClose: { showingRoutinePreparation = false })
                     case .routine:
                         RoutineReviewEditor(store: store, onLearn: { showingLearn = true }, showsClose: false)
                     case .learn:
@@ -135,8 +141,8 @@ struct MorningRootView: View {
         .foregroundStyle(MorningStyle.ink)
         .font(MorningTheme.Typography.body)
         .fullScreenCover(isPresented: Binding(get: { store.permissionSetup.isPresented }, set: { store.permissionSetup.isPresented = $0 }), onDismiss: {
-            if store.permissionSetup.takeLearningRequest(), !store.privacyBlocksWork {
-                showingLearn = true
+            if store.permissionSetup.takeRoutineReviewRequest(), !store.privacyBlocksWork {
+                showPreparedRoutine()
             } else {
                 processPendingEntries()
             }
@@ -173,7 +179,7 @@ struct MorningRootView: View {
             externalAppDeparture = nil
             showingActions = false
             actionTransitionPending = false
-            showingLearn = false; showingRoutineEditor = false; showingInvitation = false
+            showingLearn = false; showingRoutinePreparation = false; showingRoutineEditor = false; showingInvitation = false
             learnAfterRoutineDismissal = false
             presentingIntentCapture = false; pendingObservationReview = false
             // Keep the presenting Review stack stable while Privacy is open.
@@ -191,6 +197,7 @@ struct MorningRootView: View {
             store.tab = .today
             var transaction = Transaction(); transaction.disablesAnimations = true
             withTransaction(transaction) { store.permissionSetup.presentIfNeeded() }
+            if !store.permissionSetup.isPresented, store.permissionSetup.takeRoutineReviewRequest() { showPreparedRoutine() }
         }
         .onChange(of: store.completionInvitationSessionID) { _, _ in processPendingEntries() }
         .onChange(of: store.session?.id) { _, _ in store.completionSessionChanged() }
@@ -390,6 +397,8 @@ struct MorningRootView: View {
         }
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { store.permissionSetup.presentIfNeeded() }
+        // Voice may already be authorized, so no cover dismissal will arrive.
+        if !store.permissionSetup.isPresented, store.permissionSetup.takeRoutineReviewRequest() { showPreparedRoutine() }
         Task { await store.prepareDayIfConfigured() }
         await store.invitation.reconcile()
         #if DEBUG
@@ -408,6 +417,11 @@ struct MorningRootView: View {
         showingInvitation = true
     }
 
+    private func showPreparedRoutine() {
+        if store.routine != nil { showingRoutineEditor = true }
+        else { showingRoutinePreparation = true }
+    }
+
     private func openRoutineReview() {
         showingRoutineEditor = true
     }
@@ -416,7 +430,7 @@ struct MorningRootView: View {
         guard !store.privacyBlocksWork, !store.permissionSetup.isPresented, !store.permissionSetup.needsInitialSetup, activeEntryPresentations.isEmpty, scenePhase == .active, !presentingIntentCapture, !store.capturePresented, !store.captureVoicePresented, !store.hasPendingSpokenCapture,
               !store.voiceInputBlocksPlayback, !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending,
               !store.morningDetailPresented,
-              !showingLearn, !showingRoutineEditor, !learnAfterRoutineDismissal, !store.voiceCommandPresented,
+              !showingLearn, !showingRoutinePreparation, !showingRoutineEditor, !learnAfterRoutineDismissal, !store.voiceCommandPresented,
               !store.observationDetailPresented, !store.observationSelectionPresented, !store.routineProposalPresented,
               let text = MorningIntentRouter.shared.pendingCaptureText else { return }
         presentingIntentCapture = true
@@ -454,7 +468,7 @@ struct MorningRootView: View {
         guard activeEntryPresentations.isEmpty || (showingLearn && activeEntryPresentations == [.learn]) else { return false }
         guard !store.privacyBlocksWork, !store.permissionSetup.isPresented, !store.permissionSetup.needsInitialSetup,
               scenePhase == .active, !store.busy, !store.sessionActive,
-              !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending, !showingRoutineEditor, !learnAfterRoutineDismissal, !presentingIntentCapture,
+              !showingSettings, !showingInvitation, !showingActions, !actionTransitionPending, !showingRoutinePreparation, !showingRoutineEditor, !learnAfterRoutineDismissal, !presentingIntentCapture,
               !store.capturePresented, !store.voiceCommandPresented, !store.captureVoicePresented,
               !store.hasPendingSpokenCapture, !store.voiceInputBlocksPlayback,
               !store.morningDetailPresented, !store.observationDetailPresented,
@@ -471,7 +485,7 @@ struct MorningRootView: View {
         #if os(iOS) && !targetEnvironment(macCatalyst) && canImport(ScreenCaptureKit)
         if #available(iOS 27.0, *) { recordingBusy = ScreenRecordingService.shared.isBusy }
         #endif
-        return store.privacyBlocksWork || store.permissionSetup.isPresented || store.permissionSetup.needsInitialSetup || !activeEntryPresentations.isEmpty || showingActions || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutineEditor || learnAfterRoutineDismissal || presentingIntentCapture ||
+        return store.privacyBlocksWork || store.permissionSetup.isPresented || store.permissionSetup.needsInitialSetup || !activeEntryPresentations.isEmpty || showingActions || actionTransitionPending || showingSettings || showingInvitation || showingLearn || showingRoutinePreparation || showingRoutineEditor || learnAfterRoutineDismissal || presentingIntentCapture ||
             store.capturePresented || store.voiceCommandPresented || store.captureVoicePresented ||
             store.hasPendingSpokenCapture || store.morningDetailPresented || store.observationDetailPresented ||
             store.observationSelectionPresented || store.routineProposalPresented || store.voiceInputBlocksPlayback ||
@@ -480,7 +494,7 @@ struct MorningRootView: View {
     }
 
     private var recordingCanProcess: Bool {
-        !store.privacyBlocksWork && !store.permissionSetup.isPresented && !store.permissionSetup.needsInitialSetup && activeEntryPresentations.isEmpty && !showingActions && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutineEditor && !learnAfterRoutineDismissal && !presentingIntentCapture &&
+        !store.privacyBlocksWork && !store.permissionSetup.isPresented && !store.permissionSetup.needsInitialSetup && activeEntryPresentations.isEmpty && !showingActions && !actionTransitionPending && !showingSettings && !showingInvitation && !showingLearn && !showingRoutinePreparation && !showingRoutineEditor && !learnAfterRoutineDismissal && !presentingIntentCapture &&
         !store.capturePresented && !store.voiceCommandPresented && !store.captureVoicePresented &&
         !store.hasPendingSpokenCapture && !store.voiceInputBlocksPlayback &&
         !store.morningDetailPresented && !store.observationDetailPresented &&
@@ -537,7 +551,7 @@ struct MorningRootView: View {
         }
         switch destination {
         case .reviewDraft: openRoutineReview()
-        case .learn: showingLearn = true
+        case .learn: showingRoutinePreparation = true
         default: store.tab = .today
         }
     }

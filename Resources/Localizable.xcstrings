@@ -4123,16 +4123,16 @@
     },
     "About this suggestion": {
       "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À propos de cette suggestion"
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "About this suggestion"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos de cette proposition"
           }
         }
       }
@@ -26686,6 +26686,134 @@
           "stringUnit": {
             "state": "translated",
             "value": "Point produit — routine du matin MORE."
+          }
+        }
+      }
+    },
+    "Your morning takes shape.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your morning takes shape."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre matin prend forme."
+          }
+        }
+      }
+    },
+    "MORE uses the app-use times you allow to suggest a routine. You review it before anything starts.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE uses the app-use times you allow to suggest a routine. You review it before anything starts."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE utilise les durées d’utilisation que vous autorisez pour proposer une routine. Vous la relisez avant tout démarrage."
+          }
+        }
+      }
+    },
+    "No data yet? You can continue and return to Your routine in Settings. Nothing is guessed or started for you.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No data yet? You can continue and return to Your routine in Settings. Nothing is guessed or started for you."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore de données ? Continuez et retrouvez Votre routine dans les réglages. Rien n’est inventé ni démarré à votre place."
+          }
+        }
+      }
+    },
+    "Continue for now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue for now"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuer pour le moment"
+          }
+        }
+      }
+    },
+    "Here is what your morning looks like.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Here is what your morning looks like."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voici à quoi ressemble votre matin."
+          }
+        }
+      }
+    },
+    "You can connect your websites later in Settings. Approving this routine does not start it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can connect your websites later in Settings. Approving this routine does not start it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pourrez connecter vos sites plus tard dans les réglages. Valider cette routine ne la démarre pas."
+          }
+        }
+      }
+    },
+    "Later": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tard"
+          }
+        }
+      }
+    },
+    "Refine my morning": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refine my morning"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiner mon matin"
           }
         }
       }

@@ -5,7 +5,7 @@ import UIKit
 /// Synthetic sources never change iOS authorizations or contact weather providers.
 @MainActor
 final class MorningPermissionSetupTests: XCTestCase {
-    func testVoiceAccessClosesAfterOneChoiceAndPersistsWhenPermissionIsDenied() {
+    func testDeniedVoiceContinuesToRoutinePreparationAndPersistsWithoutLearningMenu() {
         let app = launchFixture(denied: true)
         XCTAssertEqual(app.staticTexts["permissions.title.speech"].label, "Talk to MORE.")
         XCTAssertEqual(app.buttons["permissions.allow"].label, "Enable voice")
@@ -16,6 +16,7 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertEqual(app.alerts.count, 0)
         let allow = app.buttons["permissions.allow"]
         reveal(allow, app); allow.tap()
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
         app.terminate(); launchConfirmedWorkspace(app)
         XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2),
@@ -29,7 +30,7 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertFalse(app.buttons["permissions.allow"].exists)
     }
 
-    func testSkippingVoiceReturnsDirectlyHomeWithoutRequestingAnyOtherAccess() {
+    func testSkippingVoiceOpensRoutinePreparationWithoutRequestingAnyOtherAccess() {
         let app = launchFixture()
         let skip = app.buttons["permissions.skip"]
         reveal(skip, app)
@@ -39,6 +40,7 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertEqual(app.alerts.count, 0)
         attach("synthetic-single-voice-explanation", app)
         skip.tap()
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
         XCTAssertEqual(app.alerts.count, 0)
     }
@@ -78,24 +80,28 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertFalse(app.buttons["permissions.finish"].exists)
         attach("permissions-night-fr-largest-voice-landscape", app, screenshot: XCUIScreen.main.screenshot())
         reveal(skip, app); skip.tap()
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
     }
 
-    func testAllowingVoiceReturnsDirectlyHomeAndPersistsWithoutRoutineLearning() {
+    func testAllowingVoiceOpensRoutinePreparationAndPersistsWithoutRepeatingSetup() {
         let app = launchFixture()
         let allow = app.buttons["permissions.allow"]
         reveal(allow, app); allow.tap()
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
         XCTAssertEqual(app.alerts.count, 0, "The isolated voice fixture never requests system permissions.")
         app.terminate(); launchConfirmedWorkspace(app)
         XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2),
                        "The voice choice must stay saved without opening routine learning.")
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
     }
 
     func testRevisitingOptionalPermissionsReturnsToTheListAndSettingsWithoutOnboarding() {
         let app = launchFixture(french: true)
         skipVoice(in: app)
+        finishInitialRoutinePreparationIfVisible(app)
         assertHomeWithoutFurtherSetup(app)
         openPermissionOptions(app)
         for permission in ["location", "calendar", "reminders", "screenTime", "speech", "notifications", "alarms"] {
@@ -143,7 +149,8 @@ final class MorningPermissionSetupTests: XCTestCase {
             XCTAssertGreaterThan(explanation.label.count, benefit.label.count)
             attach("permissions-\(phase)-fr-voice-expanded", app)
             skipVoice(in: app)
-            assertHomeWithoutFurtherSetup(app)
+            finishInitialRoutinePreparationIfVisible(app)
+        assertHomeWithoutFurtherSetup(app)
             openPermissionOptions(app)
             selectPermissionOption("speech", in: app)
             XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5))
@@ -181,6 +188,59 @@ final class MorningPermissionSetupTests: XCTestCase {
         XCTAssertEqual(app.alerts.count, 0)
     }
 
+    func testFirstScreenTimeConnectionOpensReviewWithoutLearnAndLaterPreservesItAcrossRelaunch() {
+        let app = launchFixture(screenTime: true)
+        skipVoice(in: app)
+        // Fixture starts notAsked, just like a fresh device: choosing Connect is
+        // necessary. Permission setup never grants Screen Time on the user's behalf.
+        MorningUITestNavigation.tapButton("routinePreparation.connect", in: app)
+        let firstStep = app.staticTexts["screenTimeProposal.step.0"]
+        XCTAssertTrue(firstStep.waitForExistence(timeout: 15), app.debugDescription)
+        let reviewedTitle = firstStep.label
+        XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+        XCTAssertFalse(app.buttons["routine.approve"].exists)
+        XCTAssertTrue(app.buttons["screenTimeProposal.approve"].exists)
+        MorningUITestNavigation.tapButton("routinePreparation.later", in: app)
+        assertHomeWithoutFurtherSetup(app)
+        app.terminate(); launchConfirmedWorkspace(app)
+        assertHomeWithoutFurtherSetup(app)
+        XCTAssertFalse(app.staticTexts["screenTimeProposal.step.0"].exists,
+                       "Finishing onboarding must not reopen review or Learn on launch.")
+        app.buttons["morning.actions"].tap()
+        MorningUITestNavigation.tapButton("morning.begin", in: app)
+        XCTAssertTrue(firstStep.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(firstStep.label, reviewedTitle, "Later keeps the saved proposal for review.")
+        XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+        XCTAssertFalse(app.buttons["morning.playback"].exists, "Review never starts a session.")
+    }
+
+    func testFrenchFirstRoutinePreparationHasAReachableLaterPathWithoutData() {
+        let app = launchFixture(french: true)
+        skipVoice(in: app)
+        let heading = app.staticTexts["routinePreparation.heading"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(heading.label, "Votre matin prend forme.")
+        XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+        let later = app.buttons["routinePreparation.later"]
+        reveal(later, app)
+        XCTAssertEqual(later.label, "Continuer pour le moment")
+        later.tap()
+        app.terminate(); launchConfirmedWorkspace(app)
+        assertHomeWithoutFurtherSetup(app)
+        XCTAssertFalse(heading.exists)
+    }
+
+    private func finishInitialRoutinePreparationIfVisible(_ app: XCUIApplication) {
+        // Every first voice decision opens the direct routine destination. An
+        // already handled choice on relaunch stays Home instead.
+        let later = app.buttons["routinePreparation.later"]
+        if later.waitForExistence(timeout: 3) {
+            XCTAssertFalse(app.buttons["learn.screenTime"].exists)
+            XCTAssertFalse(app.buttons["learn.observations"].exists)
+            reveal(later, app); later.tap()
+        }
+    }
+
     private func openSettingsFromHome(_ app: XCUIApplication) {
         let actions = app.buttons["morning.actions"]
         XCTAssertTrue(actions.waitForExistence(timeout: 5), app.debugDescription)
@@ -206,7 +266,7 @@ final class MorningPermissionSetupTests: XCTestCase {
     }
 
     private func launchFixture(denied: Bool = false, frenchLargestText: Bool = false,
-                               french: Bool = false, phase: String = "day") -> XCUIApplication {
+                               french: Bool = false, phase: String = "day", screenTime: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let french = french || frenchLargestText
         let app = XCUIApplication()
@@ -215,6 +275,7 @@ final class MorningPermissionSetupTests: XCTestCase {
             "-more.appLanguage", french ? "fr" : "en", "-AppleLanguages", french ? "(fr)" : "(en)", "-AppleLocale", french ? "fr_FR" : "en_US"]
         if frenchLargestText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
         if denied { app.launchArguments.append("--ui-testing-permissions-denied") }
+        if screenTime { app.launchArguments.append("--ui-testing-screen-time-fixture") }
         launchConfirmedWorkspace(app)
         XCTAssertTrue(app.staticTexts["permissions.title.speech"].waitForExistence(timeout: 5), app.debugDescription)
         return app
