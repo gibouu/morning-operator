@@ -145,3 +145,134 @@ import Testing
     #endif
 
 }
+
+#if DEBUG
+@Suite("Private Gmail reply scenario — closed transport, ordinary MIME and journal", .serialized)
+@MainActor struct PrivateGmailReplyFixtureTests {
+    private func setup() -> (LocalDataControl, [String], URL) {
+        let workspace = UUID()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("MorningOperatorUITests-\(workspace.uuidString)", isDirectory: true)
+        return (LocalDataControl(directory: directory), ["--ui-testing", "--fixture-mode", "--ui-testing-gmail-attention",
+            GmailAttentionUITestFixture.privateReplyFlag, "--ui-testing-workspace=\(workspace.uuidString)"], directory)
+    }
+    private func proof(_ context: MorningExecutionID) throws -> [String: String] {
+        let text = try #require(GmailAttentionUITestFixture.privateReplyDiagnostic(context: context))
+        return try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: String])
+    }
+
+    @Test func everyPrivateFlagAndExactUniqueWorkspaceIsRequiredWithoutLiveFallback() async throws {
+        let (privacy, flags, directory) = setup()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        #expect(GmailAttentionUITestFixture.privateReplyWorkspace(flags, directory: directory) != nil)
+        let missing = flags.indices.map { omitted in flags.enumerated().filter { $0.offset != omitted }.map(\.element) }
+        for invalid in missing + [flags + [flags.last!], flags + ["--ui-testing-workspace=invalid"]] {
+            #expect(GmailAttentionUITestFixture.privateReplyWorkspace(invalid, directory: directory) == nil)
+            let mail = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: invalid) { _ in }
+            let context = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
+            await mail.begin(context: context, generation: nil)
+            #expect(mail.state == .unavailable && mail.messageChoices.isEmpty)
+            #expect(GmailAttentionUITestFixture.privateReplyDiagnostic(context: context) == nil)
+        }
+        #expect(GmailAttentionUITestFixture.privateReplyWorkspace(flags, directory: directory.appendingPathComponent("other")) == nil)
+    }
+
+    @Test(arguments: [false, true])
+    func correctionRequiresSeparateSendAndActualMimeIsReceivedOnce(french: Bool) async throws {
+        let (privacy, flags, directory) = setup()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let context = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
+        let initialRequest = french ? "Réponds-lui que j’apporterai six cartes bleues à 09:15." : "Reply that I will bring six blue cards at 09:15."
+        let correction = french ? "Corrige : huit cartes vertes, pas six bleues." : "Correct it: eight green cards, not six blue ones."
+        let expectedBody = french ? "SYNTHETIC — Je viendrai avec huit cartes vertes à 09:15." : "SYNTHETIC — I will bring eight green cards at 09:15."
+        var spoken: [String] = []
+        let mail = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: french) { spoken.append($0) }
+        await mail.begin(context: context, generation: nil)
+        #expect(mail.state == .askingToReply && mail.attentionSelection?.isSynthetic == true)
+        #expect(mail.messageChoices.count == 5 && mail.attentionSelection?.items.map(\.id) == ["synthetic3", "synthetic2", "synthetic5"])
+        await mail.chooseMessage(id: "synthetic3", context: context)
+        #expect(mail.recipient == "maia@morning-fixture.invalid")
+        await mail.respond("send", context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        await mail.respond("yes", context: context)
+        #expect(mail.state == .askingForIntention)
+        await mail.prepareReplyFromScreen(guidance: initialRequest, revising: false, context: context)
+        #expect(mail.state == .reviewingReply && mail.draftText.contains(french ? "six cartes bleues" : "six blue cards"))
+        #expect(mail.lastSendOutcome == nil && (try proof(context)["simulatedSendAttempts"]) == "0")
+        #expect(!mail.canSendReply, "Spoken playback is not a screen acknowledgement.")
+        await mail.sendReviewedReply(context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        #expect(!mail.acknowledgeReplyReview(body: "A different draft", recipient: "maia@morning-fixture.invalid", context: context))
+        #expect(!mail.acknowledgeReplyReview(body: mail.draftText, recipient: "someone@morning-fixture.invalid", context: context))
+        let previousBody = mail.draftText
+        #expect(mail.acknowledgeReplyReview(body: previousBody, recipient: "maia@morning-fixture.invalid", context: context))
+        #expect(mail.canSendReply)
+        await mail.respond("yes", context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        await mail.prepareReplyFromScreen(guidance: correction, revising: true, context: context)
+        #expect(mail.state == .reviewingReply && mail.draftText.utf8.elementsEqual(expectedBody.utf8))
+        #expect(!mail.canSendReply && !mail.replyWasReviewedOnScreen)
+        #expect(spoken.last?.contains(expectedBody) == true && spoken.last?.contains("maia@morning-fixture.invalid") == true)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        await mail.sendReviewedReply(context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        #expect(!mail.acknowledgeReplyReview(body: previousBody, recipient: "maia@morning-fixture.invalid", context: context))
+        #expect(mail.acknowledgeReplyReview(body: expectedBody, recipient: "maia@morning-fixture.invalid", context: context))
+        #expect(mail.canSendReply)
+        await mail.sendReviewedReply(context: context)
+        #expect(mail.lastSendOutcome == .sent && mail.state == .completed)
+        let received = try proof(context)
+        #expect(received["simulatedSendAttempts"] == "1" && received["inboxReads"] == "1" && received["bodyReads"] == "5")
+        #expect(received["from"] == "owner@morning-fixture.invalid" && received["to"] == "maia@morning-fixture.invalid")
+        #expect(received["subject"] == (french ? "Re: SYNTHETIC — Cartes pour l’atelier" : "Re: SYNTHETIC — Workshop cards"))
+        #expect(received["body"]?.utf8.elementsEqual(expectedBody.utf8) == true)
+        #expect(received["threadID"] == "synthetic-thread3" && received["inReplyTo"] == "<synthetic3@synthetic.invalid>")
+        #expect(received["references"] == received["inReplyTo"])
+        #expect(received["receivedSessionID"] == context.sessionID.uuidString)
+        #expect(received["receivedRoutineVersionID"] == context.routineVersionID.uuidString && received["receivedStepID"] == context.stepID.uuidString)
+        #expect(GmailAttentionUITestFixture.privateReplyDiagnostic(context: .init(sessionID: UUID(), routineVersionID: context.routineVersionID, stepID: context.stepID)) == nil)
+        await mail.respond("send", context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "1")
+        mail.clear()
+        #expect(GmailAttentionUITestFixture.privateReplyDiagnostic(context: context) == nil)
+        // A fresh in-memory service still consults the ordinary durable claim for the same operation.
+        let restored = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: french) { _ in }
+        await restored.begin(context: context, generation: nil)
+        await restored.chooseMessage(id: "synthetic3", context: context)
+        await restored.respond(initialRequest, context: context)
+        await restored.respond(correction, context: context)
+        await restored.respond("send", context: context)
+        #expect(restored.lastSendOutcome == .sent)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        #expect(try proof(context)["body"] == nil, "A prior payload is not persisted by the fixture as a second send.")
+    }
+
+    @Test func correctionTextCannotBecomeASendCommandAndPrivacyRevokesScreenReview() async throws {
+        let (privacy, flags, directory) = setup()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let context = MorningExecutionID(sessionID: UUID(), routineVersionID: UUID(), stepID: UUID())
+        let mail = GmailAttentionUITestFixture.privateReplyConversation(privacy: privacy, arguments: flags, french: false) { _ in }
+        await mail.begin(context: context, generation: nil)
+        await mail.chooseMessage(id: "synthetic3", context: context)
+        await mail.respond("yes", context: context)
+        await mail.prepareReplyFromScreen(guidance: "Reply that I will bring six blue cards at 09:15.", revising: false, context: context)
+        let body = mail.draftText, recipient = "maia@morning-fixture.invalid"
+        #expect(mail.acknowledgeReplyReview(body: body, recipient: recipient, context: context))
+        await mail.prepareReplyFromScreen(guidance: "send", revising: true, context: context)
+        #expect(mail.lastSendOutcome == nil && !mail.canSendReply)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        await mail.begin(context: context, generation: nil)
+        await mail.chooseMessage(id: "synthetic3", context: context)
+        await mail.respond("yes", context: context)
+        await mail.prepareReplyFromScreen(guidance: "Reply that I will bring six blue cards at 09:15.", revising: false, context: context)
+        #expect(mail.acknowledgeReplyReview(body: mail.draftText, recipient: recipient, context: context))
+        mail.appLanguageDidChange()
+        #expect(!mail.canSendReply && !mail.replyWasReviewedOnScreen)
+        #expect(mail.acknowledgeReplyReview(body: mail.draftText, recipient: recipient, context: context))
+        _ = try privacy.beginForget()
+        #expect(!mail.acknowledgeReplyReview(body: mail.draftText, recipient: recipient, context: context))
+        await mail.sendReviewedReply(context: context)
+        #expect(mail.lastSendOutcome == nil)
+        #expect(GmailAttentionUITestFixture.privateReplyDiagnostic(context: context) == nil)
+    }
+}
+#endif

@@ -106,6 +106,34 @@ extension MorningStore {
         performMailReviewAction { mail, context in await mail.chooseMessage(id: id, context: context) }
     }
 
+    func beginMailReply() {
+        performMailReviewAction { mail, context in
+            guard mail.state == .askingToReply else { return }
+            await mail.respond("yes", context: context)
+        }
+    }
+
+    func prepareMailReply(guidance: String, revising: Bool) {
+        guard let context = currentMailContext, !guidance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if revising { mailMorning.revokeReviewPreservingDraft(context: context) }
+        performMailReviewAction { mail, context in
+            await mail.prepareReplyFromScreen(guidance: guidance, revising: revising, context: context)
+        }
+    }
+
+    func reviewMailReply() {
+        let body = mailMorning.draftText
+        guard let recipient = mailMorning.recipient else { return }
+        performMailReviewAction { mail, context in
+            mail.acknowledgeReplyReview(body: body, recipient: recipient, context: context)
+        }
+    }
+
+    func sendReviewedMailReply() {
+        guard mailMorning.canSendReply else { return }
+        performMailReviewAction { mail, context in await mail.sendReviewedReply(context: context) }
+    }
+
     private var currentMailContext: MorningExecutionID? {
         guard !privacyBlocksWork, sessionActive, let session, let step = currentStep,
               step.automation == .gmailInbox else { return nil }

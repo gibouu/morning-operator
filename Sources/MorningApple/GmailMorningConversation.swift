@@ -47,6 +47,16 @@ public final class GmailMorningConversation {
             ![.preparing, .preparingReply, .sending, .uncertain, .completed].contains(state) && lastSendOutcome == nil
     }
     public var canSendSelfMessage: Bool { isComposingSelfMessage && state == .reviewingSelfMessage && selfMessageDraft != nil && !sendReviewRevoked }
+    public var replyWasReviewedOnScreen: Bool {
+        guard let review = screenReplyReview, state == .reviewingReply, !isComposingSelfMessage,
+              lastSendOutcome == nil, review.context == context, review.attempt == attempt,
+              review.messageID == selectedMessageID, review.recipient == recipient else { return false }
+        return review.body == Data(draftText.utf8)
+    }
+    public var canSendReply: Bool {
+        guard replyWasReviewedOnScreen, !sendReviewRevoked, session?.canSendMessages == true else { return false }
+        do { try requireCurrent(attempt); return true } catch { return false }
+    }
     public private(set) var context: MorningExecutionID?
     public var isCompleted: Bool { state == .completed }
     public var hasUnfinishedIntention: Bool {
@@ -90,6 +100,10 @@ public final class GmailMorningConversation {
     private var attempt = UUID()
     private var questionID: UUID?
     private var sendReviewRevoked = false
+    private struct ScreenReplyReview {
+        let context: MorningExecutionID, attempt: UUID, messageID: String, recipient: String, body: Data
+    }
+    private var screenReplyReview: ScreenReplyReview?
 
     public init(service: GmailConnectionService = GmailConnectionService(),
                 drafts: GmailReplyDraftService = GmailReplyDraftService(),
@@ -202,6 +216,7 @@ public final class GmailMorningConversation {
     /// Refresh presentation only. Draft bytes, recipient bindings and send journals stay intact.
     public func appLanguageDidChange() {
         questionID = nil
+        screenReplyReview = nil
         sendReviewRevoked = true
         summary = inboxSummary()
         switch state {
@@ -338,6 +353,36 @@ public final class GmailMorningConversation {
         } catch { await fail(error, token: token) }
     }
 
+    /// Text entered in a preparation/correction field is content, never a Send command.
+    public func prepareReplyFromScreen(guidance: String, revising: Bool, context: MorningExecutionID) async {
+        guard self.context == context, !isComposingSelfMessage, lastSendOutcome == nil,
+              state == (revising ? .reviewingReply : .askingForIntention), messages.indices.contains(selectedIndex),
+              !guidance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let token = attempt
+        do {
+            try requireCurrent(token)
+            try await prepare(mail: messages[selectedIndex], guidance: guidance, token: token, revising: revising)
+        } catch { await fail(error, token: token) }
+    }
+
+    /// A screen acknowledgement is independent of speech playback and binds the exact visible draft.
+    @discardableResult
+    public func acknowledgeReplyReview(body: String, recipient: String, context: MorningExecutionID) -> Bool {
+        guard self.context == context, state == .reviewingReply, !isComposingSelfMessage, lastSendOutcome == nil,
+              let messageID = selectedMessageID, self.recipient == recipient, !body.isEmpty,
+              Data(body.utf8) == Data(draftText.utf8) else { return false }
+        do { try requireCurrent(attempt) } catch { return false }
+        screenReplyReview = .init(context: context, attempt: attempt, messageID: messageID, recipient: recipient, body: Data(body.utf8))
+        sendReviewRevoked = false
+        return replyWasReviewedOnScreen
+    }
+
+    public func sendReviewedReply(context: MorningExecutionID) async {
+        guard self.context == context, canSendReply else { return }
+        screenReplyReview = nil
+        await respond("send", context: context)
+    }
+
     public func cancel() {
         attempt = UUID()
         attention.cancel()
@@ -370,6 +415,7 @@ public final class GmailMorningConversation {
         readOutcome = .unavailable
         isComposingSelfMessage = false; selfMessageSubject = ""; selfMessageDraft = nil
         sendReviewRevoked = false
+        screenReplyReview = nil
     }
 
     /// An ordinary owner action in the active mail moment, not an Inbox fixture.
@@ -454,6 +500,7 @@ public final class GmailMorningConversation {
     }
 
     private func prepare(mail: GmailMessage, guidance: String, token: UUID, revising: Bool = false) async throws {
+        screenReplyReview = nil
         state = .preparingReply
         sendReviewRevoked = true
         if !revising { pendingIntention = guidance }
