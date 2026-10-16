@@ -1033,7 +1033,12 @@ import MorningCore
                     // Readonly text is observed, never tapped. A real exposed
                     // portion is sufficient; exact label/value assertions remain.
                     if element.elementType == .staticText, let region = owned ?? routine {
-                        return region.visible.intersects(frame)
+                        let scoped = region.container.descendants(matching: .staticText).matching(
+                            NSPredicate(format: "identifier == %@ OR label == %@", id, id))
+                        return region.visible.intersects(frame) && scoped.allElementsBoundByIndex.contains { candidate in
+                            candidate.exists && candidate.frame == frame && candidate.label == element.label &&
+                                String(describing: candidate.value) == String(describing: element.value)
+                        }
                     }
                     guard element.isHittable && app.frame.contains(frame) else { return false }
                     return (owned != nil || id.hasPrefix("routine.step.")) ? viewport.contains(frame) : true
