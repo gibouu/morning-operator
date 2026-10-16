@@ -374,7 +374,7 @@ final class MorningStore {
         tokenProvider: { [weak self] in
             guard let self else { throw CancellationError() }
             return try await self.composio.morningVoiceToken()
-        }, makeTransport: { UnavailableMorningVoiceTransport() },
+        }, makeTransport: { ElevenLabsMorningVoiceTransport() },
         control: { [weak self] action, binding in
             guard let self else { throw CancellationError() }
             return try await self.applyCloudVoiceControl(action, binding: binding)
