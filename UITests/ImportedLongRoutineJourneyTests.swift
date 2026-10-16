@@ -8,6 +8,43 @@ import MorningCore
 /// Local TTS and ordinary connected-result narration may run or be unavailable;
 /// acoustic quality, live accounts, web actions and MORE §10 are not certified.
 @MainActor final class ImportedLongRoutineJourneyTests: XCTestCase {
+    /// Exercises real native formatting and TTS caption callbacks only. This is
+    /// neither a local-language-model verdict nor proof that a person heard it.
+    func testSingleCalendarMomentShowsItsNativeSpokenFacts() throws {
+        continueAfterFailure = false
+        executionTimeAllowance = 240
+        let portable = #"{"format":"morning-operator.routine","formatVersion":1,"detail":"includeDetails","sourceRoutineID":"91000000-0000-4000-8000-000000000100","sourceRoutineVersion":1,"sourceCreatedAt":1792129500.0,"approvalAtExport":false,"sourceIsSynthetic":true,"sourceLabel":"SYNTHETIC manual Calendar speech smoke; no inferred operation","steps":[{"id":"91000000-0000-4000-8000-000000000001","title":"SYNTHETIC my calendar","kind":"calendar","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC manual Calendar moment. Select its source and operation in the app."}]}"#
+        let data = Data(portable.utf8), document = try PortableRoutineDocument.decode(data)
+        let draft = try document.importedDraft(replacing: nil)
+        XCTAssertTrue(draft.isSynthetic && !draft.isApproved && !document.approvalAtExport)
+        XCTAssertEqual(draft.steps.count, 1)
+        XCTAssertTrue(draft.steps.allSatisfy { $0.automation == nil && $0.target == nil })
+        let app = XCUIApplication(), workspace = UUID().uuidString
+        app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
+            "--ui-testing-briefing-fixture", "--ui-testing-hands-free", "--ui-testing-read-aloud",
+            "--light-preview", "--theme-phase=morning", "--ui-testing-parsed-routine=" + data.base64EncodedString(),
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch(); defer { app.terminate() }
+        try requireWorkspace(workspace, app); try requireAcceptedImport(app)
+        openRoutine(app)
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+        XCTAssertTrue(button("routine.step.0", app).label.contains("Your own moment"))
+        XCTAssertFalse(app.buttons["routine.step.1"].exists)
+        back(app); configureCalendar(app); tap("setup.routine", app)
+        configureOperation(0, action: "Read today's calendar", minutes: 2,
+            detail: "SYNTHETIC selected Calendar reading. No model-generated recap or event write.", in: app)
+        XCTAssertTrue(button("routine.step.0", app).label.contains("2 min"))
+        attach("calendar-direct-configured-through-ui-unapproved", app)
+        tap("routine.approve", app)
+        home(app); reveal(app); tap("morning.begin", app)
+        waitLabel(app.staticTexts["morning.caption"], contains: "Synthetic quiet reading", timeout: 90)
+        let fields = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String).components(separatedBy: "|")
+        XCTAssertEqual(fields.count, 2, "This smoke uses the ordinary two-field QA identity, not a fake timer or model.")
+        XCTAssertEqual(fields.last, document.steps[0].id.uuidString)
+        attach("calendar-direct-native-facts-actual-caption-no-model-proof", app)
+        // No Next, clock override, shortened budget or completion claim.
+    }
+
     func testManualOracleThroughUIConfigurationRunsTenMomentsInOnePinnedSession() throws {
         continueAfterFailure = false
         executionTimeAllowance = 2_700
