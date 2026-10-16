@@ -8,7 +8,7 @@ final class WebRoutineJourneyTests: XCTestCase {
         continueAfterFailure = false
         for (language, service, host) in [("en", "LinkedIn", "www.linkedin.com"), ("fr", "Slack", "app.slack.com")] {
             let app = XCUIApplication()
-            app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved",
+            app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved", "--ui-testing-hands-free",
                 "--ui-testing-briefing-fixture", "--ui-testing-workspace=\(UUID().uuidString)",
                 "--light-preview", "--theme-phase=morning", "-more.appLanguage", language,
                 "-AppleLanguages", "(\(language))", "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"]
@@ -34,7 +34,9 @@ final class WebRoutineJourneyTests: XCTestCase {
             // No account is signed in and no external message is sent by this test.
             XCTAssertTrue(app.staticTexts["web.host"].exists)
             XCTAssertTrue((service == "LinkedIn" ? ["www.linkedin.com", "linkedin.com"] : ["app.slack.com", "slack.com", "www.slack.com"]).contains(app.staticTexts["web.host"].label), app.debugDescription)
-            XCTAssertTrue(app.otherElements["web.conversation"].exists || app.scrollViews["web.conversation"].exists, app.debugDescription)
+            XCTAssertTrue(app.staticTexts["web.inlineSignIn"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertTrue(app.buttons["web.resume"].waitForExistence(timeout: 15), app.debugDescription)
+            XCTAssertFalse(app.buttons["web.replySend"].exists)
             XCTAssertFalse(app.buttons["connections.confirmReady"].exists)
             attach("browser-first-\(service)-\(language)-\(host)", app)
         }

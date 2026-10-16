@@ -282,7 +282,8 @@ struct WebMorningView: View {
                     "Connectez-vous ici. MORE garde cette session pour vos prochains matins, jusqu’à ce que le service demande une nouvelle connexion."))
                     .font(.footnote).accessibilityIdentifier("web.inlineSignIn")
             }
-            if WebConversationPolicy.supports(site), onConversation != nil { conversationControls }
+            if executionPlan != nil, WebConversationPolicy.supports(site), onConversation != nil,
+               !controller.awaitingSignIn, !controller.isSignInPage { conversationControls }
             if site == .news {
                 if let snapshot = controller.newsSnapshot, let onNewsArticle {
                     ScrollView {
