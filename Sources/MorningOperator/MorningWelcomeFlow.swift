@@ -315,18 +315,6 @@ struct MorningWelcomeFlow: View {
                     .accessibilityHint(text("Ouvrir MORE sans achat ni essai.", "Open MORE without a purchase or trial."))
                     .accessibilityIdentifier("entry.continueFree")
             }
-            if !isPaywall {
-                Button(text("Voir l’offre", "View offer")) { move(to: 3) }
-                    .font(.system(.caption, weight: .medium)).frame(minHeight: 44)
-                    .accessibilityIdentifier("onboarding.offer")
-            }
-            #if DEBUG
-            if developerAccessIsPreviewSkip, let developerAccess {
-                Button(text("Passer pour le moment", "Skip for now"), action: developerAccess)
-                    .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44)
-                    .accessibilityIdentifier("onboarding.skipForNow")
-            }
-            #endif
             Text(isPaywall ? paymentSummary
                           : text("À votre rythme. Vous gardez la main.", "At your pace. You stay in control."))
                 .font(.system(.caption)).foregroundStyle(muted)
@@ -335,6 +323,13 @@ struct MorningWelcomeFlow: View {
                     .font(.system(.caption, weight: .medium)).frame(minHeight: 44)
                     .disabled(purchaseState.isBusy)
                     .accessibilityIdentifier("paywall.restore")
+                #if DEBUG
+                if developerAccessIsPreviewSkip, let developerAccess {
+                    Button(text("Passer pour le moment", "Skip for now"), action: developerAccess)
+                        .font(.system(.caption2)).frame(minHeight: 44).buttonStyle(.plain)
+                        .accessibilityIdentifier("onboarding.skipForNow")
+                }
+                #endif
             }
         }
         .multilineTextAlignment(.center)
