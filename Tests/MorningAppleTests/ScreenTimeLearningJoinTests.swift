@@ -67,13 +67,26 @@ struct ScreenTimeLearningJoinTests {
     @Test("An explicit native order survives restoration while canonical authority and source selection remain checked")
     func nativeOrderIsRecreatedOnlyByTheExactStandingChoice() throws {
         let hours: [ScreenTimeHour] = [
+            .init(interval: .init(start: at(13, 22), duration: 3600), firstPickup: at(13, 22),
+                apps: [.init(bundleIdentifier: "com.apple.mobilemail", seconds: 300)]),
             .init(interval: .init(start: at(14, 7), duration: 3600), firstPickup: at(14, 7),
                 longestActivity: .init(start: at(14, 7), duration: 780), apps: [
                     .init(bundleIdentifier: "com.burbn.instagram", seconds: 480),
                     .init(bundleIdentifier: "com.google.Gmail", seconds: 180),
                     .init(bundleIdentifier: "com.apple.Music", seconds: 120)])]
+        // A returned first hour alone cannot establish the preceding night.
+        // Keep that source unknown rather than manufacturing native candidates.
+        let unknown = try #require(ScreenTimeObservationEvidence.make(hours: Array(hours.dropFirst()), queryStart: at(13, 18),
+            now: at(14, 14), calendar: calendar).first { $0.day == at(14, 0) })
+        #expect(!unknown.hasMorningEvidence && unknown.morningWindow == nil && unknown.apps.isEmpty)
+        let unknownSource = try ObservationAcquisition.screenTime(unknown)
+        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+            try assemble([unknownSource], preferences: RoutinePreferenceJournal())
+        }
         let report = try #require(ScreenTimeObservationEvidence.make(hours: hours, queryStart: at(13, 18),
             now: at(14, 14), calendar: calendar).first { $0.day == at(14, 0) })
+        try #require(report.hasMorningEvidence && report.apps.count == 3,
+            "The order contract requires a detected morning; an unanswered night is not evidence.")
         let source = try ObservationAcquisition.screenTime(report), archive = try ObservationArchive(entries: [source])
         let empty = RoutinePreferenceJournal(), canonical = try assemble([source], preferences: empty)
         #expect(canonical.routine.steps.count == 3)
