@@ -914,10 +914,12 @@ final class MorningStore {
     }
 
     @discardableResult
-    func saveStep(_ edited: RoutineStep, keepInSuggestions: Bool, keepDuration: Bool) -> Bool {
+    func saveStep(_ edited: RoutineStep, keepInSuggestions: Bool, keepDuration: Bool,
+                  assignmentContext: RoutineStepAssignmentContext? = nil) -> Bool {
         guard !privacyBlocksWork else { return false }
         guard routinePreferencesIssue == nil else { notice = routinePreferencesIssue; return false }
         do {
+            try assignmentContext?.validate(routine: routine, generation: dataGeneration)
             var preferences = routinePreferences
             // A model row can have a fresh ID matched to an older saved title.
             // Resolve its standing choice before a rename/category edit changes that key.
@@ -931,9 +933,14 @@ final class MorningStore {
                     presence: keepInSuggestions ? .keep : nil,
                     durationMinutes: keepDuration ? step.durationMinutes : nil))
             }
-            var steps = routine?.steps ?? []
-            if let index = steps.firstIndex(where: { $0.id == step.id }) { steps[index] = step }
-            else { steps.append(step) }
+            var steps: [RoutineStep]
+            if let assignmentContext {
+                steps = try assignmentContext.replacing(step, in: routine, generation: dataGeneration)
+            } else {
+                steps = routine?.steps ?? []
+                if let index = steps.firstIndex(where: { $0.id == step.id }) { steps[index] = step }
+                else { steps.append(step) }
+            }
             return saveRoutineEdit(steps: steps, preferences: preferences)
         } catch { notice = error.moreDescription; return false }
     }

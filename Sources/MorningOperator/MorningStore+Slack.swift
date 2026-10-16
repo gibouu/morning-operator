@@ -3,19 +3,26 @@ import MorningApple
 import MorningCore
 
 extension MorningStore {
+    func slackMomentSelection(connection: ComposioConnection, identity: SlackReplyIdentity,
+                              channel: SlackChannelPage.Channel) throws -> (target: RoutineStepTarget, summary: String) {
+        guard connection.isActive, connection.service == "slack", identity.connectionID == connection.id else { throw SlackReplyError.accountChanged }
+        let arguments = try ComposioJSONValue.object(["channel": .string(channel.id), "limit": .number(3)]).prettyPrintedJSON()
+        let target = RoutineStepTarget.connectedAPI(service: "slack", connectionID: connection.id,
+            tool: "SLACK_FETCH_CONVERSATION_HISTORY", argumentsJSON: arguments)
+        try target.validateIntegration()
+        let summary = AppLanguage.isFrench
+            ? "Lire les trois derniers messages disponibles dans #\(channel.name), espace \(identity.teamName), avec \(identity.userName). Vous pourrez choisir un message, demander une réponse et la corriger. Aucun message ne sera publié sans relecture puis votre instruction « envoie »."
+            : "Read the latest three available messages in #\(channel.name), workspace \(identity.teamName), as \(identity.userName). You can choose a message, ask for a reply and revise it. Nothing is posted without review followed by your instruction to send."
+        return (target, summary)
+    }
+
     @discardableResult
     func addSlackMoment(connection: ComposioConnection, identity: SlackReplyIdentity, channel: SlackChannelPage.Channel) -> Bool {
         guard !privacyBlocksWork, !sessionActive, !busy, connection.isActive,
               connection.service == "slack", identity.connectionID == connection.id else { return false }
         do {
-            let arguments = try ComposioJSONValue.object(["channel": .string(channel.id), "limit": .number(3)]).prettyPrintedJSON()
-            let target = RoutineStepTarget.connectedAPI(service: "slack", connectionID: connection.id,
-                tool: "SLACK_FETCH_CONVERSATION_HISTORY", argumentsJSON: arguments)
-            try target.validateIntegration()
-            let detail = AppLanguage.isFrench
-                ? "Lire les trois derniers messages disponibles dans #\(channel.name), espace \(identity.teamName), avec \(identity.userName). Vous pourrez choisir un message, demander une réponse et la corriger. Aucun message ne sera publié sans relecture puis votre instruction « envoie »."
-                : "Read the latest three available messages in #\(channel.name), workspace \(identity.teamName), as \(identity.userName). You can choose a message, ask for a reply and revise it. Nothing is posted without review followed by your instruction to send."
-            let step = RoutineStep(title: "Slack · #\(channel.name)", detail: detail, durationMinutes: 3, target: target)
+            let selection = try slackMomentSelection(connection: connection, identity: identity, channel: channel)
+            let step = RoutineStep(title: "Slack · #\(channel.name)", detail: selection.summary, durationMinutes: 3, target: selection.target)
             guard addConnectedStep(step) else { return false }
             notice = AppLanguage.isFrench ? "Moment Slack ajouté au brouillon. Relisez et validez votre routine."
                 : "Slack moment added to your draft. Review and approve your routine."

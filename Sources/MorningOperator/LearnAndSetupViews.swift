@@ -615,20 +615,26 @@ struct SetupView: View {
 }
 
 struct StepEditor: View {
+    @Bindable var store: MorningStore
     @Environment(\.dismiss) private var dismiss
     @ViewState<RoutineStep> var step: RoutineStep
     @ViewState<Bool> private var keepInSuggestions: Bool
     @ViewState<Bool> private var keepDuration: Bool
     @ViewState<Bool> private var choosingRemoval = false
     @ViewState<String?> private var saveError = nil
+    @ViewState<Bool> private var choosingSlack = false
+    @ViewState<Bool> private var assignedSlack = false
+    @ViewState<String?> private var selectedSlackSummary = nil
+    let assignmentContext: RoutineStepAssignmentContext?
     let onSave: (RoutineStep, Bool, Bool) -> Bool
     let onDelete: (Bool) -> Bool
     let failureMessage: () -> String
 
-    init(step: RoutineStep, preference: RoutinePreference?,
+    init(store: MorningStore, step: RoutineStep, preference: RoutinePreference?, assignmentContext: RoutineStepAssignmentContext?,
          onSave: @escaping (RoutineStep, Bool, Bool) -> Bool,
          onDelete: @escaping (Bool) -> Bool, failureMessage: @escaping () -> String) {
         _step = ViewState(initialValue: step)
+        self.store = store; self.assignmentContext = assignmentContext
         _keepInSuggestions = ViewState(initialValue: preference?.presence == .keep)
         _keepDuration = ViewState(initialValue: preference?.durationMinutes != nil)
         self.onSave = onSave; self.onDelete = onDelete; self.failureMessage = failureMessage
@@ -701,6 +707,20 @@ struct StepEditor: View {
                     Text(automationExplanation)
                 }
                 StepTargetEditor(target: $step.target, reviewedDetail: step.detail)
+                if assignmentContext != nil {
+                    Section {
+                        Button(AppLanguage.isFrench ? "Choisir un compte et un canal Slack" : "Choose a Slack account and channel") { choosingSlack = true }
+                            .disabled(store.busy || store.sessionActive || store.privacyBlocksWork)
+                            .accessibilityIdentifier("step.chooseSlack")
+                        if let selectedSlackSummary {
+                            Text(selectedSlackSummary).fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("step.selectedSlackSource")
+                            Text(AppLanguage.isFrench ? "Votre note personnelle est conservée. Enregistrez, puis relisez et validez la routine."
+                                : "Your personal note is retained. Save, then review and approve the routine.")
+                                .font(.footnote)
+                        }
+                    } header: { Text(AppLanguage.isFrench ? "Pour ce moment" : "For this moment") }
+                }
                 if case let .inAppWeb(url) = step.target, let site = WebMorningSite(url: url), site != .gmail {
                     Section {
                         Picker(AppLanguage.isFrench ? "Ce que MORE fait" : "What MORE does", selection: $step.webBehavior) {
@@ -741,7 +761,7 @@ struct StepEditor: View {
                         do { try edited.target?.validateIntegration() }
                         catch { saveError = error.moreDescription; return }
                         edited.title = edited.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if edited.automation != .savedObservation { edited.observationReference = nil }
+                        if edited.automation != .savedObservation && !assignedSlack { edited.observationReference = nil }
                         if edited.target != nil { edited.automation = nil }
                         if case let .inAppWeb(url) = edited.target, let site = WebMorningSite(url: url), let behavior = edited.webBehavior {
                             guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
@@ -776,6 +796,21 @@ struct StepEditor: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("Removing only this draft leaves saved choices intact. Excluding also asks future suggestions to leave this activity out until you clear that choice.")
+            }
+            .sheet(isPresented: $choosingSlack) {
+                NavigationStack {
+                    SlackRoutineSetupView(store: store, assignmentContext: assignmentContext, onUse: { target, summary in
+                        guard let assignmentContext else { return false }
+                        do {
+                            step = try assignmentContext.assigning(target, to: step, routine: store.routine, generation: store.dataGeneration)
+                            selectedSlackSummary = summary; assignedSlack = true; choosingSlack = false
+                            return true
+                        } catch { saveError = error.moreDescription; return false }
+                    })
+                    .toolbar { ToolbarItem(placement: .cancellationAction) {
+                        Button(AppLanguage.isFrench ? "Annuler" : "Cancel") { choosingSlack = false }
+                    } }
+                }
             }
             #if os(macOS)
             .frame(minWidth: 420, idealWidth: 500, minHeight: 500, idealHeight: 540)

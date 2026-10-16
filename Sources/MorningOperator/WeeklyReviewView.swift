@@ -295,6 +295,7 @@ struct RoutineReviewEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ViewState<RoutineStep?> private var editingStep = nil
+    @ViewState<RoutineStepAssignmentContext?> private var editingAssignment = nil
 
     var body: some View {
         OptionalNavigationStack(enabled: showsClose) {
@@ -311,7 +312,10 @@ struct RoutineReviewEditor: View {
                     }
                     Section {
                         ForEach(Array(routine.steps.enumerated()), id: \.element.id) { index, step in
-                            Button { editingStep = step } label: { stepRow(step) }
+                            Button {
+                                editingAssignment = .init(routineVersionID: routine.id, stepID: step.id, privacyGeneration: store.dataGeneration)
+                                editingStep = step
+                            } label: { stepRow(step) }
                                 .buttonStyle(.plain).disabled(store.busy || store.sessionActive)
                                 .accessibilityIdentifier("routine.step.\(index)")
                         }
@@ -323,6 +327,7 @@ struct RoutineReviewEditor: View {
                         }
                         .moveDisabled(store.busy || store.sessionActive)
                         Button {
+                            editingAssignment = nil
                             editingStep = RoutineStep(title: "", kind: .custom, durationMinutes: 5)
                         } label: { Label { Text("Add a moment") } icon: { MorningDottedIcon(systemName: "plus").frame(width: 22, height: 22) } }
                             .disabled(store.busy || store.sessionActive).accessibilityIdentifier("routine.add")
@@ -400,8 +405,9 @@ struct RoutineReviewEditor: View {
                 }
             }
             .sheet(item: $editingStep) { step in
-                StepEditor(step: step, preference: store.savedPreference(for: step), onSave: { edited, keep, timing in
-                    store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing)
+                let assignment = editingAssignment
+                StepEditor(store: store, step: step, preference: store.savedPreference(for: step), assignmentContext: assignment, onSave: { edited, keep, timing in
+                    store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing, assignmentContext: assignment)
                 }, onDelete: { exclude in
                     store.removeStep(step, excludeFromSuggestions: exclude)
                 }, failureMessage: { store.notice ?? AppLanguage.localized("Your change couldn't be saved. Try again.") })
