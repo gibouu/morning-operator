@@ -573,8 +573,22 @@ struct RoutineEvidenceProposalTests {
     func routineRetainsEvidenceAfterApproval() throws {
         let sources = try [source(), source(day: 1), source(day: 2, text: "I review tomorrow’s appointments after breakfast.")]
         let evidence = try LearningEvidencePreparation.prepare(acquisitions: sources)
+        // One proposed moment explicitly cites all three observations; differing support
+        // must not rely on matching titles to combine independent proposed moments.
+        let input = EvidenceRoutineStepInput(title: "Review calendar", detail: "Consider a short calendar review.",
+            kind: .calendar, durationMinutes: 3,
+            citations: evidence.units.map { .init(unitID: $0.id, quote: $0.text) })
         let proposal = try LearningEvidencePreparation.assemble(evidence: evidence,
-            steps: evidence.units.map { step($0) }, preserving: nil)
+            steps: [input], preserving: nil)
+        #expect(evidence.units.count == 3)
+        #expect(proposal.routine.steps.count == 1)
+        #expect(!proposal.routine.isApproved)
+        let support = try #require(proposal.support.first)
+        #expect(proposal.support.count == 1)
+        #expect(support.reason == .inferredEvidence)
+        #expect(support.citations.count == 3)
+        #expect(Set(support.citations.map(\.acquisitionID)) == Set(sources.map(\.id)))
+        #expect(Set(support.citations.map(\.quote)) == Set([words, sources[2].originalText]))
         let approved = proposal.routine.approved()
         let detail = approved.steps[0].detail
         #expect(approved.isApproved)
