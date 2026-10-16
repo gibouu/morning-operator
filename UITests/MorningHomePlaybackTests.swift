@@ -203,6 +203,8 @@ final class MorningHomePlaybackTests: XCTestCase {
         openIdleSettings(app)
         assertSettingsAppearance("night", in: app)
         settingsButton("setup.permissions", in: app).tap()
+        XCTAssertTrue(app.buttons["permissions.option.location"].waitForExistence(timeout: 5))
+        app.buttons["permissions.option.location"].tap()
         XCTAssertTrue(app.staticTexts["permissions.title.location"].waitForExistence(timeout: 5))
         for identifier in ["permissions.allow", "permissions.skip"] {
             let button = app.buttons[identifier]

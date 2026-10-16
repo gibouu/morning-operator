@@ -28,7 +28,7 @@ struct MorningPermissionSetupView: View {
                     MorningQuietLandscape(scene: clock.celestial, weather: clock.weatherScene,
                                           animated: false, active: false,
                                           strongInk: reduceTransparency || contrast == .increased)
-                        .frame(height: verticalSizeClass == .compact ? 110 : 180)
+                        .frame(height: verticalSizeClass == .compact ? 90 : 130)
                         .clipShape(RoundedRectangle(cornerRadius: 24))
                     choice
                     if let issue = setup.saveIssue {
@@ -140,22 +140,22 @@ struct MorningPermissionSetupView: View {
                         .accessibilityIdentifier("permissions.lastOutcome")
                 }
             } else {
-              DisclosureGroup(isExpanded: $detailsExpanded) {
-                VStack(alignment: .leading, spacing: 14) {
-                    if let permission = setup.current {
-                        Text(permission.accessExplanation).accessibilityIdentifier("permissions.explanation")
+                DisclosureGroup(isExpanded: $detailsExpanded) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if let permission = setup.current {
+                            Text(permission.accessExplanation).accessibilityIdentifier("permissions.explanation")
+                        }
+                        if let outcome = setup.lastOutcome {
+                            Text(outcome).accessibilityIdentifier("permissions.lastOutcome")
+                        }
                     }
-                    if let outcome = setup.lastOutcome {
-                        Text(outcome).accessibilityIdentifier("permissions.lastOutcome")
-                    }
+                    .font(MorningTheme.Typography.note).foregroundStyle(muted).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+                } label: {
+                    Text(text("Learn more", "En savoir plus"))
+                        .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44, alignment: .leading)
+                        .accessibilityIdentifier("permissions.details")
                 }
-                .font(MorningTheme.Typography.note).foregroundStyle(muted).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
-            } label: {
-                Text(text("Learn more", "En savoir plus"))
-                    .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44, alignment: .leading)
-                    .accessibilityIdentifier("permissions.details")
-              }
             }
         }
     }

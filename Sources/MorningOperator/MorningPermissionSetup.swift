@@ -42,7 +42,7 @@ final class MorningPermissionSetup {
     private var generation: UUID?
     private var attempt: UUID?
     private var requestTask: Task<Void, Never>?
-    private weak var activeVoiceAccess: MorningVoiceAccess?
+    @ObservationIgnored private weak var activeVoiceAccess: MorningVoiceAccess?
     private var canSave = true
     var current: MorningPermission? { remaining.first }
     var needsInitialSetup: Bool { !progress.pendingInitial.isEmpty && !isolatedBypass }
