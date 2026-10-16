@@ -28,6 +28,7 @@ struct MorningWelcomeFlow: View {
     let showLegal: (MorningSubscriptionLegalDocument) -> Void
     #if DEBUG
     var developerAccess: (() -> Void)? = nil
+    var developerAccessIsPreviewSkip = false
     #endif
     @State private var page = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -44,13 +45,6 @@ struct MorningWelcomeFlow: View {
     private var ink: Color { MorningStyle.ink }
     private var muted: Color { contrast == .increased ? MorningStyle.ink : MorningStyle.muted }
     private var isPaywall: Bool { page == 3 }
-    private var hasDeveloperAccessButton: Bool {
-        #if DEBUG
-        return developerAccess != nil
-        #else
-        return false
-        #endif
-    }
     private var still: Bool {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-reduce-motion") { return true }
@@ -131,21 +125,29 @@ struct MorningWelcomeFlow: View {
     }
 
     private var navigation: some View {
-        HStack(spacing: 16) {
-            if page > 0 {
-                Button { move(to: page - 1) } label: {
-                    Image(systemName: "arrow.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
-                        .glassEffect(.regular.interactive(), in: .circle)
+        HStack(spacing: 12) {
+            HStack(spacing: 0) {
+                if page > 0 {
+                    Button { move(to: page - 1) } label: {
+                        Image(systemName: "arrow.left").font(.system(size: 18, weight: .medium))
+                            .frame(width: 44, height: 44)
+                            .glassEffect(.regular.interactive(), in: .circle)
+                    }
+                    .accessibilityLabel(text("Retour", "Back"))
+                    .accessibilityIdentifier("onboarding.back")
                 }
-                .accessibilityLabel(text("Retour", "Back"))
-                .accessibilityIdentifier("onboarding.back")
-            } else if hasDeveloperAccessButton {
-                MorningBrandMark().frame(width: 24, height: 24).frame(width: 44, height: 44)
-                    .accessibilityLabel("MORE")
-            } else {
-                wordmark
-            }
-            Spacer()
+                #if DEBUG
+                if let developerAccess, !developerAccessIsPreviewSkip {
+                    Button(action: developerAccess) {
+                        Image(systemName: "xmark").font(.system(size: 20, weight: .semibold))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(text("Accès développeur", "Developer access"))
+                    .accessibilityIdentifier(isPaywall ? "paywall.developerAccess" : "onboarding.developerAccess")
+                }
+                #endif
+            }.frame(minWidth: 44, alignment: .leading)
+            Spacer(minLength: 8)
             HStack(spacing: 7) {
                 ForEach(0..<4) { index in
                     Circle().fill(ink.opacity(index == page ? 1 : 0.25))
@@ -155,43 +157,15 @@ struct MorningWelcomeFlow: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(text("Étape \(page + 1) sur 4", "Step \(page + 1) of 4"))
             .accessibilityIdentifier("onboarding.progress")
-            Spacer()
-            HStack(spacing: 8) {
-                if !isPaywall {
-                    Button(typeSize.isAccessibilitySize || hasDeveloperAccessButton ? text("Offre", "Offer") : text("Voir l’offre", "View offer")) { move(to: 3) }
-                        .font(.system(.caption, weight: .medium)).frame(minHeight: 44)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .accessibilityIdentifier("onboarding.offer")
-                } else if !hasDeveloperAccessButton {
-                    wordmark
-                }
-                #if DEBUG
-                if let developerAccess {
-                    Button(action: developerAccess) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: isPaywall ? 27 : 20, weight: .semibold))
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(text("Accès développeur", "Developer access"))
-                    .accessibilityIdentifier(isPaywall ? "paywall.developerAccess" : "onboarding.developerAccess")
-                }
-                #endif
-            }
+            Spacer(minLength: 8)
+            MorningBrandMark().frame(width: 24, height: 24).frame(width: 44, height: 44)
+                .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
+                .accessibilityIdentifier("onboarding.brand")
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 28).padding(.top, 8)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-    }
-
-    private var wordmark: some View {
-        HStack(spacing: 7) {
-            MorningBrandMark().frame(width: 24, height: 24)
-            Text(verbatim: "MORE").font(.system(.subheadline, weight: .semibold)).tracking(1.5)
-        }
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge).fixedSize().frame(minHeight: 44)
-        .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
     }
 
     private var illustration: some View {
@@ -339,6 +313,13 @@ struct MorningWelcomeFlow: View {
                     .font(.system(.caption, weight: .medium)).frame(minHeight: 44)
                     .disabled(purchaseState.isBusy)
                     .accessibilityIdentifier("paywall.restore")
+                #if DEBUG
+                if developerAccessIsPreviewSkip, let developerAccess {
+                    Button(text("Passer pour le moment", "Skip for now"), action: developerAccess)
+                        .font(.system(.caption2)).frame(minHeight: 44).buttonStyle(.plain)
+                        .accessibilityIdentifier("onboarding.skipForNow")
+                }
+                #endif
             }
         }
         .multilineTextAlignment(.center)

@@ -55,7 +55,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
         app.terminate()
 
         let skipped = launch(french: true)
-        tap("onboarding.offer", in: skipped)
+        for _ in 0..<3 { tap("onboarding.next", in: skipped) }
         assertOffer(in: skipped, french: true)
         assertNoPermissionOrHome(in: skipped)
         skipped.terminate()
@@ -64,7 +64,7 @@ final class MorningWelcomeFlowTests: XCTestCase {
     func testNoTrialUnavailableAndPendingOffersStayHonestAndGated() {
         for flag in ["--preview-onboarding-no-trial", "--preview-onboarding-unavailable", "--preview-onboarding-pending"] {
             let app = launch(extra: [flag])
-            tap("onboarding.offer", in: app)
+            for _ in 0..<3 { tap("onboarding.next", in: app) }
             let subscribe = app.buttons["paywall.subscribe"]
             XCTAssertTrue(subscribe.waitForExistence(timeout: 5), app.debugDescription)
             switch flag {
@@ -200,6 +200,74 @@ final class MorningWelcomeFlowTests: XCTestCase {
         }
         attach("onboarding-night-fr-largest-paywall-landscape", app)
         assertNoPermissionOrHome(in: app)
+        app.terminate()
+    }
+
+    func testExplicitPreviewSkipReturnsToTheSameRealWorkspaceInEnglishAndFrench() {
+        for french in [false, true] {
+            let app = launch(french: french, extra: ["--ui-testing-real-subscription", "--ui-testing-empty-workspace"])
+            let brand = control("onboarding.brand", in: app)
+            XCTAssertTrue(brand.exists)
+            XCTAssertGreaterThan(brand.frame.midX, app.frame.midX, "Only the M mark belongs in the upper right.")
+            XCTAssertEqual(brand.label, "MORE", "The symbol keeps its accessible brand name.")
+            for _ in 0..<3 { tap("onboarding.next", in: app) }
+            tap("paywall.subscribe", in: app)
+            XCTAssertTrue(app.staticTexts["paywall.notice"].waitForExistence(timeout: 5))
+            assertNoPermissionOrHome(in: app)
+            let skip = app.buttons["onboarding.skipForNow"]
+            XCTAssertEqual(skip.label, french ? "Passer pour le moment" : "Skip for now")
+            tap("onboarding.skipForNow", in: app)
+            XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertTrue(app.buttons["permissions.option.calendar"].exists)
+            XCTAssertEqual(app.alerts.count, 0, "Opening access choices never grants or requests one automatically.")
+            tap("permissions.finish", in: app)
+            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(control("onboarding.preview", in: app).exists)
+            XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
+            let prefix = "--ui-testing-workspace="
+            let workspace = String(app.launchArguments.first { $0.hasPrefix(prefix) }!.dropFirst(prefix.count))
+            let marker = app.staticTexts["qa.testWorkspace"]
+            XCTAssertEqual((marker.value as? String)?.lowercased(), workspace.lowercased(),
+                           "Skipping preview keeps the same workspace and MorningStore.")
+            XCTAssertEqual(app.alerts.count, 0, "Debug access is not a system permission grant.")
+            app.terminate()
+            // Normal entry (without the explicit preview argument) retains Debug
+            // access rather than making up a StoreKit entitlement or trial.
+            app.launchArguments.removeAll { $0 == "--preview-onboarding" }
+            app.launch()
+            XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(app.staticTexts["onboarding.heading"].exists)
+            app.terminate()
+        }
+    }
+
+    func testFrenchLargestTextKeepsPreviewSkipReachableWithoutPurchase() {
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = launch(phase: "night", french: true, extra: [
+            "--ui-testing-real-subscription", "--ui-testing-empty-workspace",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"
+        ])
+        for _ in 0..<3 {
+            XCTAssertFalse(app.buttons["onboarding.skipForNow"].exists, "Skip belongs only to the final offer.")
+            XCTAssertFalse(app.buttons["onboarding.offer"].exists, "Intro keeps a single Continue action.")
+            tap("onboarding.next", in: app)
+        }
+        let skip = app.buttons["onboarding.skipForNow"]
+        reach(skip, in: app)
+        XCTAssertEqual(skip.label, "Passer pour le moment")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.frame.width > app.frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+        reach(skip, in: app)
+        XCTAssertGreaterThanOrEqual(skip.frame.minX, app.frame.minX - 1)
+        XCTAssertLessThanOrEqual(skip.frame.maxX, app.frame.maxX + 1)
+        skip.tap()
+        XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["permissions.allow"].exists, "Each real access choice remains explicit.")
+        XCTAssertEqual(app.alerts.count, 0)
         app.terminate()
     }
 

@@ -401,6 +401,7 @@ struct LearnView: View {
 struct SetupView: View {
     @Bindable var store: MorningStore
     var openRoutine: (() -> Void)? = nil
+    var openLearning: (() -> Void)? = nil
     var openHistory: (() -> Void)? = nil
     @State private var choosingVoice = false
     @State private var preparingVoiceAccess = false
@@ -446,6 +447,11 @@ struct SetupView: View {
                     .accessibilityIdentifier("morning.reflect")
             }
             Section("Sources") {
+                if let openLearning {
+                    settingsButton(french ? "Affiner mon matin" : "Refine my morning",
+                                   symbol: "sparkles", action: openLearning)
+                        .accessibilityIdentifier("setup.learning")
+                }
                 NavigationLink {
                     ScrollView { MorningScreenTimeView(store: store, onEdit: openRoutine).padding(24) }
                         .background(MorningPaper(showsSun: false)).navigationTitle("Screen Time").navigationBarTitleDisplayMode(.inline)

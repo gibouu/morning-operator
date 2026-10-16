@@ -107,70 +107,172 @@ struct MorningScreenTimeView: View {
     }
 }
 
+/// First-run destination: connect the one useful source, then review its real
+/// proposal. The full learning toolbox remains an explicit Settings destination.
+struct MorningRoutinePreparationView: View {
+    @Bindable var store: MorningStore
+    var onClose: () -> Void
+    @State private var checkedExistingAccess = false
+
+    var body: some View {
+        Group {
+            if store.pendingScreenTimeProposal != nil {
+                ScreenTimeProposalView(store: store, embedded: true, onFinished: onClose)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        MorningQuietLandscape(scene: MorningThemeClock.shared.celestial,
+                                              weather: MorningThemeClock.shared.weatherScene,
+                                              animated: false, active: false)
+                            .frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 24))
+                            .accessibilityHidden(true)
+                        Text("Your morning takes shape.").font(MorningTheme.Typography.title)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("routinePreparation.heading")
+                        Text("MORE uses the app-use times you allow to suggest a routine. You review it before anything starts.")
+                            .foregroundStyle(MorningStyle.muted)
+                        if store.screenTimeBusy {
+                            HStack(spacing: 12) { ProgressView(); Text("Reading your last mornings…") }
+                                .accessibilityIdentifier("routinePreparation.reading")
+                        } else {
+                            if let message = store.screenTimeMessage {
+                                Text(message).font(MorningTheme.Typography.note)
+                                    .accessibilityIdentifier("routinePreparation.message")
+                            } else if store.screenTimeAccess == .unavailable {
+                                Text(store.screenTimeAccessExplanation).font(MorningTheme.Typography.note)
+                            }
+                            Button(store.screenTimeAccess == .approved ? AppLanguage.localized("Refresh app use") : AppLanguage.localized("Connect Screen Time")) {
+                                store.learnFromScreenTime()
+                            }.buttonStyle(PrimaryButtonStyle())
+                                .disabled(store.busy || store.sessionActive || !store.storageIsAvailable || store.screenTimeAccess == .unavailable)
+                                .accessibilityIdentifier("routinePreparation.connect")
+                        }
+                        Text("No data yet? You can continue and return to Your routine in Settings. Nothing is guessed or started for you.")
+                            .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
+                        Button("Continue for now", action: onClose)
+                            .buttonStyle(SecondaryButtonStyle())
+                            .accessibilityIdentifier("routinePreparation.later")
+                    }.frame(maxWidth: 560, alignment: .leading).padding(28).frame(maxWidth: .infinity)
+                }.scrollBounceBehavior(.basedOnSize)
+            }
+        }
+        .background { MorningEntryBackdrop() }
+        .foregroundStyle(MorningStyle.ink).tint(MorningStyle.accent)
+        .font(MorningTheme.Typography.body)
+        .navigationTitle("Your morning").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .accessibilityIdentifier("routinePreparation.content")
+        .task {
+            guard !checkedExistingAccess else { return }
+            checkedExistingAccess = true
+            store.refreshScreenTimeAccess()
+            // Reuse a saved review on relaunch. Reading never means approval.
+            if store.pendingScreenTimeProposal == nil, store.screenTimeAccess == .approved {
+                store.learnFromScreenTime()
+            }
+        }
+    }
+}
+
 /// Approval installs precisely the reviewed rows. Screen Time order and any
 /// apportioned partial-hour minutes remain marked as estimates.
 struct ScreenTimeProposalView: View {
     @Bindable var store: MorningStore
+    var embedded = false
+    var onFinished: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            MorningList {
+    @State private var showingDetails = false
+
+    private func finish() {
+        if let onFinished { onFinished() } else { dismiss() }
+    }
+
+    @ViewBuilder var body: some View {
+        if embedded { proposalContent }
+        else { NavigationStack { proposalContent } }
+    }
+
+    private var proposalContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
                 if let proposal = store.pendingScreenTimeProposal {
-                    Section {
-                        Text("Your morning, from Screen Time").font(MorningTheme.Typography.heading)
-                        Text("From \(proposal.morningsUsed) comparable mornings. Order is estimated.")
-                            .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
-                        ForEach(Array(proposal.steps.enumerated()), id: \.element.id) { index, step in
-                            stepRow(step, index: index)
-                        }
+                    Text("Here is what your morning looks like.")
+                        .font(MorningTheme.Typography.title).accessibilityAddTraits(.isHeader)
+                    Text("From \(proposal.morningsUsed) comparable mornings. Order is estimated.")
+                        .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
+                        .accessibilityIdentifier("screenTimeProposal.sources")
+                    ForEach(Array(proposal.steps.enumerated()), id: \.element.id) { index, step in
+                        Card { stepRow(step, index: index) }
                     }
-                    Section {
-                        Text("Measured minutes come from complete hourly segments inside the detected morning. Other minutes are estimated from a partial hour.")
-                        Text("Long app use does not prove scrolling. Choose the budget you want.")
-                        Text("Your current routine stays ready until you approve. Approving replaces it with the moments you keep here.")
-                        Text(AppLanguage.isFrench ? "MORE s’occupe des actions présentées ici. Vous pouvez l’interrompre à tout moment." : "MORE takes care of the actions shown here. You can interrupt at any time.")
+                    Text("You can connect your websites later in Settings. Approving this routine does not start it.")
+                        .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
+                        .accessibilityIdentifier("screenTimeProposal.connectionsLater")
+                    Text(AppLanguage.isFrench ? "MORE s’occupe des actions présentées ici. Vous pouvez l’interrompre à tout moment." : "MORE takes care of the actions shown here. You can interrupt at any time.")
+                        .font(MorningTheme.Typography.note)
+                    DisclosureGroup("About this suggestion", isExpanded: $showingDetails) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Measured minutes come from complete hourly segments inside the detected morning. Other minutes are estimated from a partial hour.")
+                            Text("Long app use does not prove scrolling. Choose the budget you want.")
+                            Text("Your current routine stays ready until you approve. Approving replaces it with the moments you keep here.")
+                        }.padding(.top, 12)
                     }.font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
                 } else {
                     Text("Your routine may have changed. Learn from Screen Time again for a fresh suggestion.")
                         .accessibilityIdentifier("screenTimeProposal.unavailable")
                 }
                 if let notice = store.notice { Text(notice).font(MorningTheme.Typography.note) }
-            }
-            .navigationTitle("Your morning, from Screen Time").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Done") { dismiss() } }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Keep current") { if store.discardPendingScreenTimeProposal() { dismiss() } }
-                        .disabled(store.busy || store.screenTimeBusy).accessibilityIdentifier("screenTimeProposal.keep")
+            }.frame(maxWidth: 560, alignment: .leading).padding(24).frame(maxWidth: .infinity)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .background { MorningEntryBackdrop() }
+        .navigationTitle("Your morning").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            if !embedded {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done", action: finish).accessibilityIdentifier("screenTimeProposal.close")
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                if let proposal = store.pendingScreenTimeProposal {
-                    Button(AppLanguage.isFrench ? "Confier ce matin à MORE" : "Let MORE take care of this morning") {
-                        if store.approvePendingScreenTimeProposal() { dismiss(); store.tab = .today }
-                    }.buttonStyle(PrimaryButtonStyle()).padding(20).frame(maxWidth: .infinity)
-                        .background(MorningStyle.background)
-                        .disabled(store.busy || store.screenTimeBusy || store.sessionActive || !store.storageIsAvailable || proposal.includedSteps.isEmpty || !proposal.isCurrent(preferences: store.routinePreferences))
-                        .accessibilityIdentifier("screenTimeProposal.approve")
+            ToolbarItem(placement: .topBarTrailing) {
+                // First-run Later retains the proposal for the next visit.
+                Button(embedded ? AppLanguage.localized("Later") : AppLanguage.localized("Keep current")) {
+                    if embedded || store.discardPendingScreenTimeProposal() { finish() }
                 }
+                .disabled(store.busy || store.screenTimeBusy)
+                .accessibilityIdentifier(embedded ? "routinePreparation.later" : "screenTimeProposal.keepCurrent")
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let proposal = store.pendingScreenTimeProposal {
+                Button(AppLanguage.isFrench ? "Confier ce matin à MORE" : "Let MORE take care of this morning") {
+                    if store.approvePendingScreenTimeProposal() { finish(); store.tab = .today }
+                }.buttonStyle(PrimaryButtonStyle()).padding(20).frame(maxWidth: .infinity)
+                    .background(MorningStyle.background)
+                    .disabled(store.busy || store.screenTimeBusy || store.sessionActive || !store.storageIsAvailable || proposal.includedSteps.isEmpty || !proposal.isCurrent(preferences: store.routinePreferences))
+                    .accessibilityIdentifier("screenTimeProposal.approve")
             }
         }
     }
 
     private func stepRow(_ step: ScreenTimeRoutineProposal.Step, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: Binding(get: { step.included }, set: { value in
                 store.editPendingScreenTimeProposal { $0.setIncluded(value, stepID: step.id) }
-            })) { Text(step.suggestedStep.title).font(MorningTheme.Typography.heading) }
-                .accessibilityIdentifier("screenTimeProposal.include.\(index)")
+            })) {
+                Text(step.suggestedStep.title).font(MorningTheme.Typography.heading)
+                    .accessibilityIdentifier("screenTimeProposal.step.\(index)")
+            }.accessibilityIdentifier("screenTimeProposal.include.\(index)")
             if step.retainedStep != nil {
                 Text(AppLanguage.isFrench ? "Gardé selon votre choix" : "Kept by your choice")
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
                 if !step.suggestedStep.detail.isEmpty {
                     Text(step.suggestedStep.detail).font(.raleway(.subheadline)).foregroundStyle(MorningStyle.muted)
                 }
-            } else { Text(step.minutesMeasured ? AppLanguage.localized("Minutes measured") : AppLanguage.localized("Minutes estimated"))
-                .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted) }
+            } else {
+                Text(step.minutesMeasured ? AppLanguage.localized("Minutes measured") : AppLanguage.localized("Minutes estimated"))
+                    .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                    .accessibilityIdentifier("screenTimeProposal.label.\(index)")
+            }
             Text(step.suggestedStep.executionDescription).font(.raleway(.subheadline))
                 .accessibilityIdentifier("screenTimeProposal.execution.\(index)")
             if let explanation = step.executionExplanation {
@@ -185,6 +287,6 @@ struct ScreenTimeProposalView: View {
                 }), in: step.allowedMinutesRange)
                     .font(MorningTheme.Typography.note).accessibilityIdentifier("screenTimeProposal.minutes.\(index)")
             }
-        }.padding(.vertical, 8)
+        }
     }
 }
