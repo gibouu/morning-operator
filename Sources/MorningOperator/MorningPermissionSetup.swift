@@ -42,11 +42,10 @@ final class MorningPermissionSetup {
     private var generation: UUID?
     private var attempt: UUID?
     private var requestTask: Task<Void, Never>?
+    @ObservationIgnored private weak var activeVoiceAccess: MorningVoiceAccess?
     private var canSave = true
     var current: MorningPermission? { remaining.first }
-    var stepCount: Int { supported.count }
-    var stepNumber: Int { min(stepCount, stepCount - remaining.count + 1) }
-    var needsInitialSetup: Bool { !progress.pending(supported: supported).isEmpty && !isolatedBypass }
+    var needsInitialSetup: Bool { !progress.pendingInitial.isEmpty && !isolatedBypass }
     private var isolatedBypass: Bool {
         isolated && !ProcessInfo.processInfo.arguments.contains("--ui-testing-permissions")
     }
@@ -74,26 +73,41 @@ final class MorningPermissionSetup {
     var screenTimeUnavailableNote: String? {
         supported.contains(.screenTime) ? nil : Self.text("Screen Time needs a compatible iPhone and app capability. You can review its availability later from Learn or Settings.", "Temps d’écran nécessite un iPhone compatible et un accès disponible dans cette version. Retrouvez son état plus tard dans Apprendre ou Réglages.")
     }
-    private var supported: [MorningPermission] {
+    var supported: [MorningPermission] {
         var values: [MorningPermission] = [.location, .calendar, .reminders]
         if isolated || Self.screenTimeCapabilityAvailable { values.append(.screenTime) }
-        values += [.speech, .microphone, .notifications, .alarms]
+        values += [.speech, .notifications, .alarms]
         return values
     }
 
     func presentIfNeeded() {
         guard needsInitialSetup, !isPresented else { return }
-        remaining = progress.pending(supported: supported)
+        remaining = [.speech]
         isRevisiting = false; learnAfterDismiss = false
+        if !isolated, SFSpeechRecognizer.authorizationStatus() == .authorized,
+           AVAudioApplication.shared.recordPermission == .granted {
+            resolve(.speech, outcome: .allowed)
+            return
+        }
         isPresented = true
     }
 
     func revisit() {
         guard !isRequesting else { return }
-        remaining = supported; outcome = nil
+        remaining = []; outcome = nil
         isRevisiting = true; learnAfterDismiss = false
         var transaction = Transaction(); transaction.disablesAnimations = true
         withTransaction(transaction) { isPresented = true }
+    }
+
+    func choose(_ permission: MorningPermission) {
+        guard isRevisiting, !isRequesting, supported.contains(permission) else { return }
+        remaining = [permission]; outcome = nil
+    }
+
+    func showOverview() {
+        guard isRevisiting, !isRequesting else { return }
+        remaining = []; outcome = nil
     }
 
     func skip() {
@@ -129,13 +143,9 @@ final class MorningPermissionSetup {
                         store.refreshScreenTimeAccess()
                         allowed = store.screenTimeSource.access == .approved
                     case .speech:
-                        let raw = await withCheckedContinuation { (continuation: CheckedContinuation<Int, Never>) in
-                            let completion: @Sendable (SFSpeechRecognizerAuthorizationStatus) -> Void = {
-                                continuation.resume(returning: $0.rawValue)
-                            }
-                            SFSpeechRecognizer.requestAuthorization(completion)
-                        }
-                        allowed = raw == SFSpeechRecognizerAuthorizationStatus.authorized.rawValue
+                        activeVoiceAccess = store.voiceAccess
+                        let access = try await store.voiceAccess.requestAccess(language: .current)
+                        allowed = access.speech == .authorized && access.microphone == .granted
                     case .microphone:
                         allowed = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
                             let completion: @Sendable (Bool) -> Void = { continuation.resume(returning: $0) }
@@ -148,10 +158,12 @@ final class MorningPermissionSetup {
                     }
                 }
                 guard attempt == id, !Task.isCancelled, !store.privacyBlocksWork else { return }
+                activeVoiceAccess = nil
                 isRequesting = false; requestTask = nil; attempt = nil
                 resolve(permission, outcome: allowed ? .allowed : .denied)
             } catch {
                 guard attempt == id, !store.privacyBlocksWork else { return }
+                activeVoiceAccess = nil
                 isRequesting = false; requestTask = nil; attempt = nil
                 if !(error is CancellationError) {
                     resolve(permission, outcome: .unavailable)
@@ -173,11 +185,13 @@ final class MorningPermissionSetup {
     }
 
     func cancelForBackground() {
+        activeVoiceAccess?.cancel(); activeVoiceAccess = nil
         attempt = nil; requestTask?.cancel(); requestTask = nil; isRequesting = false
     }
 
     /// Privacy cleanup cancels publication before the app removes the owned file.
     func cancelForPrivacy() {
+        activeVoiceAccess?.cancel(); activeVoiceAccess = nil
         attempt = nil; requestTask?.cancel(); requestTask = nil
         isRequesting = false; isPresented = false; remaining = []; outcome = nil
         learnAfterDismiss = false
@@ -190,6 +204,7 @@ final class MorningPermissionSetup {
     private func resolve(_ permission: MorningPermission, outcome: Outcome) {
         guard remaining.first == permission else { return }
         var next = progress; next.resolve(permission)
+        if permission == .speech { next.resolve(.microphone) }
         do {
             guard canSave else { throw CocoaError(.fileReadCorruptFile) }
             try control.withReadyAccess { state in
@@ -203,6 +218,7 @@ final class MorningPermissionSetup {
             progress = next
         }
         remaining.removeFirst(); self.outcome = outcome
+        if !isRevisiting, remaining.isEmpty { finish() }
     }
 
     private static var screenTimeCapabilityAvailable: Bool {

@@ -13,7 +13,7 @@ final class OrdinaryWeatherAcceptanceTests: XCTestCase {
         try launchOrdinaryApp()
         defer { attachText(outcome.joined(separator: "\n"), named: "ordinary-acceptance-outcome") }
 
-        if !waitUntil(5, { self.currentPermission != nil || self.app.buttons["permissions.finish"].exists || self.app.buttons["morning.actions"].isHittable }) {
+        if !waitUntil(5, { self.currentPermission != nil || self.app.buttons["permissions.option.speech"].exists || self.app.buttons["morning.actions"].isHittable }) {
             throw XCTSkip("The ordinary app has another presentation; inspect ordinary-opening without resetting its data.")
         }
         if currentPermission == nil, visibleAlert != nil {
@@ -21,63 +21,72 @@ final class OrdinaryWeatherAcceptanceTests: XCTestCase {
         }
         let revisiting = currentPermission == nil
         if revisiting {
-            outcome.append("EXISTING_PERMISSION_PROGRESS: reviewing the same explanations; first-opening presentation is not re-proved.")
-            if app.buttons["permissions.finish"].exists { try tap("permissions.finish") }
-            try openSettings()
-            try tap("setup.permissions")
+            outcome.append("EXISTING_PERMISSION_PROGRESS: reviewing the optional voice explanation; first-opening presentation is not re-proved.")
+            if !app.buttons["permissions.option.speech"].exists {
+                try openSettings()
+                try tap("setup.permissions")
+            }
+            XCTAssertTrue(app.buttons["permissions.option.speech"].waitForExistence(timeout: 5))
+            try tap("permissions.option.speech")
+        }
+        guard currentPermission == "speech" else {
+            throw XCTSkip("The installed app is not showing the grouped voice explanation; no other permission was requested.")
+        }
+        if !revisiting {
+            outcome.append("INITIAL_VOICE_PREPARATION_PRESENTED: existing app data and system grants retained.")
+        }
+        attach("ordinary-explanation-voice")
+        var acceptedPrompts = 0
+        if let alert = visibleAlert {
+            guard allowScopedPrompt(alert, permission: "speech") else {
+                throw XCTSkip("An existing authentication or unrecognized sheet needs the owner.")
+            }
+            acceptedPrompts += 1
+            outcome.append("RESUMED_PENDING_VOICE: matching existing prompt accepted; explanation order is not re-proved for this resumed choice.")
         } else {
-            outcome.append("INITIAL_PERMISSION_PREPARATION_PRESENTED: existing app data and system grants retained.")
+            XCTAssertEqual(app.alerts.count + springboard.alerts.count, 0,
+                "The grouped voice explanation must precede speech and microphone requests.")
+            try tap("permissions.allow")
         }
-
-        for _ in 0..<permissions.count {
-            guard let permission = currentPermission else { break }
-            attach("ordinary-explanation-\(permission)")
-            var acceptedPrompt = false
+        let deadline = Date().addingTimeInterval(50)
+        while Date() < deadline, currentPermission == "speech" {
             if let alert = visibleAlert {
-                guard allowScopedPrompt(alert, permission: permission) else {
-                    throw XCTSkip("An existing authentication or unrecognized sheet needs the owner.")
+                guard allowScopedPrompt(alert, permission: "speech") else {
+                    attach("ordinary-owner-action-voice")
+                    throw XCTSkip("An authentication or unrecognized permission sheet needs the owner; no unrelated control was pressed.")
                 }
-                acceptedPrompt = true
-                outcome.append("RESUMED_PENDING_\(permission): matching existing prompt accepted; explanation order is not re-proved for this resumed step.")
-            } else {
-                XCTAssertEqual(app.alerts.count + springboard.alerts.count, 0,
-                    "The access explanation must precede its system request.")
-                try tap("permissions.allow")
+                acceptedPrompts += 1
             }
-            let deadline = Date().addingTimeInterval(50)
-            while Date() < deadline, currentPermission == permission {
-                if let alert = visibleAlert {
-                    guard allowScopedPrompt(alert, permission: permission) else {
-                        attach("ordinary-owner-action-\(permission)")
-                        throw XCTSkip("An authentication or unrecognized permission sheet needs the owner; no unrelated control was pressed.")
-                    }
-                    acceptedPrompt = true
-                }
-                Thread.sleep(forTimeInterval: 0.3)
-            }
-            guard currentPermission != permission else {
-                attach("ordinary-permission-waiting-\(permission)")
-                throw XCTSkip("The real \(permission) request has not completed; owner action or service availability is required.")
-            }
-            let last = app.staticTexts["permissions.lastOutcome"]
-            outcome.append("\(permission): native prompt accepted=\(acceptedPrompt); \(last.exists ? last.label : "see next-screen attachment")")
+            Thread.sleep(forTimeInterval: 0.3)
         }
-        try tap("permissions.finish")
+        guard currentPermission == nil else {
+            attach("ordinary-permission-waiting-voice")
+            throw XCTSkip("The real grouped voice request has not completed; no other permission was requested.")
+        }
+        let last = app.staticTexts["permissions.lastOutcome"]
+        outcome.append("VOICE_ONLY: speech/microphone prompts accepted=\(acceptedPrompts); \(last.exists ? last.label : "see resulting-screen attachment")")
+        attach("ordinary-voice-choice-completed")
         if revisiting {
+            XCTAssertTrue(app.buttons["permissions.option.speech"].waitForExistence(timeout: 10),
+                "Reviewing voice access must return to the optional access list.")
+            XCTAssertFalse(app.buttons["permissions.allow"].exists)
+            try tap("permissions.finish")
             XCTAssertTrue(app.buttons["setup.permissions"].waitForExistence(timeout: 10),
-                "Reviewing existing access must return to Settings.")
-            XCTAssertFalse(app.buttons["permissions.learn"].exists)
+                "Closing the optional list must return to Settings.")
             let back = app.navigationBars.buttons.element(boundBy: 0)
             try reveal(back)
             back.tap()
         }
+        XCTAssertFalse(app.buttons["permissions.finish"].exists,
+                       "The initial voice choice returns directly Home without a completion page.")
+        XCTAssertFalse(app.buttons["permissions.learn"].exists)
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10))
         app.terminate()
         app.launch()
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["permissions.allow"].waitForExistence(timeout: 2),
-            "Access preparation must stay complete across an ordinary relaunch.")
-        outcome.append("PERMISSION_PROGRESS_PERSISTED_AFTER_ORDINARY_RELAUNCH")
+            "The voice choice must stay complete across an ordinary relaunch.")
+        outcome.append("VOICE_PROGRESS_PERSISTED_AFTER_ORDINARY_RELAUNCH: no optional access was requested.")
     }
 
     func test02RecordOrdinaryCurrentLocationAndWeather() throws {
@@ -190,7 +199,7 @@ final class OrdinaryWeatherAcceptanceTests: XCTestCase {
         case "calendar": ["calendar", "calendrier"]
         case "reminders": ["reminder", "rappel"]
         case "screenTime": ["screen time", "temps d’écran", "temps d'écran", "app and website", "activité"]
-        case "speech": ["speech", "reconnaissance", "recognition"]
+        case "speech": ["speech", "reconnaissance", "recognition", "microphone"]
         case "microphone": ["microphone"]
         case "notifications": ["notification"]
         case "alarms": ["alarm", "alarme"]

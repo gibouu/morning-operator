@@ -1,6 +1,6 @@
 import Foundation
 
-/// Each system prompt gets its own explanation, including speech and microphone.
+/// Stable permission keys; speech and microphone share one explanation in the UI.
 public enum MorningPermission: String, Codable, Sendable, CaseIterable {
     case location, calendar, reminders, screenTime, speech, microphone, notifications, alarms
 }
@@ -10,6 +10,8 @@ public enum MorningPermission: String, Codable, Sendable, CaseIterable {
 public struct MorningPermissionProgress: Codable, Sendable, Equatable {
     public private(set) var completed: Set<MorningPermission>
     public init(completed: Set<MorningPermission> = []) { self.completed = completed }
+    /// Other sources are connected only when the person chooses to use them.
+    public var pendingInitial: [MorningPermission] { pending(supported: [.speech, .microphone]) }
     public func pending(supported: [MorningPermission]) -> [MorningPermission] {
         var seen = Set<MorningPermission>()
         return supported.filter { !completed.contains($0) && seen.insert($0).inserted }

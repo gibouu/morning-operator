@@ -12,7 +12,7 @@ Full local forgetting first shipped in source `640370c`; source `f783658` also r
 
 ## Current location and access preparation
 
-MORE explains each supported iPhone permission before requesting it at first opening; a refusal leaves the other steps available. Returning to permissions in Settings does not start listening, recording, an alarm or a routine. System permissions remain controlled by iOS.
+After the paywall, MORE offers one optional voice explanation for speech recognition and microphone together. One action prepares the necessary iPhone permissions in sequence, without starting listening; declining or skipping continues directly into the app. Already granted voice access does not repeat this step. Calendar, reminders, Screen Time, notifications and alarms are requested when the person chooses the relevant feature, or individually from the access overview in Settings. Existing location/weather choices are preserved; location remains available from the explained weather controls. Returning to permissions in Settings does not start listening, recording, an alarm or a routine. System permissions remain controlled by iOS.
 
 With current-location weather enabled, one-shot foreground location requests supply coordinates to Apple Weather and the local solar calculation. Device coordinates and current weather remain in memory, are invalidated on privacy cleanup and are not added to routine/observation history. A deliberately selected fallback city is a saved preference. WeatherKit and Apple Maps retain their own service processing; the app does not add device coordinates to model requests; an explicitly enabled OpenAI route may receive current weather text.
 
