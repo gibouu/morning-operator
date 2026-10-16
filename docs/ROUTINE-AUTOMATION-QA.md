@@ -261,6 +261,25 @@ requests the fix and main integration. The focused regression and final
 integration outcome are recorded separately below; the full routine is not
 retrospectively marked passed.
 
+The focused fix `5723f5f` reveals the actual selected Picker in its foreground
+Form after the native menu closes, retaining the same selected-value,
+hittability and Gmail-explanation checks. Debug9af compiles; its app binary is
+identical to9ae and only the UITest binary changes. The single native keyboard
+regression passes in229.264s: one executed, one passed, zero failed/skipped.
+Calendar and Gmail are chosen with the keyboard open, saved and reopened with
+their exact selections and complete multiline notes retained. The draft stays
+unapproved; no routine or service is started. Full product hashes remain
+unchanged after execution. All60 Python checks pass in0.966s. Independent
+source review accepts this targeted correction.
+
+The owner explicitly requests merging this combined work into main. This
+focused pass fixes the observed driver blocker; it does not certify the
+unrerun complete Long or current branded French/night/largest-text Gmail.
+GitHub Mac checks remain queued rather than green at integration. Package
+inputs remain identical to the v39 checkpoint; no test duration or execution
+budget is shortened. Broader learning/live-provider/acoustic gates remain
+open in #23/#173, and TestFlight compliance in #263 remains separate.
+
 The separately consented OpenAI comparison replays only frozen invented OCR
 text: the third diagnostic passes in77.910s with seven HTTP200 responses and
 seven validated outcomes. Five abstain; two yield four synthetic unapproved
