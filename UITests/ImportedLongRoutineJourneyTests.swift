@@ -1,0 +1,459 @@
+import XCTest
+import MorningCore
+
+/// Private downstream journey, not video learning or ten provider actions. The
+/// immutable manual oracle supplies no authority. Ordinary UI configuration and
+/// approval delegate Calendar, read-only Gmail and the closed Slack transport;
+/// the other seven moments only consume their original, real-minute budgets.
+/// Local TTS and ordinary connected-result narration may run or be unavailable;
+/// acoustic quality, live accounts, web actions and MORE §10 are not certified.
+@MainActor final class ImportedLongRoutineJourneyTests: XCTestCase {
+    func testManualOracleThroughUIConfigurationRunsTenMomentsInOnePinnedSession() throws {
+        continueAfterFailure = false
+        executionTimeAllowance = 2_700
+        // Literal copy of the frozen English portable oracle, not an inference
+        // result. The phone runner cannot read a host-only #filePath fixture.
+        let portable = #"{"format":"morning-operator.routine","formatVersion":1,"detail":"includeDetails","sourceRoutineID":"90000000-0000-4000-8000-000000000100","sourceRoutineVersion":1,"sourceCreatedAt":1792129500.0,"approvalAtExport":false,"sourceIsSynthetic":true,"sourceLabel":"Demo fixture — SYNTHETIC manual oracle; no OCR or model execution","steps":[{"id":"90000000-0000-4000-8000-000000000001","title":"My agenda","kind":"calendar","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Read the invented primary calendar without confusing namesakes."},{"id":"90000000-0000-4000-8000-000000000002","title":"My mail and reply","kind":"messages","durationMinutes":5,"isRequired":false,"detail":"SYNTHETIC — Choose the third mail, correct six blue cards to eight green cards, review, then simulate exactly one send."},{"id":"90000000-0000-4000-8000-000000000003","title":"My team","kind":"messages","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — An uncertain simulated reply must never be retried automatically."},{"id":"90000000-0000-4000-8000-000000000004","title":"Second article and return","kind":"briefing","durationMinutes":4,"isRequired":false,"detail":"SYNTHETIC — Select the second observed link, read attributed text, return to the headlines with remaining budget."},{"id":"90000000-0000-4000-8000-000000000005","title":"My feed at my pace","kind":"entertainment","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — Pause, then resume. The personal three-minute choice overrides four minutes observed in the realistic source."},{"id":"90000000-0000-4000-8000-000000000006","title":"My videos","kind":"entertainment","durationMinutes":3,"isRequired":false,"detail":"SYNTHETIC — Two successive invented items. No real service control is proven."},{"id":"90000000-0000-4000-8000-000000000007","title":"My exact reminder","kind":"custom","durationMinutes":1,"isRequired":false,"detail":"SYNTHETIC — Bring the blue notebook to North studio. 16 October 2026 at 09:25 Europe/Paris. One simulated write."},{"id":"90000000-0000-4000-8000-000000000008","title":"Read five pages","kind":"wellbeing","durationMinutes":3,"isRequired":true,"detail":"SYNTHETIC — Retain the personal Keep ritual even if inference omits it. Page text authorizes no personal preference."},{"id":"90000000-0000-4000-8000-000000000009","title":"A little music","kind":"wellbeing","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Invented player. The test movie contains no audio track."},{"id":"90000000-0000-4000-8000-000000000010","title":"The end of my morning","kind":"briefing","durationMinutes":2,"isRequired":false,"detail":"SYNTHETIC — Explicitly added recap: simulated Gmail and reminder, Slack uncertain. Do not learn this moment from MORE screens."}]}"#
+        let data = Data(portable.utf8)
+        let document = try PortableRoutineDocument.decode(data)
+        let draft = try document.importedDraft(replacing: nil)
+        XCTAssertTrue(document.sourceIsSynthetic && draft.isSynthetic)
+        XCTAssertFalse(document.approvalAtExport || draft.isApproved)
+        XCTAssertEqual(draft.steps.count, 10)
+        XCTAssertEqual(draft.totalDurationMinutes, 28)
+        XCTAssertTrue(draft.steps.allSatisfy { $0.automation == nil && $0.target == nil })
+        let titles = document.steps.map(\.title)
+        let minutes = document.steps.map(\.durationMinutes)
+        let originalIDs = document.steps.map { $0.id.uuidString }
+        let app = XCUIApplication(), workspace = UUID().uuidString
+        app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-workspace=\(workspace)",
+            "--ui-testing-integrated-three-moments", "--ui-testing-gmail-attention", "--ui-testing-slack-setup",
+            "--ui-testing-briefing-fixture", "--ui-testing-hands-free", "--ui-testing-read-aloud",
+            "--light-preview", "--theme-phase=morning", "--ui-testing-parsed-routine=" + data.base64EncodedString(),
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        // No --approved, --automation, --slack-reply, or short-budget flag.
+        app.launch(); defer { app.terminate() }
+        try requireWorkspace(workspace, app)
+        try requireAcceptedImport(app)
+        openRoutine(app)
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+        for index in 0..<10 {
+            let row = button("routine.step.\(index)", app)
+            XCTAssertTrue(row.label.contains(titles[index]) && row.label.contains("Your own moment"), row.label)
+        }
+        XCTAssertFalse(app.buttons["routine.step.10"].exists)
+        XCTAssertTrue(element("routine.source", app).label.contains("Sample routine"))
+        attach("long-ten-import-manual-synthetic-not-approved", app)
+        back(app)
+        configureCalendar(app)
+        tap("setup.connections", app); tap("connections.gmailReader", app)
+        XCTAssertTrue(app.staticTexts["gmail.attention.synthetic"].waitForExistence(timeout: 8),
+                      "The composed Slack fixture must preserve the closed Gmail route.")
+        back(app); back(app); tap("setup.routine", app)
+        configureOperation(0, action: "Read today's calendar", minutes: minutes[0],
+            detail: "SYNTHETIC selected Calendar reading only. No event is written and no namesake comparison is claimed.", in: app)
+        configureOperation(1, action: "Read my mail and help me reply", minutes: minutes[1],
+            detail: "SYNTHETIC read-only Gmail. Choose an available message, then continue. No reply is sent.", in: app)
+
+        // A full ten-row draft cannot accept an eleventh row. Remove only this
+        // manual placeholder, then add the exact account/channel via Setup.
+        tap("routine.step.2", app); tap("step.remove", app)
+        let removal = app.sheets["Remove this moment?"]
+        XCTAssertTrue(removal.waitForExistence(timeout: 5))
+        // Native confirmationDialog exposes nested buttons with the same ID.
+        // Choose the actually tappable exact action within this visible sheet.
+        let remove = try XCTUnwrap(removal.buttons.matching(identifier: "step.removeDraft")
+            .allElementsBoundByIndex.first { $0.label == "Remove from this draft" && $0.exists && $0.isEnabled && $0.isHittable })
+        remove.tap()
+        XCTAssertTrue(removal.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+        back(app); tap("setup.connections", app); tap("connections.account.slack", app)
+        let channel = button("slack.setup.channel.0", app)
+        XCTAssertTrue(channel.label.contains("SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"))
+        channel.tap(); tap("slack.setup.add", app)
+        waitLabel(app.staticTexts["slack.setup.status"], contains: "Added to your draft routine", timeout: 10)
+        back(app); back(app); tap("setup.routine", app)
+        XCTAssertTrue(button("routine.step.9", app).label.contains("Slack"))
+        XCTAssertFalse(app.buttons["routine.step.10"].exists)
+        tap("routine.step.9", app)
+        replace(app.textFields["step.name"], with: titles[2], in: app)
+        XCTAssertEqual(element("step.duration", app).value as? String, "3")
+        tap("step.save", app)
+        try moveSlackToThird(titled: titles[2], in: app)
+        for index in 3..<10 {
+            configureOperation(index, action: "Keep this time, then continue", minutes: minutes[index],
+                detail: "SYNTHETIC time only: \(titles[index]). No browser, video, music, reminder, write or send is performed.",
+                keep: index == 7, in: app)
+        }
+        for index in 0..<10 {
+            let row = button("routine.step.\(index)", app)
+            XCTAssertTrue(row.label.contains(titles[index]) && row.label.contains("\(minutes[index]) min"), row.label)
+            if index >= 3 { XCTAssertTrue(row.label.contains("Give you this time, then continue automatically.")) }
+        }
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+        XCTAssertTrue(element("routine.source", app).label.contains("Sample routine"))
+        attach("long-ten-configured-three-simulated-seven-time-only-unapproved", app)
+        tap("routine.approve", app)
+        home(app); app.terminate()
+        app.launchArguments.removeAll { $0.hasPrefix("--ui-testing-parsed-routine=") }
+        app.launch(); try requireWorkspace(workspace, app)
+        openRoutine(app)
+        XCTAssertFalse(app.buttons["routine.approve"].exists, "Saved UI approval, never a launch seeder, authorizes the run.")
+        tap("routine.step.7", app)
+        XCTAssertEqual(element("step.keepFuture", app).value as? String, "1", "The personal Keep was explicitly saved in UI.")
+        tap("Cancel", app)
+        home(app); reveal(app); tap("morning.begin", app)
+        let first = try identity(app, index: 0)
+        XCTAssertEqual(first.step, originalIDs[0])
+        var trace = [first]
+        // The opening never reads its recap automatically. This source phrase
+        // must reach the actual Calendar moment's caption, not only a preview.
+        waitLabel(app.staticTexts["morning.caption"], contains: "Synthetic quiet reading", timeout: 90)
+        attach("long-ten-selected-calendar-actual-passage", app)
+        let mail = try identity(app, index: 1, timeout: 120)
+        requireSameRun(mail, first, expectedID: originalIDs[1]); trace.append(mail)
+        interact(app)
+        XCTAssertTrue(app.staticTexts["mail.attention.explanation"].waitForExistence(timeout: 20))
+        XCTAssertEqual(app.staticTexts["mail.attention.synthetic"].value as? String, "HTTP list reads: 1; body reads: 5")
+        tap("mail.attention.choose.4", app)
+        XCTAssertEqual(button("mail.attention.choose.4", app).label, "Selected message")
+        XCTAssertFalse(app.buttons["mail.selfSend"].exists)
+        attach("long-ten-read-only-mail-chosen", app)
+        tap("mail.continue", app); home(app)
+        let slack = try identity(app, index: 2)
+        requireSameRun(slack, first)
+        XCTAssertNotEqual(slack.step, originalIDs[2], "The connected step must be the one added by Setup, not imported authority.")
+        trace.append(slack)
+        try reviewSlackOnceThenPreserveUncertainty(app)
+        reveal(app); tap("morning.settings", app); tap("morning.next", app); home(app)
+
+        var timerTrace: [[String: String]] = []
+        for index in 3..<10 {
+            let wait = index == 3 ? 30.0 : Double(minutes[index - 1] * 60 + 45)
+            let current = try identity(app, index: index, timeout: wait)
+            requireSameRun(current, first, expectedID: originalIDs[index]); trace.append(current)
+            let timer = try timerSnapshot(app)
+            XCTAssertNil(timer.pausedBits)
+            XCTAssertEqual(timer.endsAt - timer.startedAt, Double(minutes[index] * 60), accuracy: 0.001,
+                           "This journey does not accelerate or relabel the source's planned minutes.")
+            timerTrace.append(["index": String(index), "initialTimerDateBits": timer.raw])
+            if index == 4 { try pauseAndRestoreFifth(current, timer: timer, workspace: workspace, in: app) }
+            // No Next for these seven moments: only their actual budget ends advance.
+        }
+        XCTAssertEqual(trace.map(\.index), Array(0..<10))
+        XCTAssertEqual(Set(trace.map(\.step)).count, 10)
+        XCTAssertTrue(app.staticTexts["morning.complete"].waitForExistence(timeout: Double(minutes[9] * 60 + 45)))
+        try requireRecap(app)
+        attach("long-ten-completed-seven-budgets-two-verified-one-uncertain", app)
+        let evidence = try JSONSerialization.data(withJSONObject: [
+            "scope": "Manual oracle downstream only; Calendar/Gmail simulated reads, Slack one uncertain simulated post, seven real-minute budgets. No video inference, live effect, browser or acoustic proof.",
+            "plannedMinutes": 28, "accelerated": false, "workspaceID": workspace,
+            "moments": trace.map { ["sessionID": $0.session, "routineVersionID": $0.version, "stepID": $0.step, "index": String($0.index)] },
+            "timers": timerTrace
+        ], options: [.prettyPrinted, .sortedKeys])
+        let attachment = XCTAttachment(string: String(decoding: evidence, as: UTF8.self))
+        attachment.name = "long-ten-actual-session-order-and-budget-instants"; attachment.lifetime = .keepAlways; add(attachment)
+        app.terminate(); app.launch(); try requireWorkspace(workspace, app)
+        try requireRecap(app)
+        attach("long-ten-honest-recap-restored", app)
+    }
+
+    private func configureCalendar(_ app: XCUIApplication) {
+        tap("setup.briefing", app)
+        XCTAssertTrue(app.staticTexts["briefing.synthetic"].waitForExistence(timeout: 8))
+        let choice = app.switches["briefing.calendar.synthetic-day-calendar"].firstMatch
+        scroll(choice, id: "briefing.calendar.synthetic-day-calendar", in: app)
+        XCTAssertEqual(choice.value as? String, "0")
+        let native = choice.switches.firstMatch
+        if native.exists && native.isHittable { native.tap() } else { choice.tap() }
+        XCTAssertEqual(choice.value as? String, "1")
+        waitLabel(element("briefing.text", app), contains: "Synthetic quiet reading", timeout: 15)
+        XCTAssertFalse(app.alerts.firstMatch.exists, "No real Calendar or weather permission is requested.")
+        attach("long-ten-selected-synthetic-calendar-source", app)
+        app.navigationBars["Your day"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Your day"].waitForNonExistence(timeout: 5))
+    }
+
+    private func configureOperation(_ index: Int, action: String, minutes: Int, detail: String,
+                                    keep: Bool = false, in app: XCUIApplication) {
+        tap("routine.step.\(index)", app)
+        replace(app.textFields["Step details"], with: detail, in: app)
+        XCTAssertEqual(element("step.duration", app).value as? String, String(minutes))
+        chooseAction(action, app)
+        if keep {
+            let choice = app.switches["step.keepFuture"].firstMatch
+            scroll(choice, id: "step.keepFuture", in: app)
+            XCTAssertEqual(choice.value as? String, "0", "Imported metadata is not a saved preference journal.")
+            let native = choice.switches.firstMatch
+            if native.exists && native.isHittable { native.tap() } else { choice.tap() }
+            XCTAssertEqual(choice.value as? String, "1")
+        }
+        tap("step.save", app)
+        XCTAssertTrue(button("routine.approve", app).isEnabled)
+    }
+
+    private func replace(_ field: XCUIElement, with text: String, in app: XCUIApplication) {
+        scroll(field, id: field.label, in: app)
+        let old = field.value as? String ?? ""
+        field.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + text)
+        XCTAssertEqual(field.value as? String, text)
+        // The visible form, not a hidden state mutation, dismisses this keyboard.
+        let form = app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable)
+            ?? app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
+        form?.swipeUp()
+    }
+
+    private func moveSlackToThird(titled title: String, in app: XCUIApplication) throws {
+        tap("routine.edit", app)
+        // Adjacent native moves keep both drag endpoints visible. No gesture to
+        // an offscreen coordinate, journal mutation or test Store setter is used.
+        for destination in stride(from: 8, through: 2, by: -1) {
+            let previous = button("routine.step.\(destination)", app)
+            let handle = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS %@", "Reorder", title)).firstMatch
+            scroll(handle, id: "Slack native reorder", in: app)
+            XCTAssertTrue(previous.isHittable && handle.isHittable, "Both adjacent native drag endpoints must be visible.")
+            handle.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.5, thenDragTo: previous.coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.05)))
+            waitLabel(app.buttons["routine.step.\(destination)"].firstMatch, contains: title, timeout: 5)
+        }
+        tap("routine.edit", app)
+    }
+
+    private func reviewSlackOnceThenPreserveUncertainty(_ app: XCUIApplication) throws {
+        interact(app)
+        XCTAssertTrue(button("slackMoment.message.0", app).label.contains("SYNTHETIC invented meeting note 1"))
+        prepareSlack(app, intention: "SYNTHETIC please review these notes")
+        let destination = element("slackMoment.destination", app)
+        XCTAssertTrue(destination.label.contains("SYNTHETIC équipe") && destination.label.contains("SYNTHETIC Camille"))
+        XCTAssertTrue(destination.label.contains("#SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"))
+        let body = element("slackMoment.body", app)
+        XCTAssertEqual(body.value as? String, "SYNTHETIC I will review the invented meeting notes.")
+        let corrected = "SYNTHETIC I will review the invented meeting notes. Corrected before review."
+        let digest = "05b368822b213121ce393357bd425919506dfae91bd50028df9c407cd43028c9"
+        body.coordinate(withNormalizedOffset: .init(dx: 0.95, dy: 0.95)).tap()
+        body.typeText(" Corrected before review.")
+        XCTAssertEqual(body.value as? String, corrected)
+        dismissKeyboard(app); tap("slackMoment.review", app)
+        XCTAssertFalse(button("slackMoment.send", app).isEnabled)
+        tap("slackMoment.reviewed", app)
+        XCTAssertTrue(button("slackMoment.send", app).isEnabled)
+        tap("slackMoment.send", app)
+        waitLabel(app.staticTexts["slackMoment.status"], contains: "Slack post is unconfirmed", timeout: 15)
+        XCTAssertFalse(app.buttons["slackMoment.send"].exists)
+        let expected = "History reads: 1; simulated send attempts: 1; received body SHA256: \(digest); confirmed replies: 0; unconfirmed replies: 1"
+        XCTAssertEqual(element("slackMoment.integratedSynthetic", app).value as? String, expected)
+        tap("slackMoment.cancel", app)
+        prepareSlack(app, intention: "SYNTHETIC try this same thread again")
+        waitLabel(app.staticTexts["slackMoment.status"], contains: "Slack post is unconfirmed", timeout: 10)
+        XCTAssertFalse(app.buttons["slackMoment.send"].exists)
+        XCTAssertEqual(element("slackMoment.integratedSynthetic", app).value as? String, expected)
+        attach("long-ten-one-simulated-slack-attempt-no-retry", app)
+        tap("morning.closeDetails", app); home(app)
+    }
+
+    private func pauseAndRestoreFifth(_ current: Identity, timer running: TimerSnapshot,
+                                     workspace: String, in app: XCUIApplication) throws {
+        expectUnchanged(current, timer: running, seconds: 20, in: app)
+        reveal(app)
+        let pause = button("morning.playback", app)
+        XCTAssertEqual(pause.label, "Pause")
+        let beforePause = Date().timeIntervalSinceReferenceDate
+        pause.tap()
+        let afterPause = Date().timeIntervalSinceReferenceDate
+        let paused = try timerSnapshot(app), pausedAt = try XCTUnwrap(paused.pausedAt)
+        XCTAssertEqual(try identity(app, index: 4), current)
+        XCTAssertEqual(paused.startedBits, running.startedBits)
+        XCTAssertEqual(paused.endsBits, running.endsBits)
+        assertWithinTap(pausedAt, from: beforePause, through: afterPause)
+        XCTAssertGreaterThanOrEqual(pausedAt - running.startedAt, 20)
+        let remaining = paused.endsAt - pausedAt
+        XCTAssertGreaterThan(remaining, 0); XCTAssertLessThanOrEqual(remaining, 160.001)
+        attach("long-ten-fifth-moment-paused-with-real-remainder", app)
+        app.terminate(); app.launch(); try requireWorkspace(workspace, app)
+        XCTAssertEqual(try identity(app, index: 4), current)
+        XCTAssertEqual(try timerSnapshot(app), paused)
+        // Longer than the shortest original budget. Exact Date bits and 20s
+        // already consumed distinguish retained remainder from a reset timer.
+        expectUnchanged(current, timer: paused, seconds: 65, in: app)
+        XCTAssertEqual(try timerSnapshot(app), paused)
+        reveal(app)
+        let resume = button("morning.playback", app)
+        XCTAssertEqual(resume.label, "Continue")
+        let beforeResume = Date().timeIntervalSinceReferenceDate
+        resume.tap()
+        let afterResume = Date().timeIntervalSinceReferenceDate
+        let resumed = try timerSnapshot(app)
+        XCTAssertEqual(try identity(app, index: 4), current)
+        XCTAssertEqual(resumed.startedBits, running.startedBits)
+        XCTAssertNil(resumed.pausedBits)
+        assertWithinTap(resumed.endsAt - paused.endsAt, from: beforeResume - pausedAt, through: afterResume - pausedAt)
+        assertWithinTap(resumed.endsAt - afterResume, from: remaining - (afterResume - beforeResume), through: remaining)
+        let proof = XCTAttachment(string: "Exact fifth-moment timer Date bits; no wall-clock rewrite\nrunning=\(running.raw)\npaused=\(paused.raw)\nresumed=\(resumed.raw)")
+        proof.name = "long-ten-real-pause-relaunch-retained-remainder"; proof.lifetime = .keepAlways; add(proof)
+    }
+
+    private func requireSameRun(_ current: Identity, _ first: Identity, expectedID: String? = nil) {
+        XCTAssertEqual(current.session, first.session); XCTAssertEqual(current.version, first.version)
+        if let expectedID { XCTAssertEqual(current.step, expectedID) }
+    }
+
+    private func openRoutine(_ app: XCUIApplication) {
+        home(app); reveal(app); tap("morning.settings", app); tap("setup.routine", app)
+    }
+    private func requireAcceptedImport(_ app: XCUIApplication) throws {
+        let notice = app.staticTexts["app.notice"]
+        if notice.exists && notice.label.contains("SYNTHETIC QA input refused") {
+            captureFailure("long-ten-import-refused", app)
+            XCTFail("The app refused the manual oracle; configuration and runtime have not run.")
+            throw DiagnosticFailure.invalid
+        }
+    }
+    private func requireRecap(_ app: XCUIApplication) throws {
+        home(app); reveal(app); tap("morning.settings", app)
+        XCTAssertTrue(element("morning.completeSummary", app).label.hasPrefix("10 moments"))
+        let expected = "Timed moments finished: 7. Verified operations: 2. Results to check: 1."
+        XCTAssertEqual(element("morning.executionSummary", app).label, expected,
+                       "Calendar/Gmail are reads; Slack remains uncertain; seven budgets certify no effects.")
+        tap("setup.history", app)
+        XCTAssertEqual(element("recap.execution", app).label, expected)
+        XCTAssertTrue(element("recap.completed", app).label.hasPrefix("10 moments completed"))
+        XCTAssertEqual(element("recap.slackRepliesUnconfirmed", app).label, "Slack replies to check: 1")
+        XCTAssertFalse(app.staticTexts["recap.slackReplies"].exists)
+        XCTAssertFalse(app.staticTexts["recap.nativeActions"].exists)
+        XCTAssertFalse(app.staticTexts["recap.nativeActionsUnconfirmed"].exists)
+        XCTAssertTrue(element("recap.sample", app).exists)
+    }
+
+    private struct Identity: Equatable {
+        let session: String, step: String, version: String, index: Int
+        var raw: String { "\(session)|\(step)|\(version)|\(index)" }
+    }
+    private struct TimerSnapshot: Equatable {
+        let startedBits: UInt64, endsBits: UInt64, pausedBits: UInt64?
+        var startedAt: TimeInterval { Double(bitPattern: startedBits) }
+        var endsAt: TimeInterval { Double(bitPattern: endsBits) }
+        var pausedAt: TimeInterval? { pausedBits.map { Double(bitPattern: $0) } }
+        var raw: String {
+            String(startedBits, radix: 16) + "|" + String(endsBits, radix: 16) + "|" +
+                (pausedBits.map { String($0, radix: 16) } ?? "none")
+        }
+    }
+    private func identity(_ app: XCUIApplication, index: Int, timeout: TimeInterval = 30) throws -> Identity {
+        let captions = app.scrollViews["morning.captions"]
+        let pattern = "^[^|]+\\|[^|]+\\|[^|]+\\|\(index)\\|[^|]+\\|[^|]+\\|[^|]+$"
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND value MATCHES %@", pattern), object: captions)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: timeout), .completed)
+        let fields = try executionFields(app)
+        for value in fields.prefix(3) { XCTAssertNotNil(UUID(uuidString: value)) }
+        let result = Identity(session: fields[0], step: fields[1], version: fields[2], index: try XCTUnwrap(Int(fields[3])))
+        XCTAssertEqual(result.index, index); return result
+    }
+    private func executionFields(_ app: XCUIApplication) throws -> [String] {
+        let fields = try XCTUnwrap(app.scrollViews["morning.captions"].value as? String).components(separatedBy: "|")
+        XCTAssertEqual(fields.count, 7, "Only the gated mixed fixture appends timer Date bits.")
+        guard fields.count == 7 else { throw DiagnosticFailure.invalid }
+        return fields
+    }
+    private func timerSnapshot(_ app: XCUIApplication) throws -> TimerSnapshot {
+        let fields = try executionFields(app)
+        let timer = TimerSnapshot(startedBits: try XCTUnwrap(UInt64(fields[4], radix: 16)),
+            endsBits: try XCTUnwrap(UInt64(fields[5], radix: 16)),
+            pausedBits: fields[6] == "none" ? nil : try XCTUnwrap(UInt64(fields[6], radix: 16)))
+        XCTAssertTrue(timer.startedAt.isFinite && timer.endsAt.isFinite && (timer.pausedAt?.isFinite ?? true))
+        return timer
+    }
+    private func expectUnchanged(_ identity: Identity, timer: TimerSnapshot, seconds: TimeInterval, in app: XCUIApplication) {
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false OR value != %@", identity.raw + "|" + timer.raw), object: app.scrollViews["morning.captions"])
+        changed.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: seconds), .completed,
+                       "Real elapsed time must not change the pinned identity or timer instants.")
+    }
+    private func assertWithinTap(_ actual: TimeInterval, from start: TimeInterval, through end: TimeInterval) {
+        // Date arithmetic may round below a millisecond; the window itself is
+        // measured around the real UI tap, not an invented resume instant.
+        XCTAssertGreaterThanOrEqual(actual, start - 0.001)
+        XCTAssertLessThanOrEqual(actual, end + 0.001)
+    }
+    private func requireWorkspace(_ workspace: String, _ app: XCUIApplication) throws {
+        let marker = app.staticTexts["qa.testWorkspace"]
+        if !marker.waitForExistence(timeout: 5) { app.terminate(); app.launch() }
+        XCTAssertTrue(marker.waitForExistence(timeout: 8)); XCTAssertEqual(marker.value as? String, workspace)
+    }
+    private func chooseAction(_ name: String, _ app: XCUIApplication) {
+        tap("step.automation", app)
+        let choice = app.buttons[name]
+        if choice.waitForExistence(timeout: 2) { scroll(choice, id: name, in: app); choice.tap() }
+        else { let text = app.staticTexts[name]; scroll(text, id: name, in: app); text.tap() }
+    }
+    private func prepareSlack(_ app: XCUIApplication, intention: String) {
+        tap("slackMoment.message.0", app)
+        let field = element("slackMoment.intention", app)
+        field.tap(); field.typeText(intention); dismissKeyboard(app); tap("slackMoment.prepare", app)
+    }
+    private func dismissKeyboard(_ app: XCUIApplication) {
+        let done = app.buttons["slackMoment.keyboardDone"]
+        if done.exists && done.isHittable { done.tap() }
+    }
+    private func interact(_ app: XCUIApplication) {
+        reveal(app); tap("morning.settings", app); tap("morning.details", app)
+        XCTAssertTrue(app.buttons["morning.closeDetails"].waitForExistence(timeout: 5))
+    }
+    private func reveal(_ app: XCUIApplication) {
+        if app.buttons["morning.settings"].isHittable { return }
+        if app.scrollViews["morning.captions"].exists {
+            app.scrollViews["morning.captions"].coordinate(withNormalizedOffset: .init(dx: 0.5, dy: 0.25)).tap()
+        } else { tap("morning.actions", app) }
+        XCTAssertTrue(app.buttons["morning.settings"].waitForExistence(timeout: 5))
+    }
+    private func home(_ app: XCUIApplication) {
+        if app.buttons["morning.closeDetails"].exists { tap("morning.closeDetails", app) }
+        for _ in 0..<5 {
+            if app.navigationBars.count == 0 { return }
+            back(app)
+        }
+        XCTFail("The ordinary Back route must return to Home.")
+    }
+    private func back(_ app: XCUIApplication) {
+        let back = app.navigationBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5)); XCTAssertTrue(back.isHittable); back.tap()
+    }
+    private func button(_ id: String, _ app: XCUIApplication) -> XCUIElement {
+        let query = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", id, id))
+        if let visible = query.allElementsBoundByIndex.first(where: \.isHittable) { return visible }
+        scroll(query.firstMatch, id: id, in: app)
+        return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
+    }
+    private func element(_ id: String, _ app: XCUIApplication) -> XCUIElement {
+        let value = app.descendants(matching: .any).matching(identifier: id).firstMatch
+        scroll(value, id: id, in: app); return value
+    }
+    private func tap(_ id: String, _ app: XCUIApplication) { button(id, app).tap() }
+    private func scroll(_ value: XCUIElement, id: String, in app: XCUIApplication) {
+        _ = value.waitForExistence(timeout: 6)
+        for down in [false, true] {
+            for _ in 0..<10 {
+                if value.exists && value.isHittable { return }
+                if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
+                let scroll = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
+                    ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) ?? app
+                if down { scroll.swipeDown() } else { scroll.swipeUp() }
+            }
+        }
+        captureFailure("long-ten-unreachable-\(id)", app)
+        XCTFail("Unreachable ordinary UI: \(id)")
+    }
+    private func waitLabel(_ value: XCUIElement, contains: String, timeout: TimeInterval) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", contains), object: value)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: timeout), .completed)
+    }
+    private func attach(_ name: String, _ app: XCUIApplication) {
+        let evidence = XCTAttachment(screenshot: app.screenshot()); evidence.name = name; evidence.lifetime = .keepAlways; add(evidence)
+    }
+    private func captureFailure(_ name: String, _ app: XCUIApplication) {
+        attach(name, app)
+        let state = XCTAttachment(string: app.debugDescription); state.name = name + "-accessibility"
+        state.lifetime = .keepAlways; add(state)
+    }
+    private enum DiagnosticFailure: Error { case invalid }
+}
