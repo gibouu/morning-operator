@@ -1437,6 +1437,11 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         return button
     }
     private func scrollTo(_ element: XCUIElement, identifier: String, in app: XCUIApplication) {
+        let proposalClose = app.buttons["proposal.close"]
+        if proposalClose.exists && proposalClose.isHittable {
+            scrollProposalTo(element, identifier: identifier, in: app)
+            return
+        }
         for attempt in 0..<24 where !element.exists || !element.isHittable {
             let scrolls = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex + app.scrollViews.allElementsBoundByIndex
             let scroll = scrolls.first { $0.isHittable } ?? app
@@ -1458,6 +1463,49 @@ final class RoutineAutomationJourneyTests: XCTestCase {
         if !element.exists || !element.isHittable { captureFailure("unreachable-\(identifier)", app) }
         XCTAssertTrue(element.exists, "Missing control: \(identifier)")
         XCTAssertTrue(element.isHittable, "Unreachable control: \(identifier)")
+    }
+    private func scrollProposalTo(_ element: XCUIElement, identifier: String, in app: XCUIApplication) {
+        // A virtualized omission may be above the last one just checked.
+        // Search the actual proposal both ways, never observations.list behind it.
+        for towardBeginning in [true, false] {
+            for _ in 0..<24 {
+                let close = app.buttons["proposal.close"], approve = app.buttons["proposal.approve"]
+                guard close.exists && close.isHittable, approve.exists && approve.isHittable,
+                      let list = app.collectionViews.allElementsBoundByIndex.first(where: {
+                          $0.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "proposal.")).count > 0
+                      }) else {
+                    captureFailure("proposal-foreground-list-missing-\(identifier)", app)
+                    XCTFail("The real proposal must own the scroll gesture."); return
+                }
+                let frame = list.frame, viewport = frame.intersection(app.frame)
+                guard let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+                    $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(viewport)
+                }) else {
+                    captureFailure("proposal-scroll-navigation-missing", app); XCTFail("The proposal navigation geometry is missing."); return
+                }
+                let top = max(viewport.minY, bar.frame.maxY) + 8
+                let bottom = min(viewport.maxY, approve.frame.minY) - 8
+                guard !viewport.isNull, !viewport.isInfinite,
+                      [frame.minX, frame.minY, viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+                      viewport.width > 100, bottom - top > 120 else {
+                    captureFailure("proposal-scroll-no-safe-viewport", app); XCTFail("No proposal viewport clears the bars and approval control."); return
+                }
+                let visible = CGRect(x: viewport.minX + 12, y: top, width: viewport.width - 24, height: bottom - top)
+                if element.exists && element.isHittable && !element.frame.isEmpty,
+                   (identifier == "proposal.approve" || identifier == "proposal.close"
+                    ? app.frame.contains(element.frame) : visible.contains(element.frame)) { return }
+                let target = element.exists && element.frame.height > 0 ? element.frame : nil
+                let down = target.map { $0.minY < visible.minY } ?? towardBeginning
+                let high = visible.minY + visible.height * 0.2, low = visible.minY + visible.height * 0.8
+                let origin = list.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? high : low) - frame.minY))
+                let end = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? low : high) - frame.minY))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+        }
+        captureFailure("unreachable-proposal-\(identifier)", app)
+        XCTAssertTrue(element.exists, "Missing proposal control: \(identifier)")
+        XCTFail("The full proposal control must be visible and hittable: \(identifier)")
     }
     private func openSlackSetup(_ app: XCUIApplication) {
         tapHomeSettings(app)
