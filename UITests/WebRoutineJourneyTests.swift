@@ -165,19 +165,25 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
             let next = springboard.descendants(matching: .any).matching(identifier: "stepActivity.more.next").firstMatch
             let timer = springboard.staticTexts["stepActivity.more.remaining"]
             XCTAssertTrue(extend.waitForExistence(timeout: 5), springboard.debugDescription)
-            XCTAssertTrue(next.waitForExistence(timeout: 5), springboard.debugDescription)
-            XCTAssertTrue(timer.waitForExistence(timeout: 5), springboard.debugDescription)
+            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            capture.name = "native-instagram-expanded-island-\(language)"; capture.lifetime = .keepAlways; add(capture)
+            let hierarchy = XCTAttachment(string: springboard.debugDescription)
+            hierarchy.name = "native-instagram-expanded-hierarchy-\(language)"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+            XCTAssertTrue(next.exists, springboard.debugDescription)
+            XCTAssertTrue(timer.exists, springboard.debugDescription)
             let destination = springboard.staticTexts[language == "fr" ? "Instagram dans MORE" : "Instagram in MORE"]
             let status = springboard.staticTexts[language == "fr" ? "À vous" : "Your turn"]
             XCTAssertTrue(destination.exists, springboard.debugDescription)
             XCTAssertTrue(status.exists, springboard.debugDescription)
             let bounds = springboard.frame
             for element in [extend, next, timer, destination, status] {
+                XCTAssertFalse(element.frame.isEmpty, "The native Island must lay out its full content: \(element)")
                 XCTAssertTrue(bounds.contains(element.frame), "A native Island control must remain on screen: \(element)")
-                XCTAssertTrue(element.isHittable, "The expanded native Island must expose its full control: \(element)")
             }
-            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            capture.name = "native-instagram-expanded-island-\(language)"; capture.lifetime = .keepAlways; add(capture)
+            // iOS may collapse an expanded Island while the assertions and
+            // screenshot run. Reopen the observed native surface before acting.
+            if !extend.isHittable { compact.press(forDuration: 1) }
+            XCTAssertTrue(extend.isHittable, "The expanded native Island must expose its +2 control.")
             extend.tap()
             app.activate()
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
@@ -189,6 +195,7 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
             XCTAssertTrue(updated.waitForExistence(timeout: 10), springboard.debugDescription)
             updated.press(forDuration: 1)
             XCTAssertTrue(next.waitForExistence(timeout: 5), springboard.debugDescription)
+            XCTAssertTrue(next.isHittable, "The expanded native Island must expose its Next control.")
             next.tap()
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
             XCTAssertEqual(app.state, .runningForeground)

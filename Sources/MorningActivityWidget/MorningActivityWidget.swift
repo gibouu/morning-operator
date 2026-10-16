@@ -155,10 +155,7 @@ private struct MorningActivityIslandDetail: View {
                 Text(timer.destination.displayName(locale: presentation.state.locale))
                     .font(.caption.weight(.medium)).foregroundStyle(.white.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
-                ViewThatFits(in: .horizontal) {
-                    timerRow(timer, font: .title2)
-                    timerRow(timer, font: .title3)
-                }
+                timerRow(timer)
                 MorningWidgetBudgetProgress(timer: timer, state: presentation.state,
                                             tint: MorningActivityPalette.islandAccent).frame(height: 4)
             } else {
@@ -184,11 +181,15 @@ private struct MorningActivityIslandDetail: View {
         .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: presentation.state.locale))
     }
 
-    private func timerRow(_ timer: MorningActivityStepTimer, font: Font) -> some View {
+    private func timerRow(_ timer: MorningActivityStepTimer) -> some View {
         HStack(alignment: .center, spacing: 12) {
             StepCountdown(timer: timer, state: presentation.state)
-                .font(font.weight(.medium).monospacedDigit()).foregroundStyle(.white)
-                .fixedSize()
+                .font(.title3.weight(.medium).monospacedDigit()).foregroundStyle(.white)
+                // A native date text has an unbounded ideal width. Do not ask
+                // WidgetKit to archive it at its fixed size or measure it in
+                // ViewThatFits; give this label a finite adaptive slot instead.
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .frame(width: 110, alignment: .leading)
                 .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
             Spacer(minLength: 4)
             controls(timer)
