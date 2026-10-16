@@ -39,7 +39,7 @@ struct MorningOperatorApp: App {
                 })
             } else if let site = Self.webMorningLaunchSite, showingWebPreview {
                 WebMorningView(site: site, minutes: 10, onClose: { showingWebPreview = false })
-                    .preferredColorScheme(.light)
+                    .morningBrandSurface()
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing")
                         && !ProcessInfo.processInfo.arguments.contains("--ui-testing-real-subscription") {
                 MorningRootView(store: store)
@@ -50,6 +50,7 @@ struct MorningOperatorApp: App {
             MorningSubscriptionEntryView(store: store)
             #endif
             }
+            .modifier(MorningBrandClockLifecycle())
             .environment(\.locale, AppLanguage.locale)
             .environment(\.layoutDirection, .leftToRight)
             .onChange(of: AppLanguage.code) { _, _ in

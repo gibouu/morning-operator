@@ -69,8 +69,8 @@ struct MorningScreenTimeView: View {
             }
         }
         .onAppear { store.refreshScreenTimeAccess() }
-        .fullScreenCover(isPresented: $showingReview) { ScreenTimeProposalView(store: store) }
-        .sheet(isPresented: $showingObservations, onDismiss: {
+        .morningFullScreenCover(isPresented: $showingReview) { ScreenTimeProposalView(store: store) }
+        .morningSheet(isPresented: $showingObservations, onDismiss: {
             if editAfterObservations {
                 editAfterObservations = false
                 if let onEdit { onEdit() } else { store.tab = .routine }

@@ -807,8 +807,11 @@ final class MorningStore {
             #else
             let needsAttention = self.automation.status != .executing
             #endif
+            let clock = MorningThemeClock.shared
+            let brandClock = MorningActivityBrandClock(solar: clock.solar,
+                pinnedAppearance: clock.pinnedPhase == nil ? nil : .resolve(moonOpacity: clock.celestial.moon.opacity))
             let snapshot = MorningActivityProjection.snapshot(session: self.session,
-                needsAttention: needsAttention, timer: self.activeStepTimer)
+                needsAttention: needsAttention, timer: self.activeStepTimer, brandClock: brandClock)
             let generation = self.dataGeneration
             do {
                 try await self.morningActivity.synchronize(snapshot: snapshot, enabled: enabled,

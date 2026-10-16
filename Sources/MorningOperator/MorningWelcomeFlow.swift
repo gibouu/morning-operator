@@ -44,7 +44,7 @@ struct MorningWelcomeFlow: View {
     private var french: Bool { AppLanguage.isFrench }
     private func text(_ fr: String, _ en: String) -> String { french ? fr : en }
     private var clock: MorningThemeClock { .shared }
-    private var night: Bool { clock.celestial.moon.opacity > 0.57 }
+    private var night: Bool { clock.brandAppearance == .night }
     private var ink: Color { MorningStyle.ink }
     private var muted: Color { contrast == .increased ? MorningStyle.ink : MorningStyle.muted }
     private var isPaywall: Bool { page == 3 }
@@ -162,7 +162,7 @@ struct MorningWelcomeFlow: View {
             .accessibilityLabel(text("Étape \(page + 1) sur 4", "Step \(page + 1) of 4"))
             .accessibilityIdentifier("onboarding.progress")
             Spacer(minLength: 8)
-            MorningBrandMark().frame(width: 24, height: 24).frame(width: 44, height: 44)
+            MorningBrandMark().frame(width: 112, height: 30).frame(height: 44)
                 .accessibilityElement(children: .ignore).accessibilityLabel("MORE")
                 .accessibilityIdentifier("onboarding.brand")
         }

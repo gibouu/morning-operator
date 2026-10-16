@@ -77,7 +77,7 @@ struct ObservationClipTimelineView: View {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .sheet(item: $selection) { selected in
+        .morningSheet(item: $selection) { selected in
             NavigationStack {
                 if let current = review,
                    let moment = current.rows.first(where: { $0.id == selected.id }),
@@ -322,10 +322,10 @@ private struct ObservationSampleDetail: View {
                 Button("Done") { dismiss() }.accessibilityIdentifier("observation.sample.close")
             }
         }
-        .sheet(item: $reviewSelection) { selected in
+        .morningSheet(item: $reviewSelection) { selected in
             ObservationScreenReviewView(store: store, acquisition: selected.acquisition, sampleID: selected.id)
         }
-        .sheet(item: $narrationSelection) { selected in
+        .morningSheet(item: $narrationSelection) { selected in
             ObservationNarrationView(store: store, observationID: acquisition.id,
                 requestedNarration: selected.prepared)
         }
