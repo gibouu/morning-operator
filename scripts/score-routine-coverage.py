@@ -261,7 +261,9 @@ def main():
     parser.add_argument('--actual', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    destination = args.output.resolve()
+    # Resolve the parent only. Resolving the final component would turn a
+    # dangling symlink into its target before O_NOFOLLOW could reject it.
+    destination = args.output.parent.resolve() / args.output.name
     if not destination.is_relative_to((HERE.parent / 'work').resolve()):
         parser.error('Keep the new private report inside this checkout\'s ignored work directory')
     result, code = compare(args.manifest, args.timeline, args.oracle, args.actual, args.scenario)
