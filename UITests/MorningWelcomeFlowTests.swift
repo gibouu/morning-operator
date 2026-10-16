@@ -217,6 +217,10 @@ final class MorningWelcomeFlowTests: XCTestCase {
             let skip = app.buttons["onboarding.skipForNow"]
             XCTAssertEqual(skip.label, french ? "Passer pour le moment" : "Skip for now")
             tap("onboarding.skipForNow", in: app)
+            XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertTrue(app.buttons["permissions.option.calendar"].exists)
+            XCTAssertEqual(app.alerts.count, 0, "Opening access choices never grants or requests one automatically.")
+            tap("permissions.finish", in: app)
             XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
             XCTAssertFalse(control("onboarding.preview", in: app).exists)
             XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
@@ -261,7 +265,8 @@ final class MorningWelcomeFlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(skip.frame.minX, app.frame.minX - 1)
         XCTAssertLessThanOrEqual(skip.frame.maxX, app.frame.maxX + 1)
         skip.tap()
-        XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["permissions.allow"].exists, "Each real access choice remains explicit.")
         XCTAssertEqual(app.alerts.count, 0)
         app.terminate()
     }
