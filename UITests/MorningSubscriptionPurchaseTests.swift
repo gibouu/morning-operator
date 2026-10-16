@@ -232,7 +232,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         tap("paywall.subscribe", in: app)
         let payment = XCUIApplication(bundleIdentifier: "com.apple.ServicesPaymentAngel")
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let cancellations = [payment.buttons["Cancel"], payment.buttons["Annuler"],
+        let cancellations = [payment.buttons["dismiss"], payment.buttons["Cancel"], payment.buttons["Annuler"],
                              payment.buttons["Close"], payment.buttons["Fermer"],
                              app.buttons["Cancel"], app.buttons["Annuler"],
                              springboard.buttons["Cancel"], springboard.buttons["Annuler"]]
