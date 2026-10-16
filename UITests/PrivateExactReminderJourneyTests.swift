@@ -146,15 +146,18 @@ import MorningCore
         }) else { fail("exact-reminder-native-date-control-unavailable", app); throw ProofError.unavailable }
         dateButton.tap()
         let headerPattern = "^(January|February|March|April|May|June|July|August|September|October|November|December) [12][0-9]{3}$"
-        let headers = app.buttons.matching(NSPredicate(format: "label MATCHES %@", headerPattern))
-        XCTAssertTrue(headers.firstMatch.waitForExistence(timeout: 5))
+        let headers = app.buttons.matching(NSPredicate(format: "identifier == %@ AND value MATCHES %@",
+                                                       "DatePicker.Show", headerPattern))
+        guard headers.firstMatch.waitForExistence(timeout: 5) else {
+            fail("exact-reminder-month-year-unavailable", app); throw ProofError.unavailable
+        }
         guard let header = headers.allElementsBoundByIndex.first(where: \.isHittable) else { fail("exact-reminder-month-year-unavailable", app); throw ProofError.unavailable }
         header.tap()
         let wheels = app.pickerWheels.allElementsBoundByIndex.filter(\.isHittable)
         guard wheels.count == 2 else { fail("exact-reminder-native-month-year-wheels-unavailable", app); throw ProofError.unavailable }
         wheels[0].adjust(toPickerWheelValue: "October"); wheels[1].adjust(toPickerWheelValue: "2026")
-        guard let selectedHeader = app.buttons.matching(identifier: "October 2026").allElementsBoundByIndex.first(where: \.isHittable)
-            ?? app.buttons.matching(NSPredicate(format: "label == %@", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
+        guard let selectedHeader = app.buttons.matching(NSPredicate(format: "identifier == %@ AND value == %@",
+            "DatePicker.Show", "October 2026")).allElementsBoundByIndex.first(where: \.isHittable) else {
             fail("exact-reminder-absolute-month-year-not-observed", app); throw ProofError.unavailable
         }
         selectedHeader.tap()
