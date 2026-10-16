@@ -104,7 +104,8 @@ struct MorningHomePlaybackView: View {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("--ui-testing") else { return "" }
         let identity = "\(store.session?.id.uuidString ?? "")|\(store.currentStep?.id.uuidString ?? "")"
-        guard arguments.contains("--ui-testing-ten-moments"), arguments.contains("--ui-testing-automation") else {
+        guard (arguments.contains("--ui-testing-ten-moments") && arguments.contains("--ui-testing-automation")) ||
+                SlackSetupUITestFixture.integratedJourneyRequested else {
             return identity
         }
         return identity + "|\(store.session?.routine.id.uuidString ?? "")|\(store.session?.currentStepIndex ?? -1)"

@@ -246,7 +246,7 @@ final class MorningStore {
     let invitation: MorningInvitationService
     let permissionSetup: MorningPermissionSetup
     let briefing: MorningBriefingController
-    let composio = GmailAttentionUITestFixture.connectionsIfRequested() ?? OutlookInboxUITestFixture.serviceIfRequested() ?? CalendlyDayUITestFixture.serviceIfRequested() ?? GoogleCalendarDayUITestFixture.serviceIfRequested() ?? SlackSetupUITestFixture.serviceIfRequested() ?? ComposioService()
+    let composio = SlackSetupUITestFixture.integratedServiceIfRequested() ?? GmailAttentionUITestFixture.connectionsIfRequested() ?? OutlookInboxUITestFixture.serviceIfRequested() ?? CalendlyDayUITestFixture.serviceIfRequested() ?? GoogleCalendarDayUITestFixture.serviceIfRequested() ?? SlackSetupUITestFixture.serviceIfRequested() ?? ComposioService()
     let nativeConnections = NativeConnectionsService()
     var selectedSlackMessageTS: String?
     @ObservationIgnored var slackReplyTask: Task<Void, Never>?
@@ -258,10 +258,12 @@ final class MorningStore {
         #else
         provider = SlackComposioReplyProvider(service: composio)
         #endif
-        return SlackThreadReplyConversation(provider: provider, directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
+        return SlackThreadReplyConversation(provider: provider,
+            drafts: SlackSetupUITestFixture.integratedDraftsIfRequested() ?? SlackReplyDraftService(),
+            directory: snapshot.url.deletingLastPathComponent(), speak: { [weak self] text in
             guard let self, !privacyBlocksWork else { throw CancellationError() }
             #if DEBUG
-            if usesSyntheticSlack { throw CancellationError() }
+            if usesSyntheticSlack || SlackSetupUITestFixture.integratedJourneyRequested { throw CancellationError() }
             #endif
             try await speech.speakAndWait(text)
         })

@@ -3,15 +3,49 @@ import MorningApple
 
 /// Explicit synthetic UI data. The injected transport has no URLSession or live credential store.
 @MainActor enum SlackSetupUITestFixture {
+    /// Composition only: the imported draft still has no operation or approval.
+    static var integratedJourneyRequested: Bool {
+        #if DEBUG
+        let flags = ProcessInfo.processInfo.arguments
+        let workspaces = flags.filter { $0.hasPrefix("--ui-testing-workspace=") }
+        return flags.contains("--ui-testing") && flags.contains("--ui-testing-integrated-three-moments") &&
+            flags.contains("--ui-testing-slack-setup") && GmailAttentionUITestFixture.isRequested &&
+            !flags.contains("--ui-testing-slack-reply") && workspaces.count == 1 &&
+            UUID(uuidString: String(workspaces[0].dropFirst("--ui-testing-workspace=".count))) != nil
+        #else
+        return false
+        #endif
+    }
+
+    static func integratedServiceIfRequested() -> ComposioService? {
+        integratedJourneyRequested ? serviceIfRequested() : nil
+    }
+
+    static var integratedDiagnostic: String {
+        #if DEBUG
+        "History reads: \(historyReads); simulated send attempts: \(sendAttempts)"
+        #else
+        ""
+        #endif
+    }
+
+    static func integratedDraftsIfRequested() -> SlackReplyDraftService? {
+        guard integratedJourneyRequested else { return nil }
+        return SlackReplyDraftService(generator: { _ in "SYNTHETIC I will review the invented meeting notes." })
+    }
+
     static func serviceIfRequested() -> ComposioService? {
         #if DEBUG
         let flags = ProcessInfo.processInfo.arguments
         guard flags.contains("--ui-testing"), flags.contains("--ui-testing-slack-setup") else { return nil }
         let empty = flags.contains("--ui-testing-slack-empty")
+        let integrated = integratedJourneyRequested
+        if integrated { historyReads = 0; sendAttempts = 0 }
         let connection = "ca_slack_synthetic_setup", cursor = "opaque-fixture-page-two"
         return ComposioService(baseURL: URL(string: "https://synthetic-slack.invalid")!,
             tokenStore: Tokens("synthetic-slack-ui-installation-token"), executionStore: Tokens(nil)) { request in
-            guard let url = request.url, url.host == "synthetic-slack.invalid" else { throw FixtureError.blocked }
+            guard let url = request.url, url.scheme == "https", url.host == "synthetic-slack.invalid",
+                  url.port == nil, url.user == nil, url.password == nil, url.fragment == nil else { throw FixtureError.blocked }
             let payload: [String: Any]
             switch (request.httpMethod, url.path) {
             case ("GET", "/v1/services"):
@@ -31,9 +65,33 @@ import MorningApple
                 guard !empty, let body = request.httpBody,
                       let input = try JSONSerialization.jsonObject(with: body) as? [String: Any],
                       input["connectionID"] as? String == connection,
-                      input["tool"] as? String == "SLACK_LIST_ALL_CHANNELS",
+                      let tool = input["tool"] as? String,
                       let requestID = input["requestID"] as? String, UUID(uuidString: requestID) != nil,
-                      let arguments = input["arguments"] as? [String: Any],
+                      let arguments = input["arguments"] as? [String: Any] else { throw FixtureError.blocked }
+                if integrated, tool != "SLACK_LIST_ALL_CHANNELS" {
+                    guard Set(input.keys) == ["connectionID", "tool", "requestID", "arguments"],
+                          arguments["channel"] as? String == "C12345678" else { throw FixtureError.blocked }
+                    let data: [String: Any]
+                    switch tool {
+                    case "SLACK_FETCH_CONVERSATION_HISTORY":
+                        guard Set(arguments.keys) == ["channel", "limit"],
+                              (arguments["limit"] as? NSNumber)?.intValue == 3 else { throw FixtureError.blocked }
+                        historyReads += 1
+                        data = ["ok": true, "messages": messages]
+                    case "SLACK_RETRIEVE_CONVERSATION_INFORMATION":
+                        guard Set(arguments.keys) == ["channel"] else { throw FixtureError.blocked }
+                        data = ["ok": true, "channel": channel("C12345678", "SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long")]
+                    case "SLACK_FETCH_MESSAGE_THREAD_FROM_A_CONVERSATION":
+                        guard Set(arguments.keys) == ["channel", "ts", "limit"],
+                              arguments["ts"] as? String == "1792100000.000001",
+                              (arguments["limit"] as? NSNumber)?.intValue == 15 else { throw FixtureError.blocked }
+                        data = ["ok": true, "messages": [messages[0]]]
+                    default: throw FixtureError.blocked
+                    }
+                    payload = ["requestID": requestID, "successful": true, "resultAvailable": true, "data": data]
+                    break
+                }
+                guard tool == "SLACK_LIST_ALL_CHANNELS",
                       Set(arguments.keys).isSubset(of: ["limit", "types", "exclude_archived", "cursor"]),
                       (arguments["limit"] as? NSNumber)?.intValue == 50,
                       arguments["types"] as? String == "public_channel,private_channel",
@@ -52,6 +110,21 @@ import MorningApple
                 }
                 payload = ["requestID": requestID, "successful": true,
                     "data": ["ok": true, "channels": channels, "response_metadata": ["next_cursor": next]]]
+            case ("POST", "/v1/slack/replies"):
+                guard integrated, !empty, let body = request.httpBody,
+                      let input = try JSONSerialization.jsonObject(with: body) as? [String: Any],
+                      Set(input.keys) == ["connectionID", "requestID", "expectedIdentity", "channelID", "threadTS", "body"],
+                      input["connectionID"] as? String == connection,
+                      input["channelID"] as? String == "C12345678",
+                      input["threadTS"] as? String == "1792100000.000001",
+                      let text = input["body"] as? String, text.hasPrefix("SYNTHETIC "), text.count <= 2_000,
+                      let requestID = input["requestID"] as? String, UUID(uuidString: requestID) != nil,
+                      let identity = input["expectedIdentity"] as? [String: String],
+                      identity == ["revision": String(repeating: "a", count: 64), "teamID": "T12345678", "userID": "U12345678"] else { throw FixtureError.blocked }
+                // The ordinary service and conversation have durably claimed this
+                // dispatch. A lost simulated response must remain uncertain.
+                sendAttempts += 1
+                throw URLError(.timedOut)
             default: throw FixtureError.blocked
             }
             let data = try JSONSerialization.data(withJSONObject: payload)
@@ -64,6 +137,12 @@ import MorningApple
     }
 
     #if DEBUG
+    private static var historyReads = 0
+    private static var sendAttempts = 0
+    private static var messages: [[String: Any]] {
+        (0..<3).map { index in ["type": "message", "ts": "179210000\(index).000001", "user": "U12345678",
+            "text": "SYNTHETIC invented meeting note \(index + 1)."] }
+    }
     private enum FixtureError: Error { case blocked }
     private final class Tokens: ComposioTokenStoring {
         private var value: String?

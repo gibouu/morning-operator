@@ -94,6 +94,7 @@
 		9A641819BA6E41F7AB773262 /* GmailAttentionJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */; };
 		8804FDDEF738D87906FE866D /* RoutineAutomationJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */; };
 		C1AFA387BF0A4139A6339376 /* TenTimedMomentsJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */; };
+		E73B5500CF314066A4DF0002 /* ImportedThreeMomentJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */; };
 		8891656AED94CB198DCEA7FC /* MorningSubscriptionEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7FCE7A3984FBA54B116B9E /* MorningSubscriptionEntryView.swift */; };
 		8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */; };
 		9110D8F9FE1CCA1CA6BEBB8F /* MorningPermissionSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA781F3E0E954D226DDC941 /* MorningPermissionSetupView.swift */; };
@@ -309,6 +310,7 @@
 		7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailAttentionJourneyTests.swift; sourceTree = "<group>"; };
 		8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineAutomationJourneyTests.swift; sourceTree = "<group>"; };
 		B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TenTimedMomentsJourneyTests.swift; sourceTree = "<group>"; };
+		E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedThreeMomentJourneyTests.swift; sourceTree = "<group>"; };
 		922632E5A7142433B00F800F /* MorningStore+ScreenTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+ScreenTime.swift"; sourceTree = "<group>"; };
 		932EF991B0E0976538F9B5B5 /* MorningOpeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningOpeningView.swift; sourceTree = "<group>"; };
 		93B3D14A4C07EA0A7FA6845D /* MorningRoutineDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningRoutineDataView.swift; sourceTree = "<group>"; };
@@ -488,6 +490,7 @@
 				7E7342CD149147718D218B55 /* GmailAttentionJourneyTests.swift */,
 				8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */,
 				B023F9BC92C74EA9A79C033F /* TenTimedMomentsJourneyTests.swift */,
+				E73B5500CF314066A4DF0001 /* ImportedThreeMomentJourneyTests.swift */,
 				479AB234D28356AD1BD23AF8 /* RoutineEvidenceProposalTests.swift */,
 				7A6237A39EB8759262EEFC1F /* RoutineTransferTests.swift */,
 				BFB9060C58B99BC4484E2765 /* SunriseDockTests.swift */,
@@ -946,6 +949,7 @@
 				9A641819BA6E41F7AB773262 /* GmailAttentionJourneyTests.swift in Sources */,
 				8804FDDEF738D87906FE866D /* RoutineAutomationJourneyTests.swift in Sources */,
 				C1AFA387BF0A4139A6339376 /* TenTimedMomentsJourneyTests.swift in Sources */,
+				E73B5500CF314066A4DF0002 /* ImportedThreeMomentJourneyTests.swift in Sources */,
 				12E45878E7091717E2E2BECF /* RoutineEvidenceProposalTests.swift in Sources */,
 				026CCCD1AF6995B662735A45 /* RoutineTransferTests.swift in Sources */,
 				4AAD181B44E400DDE3F36360 /* SunriseDockTests.swift in Sources */,
