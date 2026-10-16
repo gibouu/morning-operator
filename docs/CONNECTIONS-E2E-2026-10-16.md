@@ -5,7 +5,7 @@ iPhone journey. A successful catalog or consent-link response is not a completed
 user connection. No private account content, bearer, authorization URL, provider
 identifier or credentials are included here.
 
-## Resumed ordinary iPhone acceptance — in progress
+## Resumed ordinary iPhone acceptance — delivery checkpoint
 
 The ordinary installed build is now **2026101622**, with a strict signature and
 HealthKit, WeatherKit, Family Controls and App and Website Usage entitlements
@@ -15,15 +15,16 @@ developer entry. It is not a StoreKit or TestFlight acceptance result.
 | Ordinary iPhone route | Resumed evidence |
 | --- | --- |
 | Reminders | Physical test08 passed in 13.518 seconds: a fresh local-read timestamp and no app-owned read error. No reminder was created or completed; no titles or counts were exported. |
-| Calendar | Real inventory is available. Test07 still failed its selection assertion after a 10-second wait (31.633 seconds total); a selected-day fresh read is not yet proved. A switch-thumb gesture correction preserves the strict selection, cleanup and fresh-read assertions and awaits a real rerun. |
+| Calendar | Physical test07 passed in 64.874 seconds after targeting the actual switch thumb: real inventory, a selected-calendar fresh read, local timestamp, no read error and temporary-selection cleanup. The previous row-center gesture failed after its 10-second wait. |
 | Native Gmail, Health and Screen Time | Real grant/read acceptance remains pending. No permission or sample result is injected. |
 | Remaining API connections | Real consent must reconcile through this installation before ACTIVE status or provider reads can count. Catalog availability does not satisfy this gate. |
-| Full routine | A physical ordinary-UI journey is prepared for real browser learning, an explicit selected model, review/approval, automatic execution and a persisted recap. It has not yet passed. |
+| Full routine | A physical ordinary-UI journey is prepared for real browser learning, an explicit selected model, review/approval, automatic execution and a persisted recap. Model setup and the full journey were not run before the owner stopped further testing for delivery. |
+| Natural voice | Four ordinary samples completed through Apple backup. All four primary-voice assertions failed. The owner heard the samples and rejected their quality. ElevenLabs playback remains unproved. |
 
 The installation's UI now exposes an explicit support code derived from its
 existing private credential, without exporting that credential or enrolling a
 replacement installation. A private parameterized lookup found exactly one
-existing installation. Only this installation was added to the voice allowlist
+existing installation. Only this previously identified installation was added to the voice allowlist
 (one entry became two; the original entry was preserved). Worker deployment
 `35e47ab2-2e67-4c75-8787-2eb51b20ca52` retained the canonical speech source,
 16 services, three secrets and existing database bindings. No provider account
@@ -31,6 +32,28 @@ ownership was changed. Health returned 200, unauthenticated voice requests 401,
 forbidden voice/agent overrides 400 and authenticated service inventory 200,
 all with `no-store`. These guard checks made no generation call and do not yet
 prove native speech playback on this installation.
+
+A later test12 passed in 22.012 seconds and returned a different support code.
+Private D1 correlation found three distinct installations: the previously
+activated one, the installation refused during the TTS matrix at 08:20:33 UTC,
+and the current test12 installation. The latter two are not on the allowlist.
+The server configuration was unchanged. The client namespace includes its
+absolute sandbox path; the precise path transition was not captured, so a
+container replacement is a supported hypothesis rather than a measured event.
+No additional installation was activated and no provider ownership was moved.
+
+The delivered client fix pins the existing non-secret Keychain namespace in
+`composio-keychain-namespace.json`. Both the credential and pending-execution
+journal keep their original Keychain accounts. Each access checks the pin;
+an absent file is recreated with the same captured namespace, and a damaged or
+contradictory file blocks access. Injected stores and explicit UI-test/data
+directory overrides retain their existing isolation. No credentials or journal
+entries are copied, and no historical namespace is searched. A namespace already
+lost before this first pin cannot be recovered by this change; one final
+reconnection or server activation may still be needed. First-upgrade continuity
+remains tracked in [issue #220](https://github.com/gibouu/morning-operator/issues/220).
+This final patch was reviewed in source but was not rebuilt or retested after
+the owner's instruction to stop tests and deliver.
 
 Both native and API authentication now permit the standard shared sign-in
 session while retaining their callback and ownership checks; native Google also
@@ -43,11 +66,11 @@ and ignored. The earlier detailed checkpoints below retain their original proof
 boundaries; this resumed work does not yet certify every connection or the full
 routine.
 
-The next physical pass is currently blocked by Xcode's **Unlock iPhone to
-Continue** request. The owner has been asked only to unlock the actual iPhone;
-no code, Apple Developer subscription or replacement grant is being requested.
-The four ordinary voice samples, Calendar rerun and full routine are still
-pending at this checkpoint.
+The owner unlocked the iPhone and the Calendar/code checks above completed.
+Further tests and the full routine were then stopped on the owner's delivery
+instruction. The phone and owner data are released without a pending routine
+mutation or restoration. Final installation is handled by the delivery
+coordinator; there is no StoreKit/TestFlight acceptance dependency.
 
 ## Live API checkpoint
 
