@@ -306,40 +306,64 @@ struct AppleIntelligenceCitationTests {
         let schema = try EvidenceRoutineGenerationSchema.make(citationIDs: ["q1", "q2"])
         let data = try JSONEncoder().encode(schema)
         let encoded = String(decoding: data, as: UTF8.self)
-        #expect(encoded.contains("citationIDs") && encoded.contains("q1") && !encoded.contains("unitID") && !encoded.contains("\"quote\"") && !encoded.contains("\"detail\""))
+        let object = try JSONSerialization.jsonObject(with: data)
+        let empty = try EvidenceRoutineGenerationSchema.make(citationIDs: [])
+        let emptyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(empty))
+        let diagnosticData = try JSONSerialization.data(withJSONObject: [
+            "expectedCitationIDs": ["q1", "q2"], "schema": object, "noAnchorsSchema": emptyObject
+        ], options: [.sortedKeys])
+        // Fixed synthetic IDs and schema metadata only, never model output or source text.
+        let diagnostic = Comment(rawValue: "GROUNDED_SCHEMA_DIAGNOSTIC " + String(decoding: diagnosticData, as: UTF8.self))
+        #expect(encoded.contains("citationIDs") && encoded.contains("q1") && !encoded.contains("unitID") && !encoded.contains("\"quote\"") && !encoded.contains("\"detail\""), diagnostic)
         func objects(_ value: Any) -> [[String: Any]] {
             if let dictionary = value as? [String: Any] { return [dictionary] + dictionary.values.flatMap(objects) }
             if let array = value as? [Any] { return array.flatMap(objects) }
             return []
         }
-        let object = try JSONSerialization.jsonObject(with: data)
         let citationArray = try #require(objects(object)
-            .compactMap { $0["citationIDs"] as? [String: Any] }.first)
-        #expect((citationArray["minItems"] as? Int) == 1 && (citationArray["maxItems"] as? Int) == 1)
-        let step = try #require(objects(object).first { ($0["citationIDs"] as? [String: Any]) != nil })
+            .compactMap { $0["citationIDs"] as? [String: Any] }.first, diagnostic)
+        #expect((citationArray["minItems"] as? Int) == 1 && (citationArray["maxItems"] as? Int) == 1, diagnostic)
+        let step = try #require(objects(object).first { ($0["citationIDs"] as? [String: Any]) != nil }, diagnostic)
         let remoteUnion = try #require(OpenAIRoutineSchema.make(citationIDs: ["q1", "q2"])
-            .objectValue?["properties"]?.objectValue?["selection"]?.objectValue?["anyOf"]?.arrayValue)
+            .objectValue?["properties"]?.objectValue?["selection"]?.objectValue?["anyOf"]?.arrayValue, diagnostic)
         let remoteStep = try #require(remoteUnion[1].objectValue?["properties"]?.objectValue?["steps"]?
-            .objectValue?["items"]?.objectValue?["properties"]?.objectValue)
+            .objectValue?["items"]?.objectValue?["properties"]?.objectValue, diagnostic)
         for field in ["kind", "title", "durationMinutes"] {
-            let localDescription = try #require((step[field] as? [String: Any])?["description"] as? String)
-            #expect(remoteStep[field]?.objectValue?["description"]?.stringValue == localDescription)
+            let localDescription = try #require((step[field] as? [String: Any])?["description"] as? String, diagnostic)
+            #expect(remoteStep[field]?.objectValue?["description"]?.stringValue == localDescription, diagnostic)
         }
-        let duration = try #require(step["durationMinutes"] as? [String: Any])
-        #expect((duration["minimum"] as? Int) == 1 && (duration["maximum"] as? Int) == 60)
-        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] })
-        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["supportedActivities"] })
-        let union = try #require(objects(object).first { ($0["anyOf"] as? [[String: Any]])?.count == 2 })
-        #expect((union["description"] as? String) == EvidenceRoutineFieldGuidance.selection)
+        let duration = try #require(step["durationMinutes"] as? [String: Any], diagnostic)
+        #expect((duration["minimum"] as? Int) == 1 && (duration["maximum"] as? Int) == 60, diagnostic)
+        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] }, diagnostic)
+        #expect(objects(object).contains { ($0["enum"] as? [String]) == ["supportedActivities"] }, diagnostic)
+        func selectionNode(in value: Any) throws -> [String: Any] {
+            let root = try #require(value as? [String: Any], diagnostic)
+            let properties = try #require(root["properties"] as? [String: Any], diagnostic)
+            let required = try #require(root["required"] as? [String], diagnostic)
+            #expect(Set(properties.keys) == ["selection"] && required == ["selection"], diagnostic)
+            let field = try #require(properties["selection"] as? [String: Any], diagnostic)
+            guard let reference = field["$ref"] as? String else { return field }
+            let prefix = "#/$defs/"
+            try #require(reference.hasPrefix(prefix), diagnostic)
+            let name = String(reference.dropFirst(prefix.count))
+            try #require(!name.isEmpty && !name.contains("/"), diagnostic)
+            let definitions = try #require(root["$defs"] as? [String: Any], diagnostic)
+            return try #require(definitions[name] as? [String: Any], diagnostic)
+        }
+        // SuppliedCitationID can also be an anyOf with two choices on SDK 26.6.
+        // Follow the root selection field instead of traversing unordered definitions.
+        let selection = try selectionNode(in: object)
+        let branches = try #require(selection["anyOf"] as? [[String: Any]], diagnostic)
+        #expect(branches.count == 2, diagnostic)
+        #expect((selection["description"] as? String) == EvidenceRoutineFieldGuidance.selection, diagnostic)
         let stepArrays = objects(object).compactMap { $0["steps"] as? [String: Any] }
-        #expect(stepArrays.contains { ($0["minItems"] as? Int) == 0 && ($0["maxItems"] as? Int) == 0 })
-        #expect(stepArrays.contains { ($0["minItems"] as? Int) == 1 && ($0["maxItems"] as? Int) == 4 })
-        #expect(objects(object).contains { $0["selection"] != nil })
-        let empty = try EvidenceRoutineGenerationSchema.make(citationIDs: [])
-        let emptyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(empty))
-        #expect(objects(emptyObject).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] })
-        let emptySteps = try #require(objects(emptyObject).compactMap { $0["steps"] as? [String: Any] }.first)
-        #expect((emptySteps["minItems"] as? Int) == 0 && (emptySteps["maxItems"] as? Int) == 0)
+        #expect(stepArrays.contains { ($0["minItems"] as? Int) == 0 && ($0["maxItems"] as? Int) == 0 }, diagnostic)
+        #expect(stepArrays.contains { ($0["minItems"] as? Int) == 1 && ($0["maxItems"] as? Int) == 4 }, diagnostic)
+        let emptySelection = try selectionNode(in: emptyObject)
+        #expect(emptySelection["anyOf"] == nil, diagnostic)
+        #expect(objects(emptyObject).contains { ($0["enum"] as? [String]) == ["insufficientEvidence"] }, diagnostic)
+        let emptySteps = try #require((emptySelection["properties"] as? [String: Any])?["steps"] as? [String: Any], diagnostic)
+        #expect((emptySteps["minItems"] as? Int) == 0 && (emptySteps["maxItems"] as? Int) == 0, diagnostic)
     }
     #endif
 }
