@@ -468,9 +468,15 @@ struct SetupView: View {
             }
             Section(french ? "Voix et lecture" : "Voice & playback") {
                 #if !MORE_JURY_DEMO
-                settingsButton(french ? "Parler avec MORE" : "Talk with MORE",
-                               symbol: "sparkles") { choosingConversation = true }
-                    .accessibilityIdentifier("setup.conversation")
+                if store.cloudConversationAvailable {
+                    settingsButton(french ? "Parler avec MORE" : "Talk with MORE",
+                                   symbol: "sparkles") { choosingConversation = true }
+                        .accessibilityIdentifier("setup.conversation")
+                } else {
+                    Text(store.cloudConversationUnavailableMessage)
+                        .font(.footnote).foregroundStyle(MorningStyle.muted)
+                        .accessibilityIdentifier("setup.conversationUnavailable")
+                }
                 #endif
                 NavigationLink { MorningIntelligenceView(store: store) } label: {
                     settingsLabel(french ? "Intelligence et mémoire" : "Intelligence & memory", symbol: "sparkles")
