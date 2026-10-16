@@ -426,6 +426,11 @@ final class MorningStore {
 
     init() {
         let fixtureMode = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+        #if DEBUG
+        let parsedRoutineFixtureRequested = ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--ui-testing-parsed-routine=") })
+        #else
+        let parsedRoutineFixtureRequested = false
+        #endif
         let directory = LocalDataControl.defaultDirectory
         privacyControl = LocalDataControl(directory: directory)
         snapshot = AtomicJSONFile(url: directory.appendingPathComponent("workspace.json"))
@@ -440,7 +445,7 @@ final class MorningStore {
         briefing = MorningBriefingController(directory: directory)
         #endif
         #if DEBUG
-        repairPrivacyFixtureIfRequested(directory: directory)
+        if !parsedRoutineFixtureRequested { repairPrivacyFixtureIfRequested(directory: directory) }
         #endif
         defer { if !privacyBlocksWork { connectRecordingRecovery() } }
         do {
@@ -476,6 +481,17 @@ final class MorningStore {
         }
         let seedFixture = fixtureMode && !ProcessInfo.processInfo.arguments.contains("--ui-testing-empty-workspace")
         if seedFixture && !FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
+            // Parsed input is an exclusive draft path. Other test seeders must
+            // neither approve/replace it nor rescue a malformed payload.
+            if parsedRoutineFixtureRequested {
+                #if DEBUG
+                do { routine = try Self.parsedUITestRoutine(directory: directory, arguments: ProcessInfo.processInfo.arguments) }
+                catch {
+                    routine = nil
+                    notice = "SYNTHETIC QA input refused. No routine was installed."
+                }
+                #endif
+            } else {
             routine = DemoFixtures.candidateRoutine
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-automation") {
@@ -554,20 +570,7 @@ final class MorningStore {
                                     kind: kinds[index], durationMinutes: 2)
                     })
             }
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--ui-testing-parsed-routine=") }) {
-                do { routine = try Self.parsedUITestRoutine(directory: directory, arguments: ProcessInfo.processInfo.arguments) }
-                catch {
-                    routine = nil
-                    notice = "SYNTHETIC QA input refused. No routine was installed."
-                }
-            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
-            #else
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
-            #endif
-            // Off unless a test asks: a hands-free or spoken morning (issue #99).
-            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
-            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
             seedObservationArchiveIfRequested()
             #if DEBUG
             seedPrivacyFixtureIfRequested(directory: directory)
@@ -580,6 +583,10 @@ final class MorningStore {
                 try? session?.start(); try? session?.advance(); try? session?.stop(); archiveTerminalSession(); persist()
             }
             #endif
+            }
+            // Display and audio preferences do not grant import approval.
+            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
+            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
         } else if FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
             do {
                 let saved = try snapshot.load()
