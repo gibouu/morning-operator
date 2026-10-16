@@ -212,8 +212,8 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     func testUnverifiedSubscriptionRequiresAnEntryChoiceAndAllowsFreeContinue() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
-        try await session.buyProduct(identifier: productID)
         try await session.setSimulatedError(.verification(.invalidSignature), forAPI: .verification)
+        try await session.buyProduct(identifier: productID)
         let app = launch()
         defer { app.terminate() }
         XCTAssertTrue(app.staticTexts["onboarding.heading"].waitForExistence(timeout: 20), app.debugDescription)
