@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 SIZE = (1920, 1080)
@@ -22,7 +22,7 @@ SOURCE_HASH = "07dde8b6e714352c2dadd85aac1b4086ef1f45992690579e0add3302210f5f55"
 PHONE = (730, 44, 1191, 1037)
 SCREEN = (743, 120, 1179, 1010)
 # Only editorial cuts, not native permission sheets or the natural reel scroll.
-CUTS = (44.0, 49.0, 54.0, 64.0, 76.0, 152.0, 157.0, 175.0)
+CUTS = (46.0, 57.0, 76.0, 152.0, 157.0, 175.0)
 MOON_START = 286.0
 DUO_START = 290.0
 SOURCE_MOON = (778, 505, 908, 640)
@@ -60,6 +60,13 @@ def moon_layer(frame, box, threshold):
     pixels = np.array(crop)
     level = pixels[:, :, :3].max(axis=2).astype(float)
     alpha = np.clip((level - threshold) / 14, 0, 1)
+    # Connect the crescent's dense dots, then reject isolated stars in the crop.
+    connected = Image.fromarray(np.where(alpha > 0.03, 255, 0).astype("uint8"))
+    connected = connected.filter(ImageFilter.MaxFilter(17))
+    seed = (crop.width // 5, crop.height // 2)
+    assert connected.getpixel(seed) == 255, "Expected a seed inside the filmed crescent"
+    ImageDraw.floodfill(connected, seed, 128, thresh=0)
+    alpha *= np.array(connected) == 128
     pixels[:, :, 3] = np.round(alpha * 255).astype("uint8")
     return Image.fromarray(pixels)
 
@@ -80,13 +87,12 @@ class Edit:
             ImageDraw.Draw(mask).rounded_rectangle((0, 0, 207, 207), radius=46, fill=255)
             icon.putalpha(mask.resize((52, 52), Image.Resampling.LANCZOS))
             self.icons[mode] = icon
-        self.font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 25)
         self.phone_mask = Image.new("L", SIZE)
         ImageDraw.Draw(self.phone_mask).rounded_rectangle(PHONE, radius=82, fill=255)
         self.night = Image.new("RGB", SIZE, "#0C1226")
         self.black = Image.new("RGB", SIZE)
         self.night_still = frame_at(source, MOON_START)
-        self.duo_still = frame_at(source, DUO_START + 0.2)
+        self.duo_still = frame_at(source, DUO_START + 1)
         self.small_moon = moon_layer(self.night_still, SOURCE_MOON, 40)
         self.large_moon = moon_layer(self.duo_still, TARGET_MOON, 75)
         self.cut_frames = {round(t * FPS) for t in CUTS}
@@ -103,8 +109,12 @@ class Edit:
         if night_mix:
             night = self.night.copy()
             night.paste(frame, (0, 0), self.phone_mask)
-            caption = "Architecture and trust" if time < 276 else "Future direction"
-            ImageDraw.Draw(night).text((60, 126), caption, font=self.font, fill="#F3ECDD")
+            # Preserve the original caption, including its exact timing and fades.
+            caption = np.array(frame.crop((50, 125, 700, 165))).mean(axis=2)
+            paper = float(np.mean(frame.getpixel((700, 140))))
+            alpha = np.clip((paper - caption) / max(1, paper - 65), 0, 1)
+            mask = Image.fromarray(np.round(alpha * 255).astype("uint8"))
+            night.paste(Image.new("RGB", mask.size, "#F3ECDD"), (50, 125), mask)
             night.paste(self.icons["night"], (60, 65), self.icons["night"])
             night.paste(self.logos["night"], (128, 66), self.logos["night"])
             frame = Image.blend(frame, night, night_mix)
@@ -129,7 +139,7 @@ class Edit:
             frame = self.black.copy()
             frame.paste(moon, (round(x), round(y)), moon)
             return frame
-        reveal = smooth((time - DUO_START) / 0.7)
+        reveal = smooth((time - DUO_START) / 1.0)
         frame = Image.blend(self.black, self.duo_still, reveal)
         frame.paste(self.large_moon, TARGET_MOON[:2], self.large_moon)
         return frame
@@ -145,12 +155,12 @@ class Edit:
             frame.paste(Image.blend(self.outgoing, incoming, smooth((self.cut_age + 1) / 7)), SCREEN[:2])
             self.cut_age += 1
         self.previous_screen = incoming
-        if MOON_START <= time < DUO_START + 0.7:
+        if MOON_START <= time < DUO_START + 1.0:
             return self.ending(time)
         if time < MOON_START:
             return self.brand(frame, time)
         # A small identity in the existing black margin, without covering the Duo.
-        fade = smooth((time - 290.7) / 0.5) * (1 - smooth((time - 297.5) / 2.5))
+        fade = smooth((time - 291.0) / 0.5) * (1 - smooth((time - 297.5) / 2.5))
         logo = self.logos["night"].copy()
         logo.putalpha(logo.getchannel("A").point(lambda a: round(a * fade)))
         frame.paste(logo, (60, 25), logo)
@@ -186,8 +196,9 @@ def main():
         temporary = work / "render.mp4"
         decode = subprocess.Popen(["ffmpeg", "-v", "error", "-ss", str(args.start), "-i", str(source),
             "-t", str(duration), "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"], stdout=subprocess.PIPE)
+        audio_seek = ["-ss", str(args.start)] if args.start else []
         encode = subprocess.Popen(["ffmpeg", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-            "-s", "1920x1080", "-r", "30", "-i", "pipe:0", "-ss", str(args.start), "-i", str(source),
+            "-s", "1920x1080", "-r", "30", "-i", "pipe:0", *audio_seek, "-i", str(source),
             "-map", "0:v:0", "-map", "1:a:0", "-t", str(duration), "-c:v", "libx264", "-preset", "fast",
             "-crf", "17", "-threads", "4", "-pix_fmt", "yuv420p", "-colorspace", "bt709",
             "-color_primaries", "bt709", "-color_trc", "bt709", "-c:a", "copy", "-movflags", "+faststart",
@@ -213,7 +224,9 @@ def main():
         result = probe(temporary)
         rendered_video = next(s for s in result["streams"] if s["codec_type"] == "video")
         assert int(rendered_video["nb_frames"]) == last - first
-        assert abs(float(result["format"]["duration"]) - duration) < 0.001
+        assert abs(float(rendered_video["duration"]) - duration) < 0.001
+        if first == 0 and last == 9000:
+            assert abs(float(result["format"]["duration"]) - duration) < 0.001
         report = {"source_sha256": digest, "frames": last - first, "duration": duration,
             "resolution": list(SIZE), "fps": FPS, "range": [args.start, args.end]}
         if first == 0 and last == 9000:
