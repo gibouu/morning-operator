@@ -305,16 +305,30 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
         // Only one known-off switch may change. Other saved selections stay untouched.
         let hasSelection = calendars.allElementsBoundByIndex.contains { ($0.value as? String) == "1" }
         var temporaryCalendar: XCUIElement?
+        func attachSelectionDiagnostic(_ element: XCUIElement) {
+            let issue = app.staticTexts["briefing.error"]
+            let value = element.exists ? element.value as? String ?? "<unknown>" : "<missing>"
+            let state = element.exists
+                ? "type=\(element.elementType.rawValue),frame=\(element.frame),value=\(["0", "1"].contains(value) ? value : "<unknown>")"
+                : "switch=<missing>"
+            let attachment = XCTAttachment(string: state + "\nbriefing.error=" + (issue.exists ? issue.label : "<not present>"))
+            attachment.name = "ordinary-native-calendar-selection-diagnostic"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
         continueAfterFailure = true
         defer {
             var selectionRestored = true
             if let temporaryCalendar {
                 try? reveal(temporaryCalendar, in: app)
-                if temporaryCalendar.exists && temporaryCalendar.isHittable,
-                   temporaryCalendar.value as? String == "1" { temporaryCalendar.tap() }
+                if temporaryCalendar.exists && temporaryCalendar.isHittable && temporaryCalendar.isEnabled,
+                   temporaryCalendar.value as? String == "1" {
+                    temporaryCalendar.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+                }
                 let restored = XCTNSPredicateExpectation(
                     predicate: NSPredicate(format: "exists == true AND value == %@", "0"), object: temporaryCalendar)
                 selectionRestored = XCTWaiter.wait(for: [restored], timeout: 8) == .completed
+                if !selectionRestored { attachSelectionDiagnostic(temporaryCalendar) }
                 try? requirePhysicalNative(selectionRestored,
                     "The temporarily selected calendar must return to its original off state.")
             }
@@ -326,15 +340,19 @@ final class OrdinaryConnectionsAcceptanceTests: XCTestCase {
             try reveal(first, in: app)
             let selectable = XCTNSPredicateExpectation(
                 predicate: NSPredicate(format: "exists == true AND hittable == true AND enabled == true AND value == %@", "0"), object: first)
-            try requirePhysicalNative(XCTWaiter.wait(for: [selectable], timeout: 10) == .completed,
+            let ready = XCTWaiter.wait(for: [selectable], timeout: 10) == .completed
+            if !ready { attachSelectionDiagnostic(first) }
+            try requirePhysicalNative(ready,
                 "The known-off native calendar selection did not become ready.")
-            try requirePhysicalNative(first.exists && first.isHittable && first.value as? String == "0",
+            try requirePhysicalNative(first.exists && first.isHittable && first.isEnabled && first.value as? String == "0",
                 "A known-off native calendar selection was not available.")
             temporaryCalendar = first
-            first.tap()
+            first.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
             let selected = XCTNSPredicateExpectation(
                 predicate: NSPredicate(format: "exists == true AND value == %@", "1"), object: first)
-            try requirePhysicalNative(XCTWaiter.wait(for: [selected], timeout: 10) == .completed,
+            let saved = XCTWaiter.wait(for: [selected], timeout: 10) == .completed
+            if !saved { attachSelectionDiagnostic(first) }
+            try requirePhysicalNative(saved,
                 "The native calendar selection did not save.")
         }
         let refresh = app.buttons["briefing.refresh"]
