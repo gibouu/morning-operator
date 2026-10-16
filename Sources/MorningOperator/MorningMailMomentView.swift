@@ -83,7 +83,12 @@ struct MorningMailMomentView: View {
                             .accessibilityIdentifier("mail.reply.recipient")
                     }
                     Text(verbatim: mail.draftText).textSelection(.enabled).accessibilityIdentifier("mail.reply.body")
-                    TextField(french ? "Votre correction" : "Your correction", text: $replyCorrection, axis: .vertical)
+                    TextField(french ? "Votre correction" : "Your correction", text: Binding(get: { replyCorrection }, set: { value in
+                        if value != replyCorrection, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            store.revokeMailReplyReview()
+                        }
+                        replyCorrection = value
+                    }), axis: .vertical)
                         .lineLimit(2...5).focused($replyInputFocused).accessibilityIdentifier("mail.reply.correction")
                     Button(french ? "Corriger la réponse" : "Revise reply") {
                         let guidance = replyCorrection

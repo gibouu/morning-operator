@@ -218,9 +218,12 @@ import Testing
         #expect(!mail.acknowledgeReplyReview(body: previousBody, recipient: "maia@morning-fixture.invalid", context: context))
         #expect(mail.acknowledgeReplyReview(body: expectedBody, recipient: "maia@morning-fixture.invalid", context: context))
         #expect(mail.canSendReply)
-        // The Store briefly pauses the same session while entering its ordinary action task.
+        // A genuine pause invalidates screen acknowledgement, even with identical text.
         mail.cancel()
-        #expect(mail.canSendReply, "An internal pause must preserve the exact acknowledged draft.")
+        #expect(!mail.canSendReply)
+        await mail.sendReviewedReply(context: context)
+        #expect(try proof(context)["simulatedSendAttempts"] == "0")
+        #expect(mail.acknowledgeReplyReview(body: expectedBody, recipient: "maia@morning-fixture.invalid", context: context))
         await mail.sendReviewedReply(context: context)
         #expect(mail.lastSendOutcome == .sent && mail.state == .completed)
         let received = try proof(context)
