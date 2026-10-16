@@ -400,6 +400,30 @@ final class MorningStore {
     var privacyBlocksWork: Bool { privacyIsForgetting || privacyNeedsCleanup }
     var privacyInventoryIsReadable: Bool { snapshotRecoveryError == nil && !privacyBlocksWork }
 
+    #if DEBUG
+    /// Development-only injection of a portable *draft*, never action authority.
+    /// The document lives in the UI-test runner; no corpus is bundled in the app.
+    private static func parsedUITestRoutine(directory: URL, arguments: [String]) throws -> RoutineVersion {
+        let workspacePrefix = "--ui-testing-workspace=", documentPrefix = "--ui-testing-parsed-routine="
+        let workspaces = arguments.filter { $0.hasPrefix(workspacePrefix) }
+        let documents = arguments.filter { $0.hasPrefix(documentPrefix) }
+        let temporary = FileManager.default.temporaryDirectory.standardizedFileURL.resolvingSymlinksInPath()
+        guard arguments.contains("--ui-testing"), workspaces.count == 1, documents.count == 1,
+              let workspace = UUID(uuidString: String(workspaces[0].dropFirst(workspacePrefix.count))),
+              directory.standardizedFileURL.resolvingSymlinksInPath() == temporary
+                .appendingPathComponent("MorningOperatorUITests-\(workspace.uuidString)", isDirectory: true),
+              documents[0].utf8.count <= 65_536,
+              let data = Data(base64Encoded: String(documents[0].dropFirst(documentPrefix.count))) else {
+            throw PortableRoutineDocumentError.invalidDocument
+        }
+        let document = try PortableRoutineDocument.decode(data)
+        guard document.sourceIsSynthetic, !document.approvalAtExport else {
+            throw PortableRoutineDocumentError.invalidDocument
+        }
+        return try document.importedDraft(replacing: nil)
+    }
+    #endif
+
     init() {
         let fixtureMode = ProcessInfo.processInfo.arguments.contains("--ui-testing")
         let directory = LocalDataControl.defaultDirectory
@@ -530,7 +554,17 @@ final class MorningStore {
                                     kind: kinds[index], durationMinutes: 2)
                     })
             }
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--ui-testing-parsed-routine=") }) {
+                do { routine = try Self.parsedUITestRoutine(directory: directory, arguments: ProcessInfo.processInfo.arguments) }
+                catch {
+                    routine = nil
+                    notice = "SYNTHETIC QA input refused. No routine was installed."
+                }
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
+            #else
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-approved") { routine = routine?.approved() }
+            #endif
             // Off unless a test asks: a hands-free or spoken morning (issue #99).
             automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
             readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
