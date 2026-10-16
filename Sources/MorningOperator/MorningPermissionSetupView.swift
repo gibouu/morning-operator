@@ -25,12 +25,14 @@ struct MorningPermissionSetupView: View {
             navigation
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
-                    MorningQuietLandscape(scene: clock.celestial, weather: clock.weatherScene,
+                    if setup.isRevisiting {
+                        MorningQuietLandscape(scene: clock.celestial, weather: clock.weatherScene,
                                           animated: false, active: false,
                                           strongInk: reduceTransparency || contrast == .increased)
                         .frame(height: verticalSizeClass == .compact ? 90 : 130)
                         .clipShape(RoundedRectangle(cornerRadius: 24))
-                    choice
+                    }
+                    if setup.isRevisiting { choice } else { summary }
                     if let issue = setup.saveIssue {
                         Text(issue).font(MorningTheme.Typography.note).foregroundStyle(ink)
                             .fixedSize(horizontal: false, vertical: true)
@@ -44,7 +46,7 @@ struct MorningPermissionSetupView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .accessibilityIdentifier("permissions.content")
-            .id(setup.current)
+            .id(setup.isRevisiting ? setup.current : nil)
             if !scrollingFooter {
                 actions.padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 12)
                     .frame(maxWidth: .infinity)
@@ -59,14 +61,67 @@ struct MorningPermissionSetupView: View {
         .interactiveDismissDisabled()
         .task { clock.refresh() }
         .onChange(of: setup.current) { _, _ in
-            detailsExpanded = false
-            headingFocused = true
+            if setup.isRevisiting {
+                detailsExpanded = false
+                headingFocused = true
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { setup.cancelForBackground() }
             if phase == .active { clock.refresh() }
         }
         .transaction { $0.animation = nil; $0.disablesAnimations = true }
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(text("Let's prepare your morning.", "Préparons votre matinée."))
+                .font(.system(.largeTitle, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("permissions.title.summary")
+            Text(text("Here's what each access is for. Do you agree to enable them?",
+                      "Voici à quoi sert chaque accès. Acceptez-vous de les activer ?"))
+                .foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+            ForEach(setup.supported, id: \.rawValue) { permission in
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: permission.accessSymbol)
+                        .frame(width: 24).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(permission == .speech
+                             ? text("Microphone & speech recognition", "Micro et reconnaissance vocale")
+                             : permission.accessName)
+                            .font(.system(.subheadline, weight: .semibold))
+                            .accessibilityIdentifier("permissions.title.\(permission.rawValue)")
+                        Text(permission.accessPurpose)
+                            .font(MorningTheme.Typography.note).foregroundStyle(muted)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Text(text("You can decline any request or choose Not now. MORE will continue with the available features. You can change each access later in Settings.",
+                      "Vous pouvez refuser un accès ou choisir Plus tard. MORE continuera avec les fonctions disponibles. Chaque accès reste modifiable dans les réglages."))
+                .font(MorningTheme.Typography.note).foregroundStyle(muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("permissions.note")
+            if let note = setup.screenTimeUnavailableNote {
+                Text(note).font(MorningTheme.Typography.note).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            DisclosureGroup(isExpanded: $detailsExpanded) {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(setup.supported, id: \.rawValue) { permission in
+                        Text(permission.accessExplanation)
+                    }
+                }
+                .font(MorningTheme.Typography.note).foregroundStyle(muted)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+            } label: {
+                Text(text("Learn more", "En savoir plus"))
+                    .font(.system(.subheadline, weight: .medium)).frame(minHeight: 44, alignment: .leading)
+                    .accessibilityIdentifier("permissions.details")
+            }
+        }
     }
 
     private var navigation: some View {
@@ -111,12 +166,6 @@ struct MorningPermissionSetupView: View {
                     .font(MorningTheme.Typography.note).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("permissions.voicePrompts")
-                if !setup.isRevisiting {
-                    Text(text("Connect your other apps later, when you need them, from Settings.",
-                              "Branchez vos autres apps plus tard, au moment utile, depuis les réglages."))
-                        .font(MorningTheme.Typography.note).foregroundStyle(muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
             if setup.current == nil {
                 ForEach(setup.supported, id: \.rawValue) { permission in
@@ -166,14 +215,12 @@ struct MorningPermissionSetupView: View {
                 Button {
                     if scenePhase == .active { setup.allow(store: store) }
                 } label: {
-                    primaryLabel(setup.current?.accessAction ?? "")
+                    primaryLabel(setup.isRevisiting ? setup.current?.accessAction ?? "" : text("Accept", "Accepter"))
                 }
                 .modifier(MorningEntryPrimaryStyle())
                 .disabled(setup.isRequesting || scenePhase != .active)
                 .accessibilityIdentifier("permissions.allow")
-                Button(!setup.isRevisiting && setup.current == .speech
-                       ? text("Continue without voice", "Continuer sans la voix")
-                       : text("Not now", "Plus tard")) { setup.skip() }
+                Button(text("Not now", "Plus tard")) { setup.skip() }
                     .font(.system(.subheadline, weight: .medium))
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .disabled(setup.isRequesting)
@@ -201,6 +248,18 @@ struct MorningPermissionSetupView: View {
 }
 
 private extension MorningPermission {
+    var accessPurpose: String {
+        switch self {
+        case .location: MorningPermissionSetup.text("For your local weather.", "Pour votre météo locale.")
+        case .calendar: MorningPermissionSetup.text("For your upcoming appointments.", "Pour vos prochains rendez-vous.")
+        case .reminders: MorningPermissionSetup.text("For your tasks and thoughts to keep.", "Pour vos tâches et vos idées à garder.")
+        case .screenTime: MorningPermissionSetup.text("To understand your morning habits.", "Pour comprendre vos habitudes du matin.")
+        case .speech, .microphone: MorningPermissionSetup.text("To talk to MORE and interrupt it.", "Pour parler à MORE et l’interrompre.")
+        case .notifications: MorningPermissionSetup.text("To remind you at the time you choose.", "Pour vous prévenir à l’heure choisie.")
+        case .alarms: MorningPermissionSetup.text("For your morning alarm.", "Pour votre réveil du matin.")
+        }
+    }
+
     var accessName: String {
         switch self {
         case .location: MorningPermissionSetup.text("Location & weather", "Position et météo")

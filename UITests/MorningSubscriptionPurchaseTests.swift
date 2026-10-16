@@ -26,29 +26,17 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["qa.testWorkspace"].exists)
         if environment["MO_RELEASE_ENTRY_OFFER"] == "1" { showOffer(in: app) }
         continueFree(in: app, french: french)
-        let voice = app.staticTexts["permissions.title.speech"]
-        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+        let overview = app.staticTexts["permissions.title.summary"]
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
         XCTAssertEqual(app.alerts.count, 0)
-        app.terminate()
-        app.launch()
-        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertFalse(app.buttons["entry.continueFree"].exists)
         tap("permissions.skip", in: app)
         tap("routinePreparation.later", in: app)
         assertHome(app)
         app.terminate()
         app.launch()
         assertHome(app)
-        XCTAssertFalse(voice.exists)
-        tap("morning.actions", in: app)
-        tap("morning.settings", in: app)
-        tap("setup.membership", in: app)
-        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(app.buttons["paywall.restore"].exists)
-        continueFree(in: app, french: french)
-        XCTAssertTrue(app.buttons["paywall.subscribe"].waitForNonExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(app.buttons["setup.membership"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "ordinary-release-free-entry-\(french ? "fr" : "en")"
         attachment.lifetime = .keepAlways
@@ -69,8 +57,8 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     func testEnglishOfferFreeEntryPersists() { verifyFreeEntry(french: false, paywall: true) }
     func testFrenchIntroductionFreeEntryPersistsAtLargestText() { verifyFreeEntry(french: true, paywall: false) }
     func testFrenchOfferFreeEntryPersistsAtLargestText() { verifyFreeEntry(french: true, paywall: true) }
-    func testEnglishOptionalVoiceAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: false) }
-    func testFrenchOptionalVoiceAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: true) }
+    func testEnglishOptionalAccessAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: false) }
+    func testFrenchOptionalAccessAndRoutineSetupPersistsAfterFreeEntry() { verifyOptionalSetup(french: true) }
     func testEnglishFreeUserCanReopenMembershipAndReturnToSettings() { verifyMembership(french: false) }
     func testFrenchFreeUserCanReopenMembershipAndReturnToSettings() { verifyMembership(french: true) }
 
@@ -92,14 +80,16 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     private func verifyOptionalSetup(french: Bool) {
         let app = launch(french: french, extra: ["--ui-testing-permissions"])
         continueFree(in: app, french: french)
-        let voice = app.staticTexts["permissions.title.speech"]
-        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+        let overview = app.staticTexts["permissions.title.summary"]
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
+        XCTAssertTrue(app.staticTexts["permissions.title.calendar"].exists)
+        XCTAssertTrue(app.staticTexts["permissions.title.speech"].exists)
         XCTAssertEqual(app.alerts.count, 0)
         app.terminate()
         app.launch()
-        XCTAssertTrue(voice.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertEqual(voice.label, french ? "Parlez à MORE." : "Talk to MORE.")
+        XCTAssertTrue(overview.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.buttons["permissions.allow"].label, french ? "Accepter" : "Accept")
         XCTAssertFalse(app.buttons["entry.continueFree"].exists)
         tap("permissions.skip", in: app)
         let later = app.buttons["routinePreparation.later"]
@@ -110,7 +100,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         app.terminate()
         app.launch()
         assertHome(app)
-        XCTAssertFalse(voice.exists, "A saved setup choice must not repeat after free entry.")
+        XCTAssertFalse(overview.exists, "A saved setup choice must not repeat after free entry.")
         XCTAssertFalse(later.exists)
         app.terminate()
     }

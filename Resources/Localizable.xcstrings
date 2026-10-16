@@ -26834,6 +26834,210 @@
         }
       }
     },
+    "Accept": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accepter"
+          }
+        }
+      }
+    },
+    "Here's what each access is for. Do you agree to enable them?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Here's what each access is for. Do you agree to enable them?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voici à quoi sert chaque accès. Acceptez-vous de les activer ?"
+          }
+        }
+      }
+    },
+    "Let's prepare your morning.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let's prepare your morning."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparons votre matinée."
+          }
+        }
+      }
+    },
+    "Microphone & speech recognition": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone & speech recognition"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micro et reconnaissance vocale"
+          }
+        }
+      }
+    },
+    "You can decline any request or choose Not now. MORE will continue with the available features. You can change each access later in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can decline any request or choose Not now. MORE will continue with the available features. You can change each access later in Settings."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez refuser un accès ou choisir Plus tard. MORE continuera avec les fonctions disponibles. Chaque accès reste modifiable dans les réglages."
+          }
+        }
+      }
+    },
+    "For your local weather.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your local weather."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour votre météo locale."
+          }
+        }
+      }
+    },
+    "For your upcoming appointments.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your upcoming appointments."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vos prochains rendez-vous."
+          }
+        }
+      }
+    },
+    "For your tasks and thoughts to keep.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your tasks and thoughts to keep."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vos tâches et vos idées à garder."
+          }
+        }
+      }
+    },
+    "To understand your morning habits.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To understand your morning habits."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour comprendre vos habitudes du matin."
+          }
+        }
+      }
+    },
+    "To talk to MORE and interrupt it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To talk to MORE and interrupt it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour parler à MORE et l’interrompre."
+          }
+        }
+      }
+    },
+    "To remind you at the time you choose.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To remind you at the time you choose."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour vous prévenir à l’heure choisie."
+          }
+        }
+      }
+    },
+    "For your morning alarm.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For your morning alarm."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour votre réveil du matin."
+          }
+        }
+      }
+    },
     "Continue for free": {
       "localizations": {
         "en": {

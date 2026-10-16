@@ -155,10 +155,7 @@ private struct MorningActivityIslandDetail: View {
                 Text(timer.destination.displayName(locale: presentation.state.locale))
                     .font(.caption.weight(.medium)).foregroundStyle(.white.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
-                ViewThatFits(in: .horizontal) {
-                    timerRow(timer, font: .title2)
-                    timerRow(timer, font: .title3)
-                }
+                timerRow(timer)
                 MorningWidgetBudgetProgress(timer: timer, state: presentation.state,
                                             tint: MorningActivityPalette.islandAccent).frame(height: 4)
             } else {
@@ -184,11 +181,15 @@ private struct MorningActivityIslandDetail: View {
         .accessibilityHint(activityText("Opens MORE's Morning screen.", locale: presentation.state.locale))
     }
 
-    private func timerRow(_ timer: MorningActivityStepTimer, font: Font) -> some View {
+    private func timerRow(_ timer: MorningActivityStepTimer) -> some View {
         HStack(alignment: .center, spacing: 12) {
             StepCountdown(timer: timer, state: presentation.state)
-                .font(font.weight(.medium).monospacedDigit()).foregroundStyle(.white)
-                .fixedSize()
+                .font(.title3.weight(.medium).monospacedDigit()).foregroundStyle(.white)
+                // A native date text has an unbounded ideal width. Do not ask
+                // WidgetKit to archive it at its fixed size or measure it in
+                // ViewThatFits; give this label a finite adaptive slot instead.
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .frame(width: 110, alignment: .leading)
                 .accessibilityIdentifier("stepActivity.\(MorningActivityPresentation.scheme).remaining")
             Spacer(minLength: 4)
             controls(timer)
@@ -482,11 +483,17 @@ private struct MorningWidgetBudgetProgress: View {
 
 private struct MorningWidgetProgressDots: Shape {
     func path(in rect: CGRect) -> Path {
-        let count = max(2, Int(rect.width / 10))
+        // ActivityKit can ask a mask for its path during an unconstrained layout
+        // pass. Wait for finite geometry before converting the dot count to Int.
+        guard !rect.isEmpty, !rect.isInfinite, rect.width.isFinite, rect.height.isFinite,
+              rect.origin.x.isFinite, rect.origin.y.isFinite,
+              rect.maxX.isFinite, rect.maxY.isFinite else { return Path() }
+        let count = Int(min(256, max(2, rect.width / 10)))
         let radius = min(1.7, rect.height / 2)
         var path = Path()
         for index in 0..<count {
-            let x = radius + (rect.width - radius * 2) * CGFloat(index) / CGFloat(count - 1)
+            let fraction = CGFloat(index) / CGFloat(count - 1)
+            let x = radius + (rect.width - radius * 2) * fraction
             path.addEllipse(in: CGRect(x: x - radius, y: rect.midY - radius,
                                       width: radius * 2, height: radius * 2))
         }
