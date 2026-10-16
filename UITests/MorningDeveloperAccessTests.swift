@@ -26,9 +26,7 @@ final class MorningDeveloperAccessTests: XCTestCase {
     func testPaywallCrossIsReachableWithLargestTextAndPersists() {
         let workspace = UUID()
         let app = launch(workspace: workspace, french: false, largestText: true)
-        let offer = app.buttons["onboarding.offer"]
-        XCTAssertTrue(offer.waitForExistence(timeout: 15), app.debugDescription)
-        MorningUITestNavigation.tapButton("onboarding.offer", in: app)
+        for _ in 0..<3 { MorningUITestNavigation.tapButton("onboarding.next", in: app) }
         let access = app.buttons["paywall.developerAccess"]
         assertDeveloperButton(access, label: "Developer access")
         attach("developer-access-paywall-en-largest-text", app)
