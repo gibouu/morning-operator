@@ -481,6 +481,10 @@ final class MorningStore {
         }
         let seedFixture = fixtureMode && !ProcessInfo.processInfo.arguments.contains("--ui-testing-empty-workspace")
         if seedFixture && !FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
+            // Display and audio preferences do not grant import approval. Set
+            // them before ordinary seeders can persist their own fixture state.
+            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
+            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
             // Parsed input is an exclusive draft path. Other test seeders must
             // neither approve/replace it nor rescue a malformed payload.
             if parsedRoutineFixtureRequested {
@@ -584,9 +588,6 @@ final class MorningStore {
             }
             #endif
             }
-            // Display and audio preferences do not grant import approval.
-            automatic = ProcessInfo.processInfo.arguments.contains("--ui-testing-hands-free")
-            readAloud = ProcessInfo.processInfo.arguments.contains("--ui-testing-read-aloud")
         } else if FileManager.default.fileExists(atPath: directory.appendingPathComponent("workspace.json").path) {
             do {
                 let saved = try snapshot.load()
