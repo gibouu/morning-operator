@@ -16,14 +16,14 @@ struct MorningScreenTimeView: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Start with your app use").font(MorningTheme.Typography.heading)
-                Text("Connect Screen Time, then show MORE a moment of your morning.")
+                Text("Your first moments of the morning").font(MorningTheme.Typography.heading)
+                Text("MORE finds your first app use after a long break and uses recorded sleep when Health is connected.")
                     .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
-                if let day = store.screenTimeDailyUsage.first {
-                    dailyUse(day)
-                    if store.screenTimeDailyUsage.count > 1 {
+                if let mornings = store.screenTimeLearning?.mornings, let morning = mornings.last {
+                    morningUse(morning)
+                    if mornings.count > 1 {
                         DisclosureGroup("Earlier days") {
-                            ForEach(store.screenTimeDailyUsage.dropFirst()) { dailyUse($0).padding(.vertical, 8) }
+                            ForEach(Array(mornings.dropLast().reversed()), id: \.start) { morningUse($0).padding(.vertical, 8) }
                         }.font(MorningTheme.Typography.note)
                     }
                 }
@@ -91,19 +91,36 @@ struct MorningScreenTimeView: View {
         .onChange(of: store.dataGeneration) { _, _ in showingReview = false; showingObservations = false }
     }
 
-    private func dailyUse(_ day: ScreenTimeDailyUsage) -> some View {
+    private func morningUse(_ morning: ScreenTimeMorning) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(day.day.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(AppLanguage.locale))).font(MorningTheme.Typography.label)
-            ForEach(day.summary.apps.prefix(5)) { app in
-                HStack {
-                    Text(app.name)
-                    Spacer()
-                    Text(app.roundedMinutes == 0 ? AppLanguage.localized("Less than 1 min") : AppLanguage.localized("\(app.roundedMinutes) min")).monospacedDigit()
+            Text(morning.start.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted,
+                locale: AppLanguage.locale, timeZone: morning.timeZone)))
+                .font(MorningTheme.Typography.label)
+                .accessibilityIdentifier("screenTime.date.\(morning.start.timeIntervalSinceReferenceDate)")
+            Text("Morning: \(time(morning.start, in: morning.timeZone)) – \(time(morning.end, in: morning.timeZone))")
+                .font(MorningTheme.Typography.note).monospacedDigit()
+                .accessibilityIdentifier("screenTime.window.\(morning.start.timeIntervalSinceReferenceDate)")
+            if let sleep = morning.sleepWindow {
+                Text("Recorded sleep: \(time(sleep.start, in: morning.timeZone)) – \(time(sleep.end, in: morning.timeZone))")
+                    .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
+            }
+            ForEach(morning.apps, id: \.bundleIdentifier) { app in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(ScreenTimeAppCatalog.entry(for: app.bundleIdentifier, categoryName: app.categoryName).name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("screenTime.app.\(app.bundleIdentifier)")
+                    let minutes = Int((app.seconds / 60).rounded())
+                    Text(minutes == 0 ? AppLanguage.localized("Less than 1 min") : AppLanguage.localized("\(minutes) min"))
+                        .monospacedDigit().fixedSize()
                 }.font(MorningTheme.Typography.note)
             }
-            Text("Returned app use. Missing days stay unknown.")
+            Text("Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown.")
                 .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
-        }.accessibilityIdentifier("screenTime.daily.\(day.day.timeIntervalSinceReferenceDate)")
+        }
+    }
+
+    private func time(_ date: Date, in zone: TimeZone) -> String {
+        date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: AppLanguage.locale, timeZone: zone))
     }
 }
 

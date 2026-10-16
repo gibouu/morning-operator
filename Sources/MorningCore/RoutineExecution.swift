@@ -167,6 +167,19 @@ public struct RoutineStepExecutionRecap: Identifiable, Equatable, Sendable {
 }
 
 public extension RoutineStep {
+    /// Learning explanations stay in review; only explicitly readable content is a playback fallback.
+    func executionPresentationText(locale: Locale = AppLanguage.locale) -> String {
+        if target == nil, automation == .spokenNote || automation == .savedObservation { return detail }
+        let bundle = AppLanguage.bundle(for: .module, languageCode: locale.language.languageCode?.identifier)
+        if target == nil, automation == .timedMoment {
+            return String(localized: "This moment is in progress.", bundle: bundle, locale: locale)
+        }
+        if target == nil, automation == nil {
+            return String(localized: "This moment needs your participation. Say next when you’re ready.", bundle: bundle, locale: locale)
+        }
+        return String(localized: "Preparing this moment…", bundle: bundle, locale: locale)
+    }
+
     var executionDescription: String {
         let service: String?
         switch target?.routineExecutionTarget {

@@ -13,6 +13,87 @@ struct SleepBriefingControllerTests {
         [SleepFixtures.sample(.asleepCore, "2026-10-09T23:40:00Z", "2026-10-10T07:00:00Z", source: "SYNTHETIC_SLEEP_SOURCE")]
     }
 
+    @Test func morningLearningReadsOnlyChosenHealthAndKeepsEachLocalNightSeparate() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let samples = night + [
+            SleepFixtures.sample(.asleepREM, "2026-10-08T23:30:00Z", "2026-10-09T06:30:00Z"),
+            SleepFixtures.sample(.inBed, "2026-10-09T23:00:00Z", "2026-10-10T07:30:00Z"),
+            SleepFixtures.sample(.awake, "2026-10-10T07:00:00Z", "2026-10-10T07:40:00Z")]
+        let reader = SleepReaderFixture(.samples(samples))
+        let controller = makeController(directory: directory, reader: reader)
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "UTC")!
+        #expect(try await controller.morningSleepWindows(at: now, calendar: calendar).isEmpty)
+        #expect(reader.reads == 0 && reader.prompts == 0)
+        try controller.updateSettings(.init(includesHealth: true))
+        let windows = try await controller.morningSleepWindows(at: now, calendar: calendar)
+        #expect(windows == [
+            DateInterval(start: SleepFixtures.date("2026-10-08T23:30:00Z"), end: SleepFixtures.date("2026-10-09T06:30:00Z")),
+            DateInterval(start: SleepFixtures.date("2026-10-09T23:40:00Z"), end: SleepFixtures.date("2026-10-10T07:00:00Z"))])
+        #expect(reader.reads == 1 && reader.prompts == 0)
+        #expect(controller.prepared == nil, "Learning hints do not prepare speech or a running session.")
+        reader.answer = .samples([])
+        #expect(try await controller.morningSleepWindows(at: now, calendar: calendar).isEmpty)
+    }
+
+    @Test func morningNapDoesNotMoveTheOvernightWakeAnchorOrDropFirstAppUse() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let instant = SleepFixtures.date("2026-10-10T14:00:00Z")
+        let samples = night + [SleepFixtures.sample(.asleepCore, "2026-10-10T11:00:00Z", "2026-10-10T12:00:00Z")]
+        let reader = SleepReaderFixture(.samples(samples))
+        let controller = makeController(directory: directory, reader: reader)
+        try controller.updateSettings(.init(includesHealth: true))
+        let calendar = SleepFixtures.calendar("UTC")
+        let windows = try await controller.morningSleepWindows(at: instant, calendar: calendar)
+        #expect(windows == [DateInterval(start: night[0].start, end: night[0].end)])
+        let start = SleepFixtures.date("2026-10-10T07:05:00Z")
+        let hours = [ScreenTimeHour(interval: DateInterval(start: SleepFixtures.date("2026-10-10T07:00:00Z"), duration: 3_600),
+            firstPickup: start, longestActivity: DateInterval(start: start, duration: 20 * 60),
+            apps: [.init(bundleIdentifier: "com.google.Gmail", seconds: 20 * 60)])]
+        let learning = ScreenTimeMorningLearner.learn(hours: hours, queryStart: SleepFixtures.date("2026-10-10T00:00:00Z"),
+            now: instant, calendar: calendar, sleepWindows: windows)
+        #expect(learning.mornings.map(\.start) == [start])
+        #expect(learning.mornings.first?.apps.map(\.bundleIdentifier) == ["com.google.Gmail"])
+    }
+
+    @Test func fragmentedNightAndOverlappingSourcesChooseTheLongestActualSleepEpisode() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let instant = SleepFixtures.date("2026-10-10T14:00:00Z")
+        let nap = SleepFixtures.sample(.asleepCore, "2026-10-10T11:00:00Z", "2026-10-10T12:00:00Z")
+        let samples = [
+            SleepFixtures.sample(.asleepCore, "2026-10-09T23:00:00Z", "2026-10-10T02:00:00Z"),
+            SleepFixtures.sample(.asleepREM, "2026-10-10T01:00:00Z", "2026-10-10T02:00:00Z"),
+            SleepFixtures.sample(.awake, "2026-10-10T02:00:00Z", "2026-10-10T02:30:00Z"),
+            SleepFixtures.sample(.asleepDeep, "2026-10-10T02:30:00Z", "2026-10-10T05:00:00Z"),
+            SleepFixtures.sample(.asleepCore, "2026-10-10T05:00:00Z", "2026-10-10T07:00:00Z"),
+            SleepFixtures.sample(.inBed, "2026-10-09T22:00:00Z", "2026-10-10T13:00:00Z")
+        ] + Array(repeating: nap, count: 12)
+        let reader = SleepReaderFixture(.samples(Array(samples.reversed())))
+        let controller = makeController(directory: directory, reader: reader)
+        try controller.updateSettings(.init(includesHealth: true))
+        let windows = try await controller.morningSleepWindows(at: instant, calendar: SleepFixtures.calendar("UTC"))
+        #expect(windows == [DateInterval(start: SleepFixtures.date("2026-10-09T23:00:00Z"),
+            end: SleepFixtures.date("2026-10-10T07:00:00Z"))])
+        #expect(reader.reads == 1 && reader.prompts == 0)
+    }
+
+    @Test func withdrawingHealthDuringLearningDropsTheReturnedSleep() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reader = SleepReaderFixture(.held)
+        let controller = makeController(directory: directory, reader: reader)
+        try controller.updateSettings(.init(includesHealth: true))
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "UTC")!
+        let attempt = Task { try await controller.morningSleepWindows(at: now, calendar: calendar) }
+        await reader.waitUntilCalled()
+        try controller.disableHealth()
+        reader.release(.samples(night))
+        await #expect(throws: CancellationError.self) { try await attempt.value }
+        #expect(reader.prompts == 0 && controller.prepared == nil)
+    }
+
     @Test func healthIsOffByDefaultAndTheReaderIsNeverCalledWhileItIsOff() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

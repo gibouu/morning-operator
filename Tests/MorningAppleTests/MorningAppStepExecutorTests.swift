@@ -40,13 +40,15 @@ struct MorningAppStepExecutorTests {
         #expect(executor.pinnedExecutionID == nextContext.executionID && executor.pinnedBriefing?.id == second.id)
     }
 
-    @Test func cancellationDuringPreparationPreventsLateSpeechAndPinning() async throws {
+    @Test(arguments: [true, false])
+    func cancellationDuringPreparationPreventsLateSpeechAndPinning(spokenEnabled: Bool) async throws {
         let gate = ExecutorPreparationGate()
         let prepared = try document(title: "Late synthetic facts")
         var utterances: [String] = []
         var stops = 0
         let executor = MorningAppStepExecutor(prepare: { await gate.pause(); return prepared },
             speak: { utterances.append($0) }, stop: { stops += 1 }, now: { self.now }, timeZone: { "UTC" })
+        executor.spokenEnabled = spokenEnabled
         let step = RoutineStep(title: "Your day", automation: .morningBriefing)
         let context = context(step)
         let task = Task { try await executor.execute(step: step, context: context) }
@@ -175,13 +177,13 @@ struct MorningAppStepExecutorTests {
         #expect(utterances.isEmpty && executor.pinnedBriefing == nil && executor.pinnedExecutionID == nil)
     }
 
-    @Test func voiceDisabledAndUserLedMomentsNeverPrepareOrSpeak() async throws {
+    @Test func mutedNotesAndUserLedMomentsNeverPrepareOrSpeak() async throws {
         var count = 0
         var utterances: [String] = []
         let executor = MorningAppStepExecutor(prepare: { count += 1; return nil },
             speak: { utterances.append($0) }, stop: {}, now: { self.now }, timeZone: { "UTC" })
         executor.spokenEnabled = false
-        let spoken = RoutineStep(title: "Your day", automation: .morningBriefing)
+        let spoken = RoutineStep(title: "Your note", automation: .spokenNote)
         let disabled = try await executor.execute(step: spoken, context: context(spoken))
         guard case .needsUser = disabled else { Issue.record("Disabled speech must stay user-led."); return }
         executor.spokenEnabled = true
@@ -189,6 +191,45 @@ struct MorningAppStepExecutorTests {
         let ownPace = try await executor.execute(step: manual, context: context(manual))
         guard case .needsUser = ownPace else { Issue.record("A manual moment is not an executed action."); return }
         #expect(count == 0 && utterances.isEmpty)
+    }
+
+    @Test(arguments: [RoutineStepAutomation.todayCalendar, .morningBriefing])
+    func mutedSourceMomentObtainsCurrentFactsAndKeepsThemForSpokenResume(operation: RoutineStepAutomation) async throws {
+        let prepared = try document(title: "Current synthetic appointment", weather: true)
+        var count = 0, adviceCount = 0
+        var utterances: [String] = []
+        let executor = MorningAppStepExecutor(prepare: { count += 1; return prepared },
+            speak: { utterances.append($0) }, stop: {}, now: { self.now }, timeZone: { "UTC" },
+            advice: { _ in adviceCount += 1; return "" })
+        executor.spokenEnabled = false
+        let step = RoutineStep(title: "Today", automation: operation), context = context(step)
+        for _ in 0..<2 {
+            guard case .needsUser = try await executor.execute(step: step, context: context) else {
+                Issue.record("Prepared silent facts must remain available for reading, never report spoken completion."); return
+            }
+        }
+        #expect(count == 1 && utterances.isEmpty && adviceCount == 0)
+        #expect(executor.pinnedBriefing?.id == prepared.id && executor.pinnedExecutionID == context.executionID)
+        #expect(MorningAppStepExecutor.text(for: operation, in: prepared).contains("Current synthetic appointment"))
+        executor.spokenEnabled = true
+        #expect(try await executor.execute(step: step, context: context) == .completed)
+        #expect(count == 1 && utterances == [MorningAppStepExecutor.text(for: operation, in: prepared)])
+    }
+
+    @Test(arguments: [RoutineStepAutomation.todayCalendar, .morningBriefing])
+    func mutedSourceMomentStillRejectsUnavailableAndStaleSources(operation: RoutineStepAutomation) async throws {
+        let expired = try document(title: "Expired synthetic facts")
+        for source in [nil, expired] as [PreparedMorningBriefing?] {
+            var utterances: [String] = []
+            let executor = MorningAppStepExecutor(prepare: { source }, speak: { utterances.append($0) },
+                stop: {}, now: { self.now.addingTimeInterval(301) }, timeZone: { "UTC" })
+            executor.spokenEnabled = false
+            let step = RoutineStep(title: "Today", automation: operation)
+            guard case .unavailable = try await executor.execute(step: step, context: context(step)) else {
+                Issue.record("Muting cannot turn unavailable facts into a prepared source."); return
+            }
+            #expect(executor.pinnedBriefing == nil && executor.pinnedExecutionID == nil && utterances.isEmpty)
+        }
     }
 
     @Test func currentWeatherAddsAdviceButMissingWeatherNeverCallsTheModel() async throws {
