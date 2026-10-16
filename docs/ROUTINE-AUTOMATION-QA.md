@@ -272,6 +272,12 @@ unapproved; no routine or service is started. Full product hashes remain
 unchanged after execution. All60 Python checks pass in0.966s. Independent
 source review accepts this targeted correction.
 
+Visual review confirms the names and complete notes after reopening. The
+Action label remains partly behind the keyboard in the before-Save PNGs and
+is outside the later note captures. Native assertions establish the selected
+values and restoration; these images do not prove full label readability.
+No broader UI-readability result is claimed from this focused driver fix.
+
 The owner explicitly requests merging this combined work into main. This
 focused pass fixes the observed driver blocker; it does not certify the
 unrerun complete Long or current branded French/night/largest-text Gmail.
