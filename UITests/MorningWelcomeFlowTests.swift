@@ -217,10 +217,11 @@ final class MorningWelcomeFlowTests: XCTestCase {
             let skip = app.buttons["onboarding.skipForNow"]
             XCTAssertEqual(skip.label, french ? "Passer pour le moment" : "Skip for now")
             tap("onboarding.skipForNow", in: app)
-            XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
-            XCTAssertTrue(app.buttons["permissions.option.calendar"].exists)
-            XCTAssertEqual(app.alerts.count, 0, "Opening access choices never grants or requests one automatically.")
-            tap("permissions.finish", in: app)
+            XCTAssertTrue(app.staticTexts["permissions.title.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertFalse(app.buttons["permissions.option.screenTime"].exists, "Filming opens the sequential card rather than the independent Settings list.")
+            XCTAssertEqual(app.alerts.count, 0, "Showing an explanation never grants or requests access.")
+            skipFilmingAccessExplanations(in: app)
+            tap("routinePreparation.later", in: app)
             XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 10), app.debugDescription)
             XCTAssertFalse(control("onboarding.preview", in: app).exists)
             XCTAssertFalse(app.buttons["paywall.subscribe"].exists)
@@ -265,10 +266,22 @@ final class MorningWelcomeFlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(skip.frame.minX, app.frame.minX - 1)
         XCTAssertLessThanOrEqual(skip.frame.maxX, app.frame.maxX + 1)
         skip.tap()
-        XCTAssertTrue(app.buttons["permissions.option.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertFalse(app.buttons["permissions.allow"].exists, "Each real access choice remains explicit.")
+        XCTAssertTrue(app.staticTexts["permissions.title.screenTime"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["permissions.allow"].exists, "Each real access choice still needs an explicit action.")
+        XCTAssertEqual(app.buttons["permissions.skip"].label, "Plus tard")
         XCTAssertEqual(app.alerts.count, 0)
         app.terminate()
+    }
+
+    private func skipFilmingAccessExplanations(in app: XCUIApplication) {
+        // Isolated test workspace: skip every explanation, request no real grant.
+        for permission in ["screenTime", "location", "calendar", "reminders", "speech", "notifications", "alarms"] {
+            XCTAssertTrue(app.staticTexts["permissions.title.\(permission)"].waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertFalse(app.buttons["permissions.option.screenTime"].exists)
+            tap("permissions.skip", in: app)
+            XCTAssertEqual(app.alerts.count, 0)
+        }
+        XCTAssertTrue(app.buttons["routinePreparation.later"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
     private func launch(phase: String = "day", french: Bool = false, languages: [String]? = nil,
