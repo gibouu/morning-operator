@@ -276,8 +276,8 @@ import MorningCore
         attach("complete-routine-mail-corrected-recipient-and-explicit-review", app)
         tap("mail.reply.send", app)
         home(app); reveal(app); tap("morning.settings", app)
-        let receipt = app.staticTexts["qa.gmailReplyReceipt"]
-        XCTAssertTrue(receipt.waitForExistence(timeout: 25))
+        let receipt = element("qa.gmailReplyReceipt", app)
+        XCTAssertTrue(receipt.exists, "The actual received MIME must be revealed in Settings, not assumed in a lazy row.")
         let proof = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(receipt.value as? String).utf8)) as? [String: String])
         XCTAssertEqual(proof["simulatedSendAttempts"], "1")
         XCTAssertEqual(proof["inboxReads"], "1"); XCTAssertEqual(proof["bodyReads"], "5")
@@ -1018,18 +1018,25 @@ import MorningCore
         _ = value.waitForExistence(timeout: 6)
         for down in [false, true] {
             for _ in 0..<10 {
+                let owned = ownedScrollRegion(in: app)
                 let slack = app.scrollViews["slack.setup.scroll"].firstMatch
                 let editor = stepEditorForm(app)
-                let slackForeground = slack.exists && slack.isHittable
-                let editorForeground = editor.exists && editor.isHittable
-                let routine = !slackForeground && !editorForeground ? routineScrollRegion(in: app) : nil
+                let slackForeground = owned == nil && slack.exists && slack.isHittable
+                let editorForeground = owned == nil && editor.exists && editor.isHittable
+                let routine = owned == nil && !slackForeground && !editorForeground ? routineScrollRegion(in: app) : nil
                 func visible(_ element: XCUIElement) -> Bool {
-                    guard element.exists && element.isHittable else { return false }
+                    guard element.exists else { return false }
                     let frame = element.frame
                     guard !frame.isEmpty, !frame.isNull, !frame.isInfinite,
-                          [frame.minX, frame.minY, frame.maxX, frame.maxY].allSatisfy({ $0.isFinite }),
-                          app.frame.contains(frame) else { return false }
-                    return !id.hasPrefix("routine.step.") || routine?.visible.contains(frame) == true
+                          [frame.minX, frame.minY, frame.maxX, frame.maxY].allSatisfy({ $0.isFinite }) else { return false }
+                    let viewport = owned?.visible ?? routine?.visible ?? app.frame
+                    // Readonly text is observed, never tapped. A real exposed
+                    // portion is sufficient; exact label/value assertions remain.
+                    if element.elementType == .staticText, let region = owned ?? routine {
+                        return region.visible.intersects(frame)
+                    }
+                    guard element.isHittable && app.frame.contains(frame) else { return false }
+                    return (owned != nil || id.hasPrefix("routine.step.")) ? viewport.contains(frame) : true
                 }
                 if visible(value) { return }
                 if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: visible) { return }
@@ -1047,9 +1054,13 @@ import MorningCore
                     let start = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? high : low) - frame.minY))
                     let end = origin.withOffset(CGVector(dx: visible.midX - frame.minX, dy: (down ? low : high) - frame.minY))
                     start.press(forDuration: 0.05, thenDragTo: end)
-                } else if let holder = app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable)
-                    ?? app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable) {
-                    if down { holder.swipeDown() } else { holder.swipeUp() }
+                } else if let owned {
+                    let frame = owned.container.frame, area = owned.visible
+                    let origin = owned.container.coordinate(withNormalizedOffset: .zero)
+                    let high = area.minY + area.height * 0.2, low = area.minY + area.height * 0.8
+                    let start = origin.withOffset(CGVector(dx: area.midX - frame.minX, dy: (down ? high : low) - frame.minY))
+                    let end = origin.withOffset(CGVector(dx: area.midX - frame.minX, dy: (down ? low : high) - frame.minY))
+                    start.press(forDuration: 0.05, thenDragTo: end)
                 } else {
                     captureFailure("long-ten-no-foreground-scroll-\(id)", app)
                     XCTFail("No foreground scroll container is available for \(id)."); return
@@ -1058,6 +1069,35 @@ import MorningCore
         }
         captureFailure("long-ten-unreachable-\(id)", app)
         XCTFail("Unreachable ordinary UI: \(id)")
+    }
+
+    private func ownedScrollRegion(in app: XCUIApplication) -> (container: XCUIElement, visible: CGRect)? {
+        guard let bar = app.navigationBars.allElementsBoundByIndex.last(where: {
+            $0.exists && !$0.frame.isEmpty && $0.frame.intersects(app.frame)
+        }), bar.buttons.allElementsBoundByIndex.contains(where: { $0.exists && $0.isHittable }) else { return nil }
+        let container: XCUIElement
+        let close = app.buttons["morning.closeDetails"]
+        if close.exists && close.isHittable {
+            // This marker belongs to the outer, non-lazy Interact ScrollView,
+            // never an inner reply editor or Home's captions behind the sheet.
+            container = app.scrollViews.containing(.any, identifier: "morning.voiceStatus").firstMatch
+        } else {
+            switch bar.identifier {
+            case "Apps & accounts": container = app.collectionViews["connections.list"].firstMatch
+            case "Settings": container = app.collectionViews["settings.appearance"].firstMatch
+            case "History": container = app.scrollViews["review.week"].firstMatch
+            default: return nil
+            }
+        }
+        guard container.exists else { return nil }
+        let viewport = container.frame.intersection(app.frame)
+        let top = max(viewport.minY, bar.frame.maxY) + 8
+        let keyboard = app.keyboards.firstMatch
+        let bottom = min(viewport.maxY - 24, keyboard.exists ? keyboard.frame.minY - 8 : viewport.maxY - 24)
+        guard !viewport.isNull, !viewport.isInfinite,
+              [viewport.minX, viewport.width, top, bottom].allSatisfy({ $0.isFinite }),
+              viewport.width > 80, bottom - top > 120 else { return nil }
+        return (container, CGRect(x: viewport.minX + 12, y: top, width: viewport.width - 24, height: bottom - top))
     }
 
     private func routineScrollRegion(in app: XCUIApplication) -> (container: XCUIElement, visible: CGRect)? {
