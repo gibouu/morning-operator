@@ -196,9 +196,10 @@ import Synchronization
                   form.contains("client_id=123456789-synthetic.apps.googleusercontent.com") else { throw GmailConnectionError.serviceUnavailable }
             let scope = reply?.enabled == true ? GmailConnectionService.readonlyScope + " " + GmailConnectionService.sendScope : GmailConnectionService.readonlyScope
             body = ["access_token": "synthetic-access-only-in-memory", "expires_in": 3600, "token_type": "Bearer", "scope": scope]
-        } else if let reply, reply.enabled, url.host == "gmail.googleapis.com", url.query == nil,
+        } else if let reply, reply.enabled, url.host == "gmail.googleapis.com", url.query?.isEmpty != false,
                   request.httpMethod == "POST", url.path == "/gmail/v1/users/me/messages/send",
                   request.value(forHTTPHeaderField: "Authorization") == "Bearer synthetic-access-only-in-memory" {
+            // The ordinary service's queryItems=[] emits a query with no parameters.
             reply.sendAttempts += 1
             reply.received = try receivedReply(request)
             guard let context = reply.conversation?.context else { throw GmailConnectionError.connectionChanged }
