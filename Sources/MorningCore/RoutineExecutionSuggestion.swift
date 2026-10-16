@@ -35,6 +35,8 @@ public enum RoutineExecutionSuggestion {
         case "Reddit": bundleIdentifier = "com.reddit.Reddit"
         case "Facebook": bundleIdentifier = "com.facebook.Facebook"
         case "Threads": bundleIdentifier = "com.burbn.barcelona"
+        case "LinkedIn": bundleIdentifier = "com.linkedin.LinkedIn"
+        case "Slack": bundleIdentifier = "com.tinyspeck.chatlyio"
         case "YouTube", "YouTube Shorts": bundleIdentifier = "com.google.ios.youtube"
         case "Le Monde": bundleIdentifier = "com.lemonde.lmfr"
         case "WhatsApp": bundleIdentifier = "net.whatsapp.WhatsApp"
@@ -82,6 +84,8 @@ public enum RoutineExecutionSuggestion {
         case "com.reddit.Reddit": .reddit
         case "com.facebook.Facebook": .facebook
         case "com.burbn.barcelona": .threads
+        case "com.linkedin.LinkedIn": .linkedin
+        case "com.tinyspeck.chatlyio": .slack
         case "com.google.ios.youtube": .youtube
         case "com.lemonde.lmfr", "fr.lemonde.lemonde": .news
         case "net.whatsapp.WhatsApp": .whatsapp

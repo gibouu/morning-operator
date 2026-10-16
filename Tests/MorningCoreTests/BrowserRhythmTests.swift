@@ -163,7 +163,10 @@ struct BrowserRhythmScriptTests {
             (.tiktok, "www.tiktok.com", "/passport/web/"), (.tiktok, "www.tiktok.com", "/login"),
             (.reddit, "www.reddit.com", "/register"),
             (.facebook, "www.facebook.com", "/login.php"),
-            (.threads, "www.threads.com", "/accounts/login/")
+            (.threads, "www.threads.com", "/accounts/login/"),
+            (.linkedin, "www.linkedin.com", "/uas/login"),
+            (.slack, "team.slack.com", "/signin"),
+            (.slack, "signin.slack.com", "/")
         ]
         for (site, host, path) in routes {
             let context = try page()
@@ -186,6 +189,21 @@ struct BrowserRhythmScriptTests {
             #expect(context.evaluateScript(BrowserRhythmPolicy.script(site: site, nonce: nonce))?.toBool() == true)
             context.evaluateScript("event('pointerdown',nested);clock=100;nested.scrollTop=120;event('scroll',nested);flush();")
             #expect(context.evaluateScript("messages[0].distance")?.toDouble() == 120)
+            #expect(context.evaluateScript("Object.keys(messages[0]).sort().join(',')")?.toString() == "clicks,distance,movingSeconds,nonce,scrollBursts,segments")
+            #expect(context.exception == nil)
+        }
+    }
+
+    @Test("Message pages expose no conversation text or inferred unread category during learning")
+    func messagingSitesKeepNumericOnlyLearning() throws {
+        for (site, host, path) in [(WebMorningSite.linkedin, "www.linkedin.com", "/messaging/thread/example/"),
+                                   (.slack, "team.slack.com", "/client/TEXAMPLE/CEXAMPLE")] {
+            let context = try page()
+            context.evaluateScript("location.hostname='\(host)';location.pathname='\(path)';")
+            #expect(context.evaluateScript(BrowserRhythmPolicy.script(site: site, nonce: nonce))?.toBool() == true)
+            context.evaluateScript("event('pointerdown',nested);clock=100;nested.scrollTop=120;event('scroll',nested);flush();")
+            #expect(context.evaluateScript("messages[0].distance")?.toDouble() == 120)
+            #expect(context.evaluateScript("messages[0].segments.length")?.toInt32() == 0)
             #expect(context.evaluateScript("Object.keys(messages[0]).sort().join(',')")?.toString() == "clicks,distance,movingSeconds,nonce,scrollBursts,segments")
             #expect(context.exception == nil)
         }

@@ -202,6 +202,7 @@
 		F5D5FAFF3581561C478474ED /* ObservedMorningOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7EA194BD74767684257499 /* ObservedMorningOverviewView.swift */; };
 		F65D3743724B35A6BB033D95 /* MorningBriefingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7665B33053A581FA603175F0 /* MorningBriefingView.swift */; };
 		F77D08BE48F8931FF8749C4D /* MorningRecapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA9A5D33ACBE08EDB29D96F /* MorningRecapView.swift */; };
+		F7A1A13719D026DA83DC7BA3 /* MorningStore+WebConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36737ECBE6F0C9B413C7E3D /* MorningStore+WebConversation.swift */; };
 		F7CCEEA9F10ADE5E0F9D9829 /* MorningInlineDayStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF2A1E48120A6B3AB7369321 /* MorningInlineDayStrip.swift */; };
 		FAE4F8396134BAADD07AB1B8 /* MorningStore+Retention.swift in Sources */ = {isa = PBXBuildFile; fileRef = C14BBCF2524C1DD4B0548215 /* MorningStore+Retention.swift */; };
 		FC6E0DE31197E46226CAFF30 /* PrivacyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289B9292F55FE9F36E473EFE /* PrivacyTests.swift */; };
@@ -441,6 +442,7 @@
 		EB0AC48B02AFBC0932696CF1 /* WebMorningController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMorningController.swift; sourceTree = "<group>"; };
 		EF591750E21B49095FA36846 /* MorningStore+GoogleCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+GoogleCalendar.swift"; sourceTree = "<group>"; };
 		F0C85BB1F322C1C3868B2852 /* ImportedLongRoutineJourneyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedLongRoutineJourneyTests.swift; sourceTree = "<group>"; };
+		F36737ECBE6F0C9B413C7E3D /* MorningStore+WebConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningStore+WebConversation.swift"; sourceTree = "<group>"; };
 		F39157B2A4F48E816CC81F1B /* MorningIntelligenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningIntelligenceTests.swift; sourceTree = "<group>"; };
 		F47BFFAE94C327E61E732A65 /* MorningVoiceCommandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningVoiceCommandView.swift; sourceTree = "<group>"; };
 		F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
@@ -710,6 +712,7 @@
 				5AEB1AA029C61D6798CD902C /* MorningStore+Slack.swift */,
 				2463896AFD47FCF94B53C233 /* MorningStore+StepTimer.swift */,
 				3BD6C7D6B53E7A1D66705679 /* MorningStore+UITestObservation.swift */,
+				F36737ECBE6F0C9B413C7E3D /* MorningStore+WebConversation.swift */,
 				72E82F90FF01B184792BBD18 /* MorningStore+WebReading.swift */,
 				AE7FCE7A3984FBA54B116B9E /* MorningSubscriptionEntryView.swift */,
 				05A5B680408BAAB55A70D008 /* MorningSubscriptionStore.swift */,
@@ -1174,6 +1177,7 @@
 				C1370990D840D3FE1656BB2F /* MorningStore+Slack.swift in Sources */,
 				55ECD994DC959979FBCF2177 /* MorningStore+StepTimer.swift in Sources */,
 				3DAD6D551A8D23872EB45AEF /* MorningStore+UITestObservation.swift in Sources */,
+				F7A1A13719D026DA83DC7BA3 /* MorningStore+WebConversation.swift in Sources */,
 				19613B1C6EC96C0CD3383BF2 /* MorningStore+WebReading.swift in Sources */,
 				D3E9DB5BEC04C3AE555CACB2 /* MorningStore.swift in Sources */,
 				8891656AED94CB198DCEA7FC /* MorningSubscriptionEntryView.swift in Sources */,

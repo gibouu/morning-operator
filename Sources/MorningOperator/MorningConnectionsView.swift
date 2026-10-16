@@ -17,12 +17,18 @@ struct MorningConnectionsView: View {
     @Environment(\.locale) private var locale
     @Environment(\.openURL) private var openURL
 
-    private let everydayServices = ["outlook", "googlecalendar", "googledrive", "googledocs", "googlesheets", "notion", "slack", "calendly", "linkedin", "discord", "youtube", "reddit"]
+    private let everydayServices = ["outlook", "googlecalendar", "googledrive", "googledocs", "googlesheets", "notion", "calendly", "discord", "youtube", "reddit"]
     private let professionalServices = ["instagram", "whatsapp", "facebook"]
 
     var body: some View {
         MorningList {
             connectionSection(text("Messages & your feed", "Messages et fil d’actualité")) {
+                Text(text("You can sign in when a service first opens during learning or your routine. MORE keeps that browser session on this iPhone for your next mornings. You can also open a service here.",
+                    "Vous pouvez vous connecter quand un service s’ouvre pour la première fois pendant l’apprentissage ou votre routine. MORE conserve cette session sur cet iPhone pour vos prochains matins. Vous pouvez aussi ouvrir un service ici."))
+                    .font(.footnote).foregroundStyle(MorningStyle.muted)
+                    .accessibilityIdentifier("connections.inlineSignIn")
+                websiteButton(.linkedin, detail: text("Open LinkedIn conversations in MORE. Sign in on the page when needed.", "Retrouvez vos conversations LinkedIn dans MORE. Connectez-vous sur la page si nécessaire."), symbol: "person.crop.rectangle")
+                websiteButton(.slack, detail: text("Open your Slack workspace in MORE. Sign in on the page when needed.", "Retrouvez votre espace Slack dans MORE. Connectez-vous sur la page si nécessaire."), symbol: "number")
                 websiteButton(.instagram, detail: text("Your messages, stories and feed, in MORE.", "Vos messages, vos stories et votre fil, dans MORE."), symbol: "camera")
                 websiteButton(.tiktok, detail: text("Watch and scroll through TikTok in MORE.", "Retrouvez TikTok et faites défiler ses vidéos dans MORE."), symbol: "play.rectangle")
                 websiteButton(.twitter, detail: text("Read and scroll through X in MORE.", "Retrouvez X et faites défiler votre fil dans MORE."), symbol: "text.bubble")
@@ -88,6 +94,14 @@ struct MorningConnectionsView: View {
                         .buttonStyle(SecondaryButtonStyle()).disabled(loading)
                 }
                 ForEach(everydayServices.filter(isAvailable), id: \.self) { providerRow($0) }
+                if ["slack", "linkedin"].contains(where: isAvailable) {
+                    DisclosureGroup(text("Additional Slack & LinkedIn account actions", "Actions supplémentaires des comptes Slack et LinkedIn")) {
+                        Text(text("These optional account connections offer additional actions. You can use the websites above without setting them up.",
+                            "Ces connexions de compte facultatives proposent d’autres actions. Vous pouvez utiliser les sites ci-dessus sans les configurer."))
+                            .font(.footnote).foregroundStyle(MorningStyle.muted)
+                        ForEach(["slack", "linkedin"].filter(isAvailable), id: \.self) { providerRow($0) }
+                    }.accessibilityIdentifier("connections.additionalMessagingActions")
+                }
                 if !loading && !loadFailed && services.isEmpty && store.composio.isConfigured {
                     Text(text("More account connections will appear here when they are available.", "Les comptes disponibles à connecter apparaîtront ici."))
                         .font(.subheadline).foregroundStyle(MorningStyle.muted)
@@ -189,6 +203,10 @@ struct MorningConnectionsView: View {
                     }
             }.accessibilityIdentifier("connections.\(site.rawValue)")
             if readySites.contains(site) {
+                Text(text("Your confirmation keeps this session available in MORE. Choose the actions in your routine to use the browser hands-free; MORE asks for your instruction before sending a reply. A sign-in alone does not verify that every page works.",
+                    "Votre confirmation garde cette session disponible dans MORE. Choisissez les actions dans votre routine pour utiliser le navigateur mains libres ; MORE attend votre demande avant d’envoyer une réponse. Une connexion seule ne vérifie pas le fonctionnement de chaque page."))
+                    .font(.footnote).foregroundStyle(MorningStyle.muted)
+                    .accessibilityIdentifier("connections.\(site.rawValue).handsFree")
                 Button(text("Learn my pace in \(site.displayName)", "Apprendre mon rythme sur \(site.displayName)")) {
                     learningWebsite = true; website = site
                 }.buttonStyle(SecondaryButtonStyle()).disabled(store.sessionActive || store.busy)

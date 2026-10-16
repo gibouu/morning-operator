@@ -88,7 +88,10 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 mediaPlaybackSuspended = suspended
                 webView.setAllMediaPlaybackSuspended(suspended, completionHandler: nil)
             }
-            if enabled { resumeExecutionIfNeeded() } else { suspendExecution() }
+            if enabled {
+                if executionFinished { publishExecution(.finished) }
+                else { resumeExecutionIfNeeded() }
+            } else { suspendExecution() }
         }
     }
     var learningAllowed = false {
@@ -136,6 +139,16 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var instagramNavigation = InstagramBrowserNavigation()
     @ObservationIgnored private var committedNavigationURL: URL?
 
+    @ObservationIgnored private var lastConversationInvitation: String?
+    private(set) var awaitingSignIn = false
+    private(set) var conversationSnapshot: WebConversationSnapshot?
+    private(set) var conversationDraft = WebConversationDraft()
+    private(set) var conversationMessage: String?
+    private(set) var conversationBusy = false
+    private(set) var pendingConversationSendID: UUID?
+    @ObservationIgnored private var conversationOperation = UUID()
+    @ObservationIgnored private let conversationDrafts = GmailReplyDraftService()
+
     var savedContentProgressIsAvailable: Bool { contentProgress.isAvailable }
 
     private var privacyIsCurrent: Bool {
@@ -151,6 +164,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     init(site: WebMorningSite, initialURL: URL? = nil, routineContext: MorningVoiceCommandContext? = nil,
          runtimePrivacyGeneration: UUID? = nil) {
         self.site = site
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         self.routineContext = routineContext
         #if DEBUG
         syntheticNewsRequested = site == .news && ProcessInfo.processInfo.arguments.contains("--ui-testing-private-news")
@@ -175,7 +189,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         configuration.mediaTypesRequiringUserActionForPlayback = []
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
-        if site == .instagram { webView.allowsLinkPreview = false }
+        if [.instagram, .linkedin, .slack].contains(site) { webView.allowsLinkPreview = false }
         if site.table.usesDesktopUserAgent { webView.customUserAgent = Self.desktopUserAgent }
         super.init()
         webView.navigationDelegate = self
@@ -500,7 +514,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
               UIApplication.shared.applicationState == .active,
               message.webView === webView, message.frameInfo.isMainFrame,
               message.frameInfo.securityOrigin.protocol == "https",
-              site.table.allowedHosts.contains(message.frameInfo.securityOrigin.host.lowercased()),
+              site.table.permits(host: message.frameInfo.securityOrigin.host.lowercased()),
               message.frameInfo.securityOrigin.port == 0 || message.frameInfo.securityOrigin.port == 443,
               learningGeneration == pageGeneration,
               let body = message.body as? [String: Any],
@@ -588,6 +602,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func suspendPresentation() {
         pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil; cancelArticleWork()
+        clearSourceText()
+        pendingConversationSendID = nil
         actionsEnabled = false
         learningAllowed = false
         onExecutionEvent = nil
@@ -599,11 +615,15 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// deduplication keys and the actual browser position for a coherent resume.
     func discardSourceContext() {
         newsSnapshot = nil; articleText = nil; cancelArticleWork()
+        cancelConversationWork()
         actionsEnabled = false
         clearSourceText()
     }
 
     private func clearSourceText() {
+        cancelConversationWork()
+        conversationSnapshot = nil
+        conversationDraft = WebConversationDraft(); conversationMessage = nil
         pageAccessRefusal = nil
         newsSnapshot = nil; articleText = nil
         articleResponse = nil; articleLocalResponse = nil
@@ -625,6 +645,8 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func retire() {
         guard !isRetired else { return }
         isRetired = true
+        awaitingSignIn = false
+        cancelConversationWork()
         onExecutionEvent = nil; executionIsAuthorized = nil; executionCanAdvance = nil
         actionsEnabled = false; learningAllowed = false
         discardLearning(); stopExecution()
@@ -651,7 +673,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private func resumeExecutionIfNeeded() {
         guard let plan = executionPlan, actionsEnabled, !isClearing, !isLearning,
-              !executionFinished, executionTask == nil, privacyIsCurrent, !articleBusy, !needsArticleReturn else { return }
+              !executionFinished, executionTask == nil, privacyIsCurrent, !articleBusy, !needsArticleReturn, !conversationIsActive else { return }
         if executionEvent?.state == .needsChoice { executionEvent = nil; pageAccessRefusal = nil }
         let nonce = UUID(); executionNonce = nonce
         executionTask = Task { [weak self] in
@@ -736,6 +758,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         // consent navigation must not consume the subsequent content's retries.
         var navigationAttempts = 0, failedObservations = 0, unreadyAttempts = 0, unchangedAdvances = 0
         var readinessGeneration = pageGeneration
+        var attemptedUnreadNavigation = false
         let journal = WebMorningLikeJournal(directory: LocalDataControl.defaultDirectory)
         while executionIsCurrent(nonce) {
             if readinessGeneration != pageGeneration {
@@ -762,9 +785,17 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             }
             navigationAttempts = 0
             if !pageBelongsToSite(webView.url) {
+                awaitingSignIn = true
                 clearSourceText()
                 publishExecution(.needsSignIn)
                 guard await executionWait(1, nonce: nonce) else { return }; continue
+            }
+            if WebConversationPolicy.supports(site), plan.behavior == .readUnread, !attemptedUnreadNavigation {
+                attemptedUnreadNavigation = true
+                let current = await observeConversation(authorized: { self.executionIsCurrent(nonce) })
+                if current == nil, await conversationResult(.openUnread, authorized: { self.executionIsCurrent(nonce) })?.status == .opened {
+                    guard await executionWait(1, nonce: nonce) else { return }; continue
+                }
             }
             guard let observation = await executionObserve(plan, nonce: nonce) else {
                 guard executionIsCurrent(nonce) else { return }
@@ -779,6 +810,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             pageAccessRefusal = nil
             switch observation.status {
             case .signin:
+                awaitingSignIn = true
                 unreadyAttempts = 0
                 clearSourceText()
                 publishExecution(.needsSignIn)
@@ -802,7 +834,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 }
                 guard await executionWait(1, nonce: nonce) else { return }; continue
             case .unavailable: clearSourceText(); publishExecution(.unavailable); return
-            case .ready: break
+            case .ready: awaitingSignIn = false
             }
             unreadyAttempts = 0
             if let route = observation.storyRoute {
@@ -834,10 +866,21 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 publishExecution(.unavailable)
                 return
             }
+            if WebConversationPolicy.supports(site), plan.behavior == .readUnread,
+               let current = await observeConversation(authorized: { self.executionIsCurrent(nonce) }),
+               executionIsCurrent(nonce) {
+                conversationSnapshot = current.snapshot
+            }
             let spoken = (plan.behavior == .readHeadlines || plan.behavior == .readUnread) && lastSpokenFingerprint != fingerprint
                 ? (newsSnapshot?.numberedTitles ?? observation.text ?? []) : []
             if !spoken.isEmpty { lastSpokenFingerprint = fingerprint }
-            if !hasUnresolved { publishExecution(.running, text: spoken) }
+            let invitation = conversationSnapshot.map { snapshot in
+                AppLanguage.isFrench ? "Message de \(snapshot.recipient) : \(snapshot.messageText). Voulez-vous répondre ?"
+                    : "Message from \(snapshot.recipient): \(snapshot.messageText). Would you like to reply?"
+            }
+            let narration = invitation.map { lastConversationInvitation == conversationSnapshot?.fingerprint ? [] : [$0] } ?? spoken
+            if let snapshot = conversationSnapshot { lastConversationInvitation = snapshot.fingerprint }
+            if !hasUnresolved { publishExecution(.running, text: narration) }
             guard executionIsCurrent(nonce) else { return }
             // Reconcile every unresolved browser action before considering another like.
             do {
@@ -908,6 +951,190 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     /// Clears every site's session and content-free action keys in this app's dedicated store.
+    var conversationIsActive: Bool {
+        ![.idle, .completed].contains(conversationDraft.phase) || conversationBusy
+    }
+
+    func cancelConversationWork() {
+        conversationOperation = UUID()
+        conversationDrafts.cancel()
+        conversationDraft.cancel()
+        conversationBusy = false
+    }
+
+    private func conversationAccess(_ authorized: @MainActor () -> Bool) -> Bool {
+        !Task.isCancelled && privacyIsCurrent && routineContext != nil && WebConversationPolicy.supports(site) &&
+            webView.window != nil && UIApplication.shared.applicationState == .active &&
+            !isClearing && !loadFailed && !webView.isLoading && authorized() &&
+            WebMorningExecutionPolicy.permits(site: site, url: webView.url)
+    }
+
+    private func conversationResult(_ command: WebConversationPolicy.Command, snapshot: WebConversationSnapshot? = nil,
+        body: String = "", expectedEditor: String = "", authorized: @MainActor () -> Bool) async -> WebConversationScriptResult? {
+        guard conversationAccess(authorized) else { return nil }
+        let page = webView.url, generation = pageGeneration
+        let value = try? await webView.evaluateJavaScript(WebConversationPolicy.script(site: site, command: command,
+            snapshot: snapshot, reviewedBody: body, expectedEditorText: expectedEditor), contentWorld: .defaultClient)
+        guard conversationAccess(authorized), page == webView.url, generation == pageGeneration else { return nil }
+        return WebConversationScriptResult.parse(value)
+    }
+
+    func observeConversation(authorized: @MainActor () -> Bool) async -> WebConversationScriptResult? {
+        guard let result = await conversationResult(.observe, authorized: authorized), result.status == .ready else { return nil }
+        conversationSnapshot = result.snapshot
+        if let snapshot = result.snapshot {
+            pendingConversationSendID = try? WebConversationJournal(directory: LocalDataControl.defaultDirectory).pendingID(for: snapshot)
+        }
+        return result
+    }
+
+    func reconcileConversationSend(sent: Bool, authorized: @escaping @MainActor () -> Bool) async {
+        guard let id = pendingConversationSendID,
+              let current = await observeConversation(authorized: authorized), let source = current.snapshot,
+              pendingConversationSendID == id, conversationAccess(authorized) else { return }
+        do {
+            try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
+                guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
+                let journal = WebConversationJournal(directory: LocalDataControl.defaultDirectory)
+                guard try journal.pendingID(for: source) == id else { throw LocalDataControlError.staleGeneration }
+                try journal.reconcile(id: id, sent: sent)
+            }
+            conversationDraft = WebConversationDraft(); pendingConversationSendID = nil
+            conversationMessage = AppLanguage.isFrench ? "Votre vérification a été enregistrée. Aucun message supplémentaire n’a été envoyé."
+                : "Your check was recorded. No additional message was sent."
+        } catch {
+            conversationMessage = AppLanguage.isFrench ? "Impossible d’enregistrer cette vérification. Aucun nouvel envoi n’est autorisé."
+                : "This check could not be recorded. No new send is allowed."
+        }
+    }
+
+    /// Read-only readiness observation. Passwords/codes never enter a result.
+    func signedInPageIsReady() async -> Bool {
+        guard awaitingSignIn, privacyIsCurrent, webView.window != nil,
+              UIApplication.shared.applicationState == .active, !webView.isLoading, !loadFailed,
+              let plan = executionPlan, WebMorningExecutionPolicy.permits(site: site, url: webView.url) else { return false }
+        let generation = pageGeneration, page = webView.url
+        let value = try? await webView.evaluateJavaScript(WebMorningExecutionPolicy.script(site: site, behavior: plan.behavior), contentWorld: .defaultClient)
+        guard !Task.isCancelled, awaitingSignIn, privacyIsCurrent, webView.window != nil,
+              UIApplication.shared.applicationState == .active, generation == pageGeneration, page == webView.url,
+              WebMorningPageObservation.parse(value)?.status == .ready else { return false }
+        return true
+    }
+
+    func beginConversationReply(authorized: @MainActor () -> Bool) async -> Bool {
+        guard !conversationBusy else { return false }
+        let offered = conversationSnapshot
+        guard let result = await observeConversation(authorized: authorized), let snapshot = result.snapshot,
+              !conversationIsActive || conversationDraft.snapshot == snapshot else { return false }
+        guard offered == nil || offered == snapshot else {
+            conversationMessage = AppLanguage.isFrench ? "Le message affiché a changé. Relisez la conversation, puis demandez une nouvelle réponse."
+                : "The displayed message changed. Read the conversation, then ask for a new reply."
+            return false
+        }
+        guard (try? WebConversationJournal(directory: LocalDataControl.defaultDirectory).hasPending()) == false else {
+            conversationMessage = AppLanguage.isFrench ? "Un envoi précédent doit être vérifié dans la conversation avant toute nouvelle réponse."
+                : "Check the previous send in the conversation before preparing another reply."
+            return false
+        }
+        guard !conversationBusy else { return false }
+        return conversationDraft.begin(snapshot)
+    }
+
+    func prepareConversationReply(_ intention: String, authorized: @escaping @MainActor () -> Bool) async {
+        guard conversationAccess(authorized), !conversationBusy, let source = conversationDraft.snapshot,
+              ![.sending, .uncertain, .completed].contains(conversationDraft.phase) else { return }
+        let operation = UUID(); conversationOperation = operation
+        let previous = conversationDraft.body
+        conversationBusy = true; conversationDraft.preparing()
+        defer { if conversationOperation == operation { conversationBusy = false } }
+        do {
+            let draft: String
+            if previous.isEmpty {
+                draft = try await conversationDrafts.draftReply(sender: source.recipient, subject: site.displayName,
+                    body: source.messageText, guidance: intention)
+            } else {
+                draft = try await conversationDrafts.reviseReply(sender: source.recipient, subject: site.displayName,
+                    body: source.messageText, reply: previous, guidance: intention)
+            }
+            guard conversationOperation == operation, conversationAccess(authorized) else { return }
+            guard let fresh = await observeConversation(authorized: authorized), fresh.snapshot == source else {
+                guard conversationOperation == operation, conversationAccess(authorized) else { return }
+                cancelConversationWork()
+                conversationMessage = AppLanguage.isFrench ? "Le message affiché a changé. Relisez la conversation, puis demandez une nouvelle réponse."
+                    : "The displayed message changed. Read the conversation, then ask for a new reply."
+                return
+            }
+            _ = conversationDraft.edit(draft)
+            conversationMessage = nil
+        } catch {
+            guard conversationOperation == operation, conversationAccess(authorized) else { return }
+            conversationMessage = AppLanguage.isFrench ? "La réponse n’a pas pu être préparée. Écrivez-la ci-dessous ou réessayez."
+                : "The reply could not be prepared. Write it below or try again."
+        }
+    }
+
+    func editConversationReply(_ body: String) { _ = conversationDraft.edit(body) }
+    func markConversationReplyReviewed() { _ = conversationDraft.reviewed() }
+
+    func sendConversationReply(authorized: @escaping @MainActor () -> Bool) async {
+        guard conversationAccess(authorized), !conversationBusy, conversationDraft.phase == .awaitingSend,
+              let source = conversationDraft.snapshot, let context = routineContext,
+              let observed = await observeConversation(authorized: authorized), observed.snapshot == source,
+              let editor = observed.editorText, editor.isEmpty || editor == conversationDraft.body else {
+            conversationMessage = AppLanguage.isFrench ? "La conversation ou le brouillon a changé. Relisez la réponse avant d’envoyer."
+                : "The conversation or draft changed. Review the reply before sending."
+            return
+        }
+        let body = conversationDraft.body, operation = UUID()
+        conversationOperation = operation; conversationBusy = true
+        defer { if conversationOperation == operation { conversationBusy = false } }
+        guard let filled = await conversationResult(.fill, snapshot: source, body: body, expectedEditor: editor, authorized: authorized),
+              filled.status == .filled, conversationOperation == operation,
+              conversationDraft.claimSend(current: source) else { return }
+        let id = conversationDraft.operationID
+        let journal = WebConversationJournal(directory: LocalDataControl.defaultDirectory)
+        do {
+            let reserved = try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
+                guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
+                return try journal.reserve(id: id, sessionID: context.sessionID, stepID: context.stepID, snapshot: source, body: body)
+            }
+            guard reserved else { conversationDraft.finish(verified: false); return }
+            pendingConversationSendID = id
+            let result = await conversationResult(.send, snapshot: source, body: body, authorized: authorized)
+            // A definite refusal occurs before the click. Every other interrupted dispatch remains reserved.
+            if let result, [.stale, .signin, .choice].contains(result.status) {
+                try journal.releaseNotDispatched(id: id)
+                pendingConversationSendID = nil
+                conversationDraft = WebConversationDraft(); _ = conversationDraft.begin(source); _ = conversationDraft.edit(body)
+                return
+            }
+            guard result?.status == .dispatched, conversationOperation == operation else {
+                conversationDraft.finish(verified: false); return
+            }
+            for _ in 0..<8 {
+                try await Task.sleep(for: .seconds(1))
+                guard conversationOperation == operation, conversationAccess(authorized) else { break }
+                if let receipt = await conversationResult(.verify, snapshot: source, body: body, authorized: authorized),
+                   receipt.status == .verified, let receiptID = receipt.receiptID {
+                    guard conversationOperation == operation, conversationAccess(authorized) else { return }
+                    try LocalDataControl(directory: LocalDataControl.defaultDirectory).withReadyAccess { state in
+                        guard state.generation == privacyBinding?.persistedGeneration else { throw LocalDataControlError.staleGeneration }
+                        try journal.confirm(id: id, receiptID: receiptID)
+                    }
+                    pendingConversationSendID = nil
+                    conversationDraft.finish(verified: true)
+                    conversationMessage = AppLanguage.isFrench ? "Réponse envoyée et visible dans cette conversation."
+                        : "Reply sent and visible in this conversation."
+                    return
+                }
+            }
+        } catch { /* The persisted reservation prevents an uncertain send being retried. */ }
+        guard conversationOperation == operation, conversationAccess(authorized) else { return }
+        conversationDraft.finish(verified: false)
+        conversationMessage = AppLanguage.isFrench ? "L’envoi n’a pas pu être confirmé. Vérifiez la conversation ; MORE ne renverra pas ce message."
+            : "The send could not be confirmed. Check the conversation; MORE will not resend this message."
+    }
+
     static func clearAllSignIns() async {
         await WKWebsiteDataStore(forIdentifier: storeIdentifier).removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
@@ -933,7 +1160,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func reload() {
         if privacyIsCurrent {
-            instagramNavigation = InstagramBrowserNavigation()
+            instagramNavigation = InstagramBrowserNavigation(site: site)
             executionFinished = false
             webView.reload()
         }
@@ -944,7 +1171,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         // Website links may navigate to a sign-in provider. MORE never runs scripts there.
         // Do not launch native social apps, custom schemes, insecure pages or downloads.
         guard privacyIsCurrent, let url = navigationAction.request.url, url.user == nil, url.password == nil else { decisionHandler(.cancel); return }
-        if site == .instagram {
+        if [.instagram, .linkedin, .slack].contains(site) {
             switch instagramDecision(for: navigationAction) {
             case .cancel: decisionHandler(.cancel); return
             case let .load(destination):
@@ -1034,7 +1261,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         // Keep a user-opened link visible in the same browser, including sign-in pages.
-        if site == .instagram, privacyIsCurrent, navigationAction.targetFrame == nil {
+        if [.instagram, .linkedin, .slack].contains(site), privacyIsCurrent, navigationAction.targetFrame == nil {
             switch instagramDecision(for: navigationAction) {
             case .cancel: return nil
             case let .load(destination):
@@ -1076,7 +1303,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        instagramNavigation = InstagramBrowserNavigation()
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         displayedHost = webView.url?.host ?? ""
         isSignInPage = !pageBelongsToSite(webView.url)
         loadFailed = false
@@ -1110,7 +1337,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// finish a cadence lesson. Invalidate awaits even when the URL did not change.
     /// Reload remains an explicit action in the visible browser.
     private func invalidateUnavailablePage() {
-        instagramNavigation = InstagramBrowserNavigation()
+        instagramNavigation = InstagramBrowserNavigation(site: site)
         pageGeneration += 1
         discardLearning()
         clearSourceText()

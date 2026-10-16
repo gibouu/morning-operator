@@ -1,6 +1,27 @@
 # MORE's in-app browser
 
-Checked 15 October 2026. This is a built prototype, not an App Store approval or a verified integration with these services.
+Checked 16 October 2026. This is a built prototype, not an App Store approval or a verified integration with these services.
+
+## Inline sign-in and browser replies — 16 October 2026
+
+LinkedIn and Slack are ordinary browser destinations, independent of the remote API catalogue. The routine and learning open their websites directly. Website sign-ins share the existing dedicated persistent WebKit store; they remain available until the provider expires or revokes them, or the owner clears website data. No cookie values or credentials are exported. LinkedIn and Slack HTTPS links are reloaded through the visible WebKit view so app links do not hand the routine to a native app; their authentication form requests retain their original body without replay. This is not a promise that every identity provider accepts an embedded browser. Supported APIs remain optional alternatives.
+
+A routine that encounters sign-in pauses its saved budget, asks the owner to sign in on the visible page, and resumes that same moment when a supported content layout is observed. Closing, backgrounding or explicitly pausing revokes automatic resumption. No separate account-setup checklist is required.
+
+LinkedIn and Slack message moments can open the first visible unread conversation when its recognized link is available, read the visible conversation and offer a reply. The owner supplies an intention, reviews or edits the draft and separately instructs Send. The selected language model prepares text only; website content never authorizes execution. Unsupported layouts, missing account identity, multiple editors, changed conversation/source, pre-existing user text and sign-in/consent pages fail closed. Replies remain scoped to the observed account, recipient, thread, source message, editor and reviewed body.
+
+Before clicking Send, MORE persists only opaque digests and an operation identity in `browser-reply-journal.json`. Confirmation requires a new, uniquely identified outgoing message with the exact reviewed text, a recognized sent state or server permalink, no pending/error marker, and an empty composer. A click alone is not a receipt. An uncertain send stays reserved across restarts and is never automatically retried; the visible conversation offers explicit owner reconciliation. Full Forget removes this journal. Raw message and draft text stay in memory and are cleared on navigation, close/background and privacy reset.
+
+Package/script checks use synthetic DOM inputs. Simulator UI and unsigned builds are separate evidence. Real LinkedIn/Slack sign-in, actual provider layouts, selected-model drafting, audible interruption and real message receipts require an authorized account/device acceptance run; none is established by these fixtures. Track physical acceptance in [#251](https://github.com/gibouu/morning-operator/issues/251).
+
+### Local verification — 16 October 2026
+
+- Shared/browser and integrated-branding regression selection: 190 tests passed, including conversation identity, reviewed-send expiry, duplicate-effect reservations, receipt rejection, navigation containment and saved-routine routing. Script checks: 57 passed; localization audit: no missing French keys.
+- An unsigned arm64 iOS simulator `build-for-testing` passed on `582b6ad` after integrating `main` at `8d63e9a`, with Xcode 27.1 and the restored optional ElevenLabs voice transport.
+- Two simulator UI journeys passed on final app source `582b6ad`, iPhone 17 / iOS 26.5, built with Xcode 27.1: automatic LinkedIn and Slack moments open their public sign-in page directly and pause the routine; services and first-use guidance remain available in French and English without changing a saved personal title. Screenshots with the integrated theme were inspected. No account was signed in and no real message was sent.
+- A prior combined UI attempt was interrupted during severe host saturation and an Xcode/CoreSimulator update. After the installation completed, a fresh arm64 build and both UI journeys passed. Diagnostic history and recovery are recorded in [#264](https://github.com/gibouu/morning-operator/issues/264).
+- The earlier full package run completed with 2,188 passes, 16 skips and two native Vision OCR timeouts in unchanged tests (`MediaObservationLayoutTests.nativeTextAndBoundsFromSyntheticImage` and `MorningAppleTests.realVisionOCRFromSyntheticScreenshot`). The suite is not fully green; the OCR failures are tracked in [#244](https://github.com/gibouu/morning-operator/issues/244).
+- Replies implemented here are specific to LinkedIn and Slack. Other websites can keep their browser session, but supported actions still depend on a recognized service/layout. Further communication adapters are tracked in [#257](https://github.com/gibouu/morning-operator/issues/257).
 
 ## Routine execution revision — 15 October 2026
 

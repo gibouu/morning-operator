@@ -10,7 +10,8 @@ struct RoutineExecutionSuggestionTests {
             ("com.atebits.Tweetie2", .twitter), ("com.reddit.Reddit", .reddit),
             ("com.facebook.Facebook", .facebook), ("com.burbn.barcelona", .threads),
             ("com.google.ios.youtube", .youtube), ("com.lemonde.lmfr", .news),
-            ("net.whatsapp.WhatsApp", .whatsapp)
+            ("net.whatsapp.WhatsApp", .whatsapp), ("com.linkedin.LinkedIn", .linkedin),
+            ("com.tinyspeck.chatlyio", .slack)
         ]
         for (identifier, site) in routes {
             let step = RoutineExecutionSuggestion.applying(to: RoutineStep(title: "Source", durationMinutes: 7), bundleIdentifier: identifier)
@@ -36,7 +37,7 @@ struct RoutineExecutionSuggestionTests {
             #expect(step.automation == nil && step.target == nil && step.webBehavior == nil)
             #expect(step.webLikesAllowed == nil && !step.isRequired)
         }
-        for label in ["gmail", "My Gmail", "Gmail inbox", "Gmail\nInstagram", "Instagram ", "Calendar", "Slack"] {
+        for label in ["gmail", "My Gmail", "Gmail inbox", "Gmail\nInstagram", "Instagram ", "Calendar", "slack", "LinkedIn "] {
             let step = RoutineExecutionSuggestion.applyingReviewedLabel(to: untrusted, label: label)
             #expect(step.automation == nil && step.target == nil)
         }

@@ -56,7 +56,8 @@ public struct BrowserLearningTrace: Codable, Equatable, Sendable {
     public static func observedBehaviors(for site: WebMorningSite) -> [WebMorningBehavior] {
         // An unread state is not established by a known messaging root route.
         switch site {
-        case .gmail, .whatsapp: []
+        case .gmail, .whatsapp, .slack: []
+        case .linkedin: [.browseFeed]
         default: WebMorningBehavior.availableBehaviors(for: site)
         }
     }
