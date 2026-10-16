@@ -262,8 +262,11 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
 
     /// New moments keep their slots and relative order. Only the matched
     /// survivors are exchanged between their current slots in the reviewed order.
-    private func applyingOrder(to steps: [RoutineStep]) throws -> [RoutineStep] {
-        guard let order else { return steps }
+    /// Returning indices lets typed proposal wrappers keep all source metadata.
+    func orderedIndices(for steps: [RoutineStep]) throws -> [Int] {
+        var result = Array(steps.indices)
+        guard let order else { return result }
+        guard Set(steps.map(\.id)).count == steps.count else { throw RoutinePreferenceError.invalidSteps }
         var matched: [Int] = [], used = Set<Int>()
         for moment in order {
             let index: Int?
@@ -279,9 +282,12 @@ public struct RoutinePreferenceJournal: Codable, Sendable, Equatable {
                 matched.append(index)
             }
         }
-        var result = steps
-        for (slot, source) in zip(matched.sorted(), matched) { result[slot] = steps[source] }
+        for (slot, source) in zip(matched.sorted(), matched) { result[slot] = source }
         return result
+    }
+
+    private func applyingOrder(to steps: [RoutineStep]) throws -> [RoutineStep] {
+        try orderedIndices(for: steps).map { steps[$0] }
     }
 
     private enum CodingKeys: String, CodingKey { case entries, revision, order }

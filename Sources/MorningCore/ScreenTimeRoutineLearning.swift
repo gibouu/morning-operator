@@ -518,7 +518,11 @@ public struct ScreenTimeRoutineProposal: Codable, Equatable, Sendable, Identifia
 
     /// A changed standing choice requires a fresh, visibly reviewed proposal.
     public func isCurrent(preferences: RoutinePreferenceJournal) -> Bool {
-        preferenceSnapshot.map { $0 == preferences } ?? preferences.entries.isEmpty
+        guard preferenceSnapshot.map({ $0 == preferences }) ?? (preferences.entries.isEmpty && preferences.order == nil) else { return false }
+        do {
+            // The snapshot alone cannot certify a damaged saved permutation.
+            return try preferences.orderedIndices(for: steps.map(\.suggestedStep)) == Array(steps.indices)
+        } catch { return false }
     }
 
     public var includedSteps: [Step] { steps.filter(\.included) }
@@ -575,7 +579,11 @@ public struct ScreenTimeRoutineProposal: Codable, Equatable, Sendable, Identifia
                 next.append(item)
             }
             guard !next.isEmpty, next.count <= Self.maximumSteps + RoutinePreferenceJournal.maximumEntries else { return false }
-            steps = next; preferenceSnapshot = journal
+            // Presence and time were already applied above. Only permute the
+            // complete wrappers; rebuilding RoutineSteps would lose source facts,
+            // inclusion edits and retained Keep details shown during review.
+            let order = try journal.orderedIndices(for: next.map(\.suggestedStep))
+            steps = order.map { next[$0] }; preferenceSnapshot = journal
             return true
         } catch { return false }
     }
