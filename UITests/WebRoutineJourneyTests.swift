@@ -122,3 +122,84 @@ final class WebRoutineJourneyTests: XCTestCase {
         add(attachment)
     }
 }
+
+/// Opt-in acceptance of the real ActivityKit surface. Synthetic routine data is
+/// isolated; the system supplies the island mask and runs the widget's actions.
+@MainActor
+final class MorningNativeIslandSubmissionTests: XCTestCase {
+    func testExpandedInstagramIslandKeepsLocalizedContentAndActionsInsideSystemSurface() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["MO_SUBMISSION_ACTIVITY_TEST_ENABLED"] == "1",
+                          "Run explicitly on the dedicated submission simulator; this uses native ActivityKit.")
+        continueAfterFailure = false
+        for language in ["en", "fr"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "--fixture-mode", "--ui-testing-approved",
+                "--ui-testing-instagram-routing", "--ui-testing-briefing-fixture", "--ui-testing-live-activity",
+                "--ui-testing-workspace=\(UUID().uuidString)", "--light-preview", "--theme-phase=morning",
+                "-more.appLanguage", language, "-AppleLanguages", "(\(language))",
+                "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"]
+            MorningUITestNavigation.launch(app)
+            defer {
+                // Reconcile only this UUID workspace's process-era activity.
+                app.terminate()
+                MorningUITestNavigation.launch(app)
+                app.terminate()
+            }
+            MorningUITestNavigation.tapButton("run.start", in: app)
+            let about = app.buttons["web.aboutDone"]
+            if about.waitForExistence(timeout: 5) { about.tap() }
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
+            let before = try countdown(app.staticTexts["web.remaining"])
+            XCUIDevice.shared.press(.home)
+            let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+            let surface = springboard.descendants(matching: .any).matching(NSPredicate(
+                format: "label BEGINSWITH %@ AND label CONTAINS %@", "MORE.", "Instagram")).firstMatch
+            // The compact summary contains the closed activity category, which
+            // need not be Instagram; use the app-owned MORE prefix if necessary.
+            let compact = surface.waitForExistence(timeout: 3) ? surface : springboard.descendants(matching: .any)
+                .matching(NSPredicate(format: "label BEGINSWITH %@", "MORE.")).firstMatch
+            XCTAssertTrue(compact.waitForExistence(timeout: 10), springboard.debugDescription)
+            compact.press(forDuration: 1)
+            let extend = springboard.buttons["stepActivity.more.extend"]
+            let next = springboard.descendants(matching: .any).matching(identifier: "stepActivity.more.next").firstMatch
+            let timer = springboard.staticTexts["stepActivity.more.remaining"]
+            XCTAssertTrue(extend.waitForExistence(timeout: 5), springboard.debugDescription)
+            XCTAssertTrue(next.waitForExistence(timeout: 5), springboard.debugDescription)
+            XCTAssertTrue(timer.waitForExistence(timeout: 5), springboard.debugDescription)
+            XCTAssertTrue(springboard.staticTexts["Instagram in MORE"].exists
+                          || springboard.staticTexts["Instagram dans MORE"].exists, springboard.debugDescription)
+            let bounds = springboard.frame
+            for element in [extend, next, timer] {
+                XCTAssertTrue(bounds.contains(element.frame), "A native Island control must remain on screen: \(element)")
+                XCTAssertTrue(element.isHittable, "The expanded native Island must expose its full control: \(element)")
+            }
+            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            capture.name = "native-instagram-expanded-island-\(language)"; capture.lifetime = .keepAlways; add(capture)
+            extend.tap()
+            app.activate()
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            let extended = try countdown(app.staticTexts["web.remaining"])
+            XCTAssertGreaterThan(extended - before, 100, "The native +2 intent must update the same routine budget.")
+            XCUIDevice.shared.press(.home)
+            let updated = springboard.descendants(matching: .any)
+                .matching(NSPredicate(format: "label BEGINSWITH %@", "MORE.")).firstMatch
+            XCTAssertTrue(updated.waitForExistence(timeout: 10), springboard.debugDescription)
+            updated.press(forDuration: 1)
+            XCTAssertTrue(next.waitForExistence(timeout: 5), springboard.debugDescription)
+            next.tap()
+            XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            XCTAssertEqual(app.state, .runningForeground)
+            XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
+            app.buttons["web.close"].tap()
+            MorningUITestNavigation.assertSession(state: "running", step: "SYNTHETIC Instagram profile", in: app)
+        }
+    }
+
+    private func countdown(_ value: XCUIElement) throws -> Int {
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        let parts = value.label.split(separator: ":").compactMap { Int($0) }
+        return try XCTUnwrap(parts.count == 2 ? parts[0] * 60 + parts[1] : nil,
+                             "Expected the live minute:second countdown, got \(value.label)")
+    }
+}
