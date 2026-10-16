@@ -96,8 +96,10 @@ struct MorningScreenTimeView: View {
             Text(morning.start.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted,
                 locale: AppLanguage.locale, timeZone: morning.timeZone)))
                 .font(MorningTheme.Typography.label)
+                .accessibilityIdentifier("screenTime.date.\(morning.start.timeIntervalSinceReferenceDate)")
             Text("Morning: \(time(morning.start, in: morning.timeZone)) – \(time(morning.end, in: morning.timeZone))")
                 .font(MorningTheme.Typography.note).monospacedDigit()
+                .accessibilityIdentifier("screenTime.window.\(morning.start.timeIntervalSinceReferenceDate)")
             if let sleep = morning.sleepWindow {
                 Text("Recorded sleep: \(time(sleep.start, in: morning.timeZone)) – \(time(sleep.end, in: morning.timeZone))")
                     .font(MorningTheme.Typography.note).foregroundStyle(MorningStyle.muted)
@@ -106,6 +108,7 @@ struct MorningScreenTimeView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(ScreenTimeAppCatalog.entry(for: app.bundleIdentifier, categoryName: app.categoryName).name)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("screenTime.app.\(app.bundleIdentifier)")
                     let minutes = Int((app.seconds / 60).rounded())
                     Text(minutes == 0 ? AppLanguage.localized("Less than 1 min") : AppLanguage.localized("\(minutes) min"))
                         .monospacedDigit().fixedSize()

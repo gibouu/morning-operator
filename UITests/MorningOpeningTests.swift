@@ -9,7 +9,7 @@ final class MorningOpeningUITests: XCTestCase {
         defer { app.terminate() }
         start(app)
         assertStarted(app)
-        XCTAssertEqual(app.staticTexts["morning.caption"].label, "Enjoy this moment. I’ll continue when its time is up.")
+        XCTAssertEqual(app.staticTexts["morning.caption"].label, "This moment is in progress.")
         XCTAssertFalse(app.buttons["opening.brief"].exists)
         XCTAssertFalse(app.buttons["opening.routine"].exists)
         XCTAssertFalse(app.staticTexts["run.state"].exists)

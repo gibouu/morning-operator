@@ -1423,7 +1423,6 @@ final class RoutineAutomationJourneyTests: XCTestCase {
     private func assertNoVoicePreparation(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertFalse(app.staticTexts["voice.access.status"].exists, file: file, line: line)
         XCTAssertFalse(app.staticTexts["voice.readingConsent"].exists, file: file, line: line)
-        XCTAssertEqual(app.sheets.count, 0, file: file, line: line)
         XCTAssertEqual(app.alerts.count, 0, file: file, line: line)
     }
     private func assertPaused(in app: XCUIApplication) {

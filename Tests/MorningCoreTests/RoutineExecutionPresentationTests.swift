@@ -36,8 +36,8 @@ struct RoutineExecutionPresentationTests {
 
     @Test func instructionsFollowTheChosenLanguageWithoutChangingTheStep() {
         let timed = RoutineStep(title: "Quiet moment", detail: history, automation: .timedMoment)
-        #expect(timed.executionPresentationText(locale: Locale(identifier: "en")) == "Enjoy this moment. I’ll continue when its time is up.")
-        #expect(timed.executionPresentationText(locale: Locale(identifier: "fr")) == "Profitez de ce moment. Je passerai à la suite à la fin du temps prévu.")
+        #expect(timed.executionPresentationText(locale: Locale(identifier: "en")) == "This moment is in progress.")
+        #expect(timed.executionPresentationText(locale: Locale(identifier: "fr")) == "Ce moment est en cours.")
         let manual = RoutineStep(title: "Personal moment", detail: history)
         #expect(manual.executionPresentationText(locale: Locale(identifier: "fr")) == "Ce moment demande votre participation. Dites suivant quand vous êtes prêt.")
         let calendar = RoutineStep(title: "Calendar", detail: history, automation: .todayCalendar)

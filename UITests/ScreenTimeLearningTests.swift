@@ -7,6 +7,72 @@ import XCTest
 final class ScreenTimeLearningTests: XCTestCase {
     private let currentTitle = "Your morning"
 
+    func testOnlyMorningWindowsAppearBeforeReviewAndApproval() throws {
+        let app = launch()
+        defer { app.terminate() }
+        readMorningWindows(in: app)
+        assertMorningWindow(in: app)
+        attach("screen-time-only-retained-morning-window", app)
+        MorningUITestNavigation.tapButton("learn.screenTime.review", in: app)
+        XCTAssertTrue(app.staticTexts["screenTimeProposal.step.0"].waitForExistence(timeout: 10))
+        let suggestions = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTimeProposal.step."))
+        XCTAssertFalse(suggestions.allElementsBoundByIndex.contains { $0.label == "Mail" }, "Evening use is not proposed as a morning moment.")
+        MorningUITestNavigation.tapButton("screenTimeProposal.close", in: app)
+        closeLearn(in: app)
+        assertCurrentRoutine(in: app)
+        MorningUITestNavigation.reviewAction("review.learn", in: app)
+        MorningUITestNavigation.tapButton("learn.screenTime", in: app)
+        MorningUITestNavigation.tapButton("learn.screenTime.review", in: app)
+        MorningUITestNavigation.tapButton("screenTimeProposal.approve", in: app)
+        MorningUITestNavigation.openRoutine(in: app)
+        let first = app.buttons["routine.step.0"]
+        XCTAssertTrue(first.waitForExistence(timeout: 8))
+        XCTAssertTrue(first.label.contains("Messages"), first.label)
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "routine.step."))
+        XCTAssertFalse(rows.allElementsBoundByIndex.contains { $0.label.hasPrefix("Mail") })
+        MorningUITestNavigation.closeRoutine(in: app)
+    }
+
+    func testFrenchLargestTextKeepsMorningWindowAndReviewReachable() throws {
+        let app = launch(french: true, largestText: true)
+        defer { app.terminate() }
+        readMorningWindows(in: app)
+        assertMorningWindow(in: app, french: true)
+        attach("screen-time-french-largest-retained-window", app)
+        MorningUITestNavigation.tapButton("learn.screenTime.review", in: app)
+        let first = app.staticTexts["screenTimeProposal.step.0"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        XCTAssertEqual(first.label, "Messages")
+        XCTAssertTrue(app.buttons["screenTimeProposal.approve"].exists)
+        XCTAssertTrue(app.buttons["screenTimeProposal.approve"].isEnabled)
+        attach("screen-time-french-largest-review", app)
+    }
+
+    private func assertMorningWindow(in app: XCUIApplication, french: Bool = false) {
+        let window = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.window.")).firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 15), app.debugDescription)
+        for _ in 0..<12 where !window.isHittable {
+            if window.frame.midY > app.frame.midY { app.swipeUp() } else { app.swipeDown() }
+        }
+        XCTAssertTrue(window.isHittable, "The local morning window remains readable at the chosen text size.")
+        XCTAssertTrue(window.label.hasPrefix(french ? "Matin : " : "Morning: "), window.label)
+        XCTAssertTrue(window.label.contains("7") && window.label.contains("8") && window.label.contains(":14"), window.label)
+        let date = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.date.")).firstMatch
+        XCTAssertTrue(date.exists && !date.label.isEmpty, "The displayed window belongs to a dated local morning.")
+        XCTAssertFalse(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "screenTime.daily.")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["screenTime.app.com.apple.mobilemail"].exists, "The fixture's evening-only Mail use stays out.")
+        XCTAssertTrue(app.staticTexts["screenTime.app.com.apple.MobileSMS"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", french ? "Sommeil enregistré :" : "Recorded sleep:")).firstMatch.exists,
+                       "An inactivity gap is not displayed as recorded sleep without Health samples.")
+    }
+
+    private func readMorningWindows(in app: XCUIApplication) {
+        MorningUITestNavigation.reviewAction("review.learn", in: app)
+        MorningUITestNavigation.tapButton("learn.screenTime", in: app)
+        MorningUITestNavigation.tapButton("learn.screenTime.start", in: app)
+        XCTAssertTrue(app.buttons["learn.screenTime.review"].waitForExistence(timeout: 15))
+    }
+
     func testSuggestionIsEditedAndOnlyApprovalReplacesTheRoutine() throws {
         let app = launch()
         startLearning(in: app)
@@ -60,20 +126,18 @@ final class ScreenTimeLearningTests: XCTestCase {
         assertCurrentRoutine(in: app)
     }
 
-    private func launch() -> XCUIApplication {
+    private func launch(french: Bool = false, largestText: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--fixture-mode", "--light-preview",
-            "-more.appLanguage", "en", "--ui-testing-workspace=\(UUID().uuidString)", "--ui-testing-approved", "--ui-testing-screen-time-fixture"]
-        app.launch()
+            "-more.appLanguage", french ? "fr" : "en", "--ui-testing-workspace=\(UUID().uuidString)", "--ui-testing-approved", "--ui-testing-screen-time-fixture"]
+        if largestText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        MorningUITestNavigation.launch(app)
         return app
     }
 
     private func startLearning(in app: XCUIApplication) {
-        MorningUITestNavigation.reviewAction("review.learn", in: app)
-        MorningUITestNavigation.tapButton("learn.screenTime", in: app)
-        MorningUITestNavigation.tapButton("learn.screenTime.start", in: app)
-        XCTAssertTrue(app.buttons["learn.screenTime.review"].waitForExistence(timeout: 15))
+        readMorningWindows(in: app)
         MorningUITestNavigation.tapButton("learn.screenTime.review", in: app)
         XCTAssertTrue(app.staticTexts["screenTimeProposal.step.0"].waitForExistence(timeout: 15), app.debugDescription)
     }

@@ -172,7 +172,7 @@ public extension RoutineStep {
         if target == nil, automation == .spokenNote || automation == .savedObservation { return detail }
         let bundle = AppLanguage.bundle(for: .module, languageCode: locale.language.languageCode?.identifier)
         if target == nil, automation == .timedMoment {
-            return String(localized: "Enjoy this moment. I’ll continue when its time is up.", bundle: bundle, locale: locale)
+            return String(localized: "This moment is in progress.", bundle: bundle, locale: locale)
         }
         if target == nil, automation == nil {
             return String(localized: "This moment needs your participation. Say next when you’re ready.", bundle: bundle, locale: locale)

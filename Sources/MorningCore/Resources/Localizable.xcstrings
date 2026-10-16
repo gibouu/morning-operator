@@ -3153,18 +3153,18 @@
         }
       }
     },
-    "Enjoy this moment. I’ll continue when its time is up.": {
+    "This moment is in progress.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Profitez de ce moment. Je passerai à la suite à la fin du temps prévu."
+            "value": "Ce moment est en cours."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enjoy this moment. I’ll continue when its time is up."
+            "value": "This moment is in progress."
           }
         }
       }
