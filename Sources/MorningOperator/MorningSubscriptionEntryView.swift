@@ -47,6 +47,15 @@ struct MorningSubscriptionEntryView: View {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
             }
         }
+        #if DEBUG
+        .task(id: scenePhase) {
+            guard scenePhase == .active, MorningThemeClock.shared.isRecordingSolarDay else { return }
+            while !Task.isCancelled {
+                guard MorningThemeClock.shared.refreshRecordingFrame() else { return }
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+            }
+        }
+        #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 if store.briefing.settings.includesHealth { store.speech.stop() }

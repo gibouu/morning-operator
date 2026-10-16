@@ -24,6 +24,11 @@ final class MorningThemeClock {
     private var weatherSnapshot: WeatherObservationSnapshot?
     private var weatherStatus: MorningBriefingSourceStatus = .notConfigured
     private let weatherPreview = MorningThemeClock.weatherFromArguments()
+    #if DEBUG
+    @ObservationIgnored private let recordingTimeline = MorningSolarRecordingTimeline.from(arguments: ProcessInfo.processInfo.arguments)
+    @ObservationIgnored private let recordingStartUptime = ProcessInfo.processInfo.systemUptime
+    var isRecordingSolarDay: Bool { recordingTimeline != nil }
+    #endif
     var usesWeatherFixture: Bool { weatherPreview != nil }
     var weatherStatusDescription: String {
         if let weatherPreview {
@@ -77,16 +82,43 @@ final class MorningThemeClock {
     }
 
     func refresh(now: Date = .now) {
+        refreshVisuals(now: now)
+        refreshWeather(now: now)
+    }
+
+    #if DEBUG
+    /// Called only while the filming build is active. Weather freshness and the
+    /// separate real-time cloud/star clock retain their ordinary cadence.
+    func refreshRecordingFrame() -> Bool {
+        guard let recordingTimeline else { return false }
+        refreshVisuals(now: .now)
+        return ProcessInfo.processInfo.systemUptime - recordingStartUptime < recordingTimeline.duration
+    }
+    #endif
+
+    private func refreshVisuals(now: Date) {
         let calendar = Calendar.current
         let day = location.flatMap {
             MorningSolarDay.calculate(for: now, latitude: $0.latitude, longitude: $0.longitude, calendar: calendar)
         } ?? .fixed
         if day != solar { solar = day }
-        let next = pinnedPhase.map(MorningPhaseBlend.steady) ?? MorningDayClock.blend(at: now, calendar: calendar, solar: day)
+        let next: MorningPhaseBlend
+        let art: MorningCelestialScene
+        #if DEBUG
+        if let recordingTimeline {
+            let minute = recordingTimeline.minute(atElapsed: ProcessInfo.processInfo.systemUptime - recordingStartUptime)
+            next = MorningDayClock.blend(atMinute: minute, solar: day)
+            art = MorningCelestialClock.scene(atMinute: minute, solar: day)
+        } else {
+            next = pinnedPhase.map(MorningPhaseBlend.steady) ?? MorningDayClock.blend(at: now, calendar: calendar, solar: day)
+            art = pinnedPhase.map(MorningCelestialClock.scene(for:)) ?? MorningCelestialClock.scene(at: now, calendar: calendar, solar: day)
+        }
+        #else
+        next = pinnedPhase.map(MorningPhaseBlend.steady) ?? MorningDayClock.blend(at: now, calendar: calendar, solar: day)
+        art = pinnedPhase.map(MorningCelestialClock.scene(for:)) ?? MorningCelestialClock.scene(at: now, calendar: calendar, solar: day)
+        #endif
         if next != blend { blend = next }
-        let art = pinnedPhase.map(MorningCelestialClock.scene(for:)) ?? MorningCelestialClock.scene(at: now, calendar: calendar, solar: day)
         if art != celestial { celestial = art }
-        refreshWeather(now: now)
     }
 
     private func refreshWeather(now: Date) {

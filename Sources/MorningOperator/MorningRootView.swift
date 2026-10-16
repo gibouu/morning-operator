@@ -369,7 +369,12 @@ struct MorningRootView: View {
     }
 
     private func updateScreenAwake() {
-        UIApplication.shared.isIdleTimerDisabled = store.automatic && store.sessionActive
+        #if DEBUG
+        let recording = MorningThemeClock.shared.isRecordingSolarDay
+        #else
+        let recording = false
+        #endif
+        UIApplication.shared.isIdleTimerDisabled = (recording || (store.automatic && store.sessionActive))
             && scenePhase == .active && !store.privacyBlocksWork
     }
 
