@@ -67,7 +67,7 @@ final class RoutineEvidenceProposalTests: XCTestCase {
         closeLearn(in: app)
         XCTAssertTrue(app.buttons["review.period"].waitForExistence(timeout: 5),
                       "Back must return to History before another destination is opened.")
-        XCTAssertTrue(review.exists)
+        XCTAssertTrue(app.buttons["review.learn"].exists)
         assertApprovedRoutine(currentTitle, count: 4, in: app)
         openArchive(in: app)
         XCTAssertFalse(app.buttons["observations.reviewProposal"].exists,
