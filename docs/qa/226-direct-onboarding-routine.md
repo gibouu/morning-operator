@@ -15,7 +15,7 @@ Website sign-in remains optional through Settings → Apps & accounts. The propo
 - Native generic iOS Simulator Debug build with signing disabled: **passed** (arm64 and x86_64). This is a compile check, not a simulated-device or physical-phone run.
 - Native `build-for-testing` with signing disabled: **passed**, including the changed UI-test sources.
 - UI journeys added/updated for Connect → proposal → Later → relaunch → same saved proposal, French no-data/Later, and voice-choice persistence. They have not yet been executed; root owns the device and native filming checks.
-- Independent read-only review requested. Claude CLI cross-model review is unavailable because its OAuth session is expired; this is reported, not treated as a pass.
+- Independent read-only source review: **PASS** at source commit `816b5072b943c91de398d626d2fd591821e40a69`, after correcting the private-helper compile error and the fixture test’s explicit Connect choice. No runtime proof is claimed by that review. Claude CLI cross-model review is unavailable because its OAuth session is expired; this is reported, not treated as a cross-model pass.
 - The annotation companion is `design/gallery/onboarding-direct-routine.html`. It labels its sample rows, supports EN/FR and no-data/proposal states, and saves right-click notes locally with route, element and page coordinates. Native iPhone output remains the source of truth. Prior previews are preserved.
 
 No real Screen Time data, provider requests, phone actions, screenshots, recordings or credentials were used in this worktree.
