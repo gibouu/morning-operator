@@ -3,6 +3,14 @@ import Foundation
 /// Narrow negative roles shared by header and visible-task grounding. This does
 /// not identify apps, infer actions, remove source text, or judge written reports.
 enum ObservedTextRolePolicy {
+    /// A multi-line excerpt can still describe real content beneath a recording
+    /// marker. Reject only quotes whose nonempty lines are all provenance.
+    static func isPureProvenance(_ text: String) -> Bool {
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        return !lines.isEmpty && lines.allSatisfy(isProvenanceLine)
+    }
+
     static func isProvenanceLine(_ line: String) -> Bool {
         let folded = line.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
         let tokens = folded.split { !$0.isLetter && !$0.isNumber }.map(String.init)

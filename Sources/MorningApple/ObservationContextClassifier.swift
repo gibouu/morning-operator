@@ -259,7 +259,8 @@ enum ObservationContextFrameSlots {
             guard let excerpt = excerpts[frame.id] else { throw Invalid.input }
             let choices = candidates(excerpt: excerpt, catalog: catalog)
             var options = [Option(id: "unknown", outcome: "unknown", contextLabel: "", evidenceQuote: "")]
-            for (index, quote) in choices.evidenceQuotes.enumerated() where !quote.isEmpty {
+            for (index, quote) in choices.evidenceQuotes.enumerated()
+                where !quote.isEmpty && !ObservedTextRolePolicy.isPureProvenance(quote) {
                 options.append(.init(id: "a\(index)", outcome: "ambiguous", contextLabel: "", evidenceQuote: quote))
             }
             for (index, quote) in choices.evidenceQuotes.enumerated() where !quote.isEmpty {

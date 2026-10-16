@@ -269,6 +269,10 @@ enum ObservationContextValidation {
                 return unknown(frame, reason: String(localized: "The proposed quote was not grounded in this frame.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))
             }
             if proposal.outcome == "ambiguous", proposal.contextLabel.isEmpty {
+                guard !ObservedTextRolePolicy.isPureProvenance(quote) else {
+                    diagnostics.append(.init(kind: .unsupportedIdentity, sampleID: frame.id))
+                    return unknown(frame, reason: String(localized: "The proposed visual identity was unsupported.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))
+                }
                 return .init(sampleID: frame.id, timeSeconds: frame.timeSeconds, timeBasis: frame.timeBasis,
                              evidence: .ambiguous(reference: frame.evidenceReference), evidenceQuote: quote,
                              reason: String(localized: "The local model reported ambiguous visible context.", bundle: AppLanguage.bundle(for: .module), locale: AppLanguage.locale))

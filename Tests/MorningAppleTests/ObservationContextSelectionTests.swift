@@ -62,6 +62,53 @@ struct ObservationContextSelectionTests {
         #expect(ObservationContextValidation.validate(json: forged, batch: batch, catalog: catalog).decisions[0].evidence == .unknown)
     }
 
+    @Test("Pure provenance cannot establish ambiguity, including a forged exact quote", arguments: [
+        "SYNTHETIC • FR", "Recording metadata", "No real account, send, write or like",
+        "SYNTHETIC • FR\r\n \r\nNo real account, send, write or like"
+    ])
+    func provenanceIsNotAmbiguousContext(_ quote: String) throws {
+        let source = quote + "\r\nHarbor Journal\r\nRead the garden article"
+        let batch = try #require(input([source]).batches.first)
+        let slot = try #require(ObservationContextFrameSlots.make(batch: batch, catalog: []).first)
+        #expect(batch.frames[0].text.utf8.elementsEqual(source.utf8))
+        #expect(batch.excerpts[0].text.utf8.elementsEqual(source.utf8))
+        #expect(!slot.options.contains { $0.outcome == "ambiguous" && $0.evidenceQuote == quote })
+        #expect(slot.options.contains { $0.outcome == "unknown" && $0.evidenceQuote.isEmpty })
+        #expect(slot.options.contains { $0.outcome == "identified" && $0.contextLabel == "Harbor Journal" })
+        let forged = try json(["frames": [["sampleID": batch.frames[0].id.uuidString, "outcome": "ambiguous",
+            "contextLabel": "", "evidenceQuote": quote]]])
+        let rejected = ObservationContextValidation.validate(json: forged, batch: batch, catalog: [])
+        #expect(rejected.responseWasValid)
+        #expect(rejected.decisions[0].evidence == .unknown && rejected.decisions[0].evidenceQuote == nil)
+        #expect(rejected.diagnostics.contains { $0.kind == .unsupportedIdentity })
+    }
+
+    @Test("A provenance-only frame offers abstention without erasing its source")
+    func provenanceOnlyFrameKeepsSource() throws {
+        let source = "SYNTHETIC • FR\r\nNo real account, send, write or like"
+        let batch = try #require(input([source]).batches.first)
+        let slot = try #require(ObservationContextFrameSlots.make(batch: batch, catalog: []).first)
+        #expect(batch.excerpts[0].text.utf8.elementsEqual(source.utf8))
+        #expect(slot.options.map(\.id) == ["unknown"])
+        let converted = try ObservationContextFrameSlots.selectionValidationJSON(from: json(["f0": "unknown"]), batch: batch, catalog: [])
+        let abstained = ObservationContextValidation.validate(json: converted, batch: batch, catalog: [])
+        #expect(abstained.responseWasValid && abstained.diagnostics.isEmpty)
+        #expect(abstained.decisions[0].evidence == .unknown)
+    }
+
+    @Test("A mixed provenance and content prefix remains a byte-exact ambiguous option")
+    func mixedContentRemainsAmbiguous() throws {
+        let source = "SYNTHETIC • FR\r\nNo real account, send, write or like\r\nHarbor Journal\r\nRead the garden article"
+        let batch = try #require(input([source]).batches.first)
+        let slot = try #require(ObservationContextFrameSlots.make(batch: batch, catalog: []).first)
+        let option = try #require(slot.options.first { $0.outcome == "ambiguous" && $0.evidenceQuote.utf8.elementsEqual(source.utf8) })
+        let converted = try ObservationContextFrameSlots.selectionValidationJSON(from: json(["f0": option.id]), batch: batch, catalog: [])
+        let result = ObservationContextValidation.validate(json: converted, batch: batch, catalog: [])
+        #expect(result.responseWasValid && result.diagnostics.isEmpty)
+        #expect(result.decisions[0].evidence == .ambiguous(reference: batch.frames[0].evidenceReference))
+        #expect(result.decisions[0].evidenceQuote?.utf8.elementsEqual(source.utf8) == true)
+    }
+
     @Test("A marker word inside a distinct name or full qualified header is not a blacklist", arguments: [
         "Synthetic Studio", "Test Kitchen", "Demo Reader", "Cedar News • Browser SIMULATED", "Simulation Atelier"
     ])
