@@ -107,7 +107,9 @@ import MorningCore
         XCTAssertFalse(app.buttons["nativeMoment.confirm"].exists, "The completed request cannot expose a second confirmation.")
         attach("exact-reminder-one-received-simulated-payload", app)
         tap("nativeMoment.cancel", in: app)
+        tap("nativeMoment.open", in: app)
         XCTAssertEqual(try proof(in: app)["simulatedWrites"], "1", "Closing the result must not repeat it.")
+        XCTAssertFalse(app.buttons["nativeMoment.confirm"].exists)
         tap("morning.closeDetails", in: app)
         XCTAssertEqual(try executionIdentity(in: app), pinned)
         // Attach only the actual received dictionary observed before closing.
@@ -184,8 +186,12 @@ import MorningCore
         XCTAssertTrue(app.buttons["morning.closeDetails"].waitForExistence(timeout: 5))
     }
     private func chooseAction(_ name: String, in app: XCUIApplication) {
-        let field = app.descendants(matching: .any).matching(identifier: "step.automation").firstMatch
-        visible(field, id: "step.automation", in: app); field.tap()
+        let fields = app.descendants(matching: .any).matching(identifier: "step.automation")
+        visible(fields.firstMatch, id: "step.automation", in: app)
+        guard let field = fields.allElementsBoundByIndex.first(where: { $0.isEnabled && $0.isHittable }) else {
+            fail("exact-reminder-action-picker-unreachable", app); return
+        }
+        field.tap()
         let choice = app.buttons[name].firstMatch
         if choice.waitForExistence(timeout: 2) { visible(choice, id: name, in: app); choice.tap() }
         else { let text = app.staticTexts[name].firstMatch; visible(text, id: name, in: app); text.tap() }
@@ -221,6 +227,7 @@ import MorningCore
         for down in [false, true] {
             for _ in 0..<8 {
                 if value.exists && value.isHittable { return }
+                if app.buttons.matching(identifier: id).allElementsBoundByIndex.contains(where: \.isHittable) { return }
                 guard let container = app.collectionViews.allElementsBoundByIndex.first(where: \.isHittable)
                     ?? app.scrollViews.allElementsBoundByIndex.first(where: \.isHittable) else {
                     fail("exact-reminder-no-foreground-container-\(id)", app); return
