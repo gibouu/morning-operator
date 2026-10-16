@@ -2,7 +2,7 @@
 
 Product reference: [MORE](../MORE.md). This ledger separates implemented behavior, observed evidence and gates that remain open. Screenshots, recordings, private service results and credentials are local-only and are not committed.
 
-The table and dated paragraphs retain earlier checkpoints, including their then-pending work. The [latest source-specific checkpoint](#latest-source-specific-checkpoint--16-october-2026) below records the package, real-model and native results separately; an older pass does not certify a later scene or build.
+The table and dated paragraphs retain earlier checkpoints, including their then-pending work. The [resumed synthetic acceptance checkpoint](#resumed-synthetic-acceptance--16-october-2026) below records the package, real-model and native results separately; an older pass does not certify a later scene or build.
 
 | MORE requirement | Earlier recorded evidence | Remaining acceptance |
 | --- | --- | --- |
@@ -67,6 +67,58 @@ Further review finds a separate identity gap: renaming a Screen Time Keep/Exclud
 The corrected snapshot `c9332ca`, including Home changes through `554a614`, passes 233 targeted shared tests: 109 Core and 124 Apple, zero issues (`/tmp/more-routine-acceptance-combined-v3.log`). This covers renamed native Keep/Exclude/duration across days, explicit app review at creation and restoration, native/browser exclusions without reinsertion, and retained synthetic provenance through export. An initial compile caught a private-helper visibility mistake; the helper was moved within its existing implementation before this pass. The full run on the same compiled products reports 1,598 tests (4 Health, 679 Core, 915 Apple), six optional model/media skips and zero issues (`/tmp/more-routine-acceptance-full-v3.log`). The native Home/status journeys, including French XXXL recovery, remain pending; the later `b0e161a` changes only the UI-test variant.
 
 The later Home decision (`99ef99d`, `3dfed93`) replaces scrolling history with a single short passage and tap-revealed controls that disappear after five seconds. It is integrated with the action-state correction, using the same passage instead of a permanent status/button panel. Build6 of the previous scene succeeds, but its six runtime journeys were deliberately not started after this product change. The new scene, its speech-chunk changes and adapted runtime journeys require fresh validation; the 1,598-test checkpoint above does not cover them.
+
+## Resumed synthetic acceptance — 16 October 2026
+
+The owner explicitly resumed simulator correction/testing after the delivery
+handoff below and authorized integration on main after the complete synthetic
+routine passes. PR224 carries this continuation. The existing personal checkout
+and physical iPhone routine are not used by these tests.
+
+Shared package v26 reports **2,157 tests, zero issues, 16 optional skips**; the two
+native OCR checks are excluded from that concurrent run and separately pass
+unchanged in isolation (layout25.346s; text0.305s). The source receipt binds402
+package source/test files. Earlier v23 fails compilation; v24 fails20 Gmail
+fixture expectations and one OCR deadline. After the fixture accepts the actual
+Foundation empty-query representation of its exact send URL, the three targeted
+Gmail tests pass, followed by v26. Ordinary Gmail transport, send policy and
+journal are not relaxed. These are shared-logic results, not live deliveries.
+
+Frozen9o /6714173 runs six isolated native cases: five pass, one fails before
+any reminder write. EN/FR news verify the actual second article paragraph,
+Repeat completion, Return and retained paused budget; History→Settings, compact
+proposal controls and KeepCurrent also pass. The reminder helper is subsequently
+corrected from observed native DatePicker identifiers/values. Frozen9p and9q
+failures remain in their local xcresults; neither is silently relabelled green.
+Sealed Products and before/after hashes bind each runtime to its compiled app
+and runner. Long10 and the corrected exact-reminder journey remain pending.
+
+The new complete downstream test imports an explicitly synthetic, unapproved
+10-moment/28-minute parsed draft containing no automation or target. It configures
+and approves operations through ordinary UI, cold-relaunches without the parsed
+argument, then exercises Calendar, corrected/reviewed Gmail sending, uncertain
+Slack, news article/return, feed pause/cold restoration, two playing video items,
+one exact reminder, reading, playing music and a closing budget. Local test
+origins supply finite pages and generated media to the ordinary WebKit executor;
+fictional providers receive real application payloads. No duration is accelerated
+and no timer is accepted as proof of a provider effect. All network/media/private
+fixture gates remain Debug-only and workspace-bound. The test is not yet a pass.
+
+A third separately consented OpenAI comparison replays only the frozen invented
+OCR text: one diagnostic passes in77.910s, with7/7 HTTP200 responses and7 validated
+batch outcomes. Five batches explicitly abstain; two yield four synthetic,
+unapproved moments (news, social, reminder, reading;10 proposed minutes). Exact
+citations remain bound to actual sampled frames. Calendar, Gmail, Slack, video
+and music are missing. This **4/9** source-family result is partial; the unchanged
+local full-movie v11 remains **0/9**. Neither certifies learning the whole movie.
+The temporary protected API-key file was deleted after the replay.
+
+Separately, the ordinary-iPhone voice task verified final installation1630: all
+four French/English × Male/Female examples completed through ElevenLabs without
+Apple backup, and the owner confirmed they were audible and better. The installed
+identity activation was the cause of the previous fallback. Its documentation is
+in [PR225](https://github.com/gibouu/morning-operator/pull/225). Those fixed examples
+do not prove microphone conversation, interruption or this simulator routine.
 
 ## Delivery handoff — 16 October 2026
 
