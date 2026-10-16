@@ -127,7 +127,17 @@ final class WebRoutineJourneyTests: XCTestCase {
 /// isolated; the system supplies the island mask and runs the widget's actions.
 @MainActor
 final class MorningNativeIslandSubmissionTests: XCTestCase {
-    func testExpandedInstagramIslandKeepsLocalizedContentAndActionsInsideSystemSurface() throws {
+    func testExpandedInstagramIslandKeepsLocalizedContentInsideSystemMask() throws {
+        try exerciseIsland(testActions: false)
+    }
+
+    func testNativeIslandActionsExtendAndAdvanceTheSavedRoutine() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["MO_SUBMISSION_ACTIVITY_ACTIONS_TEST_ENABLED"] == "1",
+                          "Native intent execution is a separate acceptance check from the system mask.")
+        try exerciseIsland(testActions: true)
+    }
+
+    private func exerciseIsland(testActions: Bool) throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["MO_SUBMISSION_ACTIVITY_TEST_ENABLED"] == "1",
                           "Run explicitly on the dedicated submission simulator; this uses native ActivityKit.")
         continueAfterFailure = false
@@ -151,6 +161,7 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
             XCTAssertEqual(app.staticTexts["web.host"].label, "www.instagram.com")
             let before = try countdown(app.staticTexts["web.remaining"])
+            let beforeEnd = Date().addingTimeInterval(TimeInterval(before))
             XCUIDevice.shared.press(.home)
             let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
             let surface = springboard.descendants(matching: .any).matching(NSPredicate(
@@ -180,6 +191,7 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
                 XCTAssertFalse(element.frame.isEmpty, "The native Island must lay out its full content: \(element)")
                 XCTAssertTrue(bounds.contains(element.frame), "A native Island control must remain on screen: \(element)")
             }
+            if !testActions { continue }
             // iOS may collapse an expanded Island while the assertions and
             // screenshot run. Reopen the observed native surface before acting.
             if !extend.isHittable { compact.press(forDuration: 1) }
@@ -187,8 +199,18 @@ final class MorningNativeIslandSubmissionTests: XCTestCase {
             extend.tap()
             app.activate()
             XCTAssertTrue(app.buttons["web.nextMoment"].waitForExistence(timeout: 10), app.debugDescription)
+            let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                let values = app.staticTexts["web.remaining"].label.split(separator: ":").compactMap { Int($0) }
+                guard values.count == 2 else { return false }
+                let end = Date().addingTimeInterval(TimeInterval(values[0] * 60 + values[1]))
+                return end.timeIntervalSince(beforeEnd) > 110
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed,
+                           "The native +2 intent must finish updating the same routine budget.")
             let extended = try countdown(app.staticTexts["web.remaining"])
-            XCTAssertGreaterThan(extended - before, 100, "The native +2 intent must update the same routine budget.")
+            let extendedEnd = Date().addingTimeInterval(TimeInterval(extended))
+            XCTAssertEqual(extendedEnd.timeIntervalSince(beforeEnd), 120, accuracy: 8,
+                           "The native +2 intent must update the same routine budget.")
             XCUIDevice.shared.press(.home)
             let updated = springboard.descendants(matching: .any)
                 .matching(NSPredicate(format: "label BEGINSWITH %@", "MORE.")).firstMatch
