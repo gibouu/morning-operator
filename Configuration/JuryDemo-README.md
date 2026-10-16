@@ -6,7 +6,7 @@ Info.plist, sources and UX stay shared and are not rewritten by generation.
 Only this build defines `MORE_JURY_DEMO` in the app, widget and UI-test targets.
 
 The default identities are `com.gibouu.morningoperator.demo` and its child
-`.liveactivity`; the visible app name is **MORE Démo**, and links use `more-demo://`.
+`.liveactivity`; the visible app name is **MORE**, and links use `more-demo://`.
 Separate signed bundle identities isolate the app container and default Keychain
 access group. No Keychain sharing entitlement is added. Installing a newer jury
 build updates only this app and preserves the normal MORE installation.
