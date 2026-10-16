@@ -344,8 +344,10 @@ enum OwnInterfaceWording {
             shown("Minutes estimated", fr: "Minutes estimées")
         ]),
         Screen(name: "Apps and accounts", copy: [
-            shown("Your apps, in one place.", fr: "Vos apps, au même endroit."),
-            shown("Choose what you want to bring into your morning.", fr: "Choisissez ce qui vous accompagne le matin."),
+            shown("Your messages, stories and feed, in MORE.", fr: "Vos messages, vos stories et votre fil, dans MORE."),
+            shown("Read your unread email and prepare replies.", fr: "Lisez vos e-mails non lus et préparez vos réponses."),
+            earlier("Your apps, in one place.", "Vos apps, au même endroit."),
+            earlier("Choose what you want to bring into your morning.", "Choisissez ce qui vous accompagne le matin."),
             earlier("A little setup. Then you're home.", "Un instant de préparation. Puis à vous de jouer."),
             earlier("Connect Gmail below, or sign in to the websites your morning uses.", "Connectez Gmail ci-dessous ou identifiez-vous sur les sites de votre matin."),
             earlier("Sign in once, here. Your morning uses these same pages.", "Connectez-vous ici une fois. Votre matin utilisera ces mêmes pages.")

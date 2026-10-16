@@ -843,6 +843,36 @@ struct OwnInterfaceWordingTests {
         #expect(!OwnInterfaceWording.identifies(.init("Notes\nSaved on this device\nVoice\nMeet Laura to plan the train journey")))
     }
 
+    @Test("Compact Connections uses live row copy while earlier headings remain historical", arguments: ["en", "fr"])
+    func compactConnectionsUsesCurrentRows(language: String) throws {
+        let catalogs = try ShippedCatalogs.load(), sources = try ShippedCatalogs.appSources()
+        let heading = try catalogs.text("Apps & accounts", language)
+        let activity = language == "fr" ? "09:00 Réunion de planification de l’équipe" : "09:00 Team planning meeting"
+        let current = ["Your messages, stories and feed, in MORE.", "Read your unread email and prepare replies."]
+        for key in current {
+            let phrase = try #require(OwnInterfaceWording.all.first { $0.catalogKey == key })
+            for wording in phrase.wordings { #expect(sources.contains("\"\(wording)\"")) }
+            let copy = try catalogs.text(key, language)
+            for width in [18, 26, 38] {
+                let screen = ([heading] + OwnScreenFixtures.wrapped(copy, width: width) + [activity]).joined(separator: "\n")
+                #expect(isOwnInterface(screen))
+                #expect(throws: AppleIntelligenceError.insufficientActivityEvidence) {
+                    try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + screen, as: .recording)
+                }
+            }
+            let ordinaryMail = "Messages\n\(copy)\n\(activity)"
+            #expect(!isOwnInterface(ordinaryMail))
+            #expect(try LearningEvidencePolicy.prepare("[Observed frame at 00:00.0]\n" + ordinaryMail, as: .recording).count == 1)
+        }
+        for key in ["Your apps, in one place.", "Choose what you want to bring into your morning."] {
+            let phrase = try #require(OwnInterfaceWording.all.first { $0.wordings.contains(key) })
+            #expect(phrase.catalogKey == nil, "Removed Connections headings remain earlier wording.")
+            let copy = try catalogs.text(key, language)
+            #expect(isOwnInterface("\(heading)\n\(copy)\n\(activity)"))
+        }
+        #expect(!isOwnInterface("\(heading)\nGmail\nSlack\n\(activity)"))
+    }
+
     @Test("Retired copy remains recognized without being tied to today's catalogs")
     func retiredCopyRemainsHistorical() throws {
         let historical = [

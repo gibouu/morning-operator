@@ -23456,6 +23456,38 @@
         }
       }
     },
+    "Your messages, stories and feed, in MORE.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos messages, vos stories et votre fil, dans MORE."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your messages, stories and feed, in MORE."
+          }
+        }
+      }
+    },
+    "Read your unread email and prepare replies.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lisez vos e-mails non lus et préparez vos réponses."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read your unread email and prepare replies."
+          }
+        }
+      }
+    },
     "Choose what you want to bring into your morning.": {
       "localizations": {
         "fr": {
