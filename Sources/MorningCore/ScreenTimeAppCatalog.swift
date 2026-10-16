@@ -168,6 +168,7 @@ public extension ScreenTimeAppCatalog {
     static func routineTarget(for bundleIdentifier: String) -> RoutineStepTarget? {
         let app: StepApp
         switch bundleIdentifier {
+        case "com.burbn.instagram": return .inAppWeb(site: WebMorningSite.instagram.table.startURL)
         case "com.google.Gmail": return .inAppWeb(site: WebMorningSite.gmail.table.startURL)
         case "com.zhiliaoapp.musically": return .inAppWeb(site: WebMorningSite.tiktok.table.startURL)
         case "com.atebits.Tweetie2": return .inAppWeb(site: WebMorningSite.twitter.table.startURL)
@@ -177,7 +178,6 @@ public extension ScreenTimeAppCatalog {
         case "com.apple.MobileSMS": app = .messages
         case "com.apple.mobilemail": app = .mail
         case "net.whatsapp.WhatsApp": app = .whatsapp
-        case "com.burbn.instagram": app = .instagram
         case "com.apple.mobilecal": app = .calendar
         case "com.apple.Maps": app = .maps
         default: return nil

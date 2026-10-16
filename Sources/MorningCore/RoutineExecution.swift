@@ -169,7 +169,7 @@ public struct RoutineStepExecutionRecap: Identifiable, Equatable, Sendable {
 public extension RoutineStep {
     var executionDescription: String {
         let service: String?
-        switch target {
+        switch target?.routineExecutionTarget {
         case let .inAppWeb(url): service = WebMorningSite(url: url)?.displayName ?? url.host
         case let .externalApp(app, _): service = app.displayName
         case let .shortcut(name, _): service = "Shortcuts · \(name)"
@@ -183,6 +183,9 @@ public extension RoutineStep {
     }
     private var operationDescription: String {
         let fr = AppLanguage.isFrench
+        if case .externalApp = target, case .inAppWeb = target?.routineExecutionTarget {
+            return fr ? "Ouvrir la page ; navigation manuelle." : "Open the page; browse yourself."
+        }
         if case .inAppWeb = target {
             guard let webBehavior else { return fr ? "Ouvrir la page ; navigation manuelle." : "Open the page; browse yourself." }
             let behavior: String
