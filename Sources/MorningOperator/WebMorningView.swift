@@ -93,7 +93,7 @@ struct WebMorningView: View {
         .background(MorningPaper(showsSun: false))
         .foregroundStyle(MorningStyle.ink)
         .tint(MorningStyle.accent)
-        .sheet(isPresented: $showingAbout) { about }
+        .morningSheet(isPresented: $showingAbout) { about }
         .onAppear {
             controller.onExecutionEvent = onExecutionEvent
             controller.executionIsAuthorized = executionIsAuthorized
@@ -102,7 +102,7 @@ struct WebMorningView: View {
             if site != .gmail { controller.startIfNeeded() }
             controller.actionsEnabled = isStepActive && scenePhase == .active
             controller.learningAllowed = learningOnly && scenePhase == .active
-            if site != .gmail && executionPlan == nil && !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
+            if site != .gmail && stepEndsAt == nil && executionPlan == nil && !explained && onSignInReady == nil && !learningOnly { showingAbout = true }
         }
         .onChange(of: scenePhase) { _, phase in
             controller.actionsEnabled = isStepActive && phase == .active && !showingAbout

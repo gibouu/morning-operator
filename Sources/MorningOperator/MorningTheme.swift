@@ -17,6 +17,12 @@ final class MorningThemeClock {
 
     private(set) var blend: MorningPhaseBlend
     private(set) var celestial: MorningCelestialScene
+    var brandAppearance: MorningBrandAppearance {
+        .resolve(moonOpacity: celestial.moon.opacity)
+    }
+    var brandAccessibilityValue: String {
+        AppLanguage.localized(brandAppearance == .night ? "Night" : "Day")
+    }
     private(set) var solar: MorningSolarDay = .fixed
     private(set) var location: WeatherLocation?
     private(set) var weatherScene: MorningWeatherScene?
@@ -419,5 +425,43 @@ struct MorningQuietLines: View {
         }
         .accessibilityHidden(true)
         .allowsHitTesting(false)
+    }
+}
+
+
+/// The clock stays live before entry, in every screen and while a sheet is open.
+struct MorningBrandClockLifecycle: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var enteredBackground = false
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                while !Task.isCancelled {
+                    MorningThemeClock.shared.refresh()
+                    do { try await Task.sleep(for: .seconds(30)) } catch { return }
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background { enteredBackground = true }
+                guard phase == .active else { return }
+                #if DEBUG
+                let arguments = ProcessInfo.processInfo.arguments
+                if enteredBackground, arguments.contains("--ui-testing"), arguments.contains("--fixture-mode"),
+                   arguments.contains("--ui-testing-brand-night-on-return") {
+                    MorningThemeClock.shared.pinnedPhase = .night
+                }
+                #endif
+                MorningThemeClock.shared.refresh()
+            }
+            #if os(iOS)
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                MorningThemeClock.shared.refresh()
+            }
+            #endif
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                MorningThemeClock.shared.refresh()
+            }
     }
 }

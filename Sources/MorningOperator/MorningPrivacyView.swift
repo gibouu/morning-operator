@@ -86,7 +86,7 @@ struct MorningPrivacyView: View {
         .navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(store.privacyBlocksWork)
         .interactiveDismissDisabled(store.privacyBlocksWork)
-        .sheet(isPresented: $confirmingRemoval, onDismiss: {
+        .morningSheet(isPresented: $confirmingRemoval, onDismiss: {
             // Start only after the confirmation's native presentation has closed.
             // Fast success/failure must not strand an alert over changing state.
             guard removalApproved else { return }

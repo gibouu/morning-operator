@@ -3152,6 +3152,54 @@
           }
         }
       }
+    },
+    "This moment is in progress.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment est en cours."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This moment is in progress."
+          }
+        }
+      }
+    },
+    "Preparing this moment…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je prépare ce moment…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing this moment…"
+          }
+        }
+      }
+    },
+    "This moment needs your participation. Say next when you’re ready.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce moment demande votre participation. Dites suivant quand vous êtes prêt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This moment needs your participation. Say next when you’re ready."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

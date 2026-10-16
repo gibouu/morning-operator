@@ -38,6 +38,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSSupportsLiveActivities</key>
@@ -88,9 +90,13 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>MORE uses your current location while open for local weather and a sky that follows the sun. An approximate location is enough.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>MORE reads only the sleep, optional steps, resting heart rate, heart rate variability (SDNN) and breathing rate you explicitly choose for your morning. Readings stay on this iPhone unless you start the optional online conversation. MORE never writes Health data.</string>
+	<string>MORE reads only the sleep, optional steps, resting heart rate, heart rate variability (SDNN) and breathing rate you explicitly choose for your morning. Readings stay on this iPhone unless you choose online reading aloud. MORE never writes Health data.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>MORE uses HealthKit to read the sleep and health information you choose for your morning briefing. MORE does not add or change Health data.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>MORE uses your camera only when you choose to take a photo or video on a page in its in-app browser.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Voice listening is local by default so you can interrupt MORE or ask a question during your morning. If you choose ElevenLabs conversation, your microphone audio is sent to ElevenLabs. Listening stops when you end the morning or leave the app.</string>
+	<string>MORE listens on this iPhone so you can interrupt or ask a question during your morning. Listening stops when you end the morning or leave the app.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>MORE transcribes your words on this iPhone to show live captions and understand your voice commands and drafts.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>

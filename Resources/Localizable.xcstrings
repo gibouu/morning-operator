@@ -11277,6 +11277,23 @@
         }
       }
     },
+    "Live conversation is unavailable in this beta. Local voice commands and reading aloud remain available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live conversation is unavailable in this beta. Local voice commands and reading aloud remain available."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation en direct est indisponible dans cette bêta. Les commandes vocales locales et la lecture à voix haute restent disponibles."
+          }
+        }
+      }
+    },
     "Local data removal needs attention. Open Privacy to finish it.": {
       "localizations": {
         "en": {
@@ -27146,6 +27163,120 @@
           "stringUnit": {
             "state": "translated",
             "value": "L’App Store est indisponible pour le moment. Vous pouvez continuer gratuitement ou réessayer plus tard."
+          }
+        }
+      }
+    },
+    "MORE finds your first app use after a long break and uses recorded sleep when Health is connected.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE finds your first app use after a long break and uses recorded sleep when Health is connected."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE repère vos premiers usages après une longue pause et utilise votre sommeil enregistré lorsque Santé est connecté."
+          }
+        }
+      }
+    },
+    "Morning: %@ – %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning: %1$@ – %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Matin : %1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uniquement ce créneau du matin. Ordre et minutes estimés à partir des heures disponibles ; les périodes absentes restent inconnues."
+          }
+        }
+      }
+    },
+    "Recorded sleep: %@ – %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorded sleep: %1$@ – %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommeil enregistré : %1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "Your first moments of the morning": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your first moments of the morning"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos premiers moments du matin"
+          }
+        }
+      }
+    },
+    "Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Day"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour"
+          }
+        }
+      }
+    },
+    "Night": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Night"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuit"
           }
         }
       }

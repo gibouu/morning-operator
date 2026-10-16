@@ -88,7 +88,11 @@ struct MorningHomePlaybackView: View {
             return opening.briefText ?? opening.opening?.displayText
                 ?? (french ? "Je prépare votre journée…" : "Preparing your day…")
         }
-        return store.connectedActionStatus ?? store.currentStep?.detail ?? ""
+        if let status = store.connectedActionStatus { return status }
+        if let step = store.currentStep, let document = store.preparedBriefing(for: step) {
+            return MorningAppStepExecutor.text(for: step.automation, in: document)
+        }
+        return store.currentStep?.executionPresentationText() ?? ""
     }
     private var caption: String {
         guard scenePhase != .background, !store.privacyBlocksWork else { return "" }
@@ -362,7 +366,11 @@ struct MorningRoutineControlsView: View {
                     : "Choose a message to review. You can also prepare a note to yourself or continue your morning."
             }
         }
-        return store.connectedActionStatus ?? store.currentStep?.detail ?? ""
+        if let status = store.connectedActionStatus { return status }
+        if let step = store.currentStep, let document = store.preparedBriefing(for: step) {
+            return MorningAppStepExecutor.text(for: step.automation, in: document)
+        }
+        return store.currentStep?.detail ?? ""
     }
 
     var body: some View {
@@ -419,7 +427,7 @@ struct MorningRoutineControlsView: View {
         .onChange(of: store.sessionActive) { _, active in if !active { showingDetails = false } }
         .onChange(of: store.dataGeneration) { _, _ in showingDetails = false }
         .onDisappear { store.morningDetailPresented = false }
-        .sheet(isPresented: $showingDetails) { interaction }
+        .morningSheet(isPresented: $showingDetails) { interaction }
     }
 
     private var interaction: some View {

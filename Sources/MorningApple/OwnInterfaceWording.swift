@@ -372,14 +372,21 @@ enum OwnInterfaceWording {
             shown("Import routine", fr: "Importer une routine")
         ]),
         Screen(name: "Screen Time", copy: [
-            shown("Start with your app use", fr: "Commencez par votre usage des apps"),
-            shown("Connect Screen Time, then show MORE a moment of your morning.", fr: "Connectez Temps d’écran, puis montrez un moment de votre matinée à MORE.")
+            shown("Your first moments of the morning", fr: "Vos premiers moments du matin",
+                  earlier: "Start with your app use", "Commencez par votre usage des apps"),
+            shown("MORE finds your first app use after a long break and uses recorded sleep when Health is connected.",
+                  fr: "MORE repère vos premiers usages après une longue pause et utilise votre sommeil enregistré lorsque Santé est connecté.",
+                  earlier: "Connect Screen Time, then show MORE a moment of your morning.",
+                  "Connectez Temps d’écran, puis montrez un moment de votre matinée à MORE."),
+            shown("Only this morning window. Order and minutes are estimated from available hourly data; missing periods stay unknown.",
+                  fr: "Uniquement ce créneau du matin. Ordre et minutes estimés à partir des heures disponibles ; les périodes absentes restent inconnues.")
         ], controls: [
             shown("Connect Screen Time", fr: "Connecter Temps d’écran"),
             shown("What Screen Time can show", fr: "Ce que montre Temps d’écran")
         ]),
         Screen(name: "Screen Time review", copy: [
-            shown("Your morning, from Screen Time", fr: "Votre matin, d’après Temps d’écran"),
+            shown("Here is what your morning looks like.", fr: "Voici à quoi ressemble votre matin.",
+                  earlier: "Your morning, from Screen Time", "Votre matin, d’après Temps d’écran"),
             shown("Your current routine stays ready until you approve. Approving replaces it with the moments you keep here.",
                   fr: "Votre routine actuelle reste prête jusqu’à votre accord. Approuver la remplace par les moments gardés ici.",
                   earlier: "Your current routine stays ready until you approve. Approving replaces it with the apps you keep here.",
@@ -915,7 +922,7 @@ enum OwnInterfaceWording {
             shown("Kept by your choice", fr: "Gardé selon votre choix"),
             shown("Your saved timing choice", fr: "Votre choix de durée enregistré"),
             shown("Selected observations", fr: "Observations sélectionnées"),
-            shown("About this suggestion", fr: "À propos de cette suggestion"),
+            shown("About this suggestion", fr: "À propos de cette proposition", earlier: "À propos de cette suggestion"),
             shown("Suggestion no longer available", fr: "Suggestion plus disponible"),
             shown("Your next morning", fr: "Votre prochaine matinée")
         ]),

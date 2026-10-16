@@ -105,7 +105,7 @@ struct APIConnectionsView: View {
             guard service.isConfigured, !privacyBlocked else { return }
             launch { try await refresh() }
         }
-        .sheet(item: $selectedConnection) { connection in
+        .morningSheet(item: $selectedConnection) { connection in
             NavigationStack {
                 APIActionPickerView(service: service, connection: connection, accountName: accountTitle(connection), onAddToRoutine: onAddToRoutine)
             }

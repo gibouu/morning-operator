@@ -404,7 +404,7 @@ struct RoutineReviewEditor: View {
                     .padding(20).background(MorningStyle.background)
                 }
             }
-            .sheet(item: $editingStep) { step in
+            .morningSheet(item: $editingStep) { step in
                 let assignment = editingAssignment
                 StepEditor(store: store, step: step, preference: store.savedPreference(for: step), assignmentContext: assignment, onSave: { edited, keep, timing in
                     store.saveStep(edited, keepInSuggestions: keep, keepDuration: timing, assignmentContext: assignment)
