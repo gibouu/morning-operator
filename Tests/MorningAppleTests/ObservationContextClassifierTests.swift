@@ -431,16 +431,20 @@ struct ObservationContextClassifierTests {
         }
         let schemas = objects(object)
         let keys = Set((0..<count).map { "f\($0)" })
-        #expect(schemas.contains {
-            guard let properties = $0["properties"] as? [String: Any], let required = $0["required"] as? [String] else { return false }
-            return Set(properties.keys) == keys && Set(required) == keys
-        })
+        let root = try #require(object as? [String: Any])
+        let properties = try #require(root["properties"] as? [String: Any])
+        let required = try #require(root["required"] as? [String])
+        #expect(Set(properties.keys) == keys && Set(required) == keys && required.count == count)
+        #expect(root["additionalProperties"] as? Bool == false)
+        let definitions = root["$defs"] as? [String: Any] ?? [:]
         let serialized = String(decoding: encoded, as: UTF8.self)
         #expect(!serialized.contains("sampleID") && !serialized.contains("\"frames\""))
         #expect(frames.allSatisfy { !serialized.contains($0.id.uuidString) })
         for slot in try ObservationContextFrameSlots.make(batch: batch, catalog: []) {
+            let field = try #require(properties[slot.key] as? [String: Any])
             let diagnostic: [String: Any] = [
                 "slot": slot.key, "expectedOptionIDs": slot.options.map(\.id),
+                "fieldSchema": field,
                 "serializedEnums": schemas.compactMap { $0["enum"] },
                 "choiceShapes": schemas.filter { $0["const"] != nil || $0["anyOf"] != nil },
                 // This schema contains only the fixed synthetic fixture above.
@@ -448,9 +452,62 @@ struct ObservationContextClassifierTests {
                 "serializedSchema": object
             ]
             let message = try JSONSerialization.data(withJSONObject: diagnostic, options: [.sortedKeys])
-            #expect(schemas.contains { ($0["enum"] as? [String]) == slot.options.map(\.id) },
+            #expect(contextSchemaPermitsExactly(slot.options.map(\.id), field: field, definitions: definitions),
                 Comment(rawValue: "CONTEXT_SCHEMA_DIAGNOSTIC " + String(decoding: message, as: UTF8.self)))
         }
+    }
+
+    @Test("SDK enum and singleton-union encodings must permit exactly the supplied finite choices")
+    func finiteSchemaChoicesStayExact() {
+        let expected = ["unknown", "a1", "h1"]
+        let enumeration: [String: Any] = ["type": "string", "enum": expected]
+        let union: [String: Any] = ["anyOf": expected.reversed().map { ["type": "string", "enum": [$0]] }]
+        #expect(contextSchemaPermitsExactly(expected, field: enumeration))
+        #expect(contextSchemaPermitsExactly(expected, field: union))
+        #expect(contextSchemaPermitsExactly(expected, field: ["$ref": "#/$defs/Choices"], definitions: ["Choices": union]))
+        for invalid: [String: Any] in [
+            ["type": "string", "enum": expected + ["extra"]],
+            ["type": "string", "enum": Array(expected.dropLast())],
+            ["type": "string", "enum": expected + ["a1"]],
+            ["anyOf": [enumeration, ["type": "string"]]],
+            ["anyOf": [enumeration, ["const": "extra"]]],
+            ["anyOf": [enumeration, ["type": "null"]]],
+            ["type": "number", "enum": expected],
+            ["$ref": "#/$defs/Missing"],
+            ["$ref": "https://example.invalid/schema"]
+        ] {
+            #expect(!contextSchemaPermitsExactly(expected, field: invalid))
+        }
+    }
+
+    /// SDK 26.6 emits anyOf of singleton enums; SDK 27 emits one enum. Inspect
+    /// the actual frame field, refusing open branches or unrecognized schemas.
+    private func contextSchemaPermitsExactly(_ expected: [String], field: [String: Any],
+                                            definitions: [String: Any] = [:]) -> Bool {
+        func values(_ schema: [String: Any], depth: Int = 0) -> [String]? {
+            let allowed: Set<String> = ["type", "title", "description", "$ref", "enum", "const", "anyOf"]
+            guard depth < 8, Set(schema.keys).isSubset(of: allowed),
+                  schema["type"] == nil || schema["type"] as? String == "string",
+                  ["$ref", "enum", "const", "anyOf"].filter({ schema[$0] != nil }).count == 1 else { return nil }
+            if let reference = schema["$ref"] as? String {
+                let prefix = "#/$defs/"
+                guard reference.hasPrefix(prefix) else { return nil }
+                let name = String(reference.dropFirst(prefix.count))
+                guard !name.isEmpty, !name.contains("/"), let definition = definitions[name] as? [String: Any] else { return nil }
+                return values(definition, depth: depth + 1)
+            }
+            if let enumeration = schema["enum"] as? [String] { return enumeration.isEmpty ? nil : enumeration }
+            if let constant = schema["const"] as? String { return [constant] }
+            guard let branches = schema["anyOf"] as? [[String: Any]], !branches.isEmpty else { return nil }
+            var result: [String] = []
+            for branch in branches {
+                guard let choices = values(branch, depth: depth + 1) else { return nil }
+                result += choices
+            }
+            return result
+        }
+        guard !expected.isEmpty, Set(expected).count == expected.count, let actual = values(field) else { return false }
+        return actual.count == expected.count && Set(actual) == Set(expected)
     }
 
     @Test("Guided source candidates retain whole-line punctuation, Unicode bytes and exact multi-line ambiguity")
