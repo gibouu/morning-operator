@@ -49,7 +49,7 @@ public final class GmailMorningConversation {
     public var canSendSelfMessage: Bool { isComposingSelfMessage && state == .reviewingSelfMessage && selfMessageDraft != nil && !sendReviewRevoked }
     public var replyWasReviewedOnScreen: Bool {
         guard let review = screenReplyReview, state == .reviewingReply, !isComposingSelfMessage,
-              lastSendOutcome == nil, review.context == context, review.attempt == attempt,
+              lastSendOutcome == nil, review.context == context,
               review.messageID == selectedMessageID, review.recipient == recipient else { return false }
         return review.body == Data(draftText.utf8)
     }
@@ -101,7 +101,7 @@ public final class GmailMorningConversation {
     private var questionID: UUID?
     private var sendReviewRevoked = false
     private struct ScreenReplyReview {
-        let context: MorningExecutionID, attempt: UUID, messageID: String, recipient: String, body: Data
+        let context: MorningExecutionID, messageID: String, recipient: String, body: Data
     }
     private var screenReplyReview: ScreenReplyReview?
 
@@ -372,7 +372,7 @@ public final class GmailMorningConversation {
               let messageID = selectedMessageID, self.recipient == recipient, !body.isEmpty,
               Data(body.utf8) == Data(draftText.utf8) else { return false }
         do { try requireCurrent(attempt) } catch { return false }
-        screenReplyReview = .init(context: context, attempt: attempt, messageID: messageID, recipient: recipient, body: Data(body.utf8))
+        screenReplyReview = .init(context: context, messageID: messageID, recipient: recipient, body: Data(body.utf8))
         sendReviewRevoked = false
         return replyWasReviewedOnScreen
     }
@@ -405,6 +405,7 @@ public final class GmailMorningConversation {
         guard self.context == context, !draftText.isEmpty, lastSendOutcome == nil,
               state != .sending, state != .uncertain, state != .completed else { return }
         cancel()
+        screenReplyReview = nil
         sendReviewRevoked = true
     }
 
