@@ -51,6 +51,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private let syntheticNewsRequested: Bool
     #if DEBUG
     @ObservationIgnored private let syntheticNewsHandler: SyntheticNewsSchemeHandler?
+    @ObservationIgnored private var syntheticNewsSnapshotObservation = ""
     private(set) var syntheticNewsRepeatCompletions = 0
     #endif
     var sourceLabel: String { syntheticNews == nil ? site.displayName : "SYNTHETIC Cedar News" }
@@ -59,7 +60,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var syntheticNewsDiagnostic: String {
         guard syntheticNews != nil, let context = routineContext else { return "" }
         #if DEBUG
-        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0) newsRepeatCompleted=\(syntheticNewsRepeatCompletions)"
+        return "syntheticNews=1 newsContext=\(context.sessionID)|\(context.routineVersionID)|\(context.stepID) resource=\(webView.url?.path ?? "none") articleParagraphs=\(articleText?.paragraphs.count ?? 0) localLoads=\(syntheticNewsHandler?.deliveryCount ?? 0) newsRepeatCompleted=\(syntheticNewsRepeatCompletions) retainedLinks=\(newsSnapshot?.links.count ?? 0) \(syntheticNewsSnapshotObservation)"
         #else
         return ""
         #endif
@@ -195,6 +196,9 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func retainNewsSnapshot(_ observation: WebMorningPageObservation) {
+        #if DEBUG
+        defer { recordSyntheticNewsSnapshotObservation(observation) }
+        #endif
         guard site == .news, let context = routineContext, let privacy = privacyAtCreation?.generation,
               let page = webView.url, let fingerprint = observation.fingerprint, let links = observation.articles else {
             newsSnapshot = nil; return
@@ -203,6 +207,24 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
             pageURL: page, fingerprint: fingerprint, links: links, syntheticNews: syntheticNews)
         if !needsArticleReturn && !articleBusy { articleMessage = nil; articleRefusal = nil }
     }
+
+    #if DEBUG
+    /// Last builder result plus live retainedLinks distinguishes admission from
+    /// later lifecycle clearing. Counts/codes only; no additional DOM query.
+    private func recordSyntheticNewsSnapshotObservation(_ observation: WebMorningPageObservation) {
+        guard let syntheticNews else { return }
+        let articles = observation.articles, page = webView.url
+        let admitted = articles?.filter { link in
+            page.map { WebArticlePolicy.permits(link.href, from: $0, syntheticNews: syntheticNews) } == true
+        }.count ?? 0
+        let unique = articles.map { Set($0.map(\.href)).count } ?? 0
+        let result: String
+        if articles == nil { result = "missingArticles" }
+        else if articles?.isEmpty == true { result = "emptyArticles" }
+        else { result = newsSnapshot == nil ? "invalidSnapshot" : "retained" }
+        syntheticNewsSnapshotObservation = "articlesParsed=\(articles?.count ?? -1) articlesAdmitted=\(admitted) articlesUnique=\(unique) snapshotContext=\(routineContext == nil ? 0 : 1) snapshotPrivacy=\(privacyAtCreation?.generation == nil ? 0 : 1) snapshotPage=\(page == nil ? 0 : 1) snapshotFingerprint=\(observation.fingerprint == nil ? 0 : 1) snapshotPageAllowed=\(page.map { WebArticlePolicy.isPage($0, syntheticNews: syntheticNews) } == true ? 1 : 0) lastSnapshotResult=\(result)"
+    }
+    #endif
 
     func cancelArticleWork() {
         articleRefusal = nil
