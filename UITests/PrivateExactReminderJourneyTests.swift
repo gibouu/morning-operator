@@ -166,8 +166,12 @@ import MorningCore
         day.tap()
         closeNativePickerIfNeeded(app)
         visible(picker, id: "nativeMoment.date", in: app)
+        // The aggregate date/time control also includes a time in its value;
+        // only the standalone native time button opens the time wheels.
+        let timePattern = "^[0-9]{1,2}:[0-9]{2}(?:\\s*[AP]M)?$"
         guard let time = picker.buttons.allElementsBoundByIndex.first(where: {
-            $0.isHittable && ($0.label + " " + ($0.value as? String ?? "")).range(of: "[0-9]{1,2}:[0-9]{2}", options: .regularExpression) != nil
+            $0.isHittable && ($0.label.range(of: timePattern, options: .regularExpression) != nil ||
+                ($0.value as? String ?? "").range(of: timePattern, options: .regularExpression) != nil)
         }) else { fail("exact-reminder-native-time-control-unavailable", app); throw ProofError.unavailable }
         time.tap()
         let timeWheels = app.pickerWheels.allElementsBoundByIndex.filter(\.isHittable)
