@@ -213,19 +213,19 @@ final class QuietMorningTests: XCTestCase {
         XCTAssertFalse(last.isEnabled, "A running session locks the saved routine's rows.")
     }
 
-    func testVoiceEntryPausesBeforeListeningAndKeepsTouchFallback() {
+    func testAppleVoiceBetaKeepsPausedMorningAndTouchFallback() {
         let app = launch(["--ui-testing-approved", "--fixture-mode"])
         MorningUITestNavigation.tapButton("run.start", in: app)
         MorningUITestNavigation.tapButton("run.pause", in: app)
         MorningUITestNavigation.openSettings(in: app)
-        MorningUITestNavigation.tapButton("setup.conversation", in: app)
-        XCTAssertTrue(app.buttons["cloudVoice.start"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["cloudVoice.start"].isEnabled)
-        XCTAssertTrue(app.staticTexts["cloudVoice.consent"].exists)
+        let unavailable = app.staticTexts["setup.conversationUnavailable"]
+        scrollTo(unavailable, in: app)
+        XCTAssertTrue(unavailable.label.contains("Local voice commands and reading aloud remain available."))
+        XCTAssertFalse(app.buttons["setup.conversation"].exists)
+        XCTAssertFalse(app.buttons["cloudVoice.start"].exists)
         XCTAssertFalse(app.buttons["cloudVoice.stop"].exists)
-        XCTAssertEqual(app.alerts.count, 0, "Reading the voice choice must not request microphone access.")
-        attach("more-explicit-voice-turn-before-permission", app)
-        app.navigationBars.buttons["Done"].tap()
+        XCTAssertEqual(app.alerts.count, 0, "Reading the beta limit must not request microphone access.")
+        attach("more-apple-voice-beta-touch-fallback", app)
         MorningUITestNavigation.selectTab("Morning", in: app)
         MorningUITestNavigation.assertSession(state: "paused", step: "Your morning", in: app)
         MorningUITestNavigation.tapButton("run.resume", in: app)

@@ -54,7 +54,6 @@
 		3D25D7E50AB57A74D84B2009 /* QuietMorningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3F3A89763BAB2B46F3EEDC /* QuietMorningTests.swift */; };
 		3DAD6D551A8D23872EB45AEF /* MorningStore+UITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BD6C7D6B53E7A1D66705679 /* MorningStore+UITestObservation.swift */; };
 		3E8251A48B7A61848C80FF10 /* MorningCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BCA4BB59BEA5A48B77C4A6C /* MorningCore */; };
-		3EE3256799B2B7ADF96BB9B2 /* ElevenLabs in Frameworks */ = {isa = PBXBuildFile; productRef = C07DBDDC866F1942020852E0 /* ElevenLabs */; };
 		3F0C46DBA6BCE559536E80F8 /* MorningDeveloperAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68C0FA21E9EBDF5E90EC399 /* MorningDeveloperAccessTests.swift */; };
 		4224C21EED14027F5FF4A704 /* PrivateNewsReadingJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50299F44C8CBD40AA4CA8045 /* PrivateNewsReadingJourneyTests.swift */; };
 		451BF1167D169184EAA7F0C4 /* PlanBSystemDeviceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698E5DD30A2CEC29D8BD5C75 /* PlanBSystemDeviceTests.swift */; };
@@ -109,7 +108,7 @@
 		825B43B445A3BADB2147F675 /* ObservationNarrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446C7E5A7C1248176AF21D8B /* ObservationNarrationView.swift */; };
 		8260A70AA4C4AB40C7E95A16 /* MORE.storekit in Resources */ = {isa = PBXBuildFile; fileRef = B72BCC24DAA442D01E99761D /* MORE.storekit */; };
 		83694FFB1D487DA12331A735 /* AddStepTimeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E00F7E37441A95A894E9C5 /* AddStepTimeIntent.swift */; };
-		8385128C5855B19838E62641 /* ElevenLabsMorningVoiceTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF7EE11B7C6F7F5B6F6180E /* ElevenLabsMorningVoiceTransport.swift */; };
+		8385128C5855B19838E62641 /* UnavailableMorningVoiceTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF7EE11B7C6F7F5B6F6180E /* UnavailableMorningVoiceTransport.swift */; };
 		8706D4C28912FC25A45E3D1E /* RecordedObservationImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35191AAE6C75EE39494AC52A /* RecordedObservationImportTests.swift */; };
 		874DA3D9D2981D8BDC13F924 /* MorningLiveDemo in Frameworks */ = {isa = PBXBuildFile; productRef = 86B3ADB070A450C8A2D02302 /* MorningLiveDemo */; };
 		8804FDDEF738D87906FE866D /* RoutineAutomationJourneyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F649D50F4BCF527213FB411 /* RoutineAutomationJourneyTests.swift */; };
@@ -446,7 +445,7 @@
 		FAE1F21130C564BAC195962C /* MorningDockGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningDockGlyph.swift; sourceTree = "<group>"; };
 		FBE47DE39B2C3158051571E6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		FC47A69EEDB044D3AB6C6C0B /* WeeklyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewView.swift; sourceTree = "<group>"; };
-		FDF7EE11B7C6F7F5B6F6180E /* ElevenLabsMorningVoiceTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsMorningVoiceTransport.swift; sourceTree = "<group>"; };
+		FDF7EE11B7C6F7F5B6F6180E /* UnavailableMorningVoiceTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnavailableMorningVoiceTransport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -467,7 +466,6 @@
 				5680C59276CBE799A48EED85 /* MorningApple in Frameworks */,
 				D35D9E0A4F718DEBF9D76994 /* MorningHealth in Frameworks */,
 				874DA3D9D2981D8BDC13F924 /* MorningLiveDemo in Frameworks */,
-				3EE3256799B2B7ADF96BB9B2 /* ElevenLabs in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -638,7 +636,7 @@
 				58BE89D50EC60DF33869909E /* CalendlyDaySetupView.swift */,
 				838AC4F9BDABF3096F92B549 /* CalendlyDayUITestFixture.swift */,
 				F52F4FBC1FF6A6556E0BB292 /* DesignSystem.swift */,
-				FDF7EE11B7C6F7F5B6F6180E /* ElevenLabsMorningVoiceTransport.swift */,
+				FDF7EE11B7C6F7F5B6F6180E /* UnavailableMorningVoiceTransport.swift */,
 				0ABD06293C70F51D07609734 /* EvidenceRetentionUITestFixture.swift */,
 				E3A4E32627DA271ED0E49A94 /* GmailConnectionController.swift */,
 				C5087BDE08DBD2E7273AECA0 /* GmailConnectionView.swift */,
@@ -858,7 +856,6 @@
 				B7FD4DEE56FB0CA68AC509D1 /* MorningApple */,
 				0BB633FF32AB49511665A80F /* MorningHealth */,
 				86B3ADB070A450C8A2D02302 /* MorningLiveDemo */,
-				C07DBDDC866F1942020852E0 /* ElevenLabs */,
 			);
 			productName = MorningOperator;
 			productReference = 823DC3878AEC67AE33FE7B03 /* MorningOperator.app */;
@@ -945,7 +942,6 @@
 			mainGroup = 21C25D62EAF57DB69918D3E8;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				85227F80051126AC80CB75E5 /* XCRemoteSwiftPackageReference "elevenlabs-swift-sdk" */,
 				9BFD73358F753A6F5C19A097 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1099,7 +1095,7 @@
 				E70D9CF7111B180C6A914753 /* CalendlyDaySetupView.swift in Sources */,
 				807D89549417D22C9971291F /* CalendlyDayUITestFixture.swift in Sources */,
 				9A8B244DD216406D67AD84A3 /* DesignSystem.swift in Sources */,
-				8385128C5855B19838E62641 /* ElevenLabsMorningVoiceTransport.swift in Sources */,
+				8385128C5855B19838E62641 /* UnavailableMorningVoiceTransport.swift in Sources */,
 				8C070F96110E5F2ED5EEC28A /* EvidenceRetentionUITestFixture.swift in Sources */,
 				BC03B0A17545825849E082F4 /* GmailConnectionController.swift in Sources */,
 				8CD682C5DF97F2CF8EC3D2CE /* GmailConnectionView.swift in Sources */,
@@ -1701,17 +1697,6 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		85227F80051126AC80CB75E5 /* XCRemoteSwiftPackageReference "elevenlabs-swift-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/elevenlabs/elevenlabs-swift-sdk.git";
-			requirement = {
-				kind = exactVersion;
-				version = 3.4.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		0BB633FF32AB49511665A80F /* MorningHealth */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1740,11 +1725,6 @@
 		B7FD4DEE56FB0CA68AC509D1 /* MorningApple */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MorningApple;
-		};
-		C07DBDDC866F1942020852E0 /* ElevenLabs */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 85227F80051126AC80CB75E5 /* XCRemoteSwiftPackageReference "elevenlabs-swift-sdk" */;
-			productName = ElevenLabs;
 		};
 		EBD538559CBDD64241C49056 /* MorningCore */ = {
 			isa = XCSwiftPackageProductDependency;
