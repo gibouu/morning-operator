@@ -52,17 +52,21 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
     public var webLikesAllowed: Bool?
     /// Retained sample provenance, independent of editable wording or action authority.
     public var syntheticEvidence: Bool?
+    /// Human source names reviewed in setup; usable only for this exact target.
+    public var sourceLabel: RoutineStepSourceLabel?
+    public var reviewedSourceLabel: String? { sourceLabel?.text(for: target) }
     public init(id: UUID = UUID(), title: String, detail: String = "", kind: StepKind = .custom,
                 durationMinutes: Int = 5, isRequired: Bool = false, automation: RoutineStepAutomation? = nil,
                 observationReference: RoutineObservationReference? = nil, target: RoutineStepTarget? = nil,
                 webBehavior: WebMorningBehavior? = nil, webLikesAllowed: Bool? = nil,
-                syntheticEvidence: Bool? = nil) {
+                syntheticEvidence: Bool? = nil, sourceLabel: RoutineStepSourceLabel? = nil) {
         self.id = id; self.title = title; self.detail = detail; self.kind = kind
         self.durationMinutes = Self.bounded(durationMinutes); self.isRequired = isRequired
         self.automation = automation; self.observationReference = observationReference
         self.target = target
         self.webBehavior = webBehavior; self.webLikesAllowed = webLikesAllowed
         self.syntheticEvidence = syntheticEvidence
+        self.sourceLabel = sourceLabel
     }
 
     private static func bounded(_ minutes: Int) -> Int {
@@ -91,6 +95,30 @@ public struct RoutineStep: Codable, Sendable, Identifiable, Equatable {
         webBehavior = try values.decodeIfPresent(WebMorningBehavior.self, forKey: .webBehavior)
         webLikesAllowed = try values.decodeIfPresent(Bool.self, forKey: .webLikesAllowed)
         syntheticEvidence = try values.decodeIfPresent(Bool.self, forKey: .syntheticEvidence)
+        sourceLabel = try values.decodeIfPresent(RoutineStepSourceLabel.self, forKey: .sourceLabel)
+    }
+}
+
+/// Display metadata, never an execution destination or proof of provider access.
+public struct RoutineStepSourceLabel: Codable, Sendable, Equatable {
+    public let target: RoutineStepTarget
+    public let label: String
+    public init?(target: RoutineStepTarget, label: String) {
+        guard !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              label.count <= 1_000, label.utf8.count <= 4_000,
+              !label.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
+              (try? target.validateIntegration()) != nil else { return nil }
+        self.target = target; self.label = label
+    }
+    public func text(for currentTarget: RoutineStepTarget?) -> String? { currentTarget == target ? label : nil }
+    private enum CodingKeys: String, CodingKey { case target, label }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        guard let value = try Self(target: values.decode(RoutineStepTarget.self, forKey: .target),
+                                   label: values.decode(String.self, forKey: .label)) else {
+            throw DecodingError.dataCorruptedError(forKey: .label, in: values, debugDescription: "Invalid source display label.")
+        }
+        self = value
     }
 }
 

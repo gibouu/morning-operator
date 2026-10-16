@@ -140,6 +140,12 @@ import MorningCore
         app.launch(); try requireWorkspace(workspace, app)
         openRoutine(app)
         XCTAssertFalse(app.buttons["routine.approve"].exists, "Saved UI approval, never a launch seeder, authorizes the run.")
+        tap("routine.step.2", app)
+        XCTAssertTrue(text("step.selectedSlackSource", app).label.contains("SYNTHETIC-preparation-du-matin-canal-membre-au-nom-long"),
+                      "The human source remains reviewable after Save and relaunch, separately from the note.")
+        XCTAssertEqual(app.textFields["step.name"].value as? String, titles[2])
+        XCTAssertEqual(element("step.duration", app).value as? String, String(minutes[2]))
+        tap("Cancel", app)
         tap("routine.step.7", app)
         XCTAssertEqual(element("step.keepFuture", app).value as? String, "1", "The personal Keep was explicitly saved in UI.")
         tap("Cancel", app)
@@ -243,7 +249,7 @@ import MorningCore
     private func configureOperation(_ index: Int, action: String, minutes: Int, detail: String,
                                     keep: Bool = false, in app: XCUIApplication) {
         tap("routine.step.\(index)", app)
-        replace(app.textFields["Step details"], with: detail, in: app)
+        replace(app.textFields["Step details"], id: "Step details", with: detail, in: app)
         XCTAssertEqual(element("step.duration", app).value as? String, String(minutes))
         chooseAction(action, app)
         if keep {
@@ -258,8 +264,10 @@ import MorningCore
         XCTAssertTrue(button("routine.approve", app).isEnabled)
     }
 
-    private func replace(_ field: XCUIElement, with text: String, in app: XCUIApplication) {
-        scroll(field, id: field.label, in: app)
+    private func replace(_ field: XCUIElement, id: String, with text: String, in app: XCUIApplication) {
+        // Lazy Forms may not expose the field yet. Its known locator is safe to
+        // name diagnostics before scrolling; querying field.label is not.
+        scroll(field, id: id, in: app)
         // A long single-line value can leave the caret in its middle. Select
         // the real field contents through iOS editing, without counting AX text.
         field.tap()
@@ -522,7 +530,51 @@ import MorningCore
         let value = app.descendants(matching: .any).matching(identifier: id).firstMatch
         scroll(value, id: id, in: app); return value
     }
-    private func tap(_ id: String, _ app: XCUIApplication) { button(id, app).tap() }
+    private func tap(_ id: String, _ app: XCUIApplication) {
+        if id.hasPrefix("routine.step.") { openStep(id, in: app) }
+        else { button(id, app).tap() }
+    }
+    private func openStep(_ id: String, in app: XCUIApplication) {
+        let list = app.collectionViews["routine.editor"].firstMatch
+        let row = app.buttons[id].firstMatch
+        guard list.waitForExistence(timeout: 6) else {
+            captureFailure("long-ten-routine-list-absent", app); XCTFail("The real routine List must be open."); return
+        }
+        for down in [false, true] {
+            for _ in 0..<10 {
+                let frame = list.frame.intersection(app.frame)
+                // Bars define safe geometry; only the moment row is tapped.
+                let nav = app.navigationBars.allElementsBoundByIndex.last(where: {
+                    $0.exists && !$0.frame.isEmpty && $0.frame.minY.isFinite && $0.frame.maxY.isFinite && $0.frame.intersects(frame)
+                })
+                let approval = app.buttons["routine.approve"]
+                let top = max(frame.minY, nav?.frame.maxY ?? frame.minY) + 8
+                let footer = approval.exists && approval.frame.intersects(frame) ? approval.frame.minY : frame.maxY
+                let bottom = min(frame.maxY, footer) - 8
+                guard !frame.isNull, !frame.isInfinite,
+                      [frame.minX, frame.width, top, bottom].allSatisfy({ $0.isFinite }),
+                      frame.width > 100, bottom - top > 120 else {
+                    captureFailure("long-ten-routine-no-visible-row-region", app); XCTFail("No safe routine viewport."); return
+                }
+                let visible = CGRect(x: frame.minX, y: top, width: frame.width, height: bottom - top)
+                if row.exists && row.isHittable && !row.frame.isEmpty && visible.contains(row.frame) {
+                    row.tap()
+                    guard stepEditorForm(app).waitForExistence(timeout: 8) else {
+                        captureFailure("long-ten-editor-not-open-after-\(id)", app)
+                        XCTFail("Tapping the visible moment must open its real editor before any field is queried."); return
+                    }
+                    return
+                }
+                let high = visible.minY + visible.height * 0.2, low = visible.minY + visible.height * 0.8
+                let origin = list.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: visible.midX - list.frame.minX, dy: (down ? high : low) - list.frame.minY))
+                let end = origin.withOffset(CGVector(dx: visible.midX - list.frame.minX, dy: (down ? low : high) - list.frame.minY))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+        }
+        captureFailure("long-ten-row-not-fully-visible-\(id)", app)
+        XCTFail("The entire moment row must be above the approval footer before tapping it.")
+    }
     private func stepEditorForm(_ app: XCUIApplication) -> XCUIElement {
         app.collectionViews["step.editor.form"].firstMatch
     }

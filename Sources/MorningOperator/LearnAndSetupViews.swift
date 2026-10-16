@@ -623,8 +623,6 @@ struct StepEditor: View {
     @ViewState<Bool> private var choosingRemoval = false
     @ViewState<String?> private var saveError = nil
     @ViewState<Bool> private var choosingSlack = false
-    @ViewState<Bool> private var assignedSlack = false
-    @ViewState<String?> private var selectedSlackSummary = nil
     let assignmentContext: RoutineStepAssignmentContext?
     let onSave: (RoutineStep, Bool, Bool) -> Bool
     let onDelete: (Bool) -> Bool
@@ -712,8 +710,9 @@ struct StepEditor: View {
                         Button(AppLanguage.isFrench ? "Choisir un compte et un canal Slack" : "Choose a Slack account and channel") { choosingSlack = true }
                             .disabled(store.busy || store.sessionActive || store.privacyBlocksWork)
                             .accessibilityIdentifier("step.chooseSlack")
-                        if let selectedSlackSummary {
-                            Text(selectedSlackSummary).fixedSize(horizontal: false, vertical: true)
+                        if let sourceLabel = step.reviewedSourceLabel {
+                            Text(AppLanguage.isFrench ? "Source choisie" : "Selected source").font(.caption)
+                            Text(sourceLabel).fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier("step.selectedSlackSource")
                             Text(AppLanguage.isFrench ? "Votre note personnelle est conservée. Enregistrez, puis relisez et validez la routine."
                                 : "Your personal note is retained. Save, then review and approve the routine.")
@@ -761,7 +760,7 @@ struct StepEditor: View {
                         do { try edited.target?.validateIntegration() }
                         catch { saveError = error.moreDescription; return }
                         edited.title = edited.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if edited.automation != .savedObservation && !assignedSlack { edited.observationReference = nil }
+                        if edited.automation != .savedObservation && edited.reviewedSourceLabel == nil { edited.observationReference = nil }
                         if edited.target != nil { edited.automation = nil }
                         if case let .inAppWeb(url) = edited.target, let site = WebMorningSite(url: url), let behavior = edited.webBehavior {
                             guard WebMorningBehavior.availableBehaviors(for: site).contains(behavior) else {
@@ -799,11 +798,12 @@ struct StepEditor: View {
             }
             .sheet(isPresented: $choosingSlack) {
                 NavigationStack {
-                    SlackRoutineSetupView(store: store, assignmentContext: assignmentContext, onUse: { target, summary in
+                    SlackRoutineSetupView(store: store, assignmentContext: assignmentContext, onUse: { target, sourceLabel in
                         guard let assignmentContext else { return false }
                         do {
-                            step = try assignmentContext.assigning(target, to: step, routine: store.routine, generation: store.dataGeneration)
-                            selectedSlackSummary = summary; assignedSlack = true; choosingSlack = false
+                            step = try assignmentContext.assigning(target, to: step, routine: store.routine,
+                                generation: store.dataGeneration, sourceLabel: sourceLabel)
+                            choosingSlack = false
                             return true
                         } catch { saveError = error.moreDescription; return false }
                     })

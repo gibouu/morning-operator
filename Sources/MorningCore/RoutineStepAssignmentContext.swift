@@ -13,12 +13,13 @@ public struct RoutineStepAssignmentContext: Equatable, Sendable {
               routine.steps.filter({ $0.id == stepID }).count == 1 else { throw AssignmentError.changed }
     }
     public func assigning(_ target: RoutineStepTarget, to edited: RoutineStep,
-                          routine: RoutineVersion?, generation: UUID) throws -> RoutineStep {
+                          routine: RoutineVersion?, generation: UUID, sourceLabel: RoutineStepSourceLabel? = nil) throws -> RoutineStep {
         try validate(routine: routine, generation: generation)
         guard edited.id == stepID else { throw AssignmentError.changed }
         try target.validateIntegration()
         var result = edited
         result.target = target; result.automation = nil; result.webBehavior = nil; result.webLikesAllowed = nil
+        result.sourceLabel = sourceLabel
         return result
     }
     public func replacing(_ edited: RoutineStep, in routine: RoutineVersion?, generation: UUID) throws -> [RoutineStep] {

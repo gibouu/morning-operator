@@ -6,7 +6,7 @@ import MorningCore
 @MainActor struct SlackRoutineSetupView: View {
     @Bindable var store: MorningStore
     var assignmentContext: RoutineStepAssignmentContext? = nil
-    var onUse: ((RoutineStepTarget, String) -> Bool)? = nil
+    var onUse: ((RoutineStepTarget, RoutineStepSourceLabel) -> Bool)? = nil
     @Environment(\.locale) private var locale
     @Environment(\.scenePhase) private var scenePhase
     @State private var connections: [ComposioConnection] = []
@@ -203,7 +203,7 @@ import MorningCore
                 // The selected source only changes the editor's local copy. Save
                 // validates this pin again before creating an unapproved version.
                 let selection = try store.slackMomentSelection(connection: verifiedConnection, identity: current, channel: channel)
-                if onUse(selection.target, selection.summary) { added = true }
+                if onUse(selection.target, selection.sourceLabel) { added = true }
                 else { message = RoutineStepAssignmentContext.AssignmentError.changed.errorDescription }
             } else if store.addSlackMoment(connection: verifiedConnection, identity: current, channel: channel) {
                 added = true

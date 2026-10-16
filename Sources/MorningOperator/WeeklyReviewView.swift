@@ -427,6 +427,9 @@ struct RoutineReviewEditor: View {
                 Text(step.title).font(.raleway(.subheadline, .medium))
                 Text("\(step.durationMinutes) min · \(step.executionDescription)")
                     .font(.raleway(.caption)).foregroundStyle(MorningStyle.muted)
+                if let sourceLabel = step.reviewedSourceLabel {
+                    Text(sourceLabel).font(.footnote).fixedSize(horizontal: false, vertical: true)
+                }
                 if let target = step.target, target.integrationRoute == .api {
                     Text(step.detail).font(.footnote).foregroundStyle(MorningStyle.muted)
                     Text(RoutineConnectedReview.summary(for: target) ?? String(localized: "Review unavailable", bundle: AppLanguage.bundle(), locale: AppLanguage.locale))
