@@ -33,7 +33,8 @@ all with `no-store`. These guard checks made no generation call and do not yet
 prove native speech playback on this installation.
 
 Both native and API authentication now permit the standard shared sign-in
-session while retaining their callback, PKCE/state and ownership checks. New
+session while retaining their callback and ownership checks; native Google also
+retains its existing PKCE/state validation. New
 physical-only opt-ins exercise real provider consent and explicit model setup;
 they never inject app workspaces, model output or system grants. The resumed
 targeted shared checks passed **29/29**, and resource/Python checks passed
@@ -41,6 +42,12 @@ targeted shared checks passed **29/29**, and resource/Python checks passed
 and ignored. The earlier detailed checkpoints below retain their original proof
 boundaries; this resumed work does not yet certify every connection or the full
 routine.
+
+The next physical pass is currently blocked by Xcode's **Unlock iPhone to
+Continue** request. The owner has been asked only to unlock the actual iPhone;
+no code, Apple Developer subscription or replacement grant is being requested.
+The four ordinary voice samples, Calendar rerun and full routine are still
+pending at this checkpoint.
 
 ## Live API checkpoint
 
