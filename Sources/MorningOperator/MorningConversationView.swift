@@ -11,12 +11,6 @@ struct MorningConversationView: View {
     var body: some View {
         NavigationStack {
             MorningForm {
-                if !store.cloudConversationAvailable {
-                    Section {
-                        Text(store.cloudConversationUnavailableMessage)
-                            .accessibilityIdentifier("cloudVoice.unavailable")
-                    }
-                } else {
                 Section {
                     Text("Talk to MORE and interrupt at any time.")
                     if let caption = store.cloudVoice.userCaption ?? store.cloudVoice.caption {
@@ -71,7 +65,6 @@ struct MorningConversationView: View {
                     }
                     .accessibilityIdentifier("cloudVoice.privacy")
                     .font(.footnote).foregroundStyle(MorningStyle.muted)
-                }
                 }
             }
             .navigationTitle(french ? "Parler avec MORE" : "Talk with MORE")

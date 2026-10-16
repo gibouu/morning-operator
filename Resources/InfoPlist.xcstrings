@@ -92,19 +92,19 @@
       }
     },
     "NSHealthShareUsageDescription": {
-      "comment": "SDK-free beta: local microphone listening; selected read-aloud passages may use the optional HTTPS voice service.",
+      "comment": "Explicitly chosen read scope; local by default, optional online voice conversation disclosed separately.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE reads only the sleep, optional steps, resting heart rate, heart rate variability (SDNN) and breathing rate you explicitly choose for your morning. Readings stay on this iPhone unless you choose online reading aloud. MORE never writes Health data."
+            "value": "MORE reads only the sleep, optional steps, resting heart rate, heart rate variability (SDNN) and breathing rate you explicitly choose for your morning. Readings stay on this iPhone unless you choose online reading aloud or the optional online conversation. MORE never writes Health data."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE lit uniquement le sommeil, les pas facultatifs, la fréquence cardiaque au repos, la variabilité de la fréquence cardiaque (SDNN) et la fréquence respiratoire que vous choisissez explicitement pour votre matin. Les données restent sur cet iPhone sauf si vous choisissez la lecture à voix haute en ligne. MORE n’écrit jamais de données Santé."
+            "value": "MORE lit uniquement le sommeil, les pas facultatifs, la fréquence cardiaque au repos, sa variabilité (SDNN) et la fréquence respiratoire que vous choisissez pour votre matin. Ces lectures restent sur cet iPhone sauf si vous choisissez la lecture à voix haute en ligne ou la conversation en ligne facultative. MORE ne modifie aucune donnée Santé."
           }
         }
       }
@@ -128,19 +128,19 @@
       }
     },
     "NSMicrophoneUsageDescription": {
-      "comment": "SDK-free beta: local microphone listening; selected read-aloud passages may use the optional HTTPS voice service.",
+      "comment": "Explicitly chosen read scope; local by default, optional online voice conversation disclosed separately.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE listens on this iPhone so you can interrupt or ask a question during your morning. Listening stops when you end the morning or leave the app."
+            "value": "Voice listening is local by default so you can interrupt MORE or ask a question during your morning. If you choose ElevenLabs conversation, your microphone audio is sent to ElevenLabs. Listening stops when you end the morning or leave the app."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "MORE vous écoute sur cet iPhone pour interrompre ou poser une question pendant votre matin. L’écoute s’arrête à la fin du matin ou quand vous quittez l’app."
+            "value": "L’écoute vocale est locale par défaut pour interrompre MORE ou poser une question pendant votre matin. Si vous choisissez la conversation ElevenLabs, le son du microphone est envoyé à ElevenLabs. L’écoute s’arrête à la fin du matin ou quand vous quittez l’app."
           }
         }
       }
