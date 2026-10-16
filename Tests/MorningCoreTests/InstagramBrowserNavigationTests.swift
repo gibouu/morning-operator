@@ -81,4 +81,17 @@ struct InstagramBrowserNavigationTests {
         }
         #expect(policy.decide(url: try #require(URL(string: "intent://instagram.com/#Intent;scheme=instagram;end")), kind: .other) == .cancel)
     }
+
+    @Test("Repeated redirect replay has a finite load budget")
+    func redirectLoop() {
+        var policy = InstagramBrowserNavigation()
+        for _ in 0..<16 {
+            #expect(policy.decide(url: home, kind: .other) == .load(home))
+            #expect(policy.decide(url: home, kind: .other) == .allow)
+        }
+        #expect(policy.decide(url: home, kind: .other) == .cancel)
+        #expect(policy.decide(url: home, kind: .other) == .cancel)
+        policy = InstagramBrowserNavigation()
+        #expect(policy.decide(url: home, kind: .other) == .load(home))
+    }
 }

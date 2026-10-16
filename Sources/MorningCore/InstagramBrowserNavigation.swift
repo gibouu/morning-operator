@@ -6,6 +6,7 @@ public struct InstagramBrowserNavigation: Sendable {
     public enum Kind: Sendable { case other, link, form, history }
     public enum Decision: Equatable, Sendable { case allow, cancel, load(URL) }
     private var pendingLoad: URL?
+    private var replayCount = 0
 
     public init() {}
 
@@ -19,8 +20,7 @@ public struct InstagramBrowserNavigation: Sendable {
         guard url.user == nil, url.password == nil, !isDownload else { return .cancel }
         if url.scheme?.lowercased() == "instagram" {
             guard isTopLevel, method == "GET", let destination = Self.webURL(for: url) else { return .cancel }
-            pendingLoad = destination
-            return .load(destination)
+            return load(destination)
         }
         guard url.scheme?.lowercased() == "https" else { return .cancel }
         // An Instagram redirect may lead to an app-store or link-wrapper host.
@@ -39,6 +39,14 @@ public struct InstagramBrowserNavigation: Sendable {
             return .allow
         }
         guard kind != .history else { return .allow }
+        return load(url)
+    }
+
+    private mutating func load(_ url: URL) -> Decision {
+        // Replaying must not turn a server redirect loop into unlimited fresh
+        // loads. The controller resets this chain on finish, failure or Reload.
+        guard replayCount < 16 else { pendingLoad = nil; return .cancel }
+        replayCount += 1
         pendingLoad = url
         return .load(url)
     }

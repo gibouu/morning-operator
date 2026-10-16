@@ -930,7 +930,13 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.load(URLRequest(url: syntheticNews?.startURL ?? site.table.startURL))
     }
 
-    func reload() { if privacyIsCurrent { executionFinished = false; webView.reload() } }
+    func reload() {
+        if privacyIsCurrent {
+            instagramNavigation = InstagramBrowserNavigation()
+            executionFinished = false
+            webView.reload()
+        }
+    }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
