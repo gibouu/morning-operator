@@ -48,7 +48,7 @@ struct InstagramBrowserNavigationTests {
     @Test("Sign-in POSTs, history and subframes keep their request")
     func preservedNavigation() throws {
         var policy = InstagramBrowserNavigation()
-        #expect(policy.decide(url: home, kind: .form, method: "POST", currentURL: home) == .allow)
+        #expect(policy.decide(url: home, kind: .form, method: "POST", committedURL: home) == .allow)
         // A 302/303 after POST may retain WebKit's form navigation type while
         // changing to GET. It must use the in-browser route too.
         #expect(policy.decide(url: home, kind: .form, method: "GET") == .load(home))
@@ -63,9 +63,9 @@ struct InstagramBrowserNavigationTests {
     func crossHostForms() throws {
         var policy = InstagramBrowserNavigation()
         let provider = try #require(URL(string: "https://www.facebook.com/login.php"))
-        #expect(policy.decide(url: home, kind: .form, method: "POST", currentURL: provider) == .cancel)
-        #expect(policy.decide(url: provider, kind: .form, method: "POST", currentURL: home) == .cancel)
-        #expect(policy.decide(url: provider, kind: .form, method: "POST", currentURL: provider) == .allow)
+        #expect(policy.decide(url: home, kind: .form, method: "POST", committedURL: provider) == .cancel)
+        #expect(policy.decide(url: provider, kind: .form, method: "POST", committedURL: home) == .cancel)
+        #expect(policy.decide(url: provider, kind: .form, method: "POST", committedURL: provider) == .allow)
         #expect(policy.decide(url: home, kind: .form, method: "POST") == .cancel)
     }
 

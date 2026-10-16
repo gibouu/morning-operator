@@ -134,6 +134,7 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var isRetired = false
     @ObservationIgnored private var mediaPlaybackSuspended = false
     @ObservationIgnored private var instagramNavigation = InstagramBrowserNavigation()
+    @ObservationIgnored private var committedNavigationURL: URL?
 
     var savedContentProgressIsAvailable: Bool { contentProgress.isAvailable }
 
@@ -1063,9 +1064,15 @@ final class WebMorningController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         return instagramNavigation.decide(url: url, kind: kind,
             method: action.request.httpMethod ?? "GET",
-            currentURL: webView.url,
+            committedURL: committedNavigationURL,
             isTopLevel: action.targetFrame?.isMainFrame != false,
             isNewWindow: action.targetFrame == nil, isDownload: action.shouldPerformDownload)
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        // During a redirect webView.url can already be the provisional target.
+        // Only a committed document establishes the safe host for a form POST.
+        committedNavigationURL = webView.url
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
