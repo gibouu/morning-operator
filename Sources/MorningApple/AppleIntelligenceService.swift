@@ -286,7 +286,8 @@ struct ModelCitationPreparation {
     }
 
     /// Exact source bytes, including separators, are partitioned, never normalized
-    /// or trimmed. Even short unselectable lines remain visible source context.
+    /// or trimmed. Adjacent short lines can together provide a valid citation;
+    /// long lines retain the existing bounded chunking unchanged.
     static func excerpts(in text: String) throws -> [String] {
         var lines: [String] = [], start = text.startIndex
         for index in text.indices where text[index].isNewline {
@@ -294,9 +295,23 @@ struct ModelCitationPreparation {
             lines.append(String(text[start..<end])); start = end
         }
         if start < text.endIndex { lines.append(String(text[start...])) }
-        return try lines.flatMap {
-            try LearningTextChunker.split($0, maximumCharacters: 240, maximumUTF8Bytes: 3_000)
+        var excerpts: [String] = [], shortLines = ""
+        func flushShortLines() {
+            if !shortLines.isEmpty { excerpts.append(shortLines); shortLines = "" }
         }
+        for line in lines {
+            if line.count < 8, line.utf8.count <= 3_000 {
+                if shortLines.count + line.count > 240 || shortLines.utf8.count + line.utf8.count > 3_000 {
+                    flushShortLines()
+                }
+                shortLines += line
+            } else {
+                flushShortLines()
+                excerpts += try LearningTextChunker.split(line, maximumCharacters: 240, maximumUTF8Bytes: 3_000)
+            }
+        }
+        flushShortLines()
+        return excerpts
     }
 
     private static func fits(_ prompt: String) -> Bool {

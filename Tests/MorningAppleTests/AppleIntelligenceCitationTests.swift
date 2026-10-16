@@ -32,6 +32,28 @@ struct AppleIntelligenceCitationTests {
         #expect(excerpts.contains("Calendar\r\n") && excerpts.contains("\n"))
     }
 
+    @Test(arguments: ["\n", "\r\n"])
+    func adjacentShortLinesRemainCitableWithoutChangingLongLineChunks(_ separator: String) throws {
+        let words = ["I", "read", "books", "at", "home."].joined(separator: separator)
+        #expect(try ModelCitationPreparation.excerpts(in: words) == [words])
+        let prepared = try self.prepared(words)
+        let batch = try #require(prepared.batchesByFirstUnitID.values.first)
+        let anchor = try #require(batch.anchors.first)
+        #expect(batch.anchors.count == 1 && anchor.citation.quote.utf8.elementsEqual(words.utf8))
+        let steps = try response([anchor.id]).resolvedSteps(in: batch)
+        try LearningEvidencePreparation.validateBatchResult(steps, units: batch.units)
+        let proposal = try LearningEvidencePreparation.assemble(evidence: prepared.evidence, steps: steps, preserving: nil)
+        #expect(proposal.support[0].citations[0].quote.utf8.elementsEqual(words.utf8) && !proposal.routine.isApproved)
+
+        let prefix = words + separator
+        let longLine = String(repeating: "écriture🙂 ", count: 80)
+        let longChunks = try LearningTextChunker.split(longLine, maximumCharacters: 240, maximumUTF8Bytes: 3_000)
+        let mixed = try ModelCitationPreparation.excerpts(in: prefix + longLine)
+        #expect(mixed == [prefix] + longChunks)
+        #expect(mixed.joined().utf8.elementsEqual((prefix + longLine).utf8))
+        #expect(mixed.allSatisfy { $0.count <= 240 && $0.utf8.count <= 3_000 })
+    }
+
     @Test func annotatedBatchesPreserveSourcesAndReportTheirActualWorkload() throws {
         let text = String(repeating: "I review my calendar after breakfast and read the project agenda.\n", count: 35)
         let original = try LearningEvidencePreparation.prepare(acquisitions: [source(text)])
