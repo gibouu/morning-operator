@@ -77,8 +77,20 @@ def lines(text, face, width, draw):
     return result
 
 
-def draw_scene(scene, language, destination):
+def disclosure_regions():
+    """The three renderer-only text rectangles; never source-content blocks."""
+    canvas = ImageDraw.Draw(Image.new('RGB', SIZE))
+    return [dict(id=name, text=text, bounds=list(canvas.textbbox(position, text, font=face)))
+            for name, position, text, face in [
+                ('no-real-effects', (36, 57), 'No real account, send, write or like', font(24)),
+                ('not-native-capture', (36, 1614), 'OFFLINE STORYBOARD · NOT NATIVE CAPTURE', font(23, True)),
+                ('invented-no-audio-service', (36, 1650), 'Invented content · no audio · no external service', font(23))]]
+
+
+def draw_scene(scene, language, destination, disclosure_layout='full'):
     """No oracle, expected label, hidden cue or profile timestamp enters pixels."""
+    if disclosure_layout not in ('full', 'compact'):
+        raise ValueError('Unknown disclosure layout')
     image = Image.new('RGB', SIZE, '#f5f2ed')
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 0, SIZE[0], 98), fill='#8e2638')
@@ -116,6 +128,13 @@ def draw_scene(scene, language, destination):
                 draw.rounded_rectangle((x, y + 145 - height, x + 16, y + 145), radius=7, fill='#446f63')
     draw.text((36, 1614), 'OFFLINE STORYBOARD · NOT NATIVE CAPTURE', font=font(23, True), fill='#793544')
     draw.text((36, 1650), 'Invented content · no audio · no external service', font=font(23), fill='#535c65')
+    if disclosure_layout == 'compact':
+        # Paint only the declared text bounds white. Keeping the original draw
+        # and all positions makes every pixel outside these rectangles identical
+        # to full disclosure. The top SYNTHETIC marker and scene blocks remain.
+        for region in disclosure_regions():
+            left, top, right, bottom = region['bounds']
+            draw.rectangle((left, top, right - 1, bottom - 1), fill='white')
     image.save(destination)
     return image
 
@@ -209,6 +228,8 @@ def main():
     parser.add_argument('--languages', nargs='+', choices=['fr', 'en'], default=['fr', 'en'])
     parser.add_argument('--profiles', nargs='+', choices=['realistic', 'accelerated'], default=['realistic', 'accelerated'])
     parser.add_argument('--images-only', action='store_true', help='No movie; manifest explicitly records movies not generated.')
+    parser.add_argument('--disclosure-layout', choices=['full', 'compact'], default='full',
+                        help='Explicit contrast only: compact blanks three renderer disclosure rectangles, retaining SYNTHETIC and all source content.')
     parser.add_argument('--scene', help='Separate isolated diagnostic clip of one scene; never rewrites a long timeline.')
     parser.add_argument('--scene-seconds', type=int, default=12, help='Own diagnostic duration, 2–60s; requires --scene.')
     args = parser.parse_args()
@@ -236,6 +257,10 @@ def main():
                     createdAt=datetime.now(timezone.utc).isoformat(), output=str(out), timelines=[], movies=[],
                     stageStatus=dict(rendering='in-progress', nativeCapture='not-run', realOCR='not-run',
                                      realClassification='not-run', directOracleImport='not-run', runtimeEffects='not-run'),
+                    renderingFactors=dict(disclosureLayout=args.disclosure_layout,
+                        compactWhiteMasks=disclosure_regions() if args.disclosure_layout == 'compact' else [],
+                        retainedTopMarkers={language: 'SYNTHETIC · ' + language.upper() for language in dict.fromkeys(args.languages)},
+                        sourceContentLayoutAndTimingUnchanged=True),
                     disclosure='Drawn pixels. Source and oracle are separate inputs. No native UI, model, provider, account or real effects.')
     for language in dict.fromkeys(args.languages):
         images = out / language
@@ -243,7 +268,7 @@ def main():
         thumbnails = []
         for scene in selected:
             try:
-                image = draw_scene(scene, language, images / f'{scene["id"]}.png')
+                image = draw_scene(scene, language, images / f'{scene["id"]}.png', args.disclosure_layout)
             except Exception as error:
                 save_json(out / 'generation-failure.json', dict(stage='rendering', sceneID=scene['id'],
                           language=language, errorType=type(error).__name__, reason=str(error), pipelineExecuted=False))

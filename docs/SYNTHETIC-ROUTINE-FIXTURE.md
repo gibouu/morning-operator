@@ -11,7 +11,9 @@ and the separately authored [expected-parsed.json](../Benchmarks/routine-fixture
 Freeze their hashes **before** extraction. Rendering uses scenario data, never
 expected output to choose pixels. The oracle is not passed to OCR or a model.
 Source pictures are drawn storyboards, not screenshots of running apps or a
-native screen recording. Every image carries this disclosure.
+native screen recording. Every original full-disclosure image carries this
+disclosure; the separate compact contrast retains its visible SYNTHETIC marker
+and synthetic run metadata as described below.
 
 | Path | Input | What it can establish |
 | --- | --- | --- |
@@ -125,6 +127,33 @@ examples establish neither general classifier accuracy nor ordinary service UI.
 The manifest records generator/scenario/oracle hashes, exact source revision,
 dirty status, movie hashes and ffprobe durations. Media bytes stay local and are
 never committed. Hash equality is not evidence of real model execution.
+
+### Separate compact-disclosure contrast
+
+The original full-disclosure v1 source and its failed results remain immutable.
+`--disclosure-layout compact` is a separately named rendering factor, not a
+replacement source or a correction of that verdict. It paints white only the
+three renderer text rectangles: “No real account, send, write or like”, “OFFLINE
+STORYBOARD · NOT NATIVE CAPTURE”, and “Invented content · no audio · no external
+service”. Earlier references to four lines described OCR wrapping, not four
+independent renderer rectangles. The top `SYNTHETIC · FR/EN` marker, every scene
+block (including its synthetic mentions), layout, story, timing and oracle stay
+unchanged. Full disclosure remains the default and retains the v1 pixels.
+
+This tests whether repetitive artificial disclosure competes with task content;
+it does not establish the cause of v1's failures or make the drawn UI a native
+capture. The manifest records `origin=synthetic`, the chosen disclosure factor
+and exact half-open mask bounds. Scopes and closed services remain unchanged.
+Generate a separate PNG-only preview before any coordinated movie/model run:
+
+```sh
+python3 scripts/make-routine-fixture.py --run long-v2-compact-preview-fr \
+  --disclosure-layout compact --languages fr --profiles realistic --images-only
+```
+
+That command performs no MP4 encoding, OCR, model request, import or runtime
+action. A later MP4 must use a new run identifier and preserve its own hash and
+comparison result; the oracle and the v1 movie are never replaced.
 
 First inspect the pictures and ffprobe receipts independently. Then obtain a
 forecast, which exits **4** because no actual pipeline has run:
