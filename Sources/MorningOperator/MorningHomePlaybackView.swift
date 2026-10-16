@@ -318,6 +318,7 @@ struct MorningRoutineControlsView: View {
                     Text(store.handsFreeVoiceStatus).font(.caption).accessibilityIdentifier("morning.voiceStatus")
                 }.padding(24).frame(maxWidth: 640, alignment: .leading).frame(maxWidth: .infinity)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(MorningPaper(showsSun: false))
             .navigationTitle(store.currentStep?.title ?? "MORE").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) {

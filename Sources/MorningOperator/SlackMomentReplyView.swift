@@ -85,6 +85,15 @@ struct SlackMomentReplyView: View {
             }
         }.accessibilityElement(children: .contain)
             .accessibilityIdentifier("slackMoment.panel")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    if focused {
+                        Spacer()
+                        Button(french ? "Terminé" : "Done") { focused = false }
+                            .accessibilityIdentifier("slackMoment.keyboardDone")
+                    }
+                }
+            }
             .onChange(of: scenePhase) { _, phase in if phase != .active { intention = ""; focused = false } }
             .onChange(of: store.dataGeneration) { _, _ in intention = ""; focused = false }
             .onChange(of: store.currentSlackContext) { _, _ in intention = ""; focused = false }
