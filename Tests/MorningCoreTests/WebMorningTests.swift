@@ -44,6 +44,48 @@ struct WebMorningTests {
         #expect(WebMorningSite(url: url("https://www.instagram.com:8443/")) == nil)
     }
 
+    @Test("Slack workspace hosts are bounded and saved message destinations survive routing")
+    func messagingBrowserDestinations() throws {
+        for address in ["https://app.slack.com/client/TEXAMPLE/CEXAMPLE", "https://team-42.slack.com/archives/CEXAMPLE",
+                        "https://www.linkedin.com/messaging/thread/example/"] {
+            let destination = url(address)
+            let target = RoutineStepTarget.externalApp(.safari, detail: address)
+            #expect(target.routineExecutionTarget == .inAppWeb(site: destination))
+            #expect(target.externalURL == nil)
+            let restored = try JSONDecoder().decode(RoutineStepTarget.self, from: JSONEncoder().encode(target))
+            #expect(restored.routineExecutionTarget == .inAppWeb(site: destination))
+        }
+        for host in ["slack.com.evil.example", "workspace.slack.com.evil.example", "a.b.slack.com",
+                     "-workspace.slack.com", "workspace-.slack.com", "workspace_name.slack.com",
+                     String(repeating: "a", count: 64) + ".slack.com", "signin.slack.com", "slackusercontent.com"] {
+            #expect(!WebMorningSite.slack.table.permits(host: host), "\(host)")
+            #expect(WebMorningSite(url: url("https://\(host)/")) == nil)
+        }
+        #expect(WebMorningPolicy.isSignInPage(url("https://signin.slack.com/")))
+        #expect(!BrowserRhythmPolicy.permits(site: .slack, url: url("https://signin.slack.com/")))
+        #expect(BrowserRhythmPolicy.behavior(site: .slack, url: url("https://team.slack.com/client/")) == nil)
+        #expect(BrowserRhythmPolicy.behavior(site: .linkedin, url: url("https://www.linkedin.com/messaging/")) == nil)
+        #expect(BrowserRhythmPolicy.behavior(site: .linkedin, url: url("https://www.linkedin.com/feed/")) == .browseFeed)
+        #expect(BrowserLearningTrace.observedBehaviors(for: .slack).isEmpty)
+        #expect(BrowserLearningTrace.observedBehaviors(for: .linkedin) == [.browseFeed])
+    }
+
+    #if canImport(JavaScriptCore)
+    @Test("Native and isolated scripts enforce the same Slack workspace host boundary")
+    func matchingWorkspaceHostGuards() throws {
+        let context = try #require(JSContext())
+        let hosts = ["app.slack.com", "TEAM.slack.com", "a.slack.com", "team-42.slack.com", "signin.slack.com",
+                     "-team.slack.com", "team-.slack.com", "a.b.slack.com", "a.slack.com.evil.example",
+                     String(repeating: "a", count: 63) + ".slack.com", String(repeating: "a", count: 64) + ".slack.com"]
+        for host in hosts {
+            context.setObject(host, forKeyedSubscript: "hostname" as NSString)
+            let scriptResult = context.evaluateScript(WebMorningSite.slack.table.javascriptPermitsHost("hostname"))?.toBool()
+            #expect(scriptResult == WebMorningSite.slack.table.permits(host: host), "\(host)")
+        }
+        #expect(context.exception == nil)
+    }
+    #endif
+
     @Test("Social browser routes accept exact HTTPS hosts and keep saved destinations")
     func socialBrowserRoutes() throws {
         let routes: [(WebMorningSite, String)] = [
@@ -53,7 +95,10 @@ struct WebMorningTests {
             (.reddit, "https://www.reddit.com/r/example/"),
             (.facebook, "https://m.facebook.com/"),
             (.threads, "https://www.threads.com/@example"),
-            (.threads, "https://www.threads.net/@example")
+            (.threads, "https://www.threads.net/@example"),
+            (.linkedin, "https://www.linkedin.com/messaging/thread/example/"),
+            (.slack, "https://app.slack.com/client/TEXAMPLE/CEXAMPLE"),
+            (.slack, "https://my-workspace.slack.com/archives/CEXAMPLE")
         ]
         for (site, address) in routes {
             let page = url(address)
@@ -68,7 +113,7 @@ struct WebMorningTests {
                 #expect(WebMorningSite(url: url(rejected)) == nil)
             }
         }
-        for rawID in ["instagram", "youtube", "news", "whatsapp", "gmail", "twitter", "tiktok"] {
+        for rawID in ["instagram", "youtube", "news", "whatsapp", "gmail", "twitter", "tiktok", "linkedin", "slack"] {
             let encoded = Data("\"\(rawID)\"".utf8)
             #expect(try JSONDecoder().decode(WebMorningSite.self, from: encoded).rawValue == rawID)
         }
@@ -76,7 +121,7 @@ struct WebMorningTests {
 
     @Test("New social destinations offer manual browsing without invented readers or scroll actions")
     func uncalibratedSitesOfferNoScripts() {
-        for site in [WebMorningSite.tiktok, .twitter, .reddit, .facebook, .threads] {
+        for site in [WebMorningSite.tiktok, .twitter, .reddit, .facebook, .threads, .linkedin, .slack] {
             #expect(WebMorningSite(url: site.table.startURL) == site)
             #expect(site.table.tasks.isEmpty)
             #expect(site.table.feedURL == nil)
@@ -100,7 +145,11 @@ struct WebMorningTests {
             (.facebook, "https://m.facebook.com/login.php"),
             (.facebook, "https://www.facebook.com/checkpoint/123/"),
             (.threads, "https://www.threads.com/login"),
-            (.threads, "https://www.threads.net/accounts/login/")
+            (.threads, "https://www.threads.net/accounts/login/"),
+            (.linkedin, "https://www.linkedin.com/uas/login"),
+            (.linkedin, "https://www.linkedin.com/checkpoint/challenge/"),
+            (.slack, "https://my-workspace.slack.com/signin"),
+            (.slack, "https://slack.com/signin")
         ]
         for (site, address) in routes {
             let page = url(address)

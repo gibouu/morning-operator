@@ -24,6 +24,7 @@ struct StepTargetEditor: View {
         if choice.hasPrefix("app."), let app = StepApp(rawValue: String(choice.dropFirst(4))) {
             target = .externalApp(app, detail: nil)
         } else if choice.hasPrefix("web."), let site = WebMorningSite(rawValue: String(choice.dropFirst(4))) {
+            if case let .inAppWeb(url) = target?.routineExecutionTarget, WebMorningSite(url: url) == site { return }
             target = .inAppWeb(site: site.table.startURL)
         } else if choice == "shortcut" { target = .shortcut(name: "", input: "") }
         else if choice == "none" { target = nil }
@@ -110,7 +111,7 @@ struct StepTargetEditor: View {
             Text("Choose an action from Apps & accounts, then add it to your routine.")
                 .font(.footnote).foregroundStyle(MorningStyle.muted)
         } header: { Text("During this moment") } footer: {
-            Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Les autres applications peuvent nécessiter vos gestes." : "Also choose what MORE will do in the page. Other apps may still need your actions.")
+            Text(AppLanguage.isFrench ? "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur. Les autres applications peuvent nécessiter vos gestes." : "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser. Other apps may still need your actions.")
         }
     }
     private func prompt(_ kind: StepAppDetailKind) -> String {

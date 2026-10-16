@@ -27149,6 +27149,591 @@
           }
         }
       }
+    },
+    "Additional Slack & LinkedIn account actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Additional Slack & LinkedIn account actions"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions supplémentaires des comptes Slack et LinkedIn"
+          }
+        }
+      }
+    },
+    "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser. Other apps may still need your actions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also choose what MORE will do in the page. When needed, MORE asks you to sign in the first time it opens, then keeps that session in its browser. Other apps may still need your actions."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez aussi ce que MORE fera dans la page. Si nécessaire, MORE vous demandera de vous connecter à la première ouverture, puis gardera cette session dans son navigateur. Les autres applications peuvent nécessiter vos gestes."
+          }
+        }
+      }
+    },
+    "Another option: choose a Slack account and channel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another option: choose a Slack account and channel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autre option : choisir un compte et un canal Slack"
+          }
+        }
+      }
+    },
+    "Open LinkedIn conversations in MORE. Sign in on the page when needed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open LinkedIn conversations in MORE. Sign in on the page when needed."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retrouvez vos conversations LinkedIn dans MORE. Connectez-vous sur la page si nécessaire."
+          }
+        }
+      }
+    },
+    "Open your Slack workspace in MORE. Sign in on the page when needed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open your Slack workspace in MORE. Sign in on the page when needed."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retrouvez votre espace Slack dans MORE. Connectez-vous sur la page si nécessaire."
+          }
+        }
+      }
+    },
+    "These optional account connections offer additional actions. You can use the websites above without setting them up.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These optional account connections offer additional actions. You can use the websites above without setting them up."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces connexions de compte facultatives proposent d’autres actions. Vous pouvez utiliser les sites ci-dessus sans les configurer."
+          }
+        }
+      }
+    },
+    "To use Slack in the built-in browser, choose Slack above. This additional account connection is optional.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To use Slack in the built-in browser, choose Slack above. This additional account connection is optional."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour utiliser Slack dans le navigateur intégré, choisissez Slack ci-dessus. Cette connexion de compte supplémentaire reste facultative."
+          }
+        }
+      }
+    },
+    "You can sign in when a service first opens during learning or your routine. MORE keeps that browser session on this iPhone for your next mornings. You can also open a service here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can sign in when a service first opens during learning or your routine. MORE keeps that browser session on this iPhone for your next mornings. You can also open a service here."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez vous connecter quand un service s’ouvre pour la première fois pendant l’apprentissage ou votre routine. MORE conserve cette session sur cet iPhone pour vos prochains matins. Vous pouvez aussi ouvrir un service ici."
+          }
+        }
+      }
+    },
+    "Your confirmation keeps this session available in MORE. Choose the actions in your routine to use the browser hands-free; MORE asks for your instruction before sending a reply. A sign-in alone does not verify that every page works.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your confirmation keeps this session available in MORE. Choose the actions in your routine to use the browser hands-free; MORE asks for your instruction before sending a reply. A sign-in alone does not verify that every page works."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre confirmation garde cette session disponible dans MORE. Choisissez les actions dans votre routine pour utiliser le navigateur mains libres ; MORE attend votre demande avant d’envoyer une réponse. Une connexion seule ne vérifie pas le fonctionnement de chaque page."
+          }
+        }
+      }
+    },
+    "Message from %@: %@. Would you like to reply?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message from %@: %@. Would you like to reply?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message de %@ : %@. Voulez-vous répondre ?"
+          }
+        }
+      }
+    },
+    "Your check was recorded. No additional message was sent.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your check was recorded. No additional message was sent."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre vérification a été enregistrée. Aucun message supplémentaire n’a été envoyé."
+          }
+        }
+      }
+    },
+    "This check could not be recorded. No new send is allowed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This check could not be recorded. No new send is allowed."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’enregistrer cette vérification. Aucun nouvel envoi n’est autorisé."
+          }
+        }
+      }
+    },
+    "Check the previous send in the conversation before preparing another reply.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the previous send in the conversation before preparing another reply."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un envoi précédent doit être vérifié dans la conversation avant toute nouvelle réponse."
+          }
+        }
+      }
+    },
+    "The reply could not be prepared. Write it below or try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply could not be prepared. Write it below or try again."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La réponse n’a pas pu être préparée. Écrivez-la ci-dessous ou réessayez."
+          }
+        }
+      }
+    },
+    "The conversation or draft changed. Review the reply before sending.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conversation or draft changed. Review the reply before sending."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation ou le brouillon a changé. Relisez la réponse avant d’envoyer."
+          }
+        }
+      }
+    },
+    "Reply sent and visible in this conversation.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply sent and visible in this conversation."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse envoyée et visible dans cette conversation."
+          }
+        }
+      }
+    },
+    "The send could not be confirmed. Check the conversation; MORE will not resend this message.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The send could not be confirmed. Check the conversation; MORE will not resend this message."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’envoi n’a pas pu être confirmé. Vérifiez la conversation ; MORE ne renverra pas ce message."
+          }
+        }
+      }
+    },
+    "Review the text before asking to send.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review the text before asking to send."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relisez le texte avant de demander l’envoi."
+          }
+        }
+      }
+    },
+    "Reply to %@: %@. Say send, or say what to change.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply to %@: %@. Say send, or say what to change."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réponse à %@ : %@. Dites envoie, ou indiquez une correction."
+          }
+        }
+      }
+    },
+    "Open a conversation on the page so I can read it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a conversation on the page so I can read it."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez une conversation dans la page pour que je puisse la lire."
+          }
+        }
+      }
+    },
+    "Say send to send this reply, or say what to change.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Say send to send this reply, or say what to change."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dites envoie pour envoyer cette réponse, ou indiquez une correction."
+          }
+        }
+      }
+    },
+    "What would you like to reply?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What would you like to reply?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que souhaitez-vous répondre ?"
+          }
+        }
+      }
+    },
+    "Read conversation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read conversation"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire la conversation"
+          }
+        }
+      }
+    },
+    "Reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répondre"
+          }
+        }
+      }
+    },
+    "Reply text": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply text"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texte de la réponse"
+          }
+        }
+      }
+    },
+    "Read reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read reply"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relire la réponse"
+          }
+        }
+      }
+    },
+    "I have reviewed this reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I have reviewed this reply"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J’ai relu cette réponse"
+          }
+        }
+      }
+    },
+    "Send reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send reply"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer la réponse"
+          }
+        }
+      }
+    },
+    "Cancel reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel reply"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la réponse"
+          }
+        }
+      }
+    },
+    "After checking the conversation yourself:": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After checking the conversation yourself:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Après avoir vérifié vous-même la conversation :"
+          }
+        }
+      }
+    },
+    "I checked: the reply was sent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I checked: the reply was sent"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J’ai vérifié : la réponse a été envoyée"
+          }
+        }
+      }
+    },
+    "I checked: the reply was not sent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I checked: the reply was not sent"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J’ai vérifié : la réponse n’a pas été envoyée"
+          }
+        }
+      }
+    },
+    "Check the visible conversation before continuing. This reply will not be sent again automatically.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the visible conversation before continuing. This reply will not be sent again automatically."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez la conversation affichée avant de continuer. Cette réponse ne sera pas renvoyée automatiquement."
+          }
+        }
+      }
+    },
+    "Sign in here. MORE keeps this website session for your next mornings, until the service asks you to sign in again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in here. MORE keeps this website session for your next mornings, until the service asks you to sign in again."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous ici. MORE garde cette session pour vos prochains matins, jusqu’à ce que le service demande une nouvelle connexion."
+          }
+        }
+      }
+    },
+    "Sign in here. MORE will keep your session and resume this moment.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in here. MORE will keep your session and resume this moment."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous ici. MORE gardera votre session et reprendra ce moment."
+          }
+        }
+      }
+    },
+    "Finish the reply or say cancel before resuming.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish the reply or say cancel before resuming."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez la réponse ou dites annule avant de reprendre."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

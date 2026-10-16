@@ -2,6 +2,18 @@
 
 Checked 15 October 2026. This is a built prototype, not an App Store approval or a verified integration with these services.
 
+## Inline sign-in and browser replies — 16 October 2026
+
+LinkedIn and Slack are ordinary browser destinations, independent of the remote API catalogue. The routine and learning open their websites directly. Website sign-ins share the existing dedicated persistent WebKit store; they remain available until the provider expires or revokes them, or the owner clears website data. No cookie values or credentials are exported. This is not a promise that every identity provider accepts an embedded browser. Supported APIs remain optional alternatives.
+
+A routine that encounters sign-in pauses its saved budget, asks the owner to sign in on the visible page, and resumes that same moment when a supported content layout is observed. Closing, backgrounding or explicitly pausing revokes automatic resumption. No separate account-setup checklist is required.
+
+LinkedIn and Slack message moments can open the first visible unread conversation when its recognized link is available, read the visible conversation and offer a reply. The owner supplies an intention, reviews or edits the draft and separately instructs Send. The selected language model prepares text only; website content never authorizes execution. Unsupported layouts, missing account identity, multiple editors, changed conversation/source, pre-existing user text and sign-in/consent pages fail closed. Replies remain scoped to the observed account, recipient, thread, source message, editor and reviewed body.
+
+Before clicking Send, MORE persists only opaque digests and an operation identity in `browser-reply-journal.json`. Confirmation requires a new, uniquely identified outgoing message with the exact reviewed text and an empty composer. A click alone is not a receipt. An uncertain send stays reserved across restarts and is never automatically retried; the visible conversation offers explicit owner reconciliation. Full Forget removes this journal. Raw message and draft text stay in memory and are cleared on navigation, close/background and privacy reset.
+
+Package/script checks use synthetic DOM inputs. Simulator UI and unsigned builds are separate evidence. Real LinkedIn/Slack sign-in, actual provider layouts, selected-model drafting, audible interruption and real message receipts require an authorized account/device acceptance run; none is established by these fixtures.
+
 ## Routine execution revision — 15 October 2026
 
 Reviewed routine moments now have session-scoped feed, video, story, headline or unread-information behaviors, automatic progression and optional explicitly reviewed likes. The driver observes before/after actions, stops for sign-in or privacy/subscription choices, and journals uncertain likes before any retry. Previously saved web moments remain manual until edited. Closing an automated page pauses its session. [Execution contract and evidence boundaries](ROUTINE-AUTOMATION.md).

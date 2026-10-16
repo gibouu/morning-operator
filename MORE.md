@@ -109,6 +109,12 @@ L'agent comprend le contexte de la page et vérifie l'effet de ses actions. Il d
 
 La faisabilité est un chantier à prouver sur les vrais services et comptes. Il faut observer l'agent ouvrir la bonne page, réaliser l'action, vérifier son résultat, s'arrêter et reprendre. Une démonstration avec des taps pilotés par un Mac ou des pages factices ne valide pas cette promesse.
 
+### La connexion web fait partie de la routine
+
+La personne n’a pas à passer par un catalogue de connexions pour utiliser un service web. Lors de son premier apprentissage ou de la première exécution qui en a besoin, MORE ouvre directement le service dans son navigateur et demande de s’y connecter. La connexion et les éventuels codes restent dans la page du fournisseur. Le navigateur conserve la session pour les matins suivants, tant que le service la maintient ; une expiration ramène à la même demande, sans perdre l’étape ni consommer son temps pendant la connexion.
+
+LinkedIn et Slack suivent ce parcours, comme les autres services web. Une conversation affichée doit pouvoir être lue, donner lieu à « Voulez-vous répondre ? », puis à une intention, une réponse modifiable et un envoi demandé explicitement après relecture. Après un envoi confirmé ou un refus de répondre, MORE poursuit le matin. Les API restent complémentaires pour les opérations adaptées ; elles ne conditionnent pas la présence du service dans la routine. Les réglages permettent de gérer les accès, sans devenir un passage obligatoire.
+
 ### Les connexions servent des usages complets
 
 Les API et les intégrations natives permettent à MORE d'obtenir les données et de réaliser les opérations adaptées à chaque service. Le produit présente un résultat compréhensible et exploitable à la voix. L'utilisateur ne doit pas assembler lui-même des appels techniques.
@@ -159,7 +165,7 @@ L'inventaire ci-dessous fixe la couverture à poursuivre à partir de l'app au 1
 | Famille | Services dans le périmètre | Expérience à rendre possible |
 | --- | --- | --- |
 | Réseaux et contenus interactifs | Instagram, TikTok, X, Reddit, Facebook, Threads, YouTube Shorts | Usage et apprentissage dans le navigateur de MORE, puis navigation et interactions par l'agent selon la routine validée. Les API restent complémentaires. |
-| Communications | Gmail, Outlook, Slack, WhatsApp, Discord et les usages de communication disponibles dans les autres connexions | Retrouver les contenus autorisés, les restituer, préparer et réaliser les actions pertinentes. L'accès à un compte ne garantit pas l'accès à toutes ses conversations. |
+| Communications | Gmail, Outlook, LinkedIn, Slack, WhatsApp, Discord et les usages de communication disponibles dans les autres connexions | Retrouver les contenus autorisés, les restituer, préparer et réaliser les actions pertinentes. L'accès à un compte ne garantit pas l'accès à toutes ses conversations. |
 | Agenda et organisation | Calendrier Apple, Google Calendar, Calendly, Rappels | Présenter les informations utiles et accomplir les opérations demandées dans la routine. |
 | Informations du jour | Météo, actualités et sites choisis, dont Le Monde | Présenter des informations à jour, lire ou parcourir les contenus retenus. |
 | Santé et sommeil | Santé Apple et les sources de sommeil ou trackers à intégrer | Restituer la durée, la qualité de sommeil, la récupération et les autres indicateurs effectivement fournis. Un pourcentage de récupération doit provenir d'une source qui le mesure ou le calcule, et être attribué. |

@@ -128,6 +128,7 @@ extension MorningStore {
             // In a prepared-reply dialogue, Repeat reads that reply and Continue
             // can decline it. Stop/Pause/Next always retain session-level priority.
             if control == .session(.repeatStep) || words == "continue" || words == "continuer" {
+                if webConversationIsActive, await handleWebConversationUtterance(utterance.text) { return }
                 if slackReply.isActive, await handleSlackUtterance(utterance.text) { return }
                 if nativeMoment.isActive, await handleNativeMomentUtterance(utterance.text) { return }
                 if let handler = handsFreeUtteranceHandler, await handler(utterance.text) { return }
@@ -138,6 +139,9 @@ extension MorningStore {
             if [.session(.pause), .session(.next), .session(.skip), .session(.stop)].contains(control) { cancelWebArticleWork() }
             switch control {
             case .session(.pause):
+                currentConversationController?.cancelConversationWork()
+                browserSignInPause = nil
+                handsFreePauseRevision = UUID()
                 slackReplyTask?.cancel(); slackReplyTask = nil
                 slackReply.cancel()
                 if session?.status == .running { pause() }
@@ -182,6 +186,7 @@ extension MorningStore {
         if handleGoogleCalendarDayUtterance(utterance.text) { return }
         if handleCalendlyDayUtterance(utterance.text) { return }
         if handleOutlookInboxUtterance(utterance.text) { return }
+        if await handleWebConversationUtterance(utterance.text) { return }
         if await handleSlackUtterance(utterance.text) { return }
         if await handleNativeMomentUtterance(utterance.text) { return }
         if let handler = handsFreeUtteranceHandler, await handler(utterance.text) { return }
@@ -219,7 +224,7 @@ extension MorningStore {
             privacyGeneration: dataGeneration, pauseRevision: handsFreePauseRevision,
             speechFinished: true, isPaused: session?.status == .paused,
             isForeground: UIApplication.shared.applicationState == .active,
-            hasPendingDialogue: pendingMail || nativeMoment.isActive || slackReply.isActive,
+            hasPendingDialogue: pendingMail || nativeMoment.isActive || slackReply.isActive || webConversationIsActive,
             canResumeRetainedExecution: handsFreeCanResumeRetainedExecution)
         handsFreeVoice.interruptedRunningSession = false
         if mayResume { resumeAfterInformationalAnswer() }
@@ -262,7 +267,7 @@ extension MorningStore {
         case .outlookInbox:
             return activeStepTimer != nil && connectedMoment.executionID == executionID && currentOutlookInbox != nil
         case .inAppWeb:
-            guard !webArticleIsActive else { return false }
+            guard !webArticleIsActive, !webConversationIsActive else { return false }
             guard step.webBehavior != nil, activeStepTimer != nil,
                   routineWebMoment.hasController(for: executionID, privacyGeneration: dataGeneration) else { return false }
             if let state = webExecutionEvent?.state,

@@ -3152,6 +3152,38 @@
           }
         }
       }
+    },
+    "Read visible messages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read visible messages"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire les messages visibles"
+          }
+        }
+      }
+    },
+    "MORE reads visible messages. Supported conversations can prepare a reply for review; sending needs your instruction.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE reads visible messages. Supported conversations can prepare a reply for review; sending needs your instruction."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MORE lit les messages visibles. Les conversations prises en charge permettent de préparer une réponse à relire ; l’envoi attend votre instruction."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

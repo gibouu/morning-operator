@@ -23,6 +23,8 @@ struct ScreenTimeDailyUsageTests {
     @Test("Known applications receive the reviewed target; unknown bundles never become URL schemes")
     func safeTargets() {
         #expect(ScreenTimeAppCatalog.routineTarget(for: "com.burbn.instagram") == .inAppWeb(site: WebMorningSite.instagram.table.startURL))
+        #expect(ScreenTimeAppCatalog.routineTarget(for: "com.linkedin.LinkedIn") == .inAppWeb(site: WebMorningSite.linkedin.table.startURL))
+        #expect(ScreenTimeAppCatalog.routineTarget(for: "com.tinyspeck.chatlyio") == .inAppWeb(site: WebMorningSite.slack.table.startURL))
         #expect(ScreenTimeAppCatalog.routineTarget(for: "com.example.unknown") == nil)
         #expect(ScreenTimeAppCatalog.routineTarget(for: "com.apple.mobilesafari") == nil)
         #expect(ScreenTimeAppCatalog.routineTarget(for: "com.google.Maps") == nil)

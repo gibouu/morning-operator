@@ -254,6 +254,7 @@ final class MorningStore {
     var voiceStartRequest: MorningVoiceStartRequest?
     var voiceStartDecision: MorningVoiceStartDecision?
     var handsFreeListeningSuppressedSessionID: UUID?
+    @ObservationIgnored var browserSignInPause: (context: MorningVoiceCommandContext, privacy: UUID, revision: UUID)?
     @ObservationIgnored var handsFreePauseRevision = UUID()
     @ObservationIgnored var voiceLanguageGeneration = UUID()
     @ObservationIgnored var appliedLanguageCode = AppLanguage.code
@@ -789,6 +790,7 @@ final class MorningStore {
     }
 
     func morningActivitySceneChanged(isForeground: Bool) {
+        if !isForeground { browserSignInPause = nil }
         morningActivityIsForeground = isForeground
         synchronizeMorningActivity()
     }
@@ -1198,6 +1200,11 @@ final class MorningStore {
     func resume() {
         guard !privacyBlocksWork else { return }
         guard !voiceInputBlocksPlayback else { return }
+        if webConversationIsActive {
+            notice = AppLanguage.isFrench ? "Terminez la réponse ou dites annule avant de reprendre."
+                : "Finish the reply or say cancel before resuming."
+            return
+        }
         if resumeWebArticleIfNeeded() { return }
         guard !slackReply.isActive else {
             notice = AppLanguage.isFrench ? "Terminez la réponse Slack ou fermez cette demande avant de reprendre."
@@ -3228,7 +3235,7 @@ final class MorningStore {
                 // The sessions' observations go with the archive, which this forget clears.
                 // A package test (SegmentedSessionForgettingGuardTests) fails if the app
                 // starts using the store without calling `forgetAll`.
-                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json", "step-timer.json", "morning-alarm.json", "permission-setup.json", "browser-action-journal.json", "personal-memory.json", "gmail-send-journal.json", "gmail-attention-preferences.json", "native-moment-journal.json", "slack-reply-journal.json", EvidenceRemovalMarker.fileName, MorningExtrasPreferencesStore.fileName] {
+                for name in ["app-transitions.json", "morning-invitation.json", "briefing-settings.json", "step-timer.json", "morning-alarm.json", "permission-setup.json", "browser-action-journal.json", "browser-reply-journal.json", "personal-memory.json", "gmail-send-journal.json", "gmail-attention-preferences.json", "native-moment-journal.json", "slack-reply-journal.json", EvidenceRemovalMarker.fileName, MorningExtrasPreferencesStore.fileName] {
                     try removeOwnedPayload(snapshot.url.deletingLastPathComponent().appendingPathComponent(name))
                 }
                 let directory = snapshot.url.deletingLastPathComponent()
