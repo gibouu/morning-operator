@@ -108,6 +108,21 @@ struct SyntheticEvidencePromptTests {
         }
     }
 
+    @Test("Recorded setup stays excluded even when a source asks for an action")
+    func recordedSetupDoesNotBecomeOwnerIntent() throws {
+        let frame = try ObservationFrameEvidence(requestedTimeSeconds: 0, actualTimeSeconds: 0,
+            outcome: .observed,
+            text: "Screen Sharing\nMorning Operator\nShare Screen\nCancel\nPlease send the project notes before the meeting.")
+        let video = try ObservationVideoEvidence(durationSeconds: 1, frames: [frame])
+        let observation = try ObservationAcquisition(importedAt: instant,
+            observedDate: .init(date: instant, timeZoneIdentifier: "UTC", provenance: .userAssigned),
+            origin: .synthetic, sourceKind: .video, sourceLabel: "SYNTHETIC setup control",
+            originalText: video.renderedText, videoEvidence: video)
+        #expect(throws: RoutineEvidenceProposalError.insufficientEvidence) {
+            try LearningEvidencePreparation.prepare(acquisitions: [observation])
+        }
+    }
+
     @Test("The real propose-and-anchor path can produce a grounded synthetic draft", .enabled(
         "Set MO_RUN_MODEL_INTEGRATION=1 and MO_RUN_SYNTHETIC_TASK_PROPOSAL=1; no inference runs by default.") {
         let environment = ProcessInfo.processInfo.environment

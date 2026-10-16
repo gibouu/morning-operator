@@ -64,6 +64,12 @@ struct VisibleTaskContrastProbeTests {
         }
     }
 
+    private static var explicitPaired: [Contrast] {
+        [Stimulus.explicitEnglish, .explicitFrench].flatMap { stimulus in
+            contrasts.filter { $0.stimulus == stimulus && $0.kind == .video && (!$0.banner || $0.fullDisclosure) }
+        }
+    }
+
     private enum Result: String, Encodable { case proposedDraft, validatedEmpty, failed }
     private enum ProbeFailure: Error { case invalidResult }
     private struct Record: Encodable {
@@ -112,6 +118,20 @@ struct VisibleTaskContrastProbeTests {
             #expect(zip(contrast.texts, contrast.stimulus.texts).allSatisfy {
                 $0.0.utf8.elementsEqual($0.1.utf8)
             })
+        }
+    }
+
+    @Test("The paired selection keeps both existing bodies and their exact disclosure wrappers")
+    func explicitPairedKeepsExistingStimuli() {
+        #expect(Self.explicitPaired.map(\.label) == [
+            "explicitEnglish_video_noBanner", "explicitEnglish_video_fullDisclosure",
+            "explicitFrench_video_noBanner", "explicitFrench_video_fullDisclosure"
+        ])
+        for pair in stride(from: 0, to: Self.explicitPaired.count, by: 2) {
+            let bare = Self.explicitPaired[pair], disclosed = Self.explicitPaired[pair + 1]
+            #expect(bare.stimulus == disclosed.stimulus && bare.kind == .video && disclosed.kind == .video)
+            #expect(zip(bare.texts, bare.stimulus.texts).allSatisfy { $0.0.utf8.elementsEqual($0.1.utf8) })
+            #expect(disclosed.texts == Self.contrasts.first { $0.stimulus == bare.stimulus && $0.fullDisclosure }?.texts)
         }
     }
 
@@ -165,6 +185,7 @@ struct VisibleTaskContrastProbeTests {
         case nil: contrasts = Self.contrasts
         case "fullDisclosure": contrasts = Self.contrasts.filter(\.fullDisclosure)
         case "explicitBaseline": contrasts = Self.explicitBaseline
+        case "explicitPaired": contrasts = Self.explicitPaired
         default:
             Issue.record("Unknown contrast variant; no model was invoked.")
             return
