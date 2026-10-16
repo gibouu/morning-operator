@@ -327,10 +327,12 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
+        session.disableDialogs = false
         let app = launch()
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        confirmLocalPaymentSheet(session)
         let button = app.buttons["paywall.subscribe"]
         let pending = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false AND label CONTAINS 'attente'"), object: button)
         XCTAssertEqual(XCTWaiter.wait(for: [pending], timeout: 15), .completed)
@@ -349,10 +351,12 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         let session = try makeSession(askToBuy: true)
         defer { session.clearTransactions() }
         session.askToBuyEnabled = true
+        session.disableDialogs = false
         let app = launch()
         defer { app.terminate() }
         showPaywall(in: app)
         tap("paywall.subscribe", in: app)
+        confirmLocalPaymentSheet(session)
         let button = app.buttons["paywall.subscribe"]
         let pending = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false AND label CONTAINS 'attente'"), object: button)
         XCTAssertEqual(XCTWaiter.wait(for: [pending], timeout: 15), .completed)
@@ -361,7 +365,9 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         attachTransactions(session, name: "ask-to-buy-after-decline")
         XCTAssertFalse(app.buttons["morning.actions"].exists)
         XCTAssertFalse(button.isEnabled, "A decline must not automatically request another purchase.")
+        session.disableDialogs = false
         tap("paywall.retryPending", in: app)
+        confirmLocalPaymentSheet(session)
         let newRequest = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             session.allTransactions().contains { $0.identifier != declined.identifier }
         }, object: nil)
@@ -372,6 +378,23 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
         let retried = try XCTUnwrap(session.allTransactions().first { $0.identifier != declined.identifier })
         try session.approveAskToBuyTransaction(identifier: retried.identifier)
         XCTAssertTrue(app.buttons["morning.actions"].waitForExistence(timeout: 20), app.debugDescription)
+    }
+
+    private func confirmLocalPaymentSheet(_ session: SKTestSession) {
+        XCTAssertTrue(session.askToBuyEnabled)
+        XCTAssertFalse(session.disableDialogs)
+        let payment = XCUIApplication(bundleIdentifier: "com.apple.ServicesPaymentAngel")
+        XCTAssertTrue(payment.otherElements["payment-sheet"].waitForExistence(timeout: 60), payment.debugDescription)
+        XCTAssertTrue(payment.navigationBars["Xcode"].exists, payment.debugDescription)
+        XCTAssertTrue(payment.staticTexts["For testing purposes only. You will not be charged for confirming this purchase."].exists,
+                      payment.debugDescription)
+        let confirmation = payment.buttons["pay-now"]
+        XCTAssertTrue(confirmation.exists && confirmation.isHittable, payment.debugDescription)
+        let attachment = XCTAttachment(string: payment.debugDescription)
+        attachment.name = "local-Xcode-payment-before-confirmation"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        confirmation.tap()
     }
 
     nonisolated private func attachTransactions(_ session: SKTestSession, name: String) {
