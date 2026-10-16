@@ -6,7 +6,7 @@ import Testing
 struct IntegrationRouteTests {
     @Test func routesDescribeOperationsRatherThanNativeAppSessions() {
         #expect(RoutineStepTarget.inAppWeb(site: WebMorningSite.instagram.table.startURL).integrationRoute == .browser)
-        #expect(RoutineStepTarget.externalApp(.instagram, detail: nil).integrationRoute == nil)
+        #expect(RoutineStepTarget.externalApp(.instagram, detail: nil).integrationRoute == .browser)
         #expect(RoutineStepTarget.shortcut(name: "Read Messages", input: "today").integrationRoute == .nativeIOS)
         #expect(RoutineStepTarget.connectedAPI(service: "gmail", connectionID: "ca_123", tool: "GMAIL_FETCH_EMAILS", argumentsJSON: "{}").integrationRoute == .api)
     }

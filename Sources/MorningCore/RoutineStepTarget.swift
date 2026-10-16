@@ -153,16 +153,41 @@ public enum RoutineStepTarget: Codable, Hashable, Sendable {
     case calendlyDay(CalendlyDayTarget)
     case outlookInbox(OutlookInboxTarget)
 
-    /// The URL to open for an external app; nil for a page inside MORE or a Safari step
-    /// without a valid address.
+    /// The executable route for an approved routine. Old Instagram app choices keep
+    /// their saved identity, but use MORE's browser without granting browser actions.
+    public var routineExecutionTarget: RoutineStepTarget {
+        switch self {
+        case let .externalApp(.instagram, detail):
+            let detail = detail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if let name = StepApp.username(detail),
+               let url = URL(string: "https://www.instagram.com/\(name)/") {
+                return .inAppWeb(site: url)
+            }
+            return .inAppWeb(site: WebMorningSite.instagram.table.startURL)
+        case let .externalApp(.safari, detail):
+            guard let url = StepApp.webURL(detail ?? ""),
+                  let host = url.host?.lowercased(), WebMorningSite.instagram.table.allowedHosts.contains(host),
+                  var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  url.port == nil || (url.scheme?.lowercased() == "https" && url.port == 443) ||
+                    (url.scheme?.lowercased() == "http" && url.port == 80) else { return self }
+            components.scheme = "https"
+            if components.port == 80 { components.port = nil }
+            guard let secureURL = components.url else { return self }
+            return .inAppWeb(site: secureURL)
+        default: return self
+        }
+    }
+
+    /// The URL to open outside MORE after resolving the routine route; nil for an
+    /// Instagram moment, another page inside MORE or Safari without a valid address.
     public var externalURL: URL? {
-        guard case let .externalApp(app, detail) = self else { return nil }
+        guard case let .externalApp(app, detail) = routineExecutionTarget else { return nil }
         return app.url(detail: detail)
     }
 
     /// The closed, Lock Screen-safe name of where this step goes.
     public var destination: StepDestination {
-        switch self {
+        switch routineExecutionTarget {
         case let .externalApp(app, _): return .app(app)
         case let .inAppWeb(site):
             let host = (site.host ?? "").lowercased()

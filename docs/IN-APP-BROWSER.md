@@ -8,6 +8,14 @@ Reviewed routine moments now have session-scoped feed, video, story, headline or
 
 The descriptions and phone evidence below refer to the earlier standalone/manual tools; they do not establish the new autonomous service behavior.
 
+## Instagram navigation fix — 16 October 2026
+
+Instagram routine moments now stay in MORE, including saved native-app choices and Safari choices pointing to supported Instagram hosts. Valid saved usernames keep their profile destination. This resolves the execution route without rewriting the saved routine or granting browser actions to an old manual moment. The timer, Next, and page reopening use that same route. The editor offers Instagram under **In MORE**.
+
+The Instagram browser cancels web-initiated HTTPS GET navigation in that browser before WebKit can try a universal link, then loads the request through the public `WKWebView.load` API. The next programmatic callback is allowed once; redirected URLs are checked again. New-window links use the visible browser. Known `instagram://app` and username links have HTTPS equivalents; unknown app actions are refused. Instagram link previews are disabled to avoid their separate native-app handoff. Same-host sign-in POSTs retain their requests. A cross-host non-GET form is refused without replaying its potentially unavailable credential body; this limits such sign-in flows inside the Instagram browser. HTTPS providers and app-store redirect hosts stay in the same browser. Other services' native and system-browser OAuth flows keep their existing consent routes.
+
+Regression coverage includes saved routine progression, profile details, unchanged saved authority, timer destinations, redirects, new windows, deep links, and French/English destination labels. A UI journey starts, advances and reopens saved Instagram moments in both app languages without signing into an account. Local verification results and remaining runtime/device limits are recorded in issue #234 and its PR. This change does not establish live account or feed behavior.
+
 ## Manual browsing mode
 
 The person sees the website and signs in on its own page. One tap asks MORE to read a visible unread number, show up to five headlines, or request one video-feed scroll. This standalone mode does not automatically advance. Approved routine moments use the execution path described above. The website's own buttons still work when the person uses them.

@@ -15,7 +15,7 @@ struct ExternalAppReturnTests {
 
     @Test("Only the exact running native app moment can advance on return")
     func exactRunningApp() throws {
-        var session = try running(.externalApp(.instagram, detail: nil))
+        var session = try running(.externalApp(.mail, detail: nil))
         let sessionID = session.id, stepID = try #require(session.currentStep?.id)
         #expect(StepNavigation.mayAdvanceAfterExternalAppReturn(session: session, sessionID: sessionID, stepID: stepID))
         #expect(!StepNavigation.mayAdvanceAfterExternalAppReturn(session: session, sessionID: UUID(), stepID: stepID))
@@ -31,6 +31,7 @@ struct ExternalAppReturnTests {
     @Test("Browser, API, shortcut and ordinary MORE moments keep their own progression")
     func excludesOtherRoutes() throws {
         let targets: [RoutineStepTarget?] = [
+            .externalApp(.instagram, detail: nil),
             .inAppWeb(site: URL(string: "https://www.lemonde.fr")!),
             .connectedAPI(service: "GMAIL", connectionID: "test", tool: "GMAIL_FETCH_EMAILS", argumentsJSON: "{}"),
             .shortcut(name: "Test", input: ""), nil
