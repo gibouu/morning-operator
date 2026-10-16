@@ -42,7 +42,7 @@ import MorningCore
             XCTAssertTrue(row.label.contains(titles[index]) && row.label.contains("Your own moment"), row.label)
         }
         XCTAssertFalse(app.buttons["routine.step.10"].exists)
-        XCTAssertTrue(element("routine.source", app).label.contains("Sample routine"))
+        XCTAssertTrue(text("routine.source", app).label.contains("Sample routine"))
         attach("long-ten-import-manual-synthetic-not-approved", app)
         back(app)
         configureCalendar(app)
@@ -91,7 +91,7 @@ import MorningCore
             if index >= 3 { XCTAssertTrue(row.label.contains("Give you this time, then continue automatically.")) }
         }
         XCTAssertTrue(button("routine.approve", app).isEnabled)
-        XCTAssertTrue(element("routine.source", app).label.contains("Sample routine"))
+        XCTAssertTrue(text("routine.source", app).label.contains("Sample routine"))
         attach("long-ten-configured-three-simulated-seven-time-only-unapproved", app)
         tap("routine.approve", app)
         home(app); app.terminate()
@@ -423,6 +423,10 @@ import MorningCore
         if let visible = query.allElementsBoundByIndex.first(where: \.isHittable) { return visible }
         scroll(query.firstMatch, id: id, in: app)
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
+    }
+    private func text(_ id: String, _ app: XCUIApplication) -> XCUIElement {
+        let value = app.staticTexts[id].firstMatch
+        scroll(value, id: id, in: app); return value
     }
     private func element(_ id: String, _ app: XCUIApplication) -> XCUIElement {
         let value = app.descendants(matching: .any).matching(identifier: id).firstMatch
