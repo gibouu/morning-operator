@@ -180,8 +180,7 @@ final class MorningSubscriptionPurchaseTests: XCTestCase {
     }
 
     private func showPaywall(in app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["onboarding.offer"].waitForExistence(timeout: 15), app.debugDescription)
-        tap("onboarding.offer", in: app)
+        for _ in 0..<3 { tap("onboarding.next", in: app) }
         XCTAssertTrue(app.staticTexts["paywall.price"].waitForExistence(timeout: 20), app.debugDescription)
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: app.buttons["paywall.subscribe"])
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed)
